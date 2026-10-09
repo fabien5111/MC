@@ -51,6 +51,9 @@ Il manque l'un des trois → le demander, ne rien deviner.
      une unité absente du référentiel `units` sortira en alerte à relire ;
    - noms d'ingrédients « nus » (ni état ni quantité dans `nom`) ;
    - somme des ingrédients cohérente avec la masse annoncée dans `rendement` ;
+     pour une fiche de composant, passer
+     `python3 .claude/skills/fiche-composant/controle.py <json>` (masse
+     utilisable, perte, conseils rangés dans les étapes) ;
    - tout « À VÉRIFIER PAR UN HUMAIN » laissé par la revue du chef est
      **remonté tel quel** à l'utilisateur ;
    - aucune adresse e-mail nulle part dans le fichier (le test de corpus le
@@ -103,9 +106,9 @@ Il manque l'un des trois → le demander, ne rien deviner.
    d'attente). Rappeler ce qui reste à faire **en relecture**, que le format
    d'import ne porte pas :
    - rendement : pour une **fiche de composant** (entrées « Utilisation — »),
-     il arrive déjà réglé — « Par nombre d'unités / poids », masse en `g`,
-     format et utilisations dans « Complément d'informations sur les
-     quantités » (`rendementComposant`, `lib/import-jira.ts`) : seulement à
+     il arrive déjà réglé — « Par nombre d'unités / poids », masse
+     utilisable (nette de la perte) en `g`, format, perte et utilisations dans
+     « Complément d'informations sur les quantités » (`rendementComposant`, `lib/import-jira.ts`) : seulement à
      vérifier. Pour une autre recette, il arrive en description libre :
      choisir le mode (moule de référence, forme + dimensions, pour pouvoir
      ajuster par moule) ;

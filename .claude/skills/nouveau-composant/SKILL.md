@@ -11,8 +11,8 @@ Usage : `/nouveau-composant <nom du composant>`, éventuellement suivi de
 Cette compétence ne fait qu'**enchaîner** deux briques, sans en dupliquer le
 contenu :
 
-- `fiche-composant` (compétence du compte de l'utilisateur, hors dépôt) —
-  rédaction, contrôle mécanique, revue du chef dans un agent séparé ;
+- `fiche-composant` (`.claude/skills/fiche-composant/`) — rédaction,
+  contrôle mécanique, revue du chef dans un agent séparé ;
 - `import-recette` (`.claude/skills/import-recette/`) — fichier, tests,
   simulation, import, lien de relecture.
 
@@ -23,24 +23,24 @@ qualifications à refaire.
 
 ## Déroulé
 
-1. **Prérequis.** Vérifier que la compétence `fiche-composant` figure dans la
-   liste des compétences disponibles (nom `fiche-composant`, éventuellement
-   préfixé). Absente → le dire en une phrase (elle vit dans le compte de
-   l'utilisateur, pas dans le dépôt) et s'arrêter. Aucun nom donné → le
-   demander en une phrase et s'arrêter.
+1. **Prérequis.** Aucun nom donné → le demander en une phrase et
+   s'arrêter.
 
-2. **Fiche.** Invoquer `fiche-composant` avec les mêmes arguments (nom et
-   précisions) et la dérouler entièrement, revue du chef comprise.
-   `fiche-composant` écrit ses fichiers dans le répertoire courant (la racine
-   du dépôt) : noter le chemin du JSON final (`<slug>.json`) et **supprimer
-   le brouillon** (`<slug>-brouillon.json`). Aucun de ces deux fichiers ne
-   doit jamais être committé.
+2. **Fiche.** Invoquer la compétence du dépôt `fiche-composant` (nom sans
+   préfixe — **jamais** une `…:fiche-composant` venue du compte de
+   l'utilisateur, ancienne version sans perte de réalisation) avec les mêmes
+   arguments (nom et précisions), et la dérouler entièrement, revue du chef
+   comprise. Elle écrit son brouillon et son JSON final (`<slug>.json`) hors
+   du dépôt, dans le répertoire temporaire de la session : noter le chemin du
+   JSON final. Sa livraison n'est **pas** la fin du tour : enchaîner
+   aussitôt sur l'étape 3.
 
 3. **Validation — premier point d'arrêt.** Présenter :
    - la revue du chef telle quelle (déjà livrée par `fiche-composant`) ;
-   - un résumé lisible : titre, format de référence et masse totale
-     (`rendement`), étapes avec leurs ingrédients en grammes, utilisations
-     (`astuces_recette` commençant par « Utilisation — ») ;
+   - un résumé lisible : titre, format de référence, masse utilisable,
+     somme des ingrédients et perte (`rendement`), étapes avec leurs
+     ingrédients en grammes et leurs conseils de réussite, utilisations
+     (« Utilisation — ») et variantes (« Variante — ») ;
    - **en tête et en évidence**, chaque « À VÉRIFIER PAR UN HUMAIN » de la
      revue ;
    - la clé locale proposée : `local-` + slug du titre (minuscules, sans
@@ -60,8 +60,8 @@ qualifications à refaire.
 
 5. **Import.** Dérouler `import-recette` à partir de son étape 2 (contrôle),
    avec le JSON final, la clé et le destinataire — sans requalifier. Le
-   fichier d'import est `imports-jira/<clé>.json` ; supprimer ensuite le
-   `<slug>.json` de la racine. Ne committer **que** le fichier d'import.
+   fichier d'import est `imports-jira/<clé>.json`. Ne committer **que** le
+   fichier d'import.
    Après la simulation, l'étape 8 d'`import-recette` s'applique telle
    quelle : import **aussitôt** si le destinataire est un pseudo et la
    simulation sans `❌` (arbitrage de l'utilisateur, à ne pas remettre en
@@ -70,7 +70,7 @@ qualifications à refaire.
    lancement).
 
 6. **Lien.** Livrer `https://dev.jepatisse.com/relecture/<id>` et le rappel
-   de relecture d'`import-recette` (rendement déjà réglé en poids, à
-   vérifier ; catégorie, tags, difficulté ; photo principale — toujours à
+   de relecture d'`import-recette` (rendement déjà réglé en poids
+   utilisable, à vérifier ; catégorie, tags, difficulté ; photo principale — toujours à
    ajouter pour une clé locale).
    Une phrase de bilan, pas de récapitulatif de la démarche.
