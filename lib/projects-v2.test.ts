@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildProjectFormatUpdate, projectV2BlockStates } from '@/lib/projects';
+import { buildProjectFormatUpdate, projectV2BlockStates, utensilsToAdd } from '@/lib/projects';
 
 describe('projectV2BlockStates', () => {
   it('ne débloque que l’intention, l’identité et le format sur un projet vierge', () => {
@@ -62,5 +62,22 @@ describe('buildProjectFormatUpdate', () => {
   it('ignore le moule en format libre', () => {
     const r = buildProjectFormatUpdate({ ...base, format: 'free', moldTypeId: '6' });
     expect('payload' in r && r.payload).toMatchObject({ measure_type: 'units', mold_type_id: null });
+  });
+});
+
+describe('utensilsToAdd', () => {
+  it('écarte les doublons par référentiel ou par nom normalisé', () => {
+    const existants = [
+      { name: 'Fouet', ref_id: 3 },
+      { name: 'Poche à douille', ref_id: null },
+    ];
+    const entrants = [
+      { name: 'fouets', ref_id: null, comment: null },
+      { name: 'Batteur', ref_id: 3, comment: null },
+      { name: 'Poches à douille', ref_id: null, comment: null },
+      { name: 'Cercle Ø 20', ref_id: 9, comment: null },
+      { name: 'cercle Ø 20', ref_id: null, comment: null },
+    ];
+    expect(utensilsToAdd(existants, entrants).map((u) => u.name)).toEqual(['Cercle Ø 20']);
   });
 });

@@ -15,6 +15,8 @@
 // existe depuis toujours et s'affiche dans le carnet sous « Brouillons ») n'a
 // rien à voir avec `project_stage = 'wizard'`.
 
+import { ingredientKey } from '@/lib/ingredient-name';
+
 export type RecipeKind = 'simple' | 'project';
 export type ProjectStage = 'wizard' | 'ready' | 'dissolved';
 
@@ -346,6 +348,40 @@ export type ComponentIngredientDraft = {
 // stockage, ou une data-URL fraîche tant que l'écran ne l'a pas déposée
 // (le dépôt se fait côté navigateur, avant l'écriture — cf. ComponentResolver).
 export type ComponentStepPhoto = { url: string; original_url: string | null; ai_retouched: boolean };
+
+// Ustensile d'une préparation, recopié de la recette source à la copie
+// (`recipe_project_components.utensils`). La source ne dit pas quelle étape
+// utilise quel ustensile : ils sont donc portés par la préparation, jamais
+// par une étape.
+export type ComponentUtensil = { name: string; ref_id: number | null; comment: string | null };
+
+// Clé de rapprochement de deux ustensiles : le référentiel quand il est
+// connu, sinon le nom normalisé (même règle que les ingrédients : casse,
+// accents, pluriel).
+function utensilKeys(u: { name: string; ref_id: number | null }): string[] {
+  const nom = `nom:${ingredientKey(u.name)}`;
+  return u.ref_id != null ? [`ref:${u.ref_id}`, nom] : [nom];
+}
+
+// Ustensiles à AJOUTER à la liste globale de la recette : ceux de `incoming`
+// absents de `existing` (même référentiel ou même nom normalisé), sans
+// doublon entre eux. Rien n'est jamais retiré — les ajouts faits à la main
+// restent intacts.
+export function utensilsToAdd<T extends { name: string; ref_id: number | null }>(
+  existing: { name: string; ref_id: number | null }[],
+  incoming: T[],
+): T[] {
+  const vus = new Set<string>(existing.flatMap(utensilKeys));
+  const out: T[] = [];
+  for (const u of incoming) {
+    if (!u.name?.trim()) continue;
+    const cles = utensilKeys(u);
+    if (cles.some((k) => vus.has(k))) continue;
+    cles.forEach((k) => vus.add(k));
+    out.push(u);
+  }
+  return out;
+}
 
 export type ComponentStepDraft = {
   title: string | null;

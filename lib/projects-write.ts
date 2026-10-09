@@ -19,7 +19,7 @@
 //     rattachement : seul un déplacement ou une suppression de composant
 //     redistribue les blocs (`resequenceProjectSteps`).
 import type { createClient } from '@/lib/supabase/client';
-import type { ComponentStepDraft } from '@/lib/projects';
+import { utensilsToAdd, type ComponentStepDraft, type ComponentUtensil } from '@/lib/projects';
 import { fixOeufLigature } from '@/lib/text';
 
 type Supabase = ReturnType<typeof createClient>;
@@ -534,4 +534,44 @@ export async function validateProject(
   await writeAssemblyStep(supabase, recipeId, components);
   const { error } = await supabase.from('recipes').update({ project_stage: 'ready' } as never).eq('id', recipeId);
   if (error) throw error;
+}
+
+// Ustensiles d'une préparation copiée d'une recette existante : mémorisés sur
+// la préparation (`recipe_project_components.utensils`), puis ajoutés à la
+// liste globale de la recette (`recipe_utensils`) sans doublon — rien n'y est
+// jamais retiré, les ajouts faits à la main restent intacts. Tolère l'absence
+// de la colonne `utensils` (migration pas encore jouée) : la liste globale est
+// complétée quand même.
+export async function attachComponentUtensils(
+  supabase: Supabase,
+  recipeId: string,
+  componentId: number,
+  utensils: ComponentUtensil[],
+) {
+  const { error: cErr } = await supabase
+    .from('recipe_project_components')
+    .update({ utensils } as never)
+    .eq('id', componentId);
+  if (cErr && !/utensils/.test(cErr.message)) throw cErr;
+  if (!utensils.length) return;
+
+  const { data, error } = await supabase
+    .from('recipe_utensils')
+    .select('name, ref_id, order_index')
+    .eq('recipe_id', recipeId);
+  if (error) throw error;
+  const existants = (data ?? []) as { name: string; ref_id: number | null; order_index: number | null }[];
+  const ajouts = utensilsToAdd(existants, utensils);
+  if (!ajouts.length) return;
+  const base = existants.reduce((m, u) => Math.max(m, u.order_index ?? 0), 0);
+  const { error: iErr } = await supabase.from('recipe_utensils').insert(
+    ajouts.map((u, i) => ({
+      recipe_id: recipeId,
+      name: u.name,
+      ref_id: u.ref_id,
+      comment: u.comment,
+      order_index: base + i + 1,
+    })) as never,
+  );
+  if (iErr) throw iErr;
 }

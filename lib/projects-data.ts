@@ -3,7 +3,7 @@
 // client, qui n'y tirerait que le build cassé. Le pendant pur —
 // constantes, types et prédicats — est dans lib/projects.ts.
 import { createClient } from '@/lib/supabase/server';
-import { parseWizardStep, type WizardStep } from '@/lib/projects';
+import { parseWizardStep, type ComponentUtensil, type WizardStep } from '@/lib/projects';
 import type { Json } from '@/lib/database.types';
 
 // Un composant tel que l'écran de dialogue en a besoin. `steps` n'est pas la
@@ -47,6 +47,9 @@ export type ProjectComponent = {
   sourceYield: string | null;
   stepCount: number;
   lines: ProjectLine[];
+  // Ustensiles recopiés de la recette source (vide pour une préparation
+  // proposée par l'IA ou saisie à la main, ou avant la migration).
+  utensils: ComponentUtensil[];
 };
 
 export type ProjectFull = {
@@ -179,11 +182,13 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     | 'manuallyAdjusted'
     | 'scalingMode'
     | 'sourceYield'
+    | 'utensils'
   > & {
     scale_factor: number | null;
     scale_reason: string | null;
     manually_adjusted: boolean;
     scaling_mode?: string | null;
+    utensils?: ComponentUtensil[] | null;
   };
   const rows = (componentsRes.data ?? []) as unknown as ComponentRow[];
   const rendements = await sourceYields(
@@ -208,6 +213,7 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     sourceYield: c.source_recipe_id ? (rendements.get(c.source_recipe_id) ?? null) : null,
     stepCount: parStep.get(c.id) ?? 0,
     lines: parComposant.get(c.id) ?? [],
+    utensils: Array.isArray(c.utensils) ? c.utensils : [],
   }));
 
   return {

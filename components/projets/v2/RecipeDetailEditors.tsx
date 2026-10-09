@@ -372,8 +372,21 @@ export function OrganisationEditor({
         if (error) return { error };
         const { error: delErr } = await supabase.from('recipe_utensils').delete().eq('recipe_id', recipe.id);
         if (delErr) return { error: delErr };
+        // Rattachement au référentiel conservé pour les lignes inchangées
+        // (`*` le lit, `RecipeFull` ne le type pas) : sans lui, les ustensiles
+        // copiés d'une préparation perdraient leur `ref_id` au premier
+        // enregistrement, et le dédoublonnage ne pourrait plus s'y appuyer.
+        const refs = new Map(
+          (recipe.recipe_utensils as unknown as { name: string; ref_id: number | null }[]).map((u) => [u.name, u.ref_id ?? null]),
+        );
         const rows = ustensiles
-          .map((u, i) => ({ recipe_id: recipe.id, name: u.name.trim(), comment: u.comment.trim() || null, order_index: i }))
+          .map((u, i) => ({
+            recipe_id: recipe.id,
+            name: u.name.trim(),
+            comment: u.comment.trim() || null,
+            order_index: i,
+            ref_id: refs.get(u.name.trim()) ?? null,
+          }))
           .filter((u) => u.name);
         if (!rows.length) return { error: null };
         return supabase.from('recipe_utensils').insert(rows);

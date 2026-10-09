@@ -26,8 +26,8 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LockedAction, LockedHint } from '@/components/LockedAction';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import { planComponentCopy, type ComponentSourceKind, type ComponentStepDraft, type CopyableRecipe } from '@/lib/projects';
-import { clearComponentContent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
+import { planComponentCopy, type ComponentSourceKind, type ComponentStepDraft, type ComponentUtensil, type CopyableRecipe } from '@/lib/projects';
+import { attachComponentUtensils, clearComponentContent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import type { ProjectComponent } from '@/lib/projects-data';
 import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { StepEditorCard } from '@/components/projets/StepEditorCard';
@@ -66,7 +66,8 @@ const COPY_SELECT = `
   id, title, author_id,
   profiles!recipes_author_id_fkey(full_name),
   ingredient_groups(order_index, scaling_mode, ingredients(name, quantity, unit, comment, allergen, ref_id, order_index)),
-  recipe_steps(title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, order_index)
+  recipe_steps(title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, order_index),
+  recipe_utensils(name, ref_id, comment, order_index)
 `;
 
 const btnPrimary =
@@ -237,6 +238,10 @@ export function ComponentResolver({
     steps: ComponentStepDraft[],
     kind: ComponentSourceKind,
     source: { recipeId: string | null; authorId: string | null; title: string | null; authorName: string | null },
+    // Copie d'une recette existante seulement : ses ustensiles, mémorisés sur
+    // la préparation et ajoutés à la liste globale (sans doublon). Absent pour
+    // une proposition de l'IA, une saisie ou une modification : on n'y touche pas.
+    utensils?: ComponentUtensil[],
   ) {
     if (!steps.length) {
       dialog.alert('Ce composant n’a aucune étape : il resterait vide dans la recette.');
@@ -277,6 +282,7 @@ export function ComponentResolver({
           );
           await writeComponentContent(supabase, projectId, component.id, componentIndex, avecPhotos);
           await resequenceProjectSteps(supabase, projectId, componentIds);
+          if (utensils) await attachComponentUtensils(supabase, projectId, component.id, utensils);
         } catch (e) {
           return { error: { message: (e as Error).message } };
         }
@@ -352,12 +358,23 @@ export function ComponentResolver({
         dialog.alert("Cette recette n'a aucune étape à copier.");
         return;
       }
-      await enregistrer(steps, item.kind, {
-        recipeId: item.id,
-        authorId: (data as unknown as { author_id: string }).author_id ?? null,
-        title: item.title,
-        authorName: item.author,
-      });
+      const ustensiles = [
+        ...((data as unknown as { recipe_utensils?: (ComponentUtensil & { order_index: number | null })[] })
+          .recipe_utensils ?? []),
+      ]
+        .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+        .map((u) => ({ name: u.name, ref_id: u.ref_id ?? null, comment: u.comment ?? null }));
+      await enregistrer(
+        steps,
+        item.kind,
+        {
+          recipeId: item.id,
+          authorId: (data as unknown as { author_id: string }).author_id ?? null,
+          title: item.title,
+          authorName: item.author,
+        },
+        ustensiles,
+      );
     } finally {
       setChargement(false);
     }

@@ -619,6 +619,15 @@ export function ProjectV2({
                       <h3 className="font-headline-md text-headline-md text-primary">{c.name}</h3>
                       {boutonRecette(c)}
                     </div>
+                    {/* Ustensiles recopiés de la recette source : portés par la
+                        préparation (la source ne les rattache à aucune étape). */}
+                    {c.utensils.length > 0 && (
+                      <p className="-mt-3 mb-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[18px] text-primary">blender</span>
+                        <span className="font-label-md text-[11px] uppercase tracking-widest text-outline">Ustensiles</span>
+                        {c.utensils.map((u) => u.name + (u.comment ? ` (${u.comment})` : '')).join(' · ')}
+                      </p>
+                    )}
                     {/* Ajustement des quantités de CETTE préparation (un seul
                         coefficient par préparation, comme en base), replié
                         par défaut : les étapes dessous montrent déjà les
@@ -689,6 +698,10 @@ export function ProjectV2({
           recipe ? (
             <div className="space-y-6">
               <OrganisationEditor
+                // Remonté quand la liste en base change (ustensiles ajoutés par
+                // la copie d'une préparation) : son état local, initialisé une
+                // fois, ne les montrerait pas et les effacerait à l'enregistrement.
+                key={recipe.recipe_utensils.map((u) => u.id).join(',')}
                 recipe={recipe}
                 difficultyId={difficultyId}
                 difficulties={difficulties}
