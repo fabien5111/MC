@@ -612,9 +612,9 @@ export function buildProjectFormatUpdate(input: {
 // projet ouvert dans la v2 ne doit pas changer d'étape dans l'autre vue).
 export const PROJECT_V2_BLOCKS = [
   'intention',
+  'structure',
   'identite',
   'format',
-  'structure',
   'etapes',
   'quantites',
   'ingredients',
@@ -633,6 +633,9 @@ export type ProjectV2BlockState = { unlocked: boolean; lockedReason: string | nu
 export function projectV2BlockStates(project: {
   measure_type: string | null;
   servings: number | null;
+  // Intention saisie : suffit, avec le format, à ouvrir la structure (qui
+  // remonte juste sous l'intention, avant que le format soit posé).
+  intent?: string | null;
   components: { resolved: boolean }[];
 }): Record<ProjectV2Block, ProjectV2BlockState> {
   const formatPose = !!project.measure_type && (project.servings ?? 0) > 0;
@@ -642,13 +645,12 @@ export function projectV2BlockStates(project: {
     unlocked,
     lockedReason: unlocked ? null : reason,
   });
-  const apresFormat = 'Disponible une fois le format choisi.';
   const apresRecette = 'Disponible dès qu’une préparation a sa recette.';
   return {
     intention: etat(true, ''),
     identite: etat(true, ''),
     format: etat(true, ''),
-    structure: etat(formatPose, apresFormat),
+    structure: etat(formatPose || !!project.intent?.trim(), 'Disponible dès qu’une intention ou un format est renseigné.'),
     etapes: etat(unResolu, apresRecette),
     quantites: etat(unResolu, apresRecette),
     ingredients: etat(unResolu, apresRecette),

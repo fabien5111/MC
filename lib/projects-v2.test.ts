@@ -8,9 +8,14 @@ describe('projectV2BlockStates', () => {
     expect(s.identite.unlocked).toBe(true);
     expect(s.format.unlocked).toBe(true);
     expect(s.structure.unlocked).toBe(false);
-    expect(s.structure.lockedReason).toMatch(/format/);
+    expect(s.structure.lockedReason).toMatch(/intention ou un format/);
     expect(s.etapes.unlocked).toBe(false);
     expect(s.validation.unlocked).toBe(false);
+  });
+
+  it('ouvre la structure dès qu’une intention est saisie', () => {
+    const s = projectV2BlockStates({ measure_type: null, servings: null, intent: ' Tarte au praliné ', components: [] });
+    expect(s.structure.unlocked).toBe(true);
   });
 
   it('ouvre la structure dès que le format est posé', () => {

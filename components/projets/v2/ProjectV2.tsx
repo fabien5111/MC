@@ -53,7 +53,7 @@ import {
   type ProjectFormat,
   type ProjectV2Block as BlockKey,
 } from '@/lib/projects';
-import { validateProject } from '@/lib/projects-write';
+import { resequenceProjectSteps, validateProject } from '@/lib/projects-write';
 import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
 import { dayLabel, mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
@@ -92,9 +92,9 @@ const BLOCS: Record<BlockKey, { titre: string; apercu: string; court: string; ic
 };
 const ORDRE_BLOCS: BlockKey[] = [
   'intention',
+  'structure',
   'identite',
   'format',
-  'structure',
   'etapes',
   'quantites',
   'ingredients',
@@ -139,7 +139,7 @@ export function ProjectV2({
   const router = useRouter();
   const dialog = useDialog();
   const { mutate, busy, refresh } = useMutation();
-  const states = projectV2BlockStates(project);
+  const states = projectV2BlockStates({ ...project, intent: project.intent });
   const v1 = `/projets/${project.id}`;
 
   const composants = useProjectComponents(project, mutate, dialog);
@@ -217,15 +217,17 @@ export function ProjectV2({
       dialog.alert('Décrivez d’abord ce que vous voulez réaliser.');
       return;
     }
-    if (
-      dejaPropose &&
-      !(await dialog.confirm(
-        project.components.length
-          ? 'Le format actuel sera remplacé par la nouvelle proposition. Les préparations existantes ne changent pas. Continuer ?'
-          : 'Le format actuel sera remplacé par la nouvelle proposition. Continuer ?',
-      ))
-    )
-      return;
+    // Les préparations déjà résolues portent du travail : jamais touchées.
+    // Celles « À résoudre » viennent d'une proposition précédente et sont
+    // remplacées par la nouvelle.
+    const resolues = project.components.filter((c) => c.resolved);
+    const aRemplacer = project.components.filter((c) => !c.resolved);
+    if (dejaPropose) {
+      const parts = ['Le format actuel sera remplacé par la nouvelle proposition.'];
+      if (aRemplacer.length) parts.push(`${aRemplacer.length} préparation(s) à résoudre seront remplacées.`);
+      if (resolues.length) parts.push(`${resolues.length} préparation(s) déjà résolue(s) seront conservées.`);
+      if (!(await dialog.confirm(`${parts.join(' ')} Continuer ?`))) return;
+    }
     setThinking(true);
     let data: (ProposedStructure & { erreur?: string }) | null = null;
     try {
@@ -266,7 +268,7 @@ export function ProjectV2({
     setMoldTypeId(moule);
     const titre = project.title === 'Nouveau projet' && data.title ? data.title : project.title;
     const built = buildProjectFormatUpdate({ format: f, title: titre, servings: s, count: n, dims: d, moldTypeId: moule });
-    const proposees = !project.components.length ? (data.components ?? []).slice(0, MAX_COMPONENTS) : [];
+    const proposees = (data.components ?? []).slice(0, Math.max(0, MAX_COMPONENTS - resolues.length));
 
     await mutate(
       async () => {
@@ -278,10 +280,26 @@ export function ProjectV2({
           if (fErr) return { error: fErr };
         }
         if (!proposees.length) return { error: null };
+        if (aRemplacer.length) {
+          // Sans contenu (non résolues) : un simple delete suffit. Les blocs
+          // d'étapes des composants gardés sont ensuite redistribués, sinon un
+          // nouveau composant pourrait retomber sur le bloc d'un ancien.
+          const { error: dErr } = await supabase
+            .from('recipe_project_components')
+            .delete()
+            .in('id', aRemplacer.map((c) => c.id));
+          if (dErr) return { error: dErr };
+          try {
+            await resequenceProjectSteps(supabase, project.id, resolues.map((c) => c.id));
+          } catch (e) {
+            return { error: { message: (e as Error).message } };
+          }
+        }
+        const dernier = resolues.reduce((m, c) => Math.max(m, c.position), 0);
         return supabase.from('recipe_project_components').insert(
           proposees.map((c, i) => ({
             recipe_id: project.id,
-            position: i + 1,
+            position: dernier + i + 1,
             name: c.name,
             role: c.role || null,
             source_kind: 'manual',
@@ -490,9 +508,40 @@ export function ProjectV2({
             </div>
             {project.components.length > 0 && (
               <p className="text-[12px] text-on-surface-variant">
-                Le projet a déjà des préparations : une proposition de l’IA ne mettra à jour que le format.
+                Une nouvelle proposition remplace le format et les préparations « À résoudre » ; celles qui ont déjà
+                leur recette sont conservées.
               </p>
             )}
+          </div>,
+        )}
+
+        {bloc(
+          'structure',
+          <div className="space-y-3">
+            <p className="text-sm text-on-surface-variant">
+              Du bas vers le haut de l’assemblage. Le rôle et l’ajustement (volume ou surface) décident du calcul des
+              quantités.
+            </p>
+            <ProjectStructureList
+              components={composants}
+              extra={(c) => (
+                <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-2">
+                  <span className={`min-w-0 flex-1 text-[12.5px] ${c.resolved ? 'text-green-700' : 'text-secondary'}`}>
+                    {c.resolved
+                      ? [
+                          COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind,
+                          c.source_title,
+                          c.source_author_name,
+                          c.stepCount ? `${c.stepCount} étape${c.stepCount > 1 ? 's' : ''}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                      : 'À résoudre'}
+                  </span>
+                  {boutonRecette(c)}
+                </div>
+              )}
+            />
           </div>,
         )}
 
@@ -553,36 +602,6 @@ export function ProjectV2({
             <button type="button" onClick={saveFormat} disabled={busy} className={btnPrimary}>
               Enregistrer le format
             </button>
-          </div>,
-        )}
-
-        {bloc(
-          'structure',
-          <div className="space-y-3">
-            <p className="text-sm text-on-surface-variant">
-              Du bas vers le haut de l’assemblage. Le rôle et l’ajustement (volume ou surface) décident du calcul des
-              quantités.
-            </p>
-            <ProjectStructureList
-              components={composants}
-              extra={(c) => (
-                <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-2">
-                  <span className={`min-w-0 flex-1 text-[12.5px] ${c.resolved ? 'text-green-700' : 'text-secondary'}`}>
-                    {c.resolved
-                      ? [
-                          COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind,
-                          c.source_title,
-                          c.source_author_name,
-                          c.stepCount ? `${c.stepCount} étape${c.stepCount > 1 ? 's' : ''}` : null,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')
-                      : 'À résoudre'}
-                  </span>
-                  {boutonRecette(c)}
-                </div>
-              )}
-            />
           </div>,
         )}
 
