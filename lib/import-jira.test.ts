@@ -164,6 +164,21 @@ describe('rendementComposant', () => {
     });
   });
 
+  it('retient la masse utilisable, nette de la perte, et la rappelle dans le complément', () => {
+    const r = rendementComposant({
+      ...COMPOSANT,
+      rendement:
+        '1 plaque 40 x 30 cm, 1 cm d’épaisseur — environ 450 g de pâte utilisable (500 g d’ingrédients, perte ≈ 10 %)',
+      astuces_recette: [...COMPOSANT.astuces_recette.slice(0, 2), 'Variante — Version cacao.'],
+    });
+    expect(r?.masse).toBe(450);
+    expect(r?.notesQuantites.split('\n').slice(0, 2)).toEqual([
+      '1 plaque 40 x 30 cm, 1 cm d’épaisseur',
+      'Perte de réalisation ≈ 10 % : 500 g d\'ingrédients pour 450 g utilisables.',
+    ]);
+    expect(r?.notes).toBe('Variante — Version cacao.');
+  });
+
   it('n’invente pas de masse quand le rendement n’en donne pas', () => {
     const r = rendementComposant({ ...COMPOSANT, rendement: '1 plaque 40 x 30 cm' });
     expect(r?.masse).toBeNull();

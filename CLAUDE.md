@@ -1948,7 +1948,15 @@ pseudo → l'import suit la simulation sans nouvelle question (arbitrage du
 arrive en relecture avec son rendement déjà réglé (`rendementComposant`) :
 « Par nombre d'unités / poids » avec la masse en grammes, format et
 utilisations dans « Complément d'informations sur les quantités »
-(`notes_quantites`), seules les astuces restant dans les notes.
+(`notes_quantites`), seules les variantes restant dans les notes. **La masse
+retenue est la masse UTILISABLE**, nette de la perte de réalisation (fouet,
+cul-de-poule, évaporation, estimée par composant) : le rendement s'écrit
+« … — environ 450 g de pâte utilisable (500 g d'ingrédients, perte ≈ 10 %) »
+et les utilisations se calculent sur 450 g, jamais sur la somme des
+ingrédients. Les conseils de réussite vont dans les conseils de l'étape, les
+variantes seules dans ceux de la recette. Rédaction, revue du chef et
+contrôle mécanique (`controle.py`) : compétence `.claude/skills/fiche-composant/`,
+versionnée dans le dépôt (elle remplace celle du compte de l'utilisateur).
 
 **L'import par photo se fait en deux passes**, dans deux requêtes distinctes :
 *lire*, puis *structurer*. Un appel unique devait déchiffrer la page et la
