@@ -27,7 +27,7 @@ import { IngredientTotalList } from '@/components/IngredientTotalList';
 import { ComponentResolver } from '@/components/projets/ComponentResolver';
 import { ProjectFormatFields, type MoldTypeOption } from '@/components/projets/ProjectFormatFields';
 import { ProjectStructureList } from '@/components/projets/ProjectStructureList';
-import { QuantitiesStep } from '@/components/projets/ProjectQuantities';
+import { DessertVise, QuantitiesStep } from '@/components/projets/ProjectQuantities';
 import { ProjectTrials } from '@/components/projets/ProjectTrials';
 import { useProjectComponents } from '@/components/projets/useProjectComponents';
 import { ProjectV2Block } from '@/components/projets/v2/ProjectV2Block';
@@ -83,8 +83,7 @@ const BLOCS: Record<BlockKey, { titre: string; apercu: string; court: string; ic
   identite: { titre: 'Le dessert', apercu: 'Nom, photo, description et catégories.', court: 'Le dessert', icone: 'edit_note' },
   format: { titre: 'Format et rendement', apercu: 'Moule, dimensions, nombre de parts.', court: 'Format', icone: 'straighten' },
   structure: { titre: 'Structure', apercu: 'Les préparations qui composent le dessert, du bas vers le haut.', court: 'Structure', icone: 'construction' },
-  etapes: { titre: 'Étapes', apercu: 'Le déroulé de chaque préparation, avec ses ingrédients.', court: 'Étapes', icone: 'format_list_numbered' },
-  quantites: { titre: 'Ajustement des quantités', apercu: 'Les quantités ramenées au format visé.', court: 'Quantités', icone: 'construction' },
+  etapes: { titre: 'Étapes', apercu: 'Le déroulé de chaque préparation, avec ses ingrédients et l’ajustement de ses quantités.', court: 'Étapes', icone: 'format_list_numbered' },
   ingredients: { titre: 'Liste complète des ingrédients', apercu: 'Tous les ingrédients du dessert, totalisés.', court: 'Ingrédients', icone: 'egg_alt' },
   organisation: { titre: 'Ustensiles, difficulté et temps', apercu: 'Le matériel, le niveau et le planning.', court: 'Ustensiles et temps', icone: 'blender' },
   conseils: { titre: 'Conseils et source', apercu: 'Astuces, conseils de service, provenance.', court: 'Conseils', icone: 'lightbulb' },
@@ -96,7 +95,6 @@ const ORDRE_BLOCS: BlockKey[] = [
   'identite',
   'format',
   'etapes',
-  'quantites',
   'ingredients',
   'organisation',
   'conseils',
@@ -609,6 +607,7 @@ export function ProjectV2({
           'etapes',
           recipe ? (
             <div className="space-y-8">
+              <DessertVise project={project} formatLabel={formatLabel} />
               {ordered.map((c) => {
                 const own = steps.filter((s) => componentOf(s) === c.id);
                 return (
@@ -617,6 +616,23 @@ export function ProjectV2({
                       <h3 className={`${sousTitre} mb-0`}>{c.name}</h3>
                       {boutonRecette(c)}
                     </div>
+                    {/* Ajustement des quantités de CETTE préparation (un seul
+                        coefficient par préparation, comme en base), replié
+                        par défaut : les étapes dessous montrent déjà les
+                        quantités ajustées. */}
+                    {c.resolved && (
+                      <details className="group mb-6 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+                          <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
+                            Ajustement des quantités · ×{String(Math.round((c.scaleFactor ?? 1) * 100) / 100).replace('.', ',')}
+                          </span>
+                          <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+                        </summary>
+                        <div className="border-t border-outline-variant/40 px-4 py-4">
+                          <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel} componentId={c.id} />
+                        </div>
+                      </details>
+                    )}
                     {own.length ? (
                       <div className="space-y-10">{own.map((s, k) => etape(s, steps.indexOf(s), k === own.length - 1))}</div>
                     ) : (
@@ -636,8 +652,6 @@ export function ProjectV2({
             sansRecette
           ),
         )}
-
-        {bloc('quantites', <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel} hideTitle />)}
 
         {bloc(
           'ingredients',

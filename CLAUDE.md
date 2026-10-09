@@ -1297,6 +1297,7 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
 - **Un admin entre directement dans la v2 à la création** : `/projets/nouveau` (page serveur) lit `isAdmin` et le passe à `NewProjectStart` (`versionEssai`), qui redirige vers `/projets/<id>/v2` au lieu de `/projets/<id>`. Les autres membres gardent le parcours en onglets.
 - **Redemander une proposition de l'IA** : dès que le projet a un format ou des préparations, le bouton du bloc « Intention » devient « Redemander une proposition (IA) » (secondaire) et demande confirmation (nombre de préparations remplacées et conservées). La nouvelle proposition remplace le format et les préparations **« À résoudre »** ; celles qui ont déjà leur recette sont conservées (travail réel), puis les blocs d'étapes sont redistribués (`resequenceProjectSteps`) avant l'insertion des nouvelles.
 - **« Structure » juste sous « Votre intention »** : le bloc s'ouvre dès qu'une intention OU un format est renseigné (`projectV2BlockStates`, paramètre `intent`), puisque le format est désormais plus bas.
+- **Ajustement des quantités dans chaque préparation** : plus de bloc « Ajustement des quantités » en v2. Le bloc « Étapes » ouvre sur `DessertVise` (rappel du dessert visé), puis chaque préparation résolue porte un volet replié « Ajustement des quantités · ×coef » qui rend `QuantitiesStep` avec `componentId` (une seule carte, sans intro ni nom ; le calcul connaît toujours les autres préparations). Un seul coefficient par préparation, comme en base (`recipe_project_components.scale_factor`) — jamais par étape. La v1 utilise `QuantitiesStep` sans `componentId`, inchangée.
 - **La v2 n'écrit jamais `recipe_projects.wizard_step`** : l'étape du parcours
   en onglets reste la propriété de la v1. L'état d'un bloc (ouvert / grisé avec
   ce qui le débloque) se déduit de la base par `projectV2BlockStates`
@@ -1312,8 +1313,8 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   proposition de l'IA (`/api/projet/structure` — le format proposé est
   enregistré s'il est complet, les préparations seulement si le projet n'en a
   aucune), dessert (photo, nom, description, type, catégories), format,
-  structure et résolution, étapes par préparation, quantités
-  (`QuantitiesStep`, réutilisé tel quel), liste complète des ingrédients,
+  structure et résolution, étapes par préparation avec leur ajustement de
+  quantités (`QuantitiesStep`, une carte par préparation), liste complète des ingrédients,
   ustensiles / difficulté / temps, conseils et source, essais
   (`ProjectTrials`) et validation (`validateProject`, `lib/projects-write.ts`,
   partagé avec la v1).

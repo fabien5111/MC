@@ -616,7 +616,6 @@ export const PROJECT_V2_BLOCKS = [
   'identite',
   'format',
   'etapes',
-  'quantites',
   'ingredients',
   'organisation',
   'conseils',
@@ -626,7 +625,7 @@ export type ProjectV2Block = (typeof PROJECT_V2_BLOCKS)[number];
 
 // Blocs « Atelier projet » : fond plus clair, et ils disparaissent une fois
 // le projet validé — il ne reste alors que la recette.
-export const PROJECT_V2_ATELIER: ReadonlySet<ProjectV2Block> = new Set(['intention', 'structure', 'quantites', 'validation']);
+export const PROJECT_V2_ATELIER: ReadonlySet<ProjectV2Block> = new Set(['intention', 'structure', 'validation']);
 
 export type ProjectV2BlockState = { unlocked: boolean; lockedReason: string | null };
 
@@ -652,7 +651,6 @@ export function projectV2BlockStates(project: {
     format: etat(true, ''),
     structure: etat(formatPose || !!project.intent?.trim(), 'Disponible dès qu’une intention ou un format est renseigné.'),
     etapes: etat(unResolu, apresRecette),
-    quantites: etat(unResolu, apresRecette),
     ingredients: etat(unResolu, apresRecette),
     organisation: etat(unResolu, apresRecette),
     conseils: etat(unResolu, apresRecette),
