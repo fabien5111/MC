@@ -102,8 +102,13 @@ Il manque l'un des trois → le demander, ne rien deviner.
    `https://dev.jepatisse.com/relecture/<id>` (`www` affiche encore la page
    d'attente). Rappeler ce qui reste à faire **en relecture**, que le format
    d'import ne porte pas :
-   - choisir le **moule** de référence (forme + dimensions), d'après le texte
-     du rendement — sans lui, pas d'ajustement par moule ;
+   - rendement : pour une **fiche de composant** (entrées « Utilisation — »),
+     il arrive déjà réglé — « Par nombre d'unités / poids », masse en `g`,
+     format et utilisations dans « Complément d'informations sur les
+     quantités » (`rendementComposant`, `lib/import-jira.ts`) : seulement à
+     vérifier. Pour une autre recette, il arrive en description libre :
+     choisir le mode (moule de référence, forme + dimensions, pour pouvoir
+     ajuster par moule) ;
    - catégorie, tags, difficulté ;
    - photo principale (toujours, pour une clé locale).
 

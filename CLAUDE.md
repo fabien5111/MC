@@ -1943,7 +1943,12 @@ brouillon) : compétence `.claude/skills/import-recette/` ; chaîne complète
 depuis le seul nom d'un composant (fiche + revue du chef, validation, membre,
 import, lien de relecture) : `/nouveau-composant`. Destinataire donné par
 pseudo → l'import suit la simulation sans nouvelle question (arbitrage du
-09/10/2026) ; par e-mail → confirmation du pseudo trouvé d'abord.
+09/10/2026) ; par e-mail → confirmation du pseudo trouvé d'abord. Une
+**fiche de composant** (entrées `astuces_recette` préfixées « Utilisation — »)
+arrive en relecture avec son rendement déjà réglé (`rendementComposant`) :
+« Par nombre d'unités / poids » avec la masse en grammes, format et
+utilisations dans « Complément d'informations sur les quantités »
+(`notes_quantites`), seules les astuces restant dans les notes.
 
 **L'import par photo se fait en deux passes**, dans deux requêtes distinctes :
 *lire*, puis *structurer*. Un appel unique devait déchiffrer la page et la

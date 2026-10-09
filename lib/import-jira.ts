@@ -144,6 +144,46 @@ export function choisirPhotoJira(pieces: PieceJointeJira[]): { piece: PieceJoint
   };
 }
 
+// Fiche de composant (compétence `fiche-composant`) : ses possibilités
+// d'utilisation sont rangées dans `astuces_recette`, chacune préfixée
+// « Utilisation — », ses conseils préfixés « Astuce — ». C'est cette marque,
+// et elle seule, qui distingue une fiche de composant d'une recette Jira.
+const PREFIXE_UTILISATION = /^Utilisation\s*[—–-]\s*/i;
+const PREFIXE_ASTUCE = /^Astuce\s*[—–-]\s*/i;
+
+/**
+ * Rendement d'une fiche de composant, tel que l'écran de relecture l'attend :
+ * mode « Par nombre d'unités / poids » avec la masse de préparation en grammes
+ * (dernière valeur « N g » du rendement), et le format de référence suivi des
+ * utilisations dans « Complément d'informations sur les quantités »
+ * (`notes_quantites`). Les astuces seules restent dans les notes de la
+ * recette. `null` pour une recette qui n'est pas une fiche de composant.
+ *
+ * Masse introuvable → le mode d'origine (description libre) est gardé : on
+ * n'invente pas une quantité, seul le complément est posé.
+ */
+export function rendementComposant(
+  recette: RecetteIA,
+): { masse: number | null; notesQuantites: string; notes: string | null } | null {
+  const astuces = Array.isArray(recette.astuces_recette) ? recette.astuces_recette : [];
+  const utilisations = astuces.filter((a) => PREFIXE_UTILISATION.test(a)).map((a) => a.replace(PREFIXE_UTILISATION, '').trim());
+  if (!utilisations.length) return null;
+
+  const rendement = (recette.rendement || '').trim();
+  const masses = [...rendement.matchAll(/(\d+(?:[.,]\d+)?)\s*g\b/g)];
+  const masse = masses.length ? Number(masses[masses.length - 1][1].replace(',', '.')) : NaN;
+  // Format seul : la partie avant « — », qui porte la masse déjà reprise
+  // dans le champ quantité.
+  const format = rendement.split(/\s+—\s+/)[0].trim();
+
+  const autres = astuces.filter((a) => !PREFIXE_UTILISATION.test(a)).map((a) => a.replace(PREFIXE_ASTUCE, '').trim());
+  return {
+    masse: masse > 0 ? masse : null,
+    notesQuantites: [format, ...utilisations].filter(Boolean).join('\n'),
+    notes: autres.filter(Boolean).join('\n') || null,
+  };
+}
+
 /**
  * Construit le brouillon (`imports.recette`) exactement comme
  * `/api/import-url` après l'appel IA : même nettoyage, même validation, même
@@ -183,6 +223,16 @@ export function preparerBrouillonJira(
     typeof pivot.conseils_degustation === 'string' && pivot.conseils_degustation.trim()
       ? pivot.conseils_degustation.trim()
       : null;
+
+  const composant = rendementComposant(recette);
+  if (composant) {
+    pivot.rendement = {
+      ...pivot.rendement,
+      ...(composant.masse != null ? { mode: 'units', pieces_corrige: composant.masse, qty_unit_corrige: 'g' } : {}),
+      notes_quantites: composant.notesQuantites,
+    };
+    pivot.notes = composant.notes;
+  }
 
   if (photoUrl) {
     pivot.photo_principale = photoUrl;
