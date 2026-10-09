@@ -75,16 +75,21 @@ export type Rubrique = {
   libelle: string | null;
   /** Une phrase : ce que couvre la rubrique. */
   description: string;
-  /** Valeurs proposées à un membre qui n'a rien réglé — volontairement sobres. */
-  defaut: { site: boolean; email: boolean; rythme: Rythme };
+  /**
+   * Valeurs proposées à un membre qui n'a rien réglé — volontairement sobres.
+   * `push` (« Sur le téléphone ») ne part de toute façon que vers un appareil
+   * que le membre a lui-même activé : actif par défaut pour ce qui se lit sur
+   * le moment, jamais pour ce qui relève du récapitulatif.
+   */
+  defaut: { site: boolean; email: boolean; rythme: Rythme; push: boolean };
   /** Rythmes que le membre peut choisir pour l'e-mail (« immédiat » absent = récapitulatif seulement). */
   rythmesPermis: Rythme[];
 };
 
 const TOUS: Rythme[] = ['immediat', 'quotidien', 'hebdo'];
 const RECAP: Rythme[] = ['quotidien', 'hebdo'];
-const IMMEDIAT = { site: true, email: true, rythme: 'immediat' as Rythme };
-const RECAP_SOBRE = { site: true, email: false, rythme: 'hebdo' as Rythme };
+const IMMEDIAT = { site: true, email: true, rythme: 'immediat' as Rythme, push: true };
+const RECAP_SOBRE = { site: true, email: false, rythme: 'hebdo' as Rythme, push: false };
 
 export const RUBRIQUES: Rubrique[] = [
   // ── Mes recettes : 5 ─────────────────────────────────────────────────
@@ -235,7 +240,7 @@ export const RUBRIQUES: Rubrique[] = [
     categorie: 'moderation',
     libelle: null,
     description: 'Recettes et avis en attente de validation, regroupés dans un récapitulatif.',
-    defaut: { site: true, email: true, rythme: 'quotidien' },
+    defaut: { site: true, email: true, rythme: 'quotidien', push: false },
     rythmesPermis: RECAP,
   },
 ];
@@ -610,7 +615,17 @@ export const RYTHME_DEPUIS_BASE: Record<string, Rythme> = { immediate: 'immediat
 export const RYTHME_VERS_BASE: Record<Rythme, string> = { immediat: 'immediate', quotidien: 'daily', hebdo: 'weekly' };
 export const LIBELLE_RYTHME: Record<Rythme, string> = { immediat: 'Immédiat', quotidien: 'Quotidien', hebdo: 'Hebdomadaire' };
 
-export type PreferenceCategorie = { site: boolean; email: boolean; rythme: Rythme };
+export type PreferenceCategorie = {
+  site: boolean;
+  email: boolean;
+  rythme: Rythme;
+  /**
+   * Canal « sur l'appareil » (Web Push). Absent ou `null` = défaut du catalogue
+   * pour la RUBRIQUE — jamais hérité d'une ligne de catégorie, toutes
+   * antérieures à ce canal. Lu par `pushEffectif`, pas par `preferenceEffective`.
+   */
+  push?: boolean | null;
+};
 
 /**
  * Lignes éparses de `notification_preferences`, indexées par clé de RUBRIQUE
@@ -654,6 +669,18 @@ export function decisionCanaux(def: DefinitionEvenement, prefs: PreferencesMembr
   if (!p.email) return { site: p.site, email: 'aucun' };
   if (def.recapSeulement && p.rythme === 'immediat') return { site: p.site, email: 'quotidien' };
   return { site: p.site, email: p.rythme };
+}
+
+/**
+ * Le canal « sur l'appareil » d'une rubrique : sa propre ligne, sinon le défaut
+ * du catalogue. **Aucun verrou** : même un événement verrouillé (légal, support)
+ * respecte ce choix — l'obligation porte sur l'e-mail, pas sur la vibration du
+ * téléphone. Et rien ne part vers un appareil que le membre n'a pas activé.
+ */
+export function pushEffectif(prefs: PreferencesMembre, cleRubrique: string): boolean {
+  const r = rubriqueInfo(cleRubrique) ?? RUBRIQUES.find((x) => x.categorie === cleRubrique);
+  if (!r) return false;
+  return prefs[r.cle]?.push ?? r.defaut.push;
 }
 
 /** Clé de regroupement anti-rafale d'une notification, ou null si l'événement n'en a pas. */
