@@ -95,11 +95,14 @@ export function ProjectStructureList({
                   <select
                     value={c.scalingMode ?? ''}
                     onChange={(e) => setScalingMode(c, e.target.value)}
-                    title="Ajustement des quantités"
+                    title={
+                      COMPONENT_SCALING_MODES.find((m) => m.value === (c.scalingMode ?? ''))?.title ??
+                      'Ajustement des quantités'
+                    }
                     className="w-full shrink-0 rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary sm:w-[220px]"
                   >
                     {COMPONENT_SCALING_MODES.map((m) => (
-                      <option key={m.value} value={m.value}>
+                      <option key={m.value} value={m.value} title={m.title}>
                         {m.label}
                       </option>
                     ))}
