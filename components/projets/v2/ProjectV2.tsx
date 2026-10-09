@@ -608,12 +608,15 @@ export function ProjectV2({
           recipe ? (
             <div className="space-y-8">
               <DessertVise project={project} formatLabel={formatLabel} />
-              {ordered.map((c) => {
+              {ordered.map((c, ci) => {
                 const own = steps.filter((s) => componentOf(s) === c.id);
                 return (
-                  <div key={c.id}>
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                      <h3 className={`${sousTitre} mb-0`}>{c.name}</h3>
+                  // Filet épais entre deux préparations, plus marqué que celui
+                  // qui sépare deux étapes : la hiérarchie préparation → étape
+                  // se lit d'un coup d'œil.
+                  <div key={c.id} className={ci > 0 ? 'mt-4 border-t-2 border-primary pt-10' : ''}>
+                    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                      <h3 className="font-headline-md text-headline-md text-primary">{c.name}</h3>
                       {boutonRecette(c)}
                     </div>
                     {/* Ajustement des quantités de CETTE préparation (un seul
@@ -642,8 +645,8 @@ export function ProjectV2({
                 );
               })}
               {assemblage.length > 0 && (
-                <div>
-                  <h3 className={sousTitre}>Assemblage</h3>
+                <div className="mt-4 border-t-2 border-primary pt-10">
+                  <h3 className="mb-6 font-headline-md text-headline-md text-primary">Assemblage</h3>
                   <div className="space-y-10">{assemblage.map((s, k) => etape(s, steps.indexOf(s), k === assemblage.length - 1))}</div>
                 </div>
               )}
