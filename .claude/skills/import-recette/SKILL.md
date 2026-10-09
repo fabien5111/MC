@@ -16,7 +16,8 @@ relecture.
 
 1. **Le compte destinataire** — de préférence le **pseudo** (slug de
    `/u/…`, ex. `fabien-chenu`). Un e-mail est accepté, mais il reste visible
-   dans les paramètres de l'exécution sur GitHub : proposer le pseudo.
+   dans les paramètres de l'exécution sur GitHub, et il impose une
+   confirmation de plus avant l'import (étape 8) : proposer le pseudo.
    **Ne jamais écrire le destinataire dans le dépôt** (fichier, commit, PR) :
    il ne voyage que comme paramètre du workflow.
 2. **Le JSON de la recette** — au format `RecetteIA` (`PROMPT` de
@@ -37,7 +38,9 @@ Il manque l'un des trois → le demander, ne rien deviner.
 
 ## Déroulé
 
-1. **Qualifier** la demande comme l'exige `CLAUDE.md`, puis attendre l'OK.
+1. **Qualifier** la demande comme l'exige `CLAUDE.md`, puis attendre l'OK —
+   sauf appel depuis `nouveau-composant`, dont la qualification couvre déjà
+   toute la chaîne (on démarre alors à l'étape 2).
 2. **Contrôler le JSON** avant de l'écrire, et lister à l'utilisateur ce qui
    ne va pas :
    - JSON valide, clés du format seulement (une clé inconnue est ignorée à
@@ -74,15 +77,26 @@ Il manque l'un des trois → le demander, ne rien deviner.
    Retrouver l'exécution (`actions_list`, `list_workflow_runs` sur
    `import-jira-recettes.yml`, filtrée sur la branche) puis son job
    (`list_workflow_jobs`) et son journal (`get_job_logs`, `return_content`).
-   Le job dure une à deux minutes : s'il tourne encore, le dire à
-   l'utilisateur et relire à son prochain message — jamais de `sleep`, jamais
-   de boucle de relecture.
+   Le job dure une à deux minutes. S'il tourne encore : programmer **un seul**
+   réveil avec `send_later` (`delay_minutes: 2`, message « Relire l'exécution
+   <run_id> du workflow d'import (<clé>, <mode>) et poursuivre
+   import-recette »), le dire à l'utilisateur en une phrase, et finir le tour.
+   C'est le cas « CI en cours » de la règle 5 de `CLAUDE.md` : un réveil par
+   lancement, jamais en boucle — encore en cours au réveil, en reprogrammer
+   **un** dernier ; au-delà, le signaler à l'utilisateur et s'arrêter. Jamais
+   de `sleep`, jamais de relecture en rafale. `send_later` indisponible → le
+   dire et relire au prochain message de l'utilisateur.
 7. **Rendre compte de la simulation** : la ligne `Destinataire : <pseudo>`
    (c'est le contrôle que le bon compte est visé), la ligne `🔎 <clé> — …`
    (étapes, photo, alertes), le bilan. `❌` → expliquer et corriger, ne pas
    passer à l'import.
-8. **Attendre l'OK explicite** de l'utilisateur, après qu'il a vu le pseudo
-   trouvé. Puis relancer à l'identique avec `mode: "importer"`.
+8. **Passer à l'import** — relancer à l'identique avec `mode: "importer"` :
+   - destinataire donné **par pseudo** et simulation sans `❌` → aussitôt,
+     sans nouvelle question (arbitrage de l'utilisateur : le pseudo trouvé
+     est forcément celui qu'il a saisi, le confirmer n'apporterait rien) ;
+   - destinataire donné **par e-mail** → seulement après l'OK explicite de
+     l'utilisateur, une fois qu'il a vu le pseudo trouvé.
+   Même attente qu'à l'étape 6 pour lire le résultat.
 9. **Rendre compte de l'import** : numéro du brouillon (`✅ <clé> — brouillon
    n° <id> — …`) et lien de relecture
    `https://dev.jepatisse.com/relecture/<id>` (`www` affiche encore la page

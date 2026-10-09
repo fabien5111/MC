@@ -1939,7 +1939,11 @@ s'importe par le même workflow — sans photo, sans aucun appel à Jira, marque
 `Import local-<nom>`. Le préfixe et la lettre qui le suit sont imposés pour
 qu'une clé locale ne puisse jamais avoir la forme d'un ticket, même en
 majuscules. Mode opératoire de bout en bout (JSON + compte destinataire →
-brouillon) : compétence `.claude/skills/import-recette/`.
+brouillon) : compétence `.claude/skills/import-recette/` ; chaîne complète
+depuis le seul nom d'un composant (fiche + revue du chef, validation, membre,
+import, lien de relecture) : `/nouveau-composant`. Destinataire donné par
+pseudo → l'import suit la simulation sans nouvelle question (arbitrage du
+09/10/2026) ; par e-mail → confirmation du pseudo trouvé d'abord.
 
 **L'import par photo se fait en deux passes**, dans deux requêtes distinctes :
 *lire*, puis *structurer*. Un appel unique devait déchiffrer la page et la
