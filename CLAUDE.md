@@ -1295,6 +1295,7 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   Lien « Essayer la nouvelle version » sur la v1, « Revenir à la version
   actuelle » sur la v2. Un non-admin qui suit le lien retombe sur la v1.
 - **Un admin entre directement dans la v2 à la création** : `/projets/nouveau` (page serveur) lit `isAdmin` et le passe à `NewProjectStart` (`versionEssai`), qui redirige vers `/projets/<id>/v2` au lieu de `/projets/<id>`. Les autres membres gardent le parcours en onglets.
+- **Redemander une proposition de l'IA** : dès que le projet a un format ou des préparations, le bouton du bloc « Intention » devient « Redemander une proposition (IA) » (secondaire) et demande confirmation, la nouvelle proposition remplaçant le format. Les préparations existantes ne sont jamais touchées.
 - **La v2 n'écrit jamais `recipe_projects.wizard_step`** : l'étape du parcours
   en onglets reste la propriété de la v1. L'état d'un bloc (ouvert / grisé avec
   ce qui le débloque) se déduit de la base par `projectV2BlockStates`

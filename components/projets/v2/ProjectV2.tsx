@@ -207,12 +207,25 @@ export function ProjectV2({
   // format proposé est enregistré d'emblée s'il est complet, et les
   // préparations ne sont écrites que si le projet n'en a encore aucune —
   // jamais par-dessus une structure déjà composée.
+  // Déjà une proposition (ou un format saisi) : le bouton devient « Redemander
+  // une proposition » et prévient avant d'écraser le format.
+  const dejaPropose = !!project.measure_type || project.components.length > 0;
+  const libelleIA = dejaPropose ? 'Redemander une proposition (IA)' : 'Proposer format et préparations (IA)';
   async function proposerIA() {
     const texte = intent.trim().slice(0, INTENT_MAX);
     if (!texte) {
       dialog.alert('Décrivez d’abord ce que vous voulez réaliser.');
       return;
     }
+    if (
+      dejaPropose &&
+      !(await dialog.confirm(
+        project.components.length
+          ? 'Le format actuel sera remplacé par la nouvelle proposition. Les préparations existantes ne changent pas. Continuer ?'
+          : 'Le format actuel sera remplacé par la nouvelle proposition. Continuer ?',
+      ))
+    )
+      return;
     setThinking(true);
     let data: (ProposedStructure & { erreur?: string }) | null = null;
     try {
@@ -464,13 +477,13 @@ export function ProjectV2({
                 Enregistrer
               </button>
               {!peutGenererIA ? (
-                <LockedAction label="Proposer format et préparations (IA)" message={iaMessage} className={btnGhost}>
-                  Proposer format et préparations (IA)
+                <LockedAction label={libelleIA} message={iaMessage} className={btnGhost}>
+                  {libelleIA}
                 </LockedAction>
               ) : (
                 <LockedHint message={iaMessage} active={iaEpuise}>
-                  <button type="button" onClick={() => void proposerIA()} disabled={busy || iaEpuise} className={btnPrimary}>
-                    Proposer format et préparations (IA)
+                  <button type="button" onClick={() => void proposerIA()} disabled={busy || iaEpuise} className={dejaPropose ? btnGhost : btnPrimary}>
+                    {libelleIA}
                   </button>
                 </LockedHint>
               )}
