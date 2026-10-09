@@ -2,7 +2,14 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { choisirPhotoJira, critereDestinataire, lireFichierImportJira, marqueImportJira, preparerBrouillonJira } from './import-jira';
+import {
+  choisirPhotoJira,
+  critereDestinataire,
+  lireFichierImportJira,
+  marqueImportJira,
+  natureCle,
+  preparerBrouillonJira,
+} from './import-jira';
 
 // Référentiel minimal, aux noms de la base réelle : suffit à vérifier que les
 // unités courantes des recettes (g, ml, pièce, feuille → g) sont reconnues.
@@ -44,8 +51,52 @@ describe('lireFichierImportJira', () => {
     expect(r).toHaveProperty('erreur');
   });
 
+  it('accepte une clé locale et la normalise', () => {
+    const r = lireFichierImportJira({ ticket: 'Local-Genoise', recette: RECETTE }, 'local-genoise');
+    expect(r).toEqual({ fichier: { ticket: 'local-genoise', recette: RECETTE } });
+  });
+
+  it('refuse une clé locale rangée sous un autre nom', () => {
+    expect(lireFichierImportJira({ ticket: 'local-genoise', recette: RECETTE }, 'local-dacquoise')).toHaveProperty('erreur');
+  });
+
   it('refuse un fichier sans recette', () => {
     expect(lireFichierImportJira({ ticket: 'JEP-12' }, 'JEP-12')).toHaveProperty('erreur');
+  });
+});
+
+describe('natureCle', () => {
+  it('reconnaît un ticket Jira, ramené en majuscules', () => {
+    expect(natureCle(' jep-242 ')).toEqual({ nature: 'jira', cle: 'JEP-242' });
+  });
+
+  it('reconnaît une clé locale, ramenée en minuscules', () => {
+    expect(natureCle('LOCAL-Genoise-Nature')).toEqual({ nature: 'locale', cle: 'local-genoise-nature' });
+    expect(natureCle('local-biscuit-joconde-2')).toEqual({ nature: 'locale', cle: 'local-biscuit-joconde-2' });
+  });
+
+  it('ne confond jamais une clé locale avec un ticket Jira', () => {
+    // « LOCAL-2 » a la forme d'un ticket du projet LOCAL : une clé locale
+    // commence donc obligatoirement par une lettre après le préfixe.
+    expect(natureCle('local-2')).toEqual({ nature: 'jira', cle: 'LOCAL-2' });
+    expect(natureCle('local-génoise')).toHaveProperty('erreur');
+  });
+
+  it('refuse une clé malformée', () => {
+    expect(natureCle('')).toHaveProperty('erreur');
+    expect(natureCle('genoise')).toHaveProperty('erreur');
+    expect(natureCle('local-')).toHaveProperty('erreur');
+    expect(natureCle('local-a b')).toHaveProperty('erreur');
+  });
+});
+
+describe('marqueImportJira', () => {
+  it('garde la marque historique d’un ticket Jira', () => {
+    expect(marqueImportJira('JEP-242')).toBe('Jira JEP-242');
+  });
+
+  it('distingue une clé locale', () => {
+    expect(marqueImportJira('local-genoise-nature')).toBe('Import local-genoise-nature');
   });
 });
 
@@ -102,6 +153,13 @@ describe('preparerBrouillonJira', () => {
     expect(pivot.sous_preparations[0].day_offset).toBe(1);
   });
 
+  it('trace une clé locale sous sa propre marque, sans photo', () => {
+    const { pivot, erreurs } = preparerBrouillonJira({ ticket: 'local-tarte', recette: RECETTE }, UNITS, null, maintenant);
+    expect(erreurs).toEqual([]);
+    expect(pivot.source.fichier_original).toBe('Import local-tarte');
+    expect(pivot.photo_principale).toBeUndefined();
+  });
+
   it('ne modifie pas la recette du fichier', () => {
     const fichier = { ticket: 'JEP-12', recette: structuredClone(RECETTE) };
     preparerBrouillonJira(fichier, UNITS, null, maintenant);
@@ -135,6 +193,6 @@ describe('corpus imports-jira/', () => {
     // Aucune donnée personnelle dans le dépôt : le destinataire est donné au
     // lancement du workflow, jamais écrit dans le fichier.
     expect(JSON.stringify(brut)).not.toMatch(/@[a-z0-9-]+\.[a-z]/i);
-    expect(marqueImportJira(r.fichier.ticket)).toBe(`Jira ${r.fichier.ticket}`);
+    expect(marqueImportJira(r.fichier.ticket)).toMatch(/^(Jira|Import) /);
   });
 });

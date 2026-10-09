@@ -1933,6 +1933,13 @@ insère la ligne `imports`, commente le ticket et le passe à « Revue en
 cours » (garde-fou `resoudreTransition` contre « Déployé »). Idempotent par la marque
 `Jira <CLÉ>` dans `imports.fichier_original`. `lib/import-jira.test.ts` valide
 chaque fichier du dossier à la CI.
+**Le ticket Jira est facultatif** : une recette sans ticket (un composant
+rédigé hors de Jira) porte une **clé locale** `local-<nom>` (`natureCle`), et
+s'importe par le même workflow — sans photo, sans aucun appel à Jira, marque
+`Import local-<nom>`. Le préfixe et la lettre qui le suit sont imposés pour
+qu'une clé locale ne puisse jamais avoir la forme d'un ticket, même en
+majuscules. Mode opératoire de bout en bout (JSON + compte destinataire →
+brouillon) : compétence `.claude/skills/import-recette/`.
 
 **L'import par photo se fait en deux passes**, dans deux requêtes distinctes :
 *lire*, puis *structurer*. Un appel unique devait déchiffrer la page et la

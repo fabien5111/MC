@@ -12,6 +12,11 @@
 // le pivot interne. Un brouillon importé de Jira est donc indiscernable, pour
 // l'écran de relecture, d'un import par texte collé.
 //
+// Le ticket Jira est facultatif : une recette sans ticket (un composant rédigé
+// hors de Jira) porte une clé locale `local-<nom>` (cf. `natureCle`), et
+// s'importe de la même façon — sans photo, sans commentaire ni transition
+// Jira.
+//
 // Les entrées/sorties (Jira, stockage objet, base) vivent dans
 // `scripts/import-jira-recettes.ts`, lancé par
 // `.github/workflows/import-jira-recettes.yml`.
@@ -24,7 +29,10 @@ import {
 } from '@/lib/ai/import-pivot';
 
 export type FichierImportJira = {
-  /** Clé du ticket Jira (ex. `JEP-242`). */
+  /**
+   * Clé de l'import : un ticket Jira (`JEP-242`) ou une clé locale
+   * (`local-genoise-nature`) — cf. `natureCle`.
+   */
   ticket: string;
   /** Recette structurée, au format de sortie de l'IA d'import. */
   recette: RecetteIA;
@@ -32,19 +40,50 @@ export type FichierImportJira = {
 
 const CLE_TICKET = /^[A-Z][A-Z0-9]+-\d+$/;
 
+// Clé locale : recette qui n'a pas de ticket Jira (composant rédigé hors de
+// Jira, par exemple). Préfixe imposé et premier segment alphabétique : même
+// passée en majuscules (« LOCAL-GENOISE »), elle ne peut JAMAIS ressembler à
+// une clé Jira, dont la partie après le tiret est numérique — la nature
+// d'une clé se lit donc sur sa forme seule, sans ambiguïté.
+const CLE_LOCALE = /^local-[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+
+export type NatureCle = { nature: 'jira' | 'locale'; cle: string };
+
+/**
+ * Nature et forme canonique d'une clé d'import : ticket Jira en majuscules
+ * (`JEP-242`), ou clé locale en minuscules (`local-genoise-nature`). Une clé
+ * locale ne touche jamais Jira : ni photo lue sur un ticket, ni commentaire,
+ * ni transition.
+ */
+export function natureCle(saisie: string): NatureCle | { erreur: string } {
+  const brut = String(saisie ?? '').trim();
+  const locale = brut.toLowerCase();
+  if (CLE_LOCALE.test(locale)) return { nature: 'locale', cle: locale };
+  const jira = brut.toUpperCase();
+  if (CLE_TICKET.test(jira)) return { nature: 'jira', cle: jira };
+  return {
+    erreur:
+      `Clé invalide : « ${brut} » — attendu un ticket Jira (ex. JEP-242) ` +
+      'ou une clé locale (ex. local-genoise-nature).',
+  };
+}
+
 /**
  * Marque posée dans `imports.fichier_original`. Double rôle : situer le
  * brouillon à la relecture (c'est la colonne qui y affiche l'origine), et
- * rendre l'import idempotent — un ticket dont la marque existe déjà en base
- * n'est jamais réimporté, quelle que soit l'exécution qui l'a posée.
+ * rendre l'import idempotent — une clé dont la marque existe déjà en base
+ * n'est jamais réimportée, quelle que soit l'exécution qui l'a posée. La
+ * marque d'un ticket Jira est inchangée (`Jira <CLÉ>`) : les imports déjà
+ * faits restent reconnus.
  */
 export function marqueImportJira(ticket: string): string {
-  return `Jira ${ticket}`;
+  const n = natureCle(ticket);
+  return 'erreur' in n || n.nature === 'jira' ? `Jira ${ticket}` : `Import ${n.cle}`;
 }
 
 /**
  * Relit et valide la forme d'un fichier `imports-jira/<CLÉ>.json`. Le nom du
- * fichier doit correspondre au ticket qu'il déclare : un copier-coller d'un
+ * fichier doit correspondre à la clé qu'il déclare : un copier-coller d'un
  * fichier à l'autre sans corriger la clé importerait deux fois la même
  * recette sous deux noms.
  */
@@ -54,9 +93,11 @@ export function lireFichierImportJira(
 ): { fichier: FichierImportJira } | { erreur: string } {
   if (!brut || typeof brut !== 'object') return { erreur: 'Fichier vide ou illisible.' };
   const f = brut as Record<string, unknown>;
-  const ticket = typeof f.ticket === 'string' ? f.ticket.trim().toUpperCase() : '';
-  if (!CLE_TICKET.test(ticket)) return { erreur: `Clé de ticket invalide : « ${String(f.ticket ?? '')} ».` };
-  if (ticket !== cleAttendue.trim().toUpperCase()) {
+  const declaree = natureCle(typeof f.ticket === 'string' ? f.ticket : '');
+  if ('erreur' in declaree) return { erreur: declaree.erreur };
+  const ticket = declaree.cle;
+  const attendue = natureCle(cleAttendue);
+  if ('erreur' in attendue || ticket !== attendue.cle) {
     return { erreur: `Le fichier déclare ${ticket}, mais il est rangé sous ${cleAttendue}.` };
   }
   if (!f.recette || typeof f.recette !== 'object' || Array.isArray(f.recette)) {

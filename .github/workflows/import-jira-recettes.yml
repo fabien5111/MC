@@ -20,8 +20,13 @@ name: Import de recettes depuis Jira
 #
 # Un import réussi commente le ticket et le passe à « Revue en cours ».
 #
-# Relancer est sans risque : un ticket déjà importé (marque `Jira <CLÉ>` dans
-# `imports.fichier_original`) est sauté.
+# Le ticket Jira est facultatif : une recette sans ticket porte une clé
+# locale `local-<nom>` (fichier `imports-jira/local-<nom>.json`). Elle
+# s'importe pareil, sans photo et sans rien écrire dans Jira. Les deux sortes
+# de clés se mélangent librement dans un même lancement.
+#
+# Relancer est sans risque : une clé déjà importée (marque `Jira <CLÉ>` ou
+# `Import local-<nom>` dans `imports.fichier_original`) est sautée.
 #
 # « Use workflow from » : choisir la branche qui porte les fichiers
 # `imports-jira/*.json` à importer — ils n'ont pas besoin d'être sur `main`.
@@ -34,7 +39,7 @@ on:
   workflow_dispatch:
     inputs:
       tickets:
-        description: Clés des tickets, séparées par des virgules ou des espaces (ex. « JEP-242, JEP-243 »)
+        description: Clés, séparées par des virgules ou des espaces — tickets Jira ou clés locales (ex. « JEP-242, local-genoise-nature »)
         required: true
       destinataire:
         description: E-mail du membre (profiles.email) ou son pseudo (slug de /u/…)
