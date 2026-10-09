@@ -2,7 +2,15 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { choisirPhotoJira, critereDestinataire, lireFichierImportJira, marqueImportJira, preparerBrouillonJira } from './import-jira';
+import {
+  choisirPhotoJira,
+  critereDestinataire,
+  lireFichierImportJira,
+  marqueImportJira,
+  natureCle,
+  preparerBrouillonJira,
+  rendementComposant,
+} from './import-jira';
 
 // Référentiel minimal, aux noms de la base réelle : suffit à vérifier que les
 // unités courantes des recettes (g, ml, pièce, feuille → g) sont reconnues.
@@ -44,8 +52,52 @@ describe('lireFichierImportJira', () => {
     expect(r).toHaveProperty('erreur');
   });
 
+  it('accepte une clé locale et la normalise', () => {
+    const r = lireFichierImportJira({ ticket: 'Local-Genoise', recette: RECETTE }, 'local-genoise');
+    expect(r).toEqual({ fichier: { ticket: 'local-genoise', recette: RECETTE } });
+  });
+
+  it('refuse une clé locale rangée sous un autre nom', () => {
+    expect(lireFichierImportJira({ ticket: 'local-genoise', recette: RECETTE }, 'local-dacquoise')).toHaveProperty('erreur');
+  });
+
   it('refuse un fichier sans recette', () => {
     expect(lireFichierImportJira({ ticket: 'JEP-12' }, 'JEP-12')).toHaveProperty('erreur');
+  });
+});
+
+describe('natureCle', () => {
+  it('reconnaît un ticket Jira, ramené en majuscules', () => {
+    expect(natureCle(' jep-242 ')).toEqual({ nature: 'jira', cle: 'JEP-242' });
+  });
+
+  it('reconnaît une clé locale, ramenée en minuscules', () => {
+    expect(natureCle('LOCAL-Genoise-Nature')).toEqual({ nature: 'locale', cle: 'local-genoise-nature' });
+    expect(natureCle('local-biscuit-joconde-2')).toEqual({ nature: 'locale', cle: 'local-biscuit-joconde-2' });
+  });
+
+  it('ne confond jamais une clé locale avec un ticket Jira', () => {
+    // « LOCAL-2 » a la forme d'un ticket du projet LOCAL : une clé locale
+    // commence donc obligatoirement par une lettre après le préfixe.
+    expect(natureCle('local-2')).toEqual({ nature: 'jira', cle: 'LOCAL-2' });
+    expect(natureCle('local-génoise')).toHaveProperty('erreur');
+  });
+
+  it('refuse une clé malformée', () => {
+    expect(natureCle('')).toHaveProperty('erreur');
+    expect(natureCle('genoise')).toHaveProperty('erreur');
+    expect(natureCle('local-')).toHaveProperty('erreur');
+    expect(natureCle('local-a b')).toHaveProperty('erreur');
+  });
+});
+
+describe('marqueImportJira', () => {
+  it('garde la marque historique d’un ticket Jira', () => {
+    expect(marqueImportJira('JEP-242')).toBe('Jira JEP-242');
+  });
+
+  it('distingue une clé locale', () => {
+    expect(marqueImportJira('local-genoise-nature')).toBe('Import local-genoise-nature');
   });
 });
 
@@ -83,6 +135,42 @@ describe('choisirPhotoJira', () => {
   });
 });
 
+const COMPOSANT = {
+  ...RECETTE,
+  titre: 'Biscuit génoise',
+  rendement: '1 plaque 40 x 30 cm, environ 1 cm d’épaisseur après cuisson — environ 500 g de pâte',
+  astuces_recette: [
+    'Utilisation — Entremets rond Ø 20 cm, disque de 1 cm : ≈ 130 g de pâte, soit ×0,26 de la recette.',
+    'Utilisation — Bûche en gouttière 20 x 7 cm : ≈ 60 g de pâte, soit ×0,12 de la recette.',
+    'Astuce — Imbiber d’un sirop au montage.',
+  ],
+};
+
+describe('rendementComposant', () => {
+  it('ignore une recette qui n’est pas une fiche de composant', () => {
+    expect(rendementComposant(RECETTE)).toBeNull();
+    expect(rendementComposant({ ...RECETTE, astuces_recette: ['Laisser reposer une nuit.'] })).toBeNull();
+  });
+
+  it('sépare masse, complément d’informations et astuces', () => {
+    expect(rendementComposant(COMPOSANT)).toEqual({
+      masse: 500,
+      notesQuantites: [
+        '1 plaque 40 x 30 cm, environ 1 cm d’épaisseur après cuisson',
+        'Entremets rond Ø 20 cm, disque de 1 cm : ≈ 130 g de pâte, soit ×0,26 de la recette.',
+        'Bûche en gouttière 20 x 7 cm : ≈ 60 g de pâte, soit ×0,12 de la recette.',
+      ].join('\n'),
+      notes: 'Imbiber d’un sirop au montage.',
+    });
+  });
+
+  it('n’invente pas de masse quand le rendement n’en donne pas', () => {
+    const r = rendementComposant({ ...COMPOSANT, rendement: '1 plaque 40 x 30 cm' });
+    expect(r?.masse).toBeNull();
+    expect(r?.notesQuantites.split('\n')[0]).toBe('1 plaque 40 x 30 cm');
+  });
+});
+
 describe('preparerBrouillonJira', () => {
   const maintenant = new Date('2026-09-29T10:00:00Z');
 
@@ -100,6 +188,32 @@ describe('preparerBrouillonJira', () => {
     // Même conversion que la route : une feuille de gélatine ≈ 2 g.
     expect(ings[1]).toMatchObject({ nom: 'Gélatine', quantite: 2, unite: 'g' });
     expect(pivot.sous_preparations[0].day_offset).toBe(1);
+  });
+
+  it('trace une clé locale sous sa propre marque, sans photo', () => {
+    const { pivot, erreurs } = preparerBrouillonJira({ ticket: 'local-tarte', recette: RECETTE }, UNITS, null, maintenant);
+    expect(erreurs).toEqual([]);
+    expect(pivot.source.fichier_original).toBe('Import local-tarte');
+    expect(pivot.photo_principale).toBeUndefined();
+  });
+
+  it('règle le rendement d’une fiche de composant comme la relecture l’attend', () => {
+    const { pivot, erreurs } = preparerBrouillonJira({ ticket: 'local-genoise', recette: COMPOSANT }, UNITS, null, maintenant);
+    expect(erreurs).toEqual([]);
+    expect(pivot.rendement).toMatchObject({
+      mode: 'units',
+      pieces_corrige: 500,
+      qty_unit_corrige: 'g',
+      libelle: COMPOSANT.rendement,
+    });
+    expect(pivot.rendement.notes_quantites).toMatch(/^1 plaque 40 x 30 cm, environ 1 cm d’épaisseur après cuisson\nEntremets rond Ø 20 cm/);
+    expect(pivot.notes).toBe('Imbiber d’un sirop au montage.');
+  });
+
+  it('laisse le rendement d’une recette ordinaire en description libre', () => {
+    const { pivot } = preparerBrouillonJira({ ticket: 'JEP-12', recette: RECETTE }, UNITS, null, maintenant);
+    expect(pivot.rendement.mode).toBe('dimensions');
+    expect(pivot.rendement.notes_quantites).toBeUndefined();
   });
 
   it('ne modifie pas la recette du fichier', () => {
@@ -135,6 +249,6 @@ describe('corpus imports-jira/', () => {
     // Aucune donnée personnelle dans le dépôt : le destinataire est donné au
     // lancement du workflow, jamais écrit dans le fichier.
     expect(JSON.stringify(brut)).not.toMatch(/@[a-z0-9-]+\.[a-z]/i);
-    expect(marqueImportJira(r.fichier.ticket)).toBe(`Jira ${r.fichier.ticket}`);
+    expect(marqueImportJira(r.fichier.ticket)).toMatch(/^(Jira|Import) /);
   });
 });
