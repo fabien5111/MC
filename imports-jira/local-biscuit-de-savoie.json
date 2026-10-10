@@ -1,0 +1,88 @@
+{
+  "ticket": "local-biscuit-de-savoie",
+  "recette": {
+    "titre": "Biscuit de Savoie",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Biscuit très léger et moelleux, aéré par les seuls œufs montés, sans matière grasse ni levure, au goût délicat d'œuf. Il sert de fond à imbiber pour entremets, bûches et charlottes, ou se déguste nature.",
+    "rendement": "1 plaque 40 x 30 cm, 1 cm d'épaisseur — environ 540 g de pâte utilisable (600 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Plaque de cuisson 40 x 30 cm",
+      "Papier cuisson",
+      "Tamis",
+      "Cul-de-poule",
+      "Fouet",
+      "Batteur électrique",
+      "Maryse",
+      "Spatule coudée",
+      "Grille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Biscuit",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 12,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (jaunes)",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 180,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (meringue)",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Fécule de pomme de terre",
+            "quantite": 75,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 180 °C et chemiser la plaque de papier cuisson.",
+          "Tamiser ensemble la farine et la fécule.",
+          "Blanchir les jaunes avec le sucre (jaunes) au fouet dans un cul-de-poule jusqu'à ce que le mélange pâlisse et fasse le ruban.",
+          "Monter les blancs au batteur électrique en ajoutant le sucre (meringue) en trois fois, jusqu'à une meringue ferme et brillante qui fait le bec d'oiseau.",
+          "Incorporer un tiers de la meringue aux jaunes à la maryse pour détendre le mélange.",
+          "Ajouter le reste de la meringue et la farine-fécule en pluie, en alternant, en soulevant délicatement la masse à la maryse jusqu'à disparition de la poudre.",
+          "Étaler la pâte sur la plaque à 1 cm d'épaisseur régulière avec la spatule coudée, sans la tasser.",
+          "Cuire 10 à 12 min à 180 °C jusqu'à une coloration blonde et une surface qui reprend sa forme sous le doigt, puis glisser le biscuit sur une grille pour le laisser refroidir."
+        ],
+        "conseils_etape": "Tout le levage vient de l'air des œufs : les jaunes doivent faire un vrai ruban et la meringue rester lisse et brillante, jamais grainée. Incorporer la farine-fécule sans travailler la pâte, puis étaler et enfourner aussitôt. Ne pas surcuire : un biscuit trop sec casse au détaillage ou au roulage."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 1 cm : ≈ 90 g de pâte, soit ×0,17 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 1 cm : ≈ 140 g de pâte, soit ×0,26 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 1 cm : ≈ 205 g de pâte, soit ×0,38 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 1 cm : ≈ 15 g de pâte par pièce (×0,03) ; la plaque entière détaillée à l'emporte-pièce donne 20 disques.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, semelle de 1 cm : ≈ 65 g de pâte, soit ×0,12 ; gouttière 30 x 8 cm : ≈ 110 g, soit ×0,20.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 1 cm : ≈ 145 g de pâte, soit ×0,27 ; cadre 24 x 24 cm : ≈ 260 g, soit ×0,48.",
+      "Utilisation — Biscuit roulé, plaque 40 x 30 cm étalée à 0,7 cm : ≈ 380 g de pâte, soit ×0,70 de la recette ; cuire 8 à 10 min.",
+      "Utilisation — Gâteau de Savoie entier en moule à manqué Ø 22 cm beurré et sucré : recette entière (≈ 540 g, ×1), environ 3 cm de pâte crue ; cuire 30 à 35 min à 170 °C.",
+      "Variante — Parfumée : ajouter le zeste d'un citron non traité ou les graines d'une gousse de vanille aux jaunes blanchis.",
+      "Variante — Cacao : remplacer 25 g de fécule par 25 g de cacao en poudre non sucré, tamisé avec la farine."
+    ],
+    "conseils_conservation": "Filmé dès refroidissement : 24 h à température ambiante ou 2 jours au réfrigérateur. Se congèle très bien 1 mois, bien filmé à plat ; décongeler au réfrigérateur ou 1 h à température ambiante sans retirer le film. Idéal la veille du montage, puis imbibé de sirop au moment d'assembler."
+  }
+}
