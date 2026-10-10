@@ -1,0 +1,70 @@
+{
+  "ticket": "local-croustillant-praline-feuillantine",
+  "recette": {
+    "titre": "Croustillant praliné feuillantine",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Couche croquante et fondante à la fois, au goût intense de noisette caramélisée relevé par la dentelle de crêpe. Elle sert de fond ou d'insert croustillant dans un entremets ou une bûche, pour contraster avec les mousses et les crèmes.",
+    "rendement": "1 cadre 24 x 24 cm, 5 mm d'épaisseur — environ 285 g de croustillant utilisable (300 g d'ingrédients, perte ≈ 5 %)",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Maryse",
+      "Spatule",
+      "Cadre à pâtisserie 24 x 24 cm",
+      "Papier cuisson"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Croustillant praliné feuillantine",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné noisette",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuillantine",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat au lait au bain-marie, à 40 °C maximum, dans un cul-de-poule.",
+          "Ajouter le praliné et mélanger à la maryse jusqu'à obtenir une masse lisse et brillante.",
+          "Laisser tiédir la masse jusqu'à 25-28 °C.",
+          "Verser la feuillantine en une seule fois sur la masse tiède.",
+          "Mélanger délicatement à la maryse jusqu'à ce que chaque éclat soit enrobé, sans le réduire en poudre.",
+          "Poser le cadre sur une feuille de papier cuisson et y verser le mélange.",
+          "Tasser et lisser à la spatule sur 5 mm d'épaisseur régulière.",
+          "Réserver au réfrigérateur 30 minutes, jusqu'à ce que la masse soit ferme."
+        ],
+        "conseils_etape": "Laisser tiédir le mélange chocolat-praliné avant d'ajouter la feuillantine : trop chaud, il la ramollit et elle perd son croquant. Tasser légèrement mais sans écraser, sinon la couche devient dure plutôt que croustillante."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 5 mm : ≈ 100 g de croustillant, soit ×0,35 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 5 mm : ≈ 155 g de croustillant, soit ×0,54 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 5 mm : ≈ 225 g de croustillant, soit ×0,79 de la recette.",
+      "Utilisation — Individuels en cercles Ø 8 cm, fond de 5 mm : ≈ 25 g par pièce, soit 11 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, en fond (semelle) de 5 mm : ≈ 70 g de croustillant, soit ×0,25 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, en fond (semelle) de 5 mm : ≈ 120 g de croustillant, soit ×0,42 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 5 mm : ≈ 160 g de croustillant, soit ×0,56 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, couche de 5 mm : ≈ 285 g de croustillant, soit la recette entière.",
+      "Variante — Remplacer le chocolat au lait par du chocolat noir 55 % pour un croustillant moins sucré.",
+      "Variante — Remplacer le praliné noisette par du praliné amande ou pistache."
+    ],
+    "conseils_conservation": "Se conserve 1 semaine au réfrigérateur dans une boîte hermétique, à l'abri de l'humidité. Se congèle jusqu'à 1 mois : l'utiliser directement congelé dans le montage, ou le décongeler au réfrigérateur sans ouvrir la boîte, jamais à l'air ambiant, où la condensation ramollit la feuillantine. À utiliser le jour du montage ou la veille pour garder le croquant, car l'humidité des mousses ramollit la feuillantine."
+  }
+}
