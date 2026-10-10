@@ -1,0 +1,93 @@
+{
+  "ticket": "local-biscuit-chocolat-sans-farine",
+  "recette": {
+    "titre": "Biscuit chocolat sans farine",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Biscuit léger et moelleux au chocolat noir, à la mie souple et fondante, sans farine ni gluten ajouté. Il sert de fond ou d'insert dans un entremets chocolat, une bûche ou un dessert individuel.",
+    "rendement": "1 plaque 40 x 30 cm, environ 1 cm d'épaisseur — environ 540 g de pâte utilisable (600 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Robot pâtissier avec fouet",
+      "Tamis",
+      "Maryse",
+      "Spatule coudée",
+      "Plaque de cuisson 40 x 30 cm",
+      "Papier cuisson",
+      "Grille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Biscuit",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": 12,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir 70 %",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (jaunes)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre non sucré",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (meringue)",
+            "quantite": 60,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 180 °C et chemiser la plaque 40 x 30 cm de papier cuisson.",
+          "Faire fondre le chocolat haché avec le beurre dans un cul-de-poule au bain-marie, puis laisser tiédir à 35-40 °C.",
+          "Blanchir les jaunes avec 50 g de sucre au fouet du robot jusqu'à obtenir un ruban épais.",
+          "Verser les jaunes blanchis sur le chocolat tiède et mélanger à la maryse.",
+          "Tamiser le cacao sur l'appareil et mélanger jusqu'à homogénéité.",
+          "Laver et sécher la cuve et le fouet du robot, puis monter les blancs en neige et les serrer avec 60 g de sucre ajouté en trois fois, jusqu'au bec d'oiseau.",
+          "Incorporer un tiers des blancs à l'appareil pour le détendre, puis le reste délicatement à la maryse, sans faire retomber la mousse.",
+          "Étaler l'appareil sur la plaque à la spatule coudée, sur 1 cm d'épaisseur, cuire 12 minutes à 180 °C puis laisser refroidir sur une grille."
+        ],
+        "conseils_etape": "Le chocolat doit être tiède (35-40 °C) : trop chaud, il cuit les jaunes ; trop froid, il fige et casse les blancs. Ne pas trop serrer les blancs, qui deviendraient grainés. Sans farine, le biscuit se dessèche vite : le sortir dès qu'il est souple et revient sous le doigt, et le couvrir d'un film dès qu'il est tiède pour garder son moelleux."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 1 cm : ≈ 90 g de pâte, soit ×0,17 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 1 cm : ≈ 140 g de pâte, soit ×0,26 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 1 cm : ≈ 205 g de pâte, soit ×0,38 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 1 cm : ≈ 17 g de pâte par fond, soit environ 30 fonds avec la recette entière.",
+      "Utilisation — Individuels en cercles Ø 8 cm, fond de 1 cm : ≈ 22 g de pâte par fond, soit environ 24 fonds avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, en fond de 1 cm : ≈ 65 g de pâte, soit ×0,12 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, en fond de 1 cm : ≈ 110 g de pâte, soit ×0,20 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, fond de 1 cm : ≈ 260 g de pâte, soit ×0,48 de la recette.",
+      "Variante — Parfum orange : ajouter le zeste finement râpé de 2 oranges non traitées aux jaunes blanchis.",
+      "Variante — Version plus fondante : réduire les blancs à 120 g et le sucre de la meringue à 50 g, pour une mie plus dense."
+    ],
+    "conseils_conservation": "Réfrigérateur : 2 à 3 jours, filmé au contact. Congélateur : 2 mois, bien emballé ; décongeler au réfrigérateur. À monter de préférence dans les 24 h après la cuisson ou la décongélation."
+  }
+}
