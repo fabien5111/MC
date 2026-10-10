@@ -1,0 +1,87 @@
+{
+  "ticket": "local-cremeux-chocolat-noir",
+  "recette": {
+    "titre": "Crémeux chocolat noir",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crémeux onctueux et intense, à base de crème anglaise cuite, lié à la gélatine et émulsionné au chocolat noir : il fond en bouche tout en se tenant parfaitement à la découpe une fois pris. Il s'utilise surtout en insert congelé dans un entremets ou une bûche.",
+    "rendement": "1 cercle Ø 18 cm, 1,8 cm de hauteur — environ 475 g de crémeux utilisable (542 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Casserole",
+      "Fouet",
+      "Maryse",
+      "Thermomètre de cuisson",
+      "Pichet haut",
+      "Mixeur plongeant",
+      "Cercle à entremets Ø 18 cm",
+      "Film alimentaire",
+      "Plaque"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crémeux chocolat noir",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 %",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir 64 %",
+            "quantite": 200,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans de l'eau très froide pendant 10 minutes, puis l'essorer à la main.",
+          "Placer le chocolat noir, haché ou en pistoles, dans un pichet haut et étroit.",
+          "Porter le lait et la crème à frémissement dans la casserole.",
+          "Mélanger les jaunes et le sucre au fouet, sans les faire blanchir ni mousser.",
+          "Verser le lait et la crème chauds sur les jaunes en fouettant, remettre dans la casserole et cuire à feu moyen en remuant à la maryse jusqu'à 82-84 °C (la crème nappe la maryse).",
+          "Hors du feu, ajouter la gélatine essorée et la dissoudre en mélangeant.",
+          "Verser la crème anglaise en trois fois sur le chocolat, puis mixer au mixeur plongeant jusqu'à obtenir une texture lisse et brillante, à 40-45 °C.",
+          "Couler aussitôt dans le cercle posé sur une plaque et filmé, lisser, filmer au contact et congeler au moins 4 heures."
+        ],
+        "conseils_etape": "Ne pas dépasser 84 °C à la cuisson, sous peine de voir les jaunes coaguler. Mixer le fond du pichet incliné, sans soulever le mixeur, pour ne pas incorporer d'air : un crémeux émulsionné sans bulles se tient mieux à la découpe."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert d'entremets rond Ø 16 cm, 1,5 cm de hauteur : ≈ 315 g de crémeux, soit ×0,66 de la recette.",
+      "Utilisation — Insert d'entremets rond Ø 20 cm, 1,5 cm de hauteur : ≈ 490 g de crémeux, soit ×1,03 de la recette.",
+      "Utilisation — Insert d'entremets rond Ø 24 cm, 1,5 cm de hauteur : ≈ 705 g de crémeux, soit ×1,48 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 1,5 cm de hauteur : ≈ 60 g par pièce, soit environ 7 pièces avec la recette entière.",
+      "Utilisation — Insert de bûche en gouttière 20 x 7 cm : bande de 17 x 3,5 cm, 2 cm de hauteur, ≈ 125 g de crémeux, soit ×0,26 de la recette.",
+      "Utilisation — Insert en cadre carré 18 x 18 cm, 1 cm de hauteur : ≈ 335 g de crémeux, soit ×0,71 de la recette.",
+      "Utilisation — Garniture de tartelettes Ø 8 cm, 1 cm de hauteur : ≈ 50 g par pièce, soit environ 9 tartelettes avec la recette entière.",
+      "Variante — Chocolat au lait 40 % : remplacer par 250 g de chocolat au lait, réduire le sucre à 15 g.",
+      "Variante — Chocolat noir 70 % : réduire le chocolat à 190 g pour garder la même fermeté."
+    ],
+    "conseils_conservation": "Au réfrigérateur : 48 heures sous film au contact. Congelé dans le cercle, 3 mois sous film. Utiliser l'insert congelé et démoulé au montage ; il décongèle ensuite au réfrigérateur dans l'entremets, en 4 à 6 heures."
+  }
+}
