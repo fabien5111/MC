@@ -8,7 +8,7 @@ import { checkQuota, getEntitlements } from '@/lib/entitlements-data';
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getRecipeFull } from '@/lib/recipes';
-import { getDifficulties, getIngredientRefsList, getTags, getUtensilRefNames } from '@/lib/data/reference';
+import { getAllergenRefs, getDifficulties, getIngredientRefAllergens, getIngredientRefsList, getTags, getUtensilRefNames } from '@/lib/data/reference';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -45,7 +45,7 @@ export default async function ProjetV2Page({ params }: Params) {
   if (!canAccess(droits, 'mode_projet')) redirect(`/projets/${id}`);
 
   const supabase = await createClient();
-  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, tags, difficulties, utensilNames, ids] =
+  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, tags, difficulties, utensilNames, ids, allergenRefs, refAllergens] =
     await Promise.all([
       getMoldTypes(),
       getUnits(),
@@ -61,6 +61,8 @@ export default async function ProjetV2Page({ params }: Params) {
       // `difficulty_id` n'est pas porté par `RecipeFull` (seule la jointure
       // l'est) : lu à part pour pré-remplir.
       supabase.from('recipes').select('difficulty_id').eq('id', id).maybeSingle(),
+      getAllergenRefs(),
+      getIngredientRefAllergens(),
     ]);
   const peutGenererIA = canAccess(droits, 'mode_projet_ia_mensuel');
   const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, 'mode_projet_ia_mensuel') : null;
@@ -78,6 +80,7 @@ export default async function ProjetV2Page({ params }: Params) {
           unitRefs={units.map((u) => ({ id: u.id, name: u.name }))}
           conversions={conversions}
           ingredientRefs={ingredientRefs}
+          referenceAllergenes={{ names: allergenRefs.map((a) => a.name), byIngredient: refAllergens }}
           trials={trials}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}

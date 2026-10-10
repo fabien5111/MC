@@ -98,6 +98,7 @@ export function ComponentResolver({
   componentIds,
   units,
   ingredientRefs = [],
+  referenceAllergenes,
   peutGenererIA = true,
   quotaProjetIA = null,
   initialMode,
@@ -121,6 +122,10 @@ export function ComponentResolver({
   // rattachement au référentiel à l'enregistrement, comme dans l'éditeur de
   // recette (JEP-254, point 9).
   ingredientRefs?: IngredientRefOption[];
+  // Allergènes du référentiel (menu + pastilles) et allergènes par ingrédient
+  // du référentiel (pré-remplissage) — comme l'éditeur de recette. Absent :
+  // champ texte libre.
+  referenceAllergenes?: { names: string[]; byIngredient: Record<string, string> };
   // Droit `mode_projet_ia_mensuel` (défaut `true` : le parent l'a déjà
   // vérifié avant de monter cette fenêtre).
   peutGenererIA?: boolean;
@@ -158,6 +163,9 @@ export function ComponentResolver({
   const [resultats, setResultats] = useState<Trouvee[]>([]);
   const [chargement, setChargement] = useState(false);
   const [recherche, setRecherche] = useState(false);
+  // Étapes repliées dans l'éditeur (par rang) — remis à zéro dès qu'une étape
+  // est insérée, supprimée ou déplacée, les rangs changeant.
+  const [repliees, setRepliees] = useState<Set<number>>(new Set());
   // Aperçu d'une recette trouvée, dans la fenêtre (œil) : ce qui serait copié.
   const [apercu, setApercu] = useState<{ item: Trouvee; steps: ComponentStepDraft[] } | null>(null);
   const datalistId = `dl-ingredients-composant-${component.id}`;
@@ -265,7 +273,7 @@ export function ComponentResolver({
     // Rattachement des ingrédients au référentiel, comme dans l'éditeur.
     const prets = steps.map((st) => ({
       ...st,
-      scaling_mode: component.scalingMode ?? st.scaling_mode,
+      scaling_mode: st.scaling_mode ?? component.scalingMode,
       ingredients: st.ingredients.map((it) => ({
         ...it,
         ref_id: it.ref_id ?? (ingredientRefs.length ? resolveIngredientRefId(it.name, ingredientRefs) : null),
@@ -376,7 +384,12 @@ export function ComponentResolver({
         dialog.alert("Cette recette n'a pas pu être lue.");
         return;
       }
-      const steps = planComponentCopy(data as unknown as CopyableRecipe);
+      // Le mode choisi pour la préparation (étape 3) prime sur celui de la
+      // source ; l'éditeur d'étape le montre ensuite tel quel.
+      const steps = planComponentCopy(data as unknown as CopyableRecipe).map((st) => ({
+        ...st,
+        scaling_mode: component.scalingMode ?? st.scaling_mode,
+      }));
       if (!steps.length) {
         dialog.alert("Cette recette n'a aucune étape à copier.");
         return;
@@ -431,7 +444,7 @@ export function ComponentResolver({
         dialog.alert(data?.erreur || 'La proposition a échoué.');
         return;
       }
-      setDraft((data.steps ?? []) as ComponentStepDraft[]);
+      setDraft(((data.steps ?? []) as ComponentStepDraft[]).map((st) => ({ ...st, scaling_mode: component.scalingMode ?? st.scaling_mode })));
       setDraftKind('ai_generated');
       setConsignes('');
       setContexteIA('');
@@ -443,12 +456,27 @@ export function ComponentResolver({
     }
   }
 
+  // Étape vide, avec le mode d'ajustement de la préparation.
+  const vierge = (): ComponentStepDraft => ({
+    title: '',
+    description: '',
+    scaling_mode: component.scalingMode ?? null,
+    sous_etapes: null,
+    prep_time: null,
+    cook_time: null,
+    wait_time: null,
+    cook_temp: null,
+    tips: null,
+    day_offset: null,
+    ingredients: [{ name: '', quantity: '', unit: units[0] ?? null, comment: null, allergen: null, ref_id: null }],
+  });
+
   function saisirAMain() {
     setDraft([
       {
         title: component.name,
         description: '',
-        scaling_mode: null,
+        scaling_mode: component.scalingMode ?? null,
         sous_etapes: null,
         prep_time: null,
         cook_time: null,
@@ -720,12 +748,55 @@ export function ComponentResolver({
                 : 'Saisissez les étapes de cette préparation.'}
             </p>
 
+            <div className="mb-6 flex flex-wrap items-center justify-end gap-6">
+              <button
+                type="button"
+                onClick={() => setRepliees(new Set(draft.map((_, k) => k)))}
+                className="flex items-center gap-1 text-[13px] font-semibold text-on-surface-variant hover:text-primary"
+              >
+                <span className="material-symbols-outlined">unfold_less</span> Tout replier
+              </button>
+              <button
+                type="button"
+                onClick={() => setRepliees(new Set())}
+                className="flex items-center gap-1 text-[13px] font-semibold text-on-surface-variant hover:text-primary"
+              >
+                <span className="material-symbols-outlined">unfold_more</span> Tout déplier
+              </button>
+            </div>
+
             <div className="space-y-12">
               {draft.map((st, i) => (
                 <StepEditorCard
                   key={i}
                   step={st}
                   index={i}
+                  count={draft.length}
+                  allergenNames={referenceAllergenes?.names}
+                  refAllergens={referenceAllergenes?.byIngredient}
+                  collapsed={repliees.has(i)}
+                  onToggleCollapse={() =>
+                    setRepliees((prev) => {
+                      const n = new Set(prev);
+                      if (n.has(i)) n.delete(i);
+                      else n.add(i);
+                      return n;
+                    })
+                  }
+                  onInsertBefore={() => {
+                    setRepliees(new Set());
+                    setDraft((prev) => [...prev.slice(0, i), vierge(), ...prev.slice(i)]);
+                  }}
+                  onReorder={(from, to) => {
+                    if (from === to || isNaN(from)) return;
+                    setRepliees(new Set());
+                    setDraft((prev) => {
+                      const l = [...prev];
+                      const [deplace] = l.splice(from, 1);
+                      l.splice(to, 0, deplace);
+                      return l;
+                    });
+                  }}
                   units={units}
                   datalistId={ingredientRefs.length ? datalistId : undefined}
                   onChange={(patch) => majEtape(i, patch)}
@@ -750,35 +821,23 @@ export function ComponentResolver({
                       prev.map((s, k) => (k === i ? { ...s, ingredients: s.ingredients.filter((_, m) => m !== j) } : s)),
                     )
                   }
-                  onDelete={() => setDraft((prev) => prev.filter((_, k) => k !== i))}
+                  onDelete={() => {
+                    setRepliees(new Set());
+                    setDraft((prev) => prev.filter((_, k) => k !== i));
+                  }}
                 />
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                setDraft((prev) => [
-                  ...prev,
-                  {
-                    title: '',
-                    description: '',
-                    scaling_mode: null,
-                    sous_etapes: null,
-                    prep_time: null,
-                    cook_time: null,
-                    wait_time: null,
-                    cook_temp: null,
-                    tips: null,
-                    day_offset: null,
-                    ingredients: [{ name: '', quantity: '', unit: units[0] ?? null, comment: null, allergen: null, ref_id: null }],
-                  },
-                ])
-              }
-              className="mt-3 text-[12.5px] font-semibold text-primary"
-            >
-              + Étape
-            </button>
+            <div className="flex justify-center py-8">
+              <button
+                type="button"
+                onClick={() => setDraft((prev) => [...prev, vierge()])}
+                className="flex items-center gap-3 px-8 py-3 border border-primary text-primary hover:bg-primary-container hover:text-white transition-all font-label-md text-label-md uppercase tracking-widest"
+              >
+                <span className="material-symbols-outlined">add_circle</span> Ajouter une étape
+              </button>
+            </div>
 
             {ingredientRefs.length > 0 && (
               <datalist id={datalistId}>

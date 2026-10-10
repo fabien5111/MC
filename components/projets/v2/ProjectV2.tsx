@@ -109,6 +109,7 @@ export function ProjectV2({
   unitRefs,
   conversions,
   ingredientRefs,
+  referenceAllergenes,
   trials,
   peutGenererIA,
   quotaProjetIA,
@@ -126,6 +127,7 @@ export function ProjectV2({
   unitRefs: UnitRef[];
   conversions: ConversionRef[];
   ingredientRefs: IngredientRefOption[];
+  referenceAllergenes?: { names: string[]; byIngredient: Record<string, string> };
   trials: ProjectTrial[];
   peutGenererIA: boolean;
   quotaProjetIA: { allowed: boolean; limit?: number; usage?: number } | null;
@@ -779,6 +781,7 @@ export function ProjectV2({
           componentIds={ordered.map((c) => c.id)}
           units={units}
           ingredientRefs={ingredientRefs}
+          referenceAllergenes={referenceAllergenes}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
           initialMode={resolvingInit?.mode}

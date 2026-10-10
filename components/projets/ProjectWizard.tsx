@@ -62,6 +62,7 @@ export function ProjectWizard({
   conversions,
   unitRefs,
   ingredientRefs = [],
+  referenceAllergenes,
   recipe,
   trials,
   peutGenererIA = true,
@@ -79,6 +80,7 @@ export function ProjectWizard({
   // Référentiel des ingrédients : aide à la saisie des ingrédients d'un
   // composant saisi à la main, comme dans l'éditeur de recette (JEP-254).
   ingredientRefs?: IngredientRefOption[];
+  referenceAllergenes?: { names: string[]; byIngredient: Record<string, string> };
   // Projet tout juste créé à partir d'une proposition de l'IA
   // (`/projets/nouveau`) : l'étape 2 le dit.
   fromAI?: boolean;
@@ -620,6 +622,7 @@ export function ProjectWizard({
           componentIds={ordered.map((c) => c.id)}
           units={units}
           ingredientRefs={ingredientRefs}
+          referenceAllergenes={referenceAllergenes}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
           initialMode={resolvingInit?.mode}
