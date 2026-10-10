@@ -1,0 +1,81 @@
+{
+  "ticket": "local-biscuit-dacquoise",
+  "recette": {
+    "titre": "Biscuit dacquoise",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Biscuit à base de meringue et de poudre d'amande, croquant sur les bords et moelleux à cœur, au goût d'amande grillée. Il sert de fond ou d'insert dans un entremets, où il apporte du croustillant face aux crèmes et aux mousses.",
+    "rendement": "1 plaque 40 x 30 cm, 5 à 6 mm d'épaisseur — environ 425 g de pâte utilisable (470 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Robot pâtissier avec fouet",
+      "Tamis",
+      "Maryse",
+      "Spatule coudée",
+      "Plaque de cuisson",
+      "Papier sulfurisé",
+      "Grille de refroidissement"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Biscuit dacquoise",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 170 °C chaleur tournante et chemiser une plaque de papier sulfurisé.",
+          "Tamiser ensemble la poudre d'amande, le sucre glace et la farine.",
+          "Monter les blancs d'œufs à température ambiante au fouet, à vitesse moyenne, jusqu'à ce qu'ils soient mousseux.",
+          "Ajouter le sucre semoule en trois fois, puis serrer à vitesse rapide jusqu'à une meringue ferme et brillante (bec d'oiseau).",
+          "Incorporer les poudres tamisées à la maryse, en soulevant la masse, jusqu'à un appareil homogène.",
+          "Étaler l'appareil à la spatule coudée sur la plaque, en un rectangle de 40 x 30 cm et 5 à 6 mm d'épaisseur.",
+          "Cuire 20 minutes environ, jusqu'à une surface dorée, sèche et légèrement craquelée.",
+          "Laisser refroidir sur une grille, puis décoller le biscuit du papier."
+        ],
+        "conseils_etape": "Dégraisser soigneusement le bol et le fouet et utiliser des blancs à température ambiante, sinon la meringue ne monte pas ferme. Incorporer les poudres sans insister : un appareil trop travaillé retombe et donne un biscuit dense. Ne pas trop colorer à la cuisson, le biscuit durcirait en refroidissant."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 5 à 6 mm : ≈ 70 g de pâte, soit ×0,16 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 5 à 6 mm : ≈ 110 g de pâte, soit ×0,26 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 5 à 6 mm : ≈ 160 g de pâte, soit ×0,38 de la recette.",
+      "Utilisation — Individuels en cercles Ø 8 cm, fond de 5 à 6 mm : ≈ 18 g de pâte par disque, soit environ 23 disques avec la recette entière dressée directement dans les cercles (15 à 18 seulement en les détaillant dans la plaque 40 x 30 cm).",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, en fond : ≈ 85 g de pâte, soit ×0,20 de la recette.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, en fond : ≈ 50 g de pâte, soit ×0,12 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, en fond : ≈ 115 g de pâte, soit ×0,27 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, en fond : ≈ 205 g de pâte, soit ×0,48 de la recette.",
+      "Variante — Dacquoise noisette : remplacer la poudre d'amande par de la poudre de noisette, à poids égal.",
+      "Variante — Dacquoise coco : remplacer la moitié de la poudre d'amande par de la noix de coco râpée."
+    ],
+    "conseils_conservation": "2 jours à température ambiante dans une boîte hermétique, 3 jours au réfrigérateur sous film. Se congèle jusqu'à 1 mois à plat entre deux feuilles de papier, à décongeler quelques minutes à température ambiante. À monter le jour même ou la veille : au contact d'une crème ou d'une mousse, le biscuit perd son croquant en quelques heures."
+  }
+}
