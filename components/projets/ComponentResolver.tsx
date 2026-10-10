@@ -622,7 +622,7 @@ export function ComponentResolver({
               {apercu.item.author ? ` · ${apercu.item.author}` : ''}
             </p>
             <h4 className="mb-6 font-headline-md text-headline-md text-primary">{apercu.item.title}</h4>
-            <div className="flex flex-col gap-10 pb-24">
+            <div className="flex flex-col gap-10 pb-8">
               {apercu.steps.map((st, i) => {
                 const vue: RecipeStepView = {
                   id: i,
@@ -665,9 +665,11 @@ export function ComponentResolver({
                 );
               })}
             </div>
-            {/* Bandeau fixe : l'aperçu peut être long, le choix reste à portée. */}
-            <div className="fixed inset-x-0 bottom-0 z-[96] flex justify-center border-t border-outline-variant bg-surface-container-lowest/95 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur">
-              <div className="flex w-full max-w-[960px] justify-end gap-3">
+            {/* Bandeau collé en bas de la zone qui défile : un `fixed` ici suivrait la
+                fenêtre (backdrop-blur du conteneur = nouveau repère) et partirait
+                avec le contenu. */}
+            <div className="sticky bottom-0 z-10 -mx-6 -mb-6 flex justify-end gap-3 rounded-b-2xl border-t border-outline-variant bg-surface-container-lowest px-6 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
+              <div className="flex w-full justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => {
