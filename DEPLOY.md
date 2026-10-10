@@ -564,6 +564,21 @@ echo "pgweb:$(openssl passwd -apr1 'NOUVEAU')" > /etc/nginx/conf.d/pgweb.htpassw
   plutôt que de continuer sur une base à moitié migrée. Tout le reste
   (fonctions, lectures, écritures de données) continue de passer par pgweb
   normalement — la limite ne touche que le DDL des tables.
+- **Exemple : élargir un CHECK** (10/10/2026, mode projet — nouvelle valeur
+  `community` pour `recipe_project_components.source_kind`). Un CHECK ne se
+  modifie pas, il se remplace : `drop` et `add` dans le **même** `alter`, pour
+  qu'aucune écriture ne passe entre les deux sans contrainte. Lire d'abord la
+  définition actuelle (pgweb, lecture seule) :
+  ```sql
+  select conname, pg_get_constraintdef(oid) from pg_constraint where conrelid = 'public.recipe_project_components'::regclass and contype = 'c';
+  ```
+  puis, en Web SSH sur **216075** (une seule ligne) :
+  ```bash
+  psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "alter table public.recipe_project_components drop constraint recipe_project_components_source_kind_check, add constraint recipe_project_components_source_kind_check check (source_kind = any (array['own','favorite','followed','community','ai_generated','manual']));"
+  ```
+  Contrôler ensuite avec la même requête de lecture : la liste doit contenir
+  la nouvelle valeur. Sans cette migration, choisir une recette via « Toutes
+  les recettes » échoue à l'enregistrement.
 
 ## Régénérer les types de la base
 
