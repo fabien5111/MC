@@ -1,0 +1,88 @@
+{
+  "ticket": "local-brownie",
+  "recette": {
+    "titre": "Brownie",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Gâteau dense et fondant au chocolat noir, à la croûte fine légèrement craquelée et au cœur moelleux. Il sert de fond ou de couche croustillante-fondante dans un entremets, un individuel ou une bûche.",
+    "rendement": "1 cadre 24 x 24 cm, 1 cm d'épaisseur — environ 725 g de pâte utilisable (762 g d'ingrédients, perte ≈ 5 %)",
+    "ustensiles": [
+      "Casserole et cul-de-poule (bain-marie)",
+      "Thermomètre de cuisson",
+      "Couteau",
+      "Fouet",
+      "Maryse",
+      "Tamis",
+      "Cadre 24 x 24 cm",
+      "Plaque de cuisson",
+      "Papier cuisson",
+      "Spatule coudée",
+      "Grille de refroidissement"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Appareil à brownie",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 175,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir 70 %",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 180,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 80,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 175 °C en chaleur statique et chemiser un cadre de 24 x 24 cm posé sur une plaque avec du papier cuisson.",
+          "Faire fondre le chocolat haché et le beurre coupé en dés au bain-marie à 45 °C maximum, jusqu'à obtenir un mélange lisse, puis laisser tiédir à 35 °C.",
+          "Fouetter les œufs avec le sucre et le sel pendant 1 minute, juste pour dissoudre le sucre, sans chercher à faire blanchir ni mousser.",
+          "Verser le mélange chocolat-beurre tiédi sur les œufs en deux fois, en mélangeant à la maryse jusqu'à obtenir un appareil brillant et homogène.",
+          "Tamiser la farine sur l'appareil et l'incorporer à la maryse, juste jusqu'à disparition des traces de farine.",
+          "Couler l'appareil dans le cadre et le lisser à la spatule coudée sur 1 cm d'épaisseur.",
+          "Cuire 12 à 15 minutes, jusqu'à ce que la croûte soit fine et légèrement craquelée et que le centre reste souple au toucher.",
+          "Laisser refroidir complètement dans le cadre sur une grille avant de démouler et de détailler."
+        ],
+        "conseils_etape": "Ne pas dépasser 45 °C au bain-marie et laisser tiédir à 35 °C avant de verser sur les œufs, sinon ils cuisent et l'appareil devient granuleux. Ne pas fouetter les œufs : un appareil monté donne un gâteau sec et aéré au lieu d'un brownie dense. Sortir le brownie quand le centre est encore souple : il termine de prendre en refroidissant, une cuisson trop longue le dessèche."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 1 cm : ≈ 255 g de pâte, soit ×0,35 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 1 cm : ≈ 395 g de pâte, soit ×0,54 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 1 cm : ≈ 570 g de pâte, soit ×0,79 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 1 cm : ≈ 50 g de pâte par pièce, soit 14 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, fond de 1 cm : ≈ 175 g de pâte, soit ×0,24 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 1 cm d'épaisseur : ≈ 410 g de pâte, soit ×0,57 de la recette.",
+      "Variante — Brownie aux noix : ajouter 80 g de noix de pécan ou de noisettes torréfiées et concassées avec la farine.",
+      "Variante — Brownie au chocolat au lait : remplacer le chocolat noir 70 % par du chocolat au lait et réduire le sucre à 150 g."
+    ],
+    "conseils_conservation": "Se conserve 4 jours au réfrigérateur, filmé au contact, et 2 mois au congélateur, détaillé ou en plaque. Décongeler au réfrigérateur environ 3 heures, sans le déballer. Idéal à utiliser le lendemain de la cuisson, une fois bien ressuyé, pour un tranchage net dans un montage."
+  }
+}
