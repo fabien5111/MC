@@ -1,0 +1,77 @@
+{
+  "ticket": "local-praline-amande-croustillant",
+  "recette": {
+    "titre": "Praliné amande croustillant",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Un croustillant à la texture sablée et fondante, au goût d'amande grillée plus doux et plus rond que celui de la noisette. Il fait un fond ou un insert croquant sous une mousse ou une crème, et s'accorde bien avec les fruits rouges, l'abricot et la vanille.",
+    "rendement": "1 cadre 24 x 24 cm, 1 cm d'épaisseur — environ 455 g de croustillant utilisable (480 g d'ingrédients, perte ≈ 5 %)",
+    "ustensiles": [
+      "Four",
+      "Plaque de cuisson",
+      "Papier cuisson",
+      "Couteau de chef",
+      "Bain-marie",
+      "Cul-de-poule",
+      "Maryse",
+      "Thermomètre",
+      "Cadre ou cercle"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Praliné amande croustillant",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Amandes entières mondées",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné amande",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuilletine",
+            "quantite": 120,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 150 °C en chaleur tournante.",
+          "Étaler les amandes sur une plaque recouverte de papier cuisson et les torréfier 12 à 15 minutes, jusqu'à une coloration dorée uniforme et une odeur de noix grillée.",
+          "Laisser les amandes refroidir complètement, puis les concasser grossièrement au couteau.",
+          "Faire fondre le chocolat au lait au bain-marie à 40 °C maximum.",
+          "Ajouter le praliné amande au chocolat fondu et mélanger à la maryse jusqu'à obtenir un mélange lisse, autour de 35 °C.",
+          "Incorporer la feuilletine en l'émiettant du bout des doigts, puis les amandes concassées, sans écraser les éclats.",
+          "Étaler aussitôt la préparation dans le cadre posé sur une plaque recouverte de papier cuisson, sur l'épaisseur voulue, lisser et réserver 30 minutes au froid avant de découper ou de monter."
+        ],
+        "conseils_etape": "Laisser les amandes refroidir avant de les mélanger : chaudes, elles font trancher le chocolat. Ne pas dépasser 35 à 40 °C au mélange, sinon la feuilletine ramollit et perd son croquant. Travailler vite, la préparation prend rapidement."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 5 mm : ≈ 80 g de croustillant, soit ×0,18 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 5 mm : ≈ 125 g de croustillant, soit ×0,27 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 5 mm : ≈ 180 g de croustillant, soit ×0,40 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 5 mm : ≈ 15 g par pièce, soit environ 30 pièces avec la recette entière.",
+      "Utilisation — Individuels en cercles Ø 8 cm, fond de 5 mm : ≈ 20 g par pièce, soit environ 22 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert croustillant de 20 x 6 cm sur 5 mm : ≈ 45 g de croustillant, soit ×0,10 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert croustillant de 30 x 7 cm sur 5 mm : ≈ 85 g de croustillant, soit ×0,19 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 5 mm : ≈ 130 g de croustillant, soit ×0,29 de la recette.",
+      "Variante — Au chocolat blanc : remplacer le chocolat au lait par la même quantité de chocolat blanc, pour un goût plus doux et plus lacté, avec une prise un peu plus souple.",
+      "Variante — À la vanille : ajouter les grains d'une demi-gousse au chocolat fondu, pour accompagner abricot ou fruits rouges."
+    ],
+    "conseils_conservation": "Se conserve 1 semaine au réfrigérateur, bien filmé au contact, et 2 mois au congélateur. Décongeler au réfrigérateur. Enrobée de chocolat et de praliné, la feuilletine garde son croquant environ 48 heures au contact d'une mousse ou d'une crème : l'entremets peut donc se monter la veille, et se congeler une fois monté."
+  }
+}
