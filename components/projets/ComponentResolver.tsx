@@ -26,10 +26,21 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LockedAction, LockedHint } from '@/components/LockedAction';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import { planComponentCopy, type ComponentSourceKind, type ComponentStepDraft, type CopyableRecipe } from '@/lib/projects';
-import { clearComponentContent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
+import {
+  COMPONENT_SOURCE_LABELS,
+  PICKER_SCOPES,
+  PICKER_SCOPE_KIND,
+  PICKER_SCOPE_LABELS,
+  type PickerScope,
+  planComponentCopy,
+  type ComponentSourceKind, type ComponentStepDraft, type ComponentUtensil, type CopyableRecipe } from '@/lib/projects';
+import { attachComponentUtensils, resetComponent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import type { ProjectComponent } from '@/lib/projects-data';
 import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { RecipeStep } from '@/components/recipe/RecipeStep';
+import type { IngredientView, RecipeStepView } from '@/lib/recipes';
+import { StepEditorCard } from '@/components/projets/StepEditorCard';
+import { televerserImage } from '@/lib/storage-client';
 
 // Hauteur d'une zone de texte calée sur son contenu (JEP-254, point 7) : une
 // proposition de l'IA arrive avec des descriptions de plusieurs lignes, qu'un
@@ -45,14 +56,12 @@ function autoGrow(el: HTMLTextAreaElement | null) {
 // même valeur que la recherche avancée.
 const DEBOUNCE_MS = 300;
 
-// Portées de recherche, dans l'ordre d'affichage voulu par la spec. La
-// dernière valeur est le `source_kind` enregistré sur le composant : c'est
-// lui qui portera le crédit (§9).
-const PORTEES: { scope: string; label: string; kind: ComponentSourceKind }[] = [
-  { scope: 'mine', label: 'Mon carnet', kind: 'own' },
-  { scope: 'fav', label: 'Mes favoris', kind: 'favorite' },
-  { scope: 'followed', label: 'Pâtissiers suivis', kind: 'followed' },
-];
+// Portées de recherche : les mêmes cases que « Remplacer un ingrédient par
+// une recette » (PICKER_SCOPES). Interrogées UNE À UNE, dans l'ordre imposé par
+// la spec (carnet → brouillons → favoris → abonnements → toutes) : c'est la
+// portée qui a répondu qui décide du `source_kind` enregistré, donc du crédit
+// d'auteur (§9). « Toutes les recettes » n'est pas cochée par défaut.
+const PORTEES_PAR_DEFAUT: PickerScope[] = ['mine', 'draft', 'fav', 'followed'];
 
 type Trouvee = { id: string; title: string; author: string | null; kind: ComponentSourceKind; label: string };
 
@@ -64,7 +73,8 @@ const COPY_SELECT = `
   id, title, author_id,
   profiles!recipes_author_id_fkey(full_name),
   ingredient_groups(order_index, scaling_mode, ingredients(name, quantity, unit, comment, allergen, ref_id, order_index)),
-  recipe_steps(title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, order_index)
+  recipe_steps(title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, order_index),
+  recipe_utensils(name, ref_id, comment, order_index)
 `;
 
 const btnPrimary =
@@ -88,11 +98,13 @@ export function ComponentResolver({
   componentIds,
   units,
   ingredientRefs = [],
+  referenceAllergenes,
   peutGenererIA = true,
   quotaProjetIA = null,
   initialMode,
   initialDraft,
   initialDraftKind,
+  initialSource,
   onClose,
   onDone,
   onReset,
@@ -110,6 +122,10 @@ export function ComponentResolver({
   // rattachement au référentiel à l'enregistrement, comme dans l'éditeur de
   // recette (JEP-254, point 9).
   ingredientRefs?: IngredientRefOption[];
+  // Allergènes du référentiel (menu + pastilles) et allergènes par ingrédient
+  // du référentiel (pré-remplissage) — comme l'éditeur de recette. Absent :
+  // champ texte libre.
+  referenceAllergenes?: { names: string[]; byIngredient: Record<string, string> };
   // Droit `mode_projet_ia_mensuel` (défaut `true` : le parent l'a déjà
   // vérifié avant de monter cette fenêtre).
   peutGenererIA?: boolean;
@@ -124,6 +140,11 @@ export function ComponentResolver({
   initialMode?: 'sources' | 'edit' | 'contexte-ia';
   initialDraft?: ComponentStepDraft[];
   initialDraftKind?: ComponentSourceKind;
+  // Crédit à conserver quand on MODIFIE un composant déjà copié d'une
+  // recette (mode projet v2, « Modifier cette préparation ») : sans lui,
+  // l'enregistrement en édition effacerait la source — et avec elle le
+  // crédit d'auteur, que §9 interdit de perdre en retouchant une copie.
+  initialSource?: { recipeId: string | null; authorId: string | null; title: string | null; authorName: string | null };
   onClose: () => void;
   onDone: () => void;
   // « Réinitialiser » (JEP-254) : le contenu déjà enregistré est effacé et le
@@ -136,11 +157,17 @@ export function ComponentResolver({
   const dialog = useDialog();
   const { mutate, busy } = useMutation();
 
-  const [mode, setMode] = useState<'sources' | 'edit' | 'contexte-ia'>(initialMode ?? 'sources');
+  const [mode, setMode] = useState<'sources' | 'edit' | 'contexte-ia' | 'apercu'>(initialMode ?? 'sources');
   const [terme, setTerme] = useState(component.name);
+  const [portees, setPortees] = useState<Set<PickerScope>>(new Set(PORTEES_PAR_DEFAUT));
   const [resultats, setResultats] = useState<Trouvee[]>([]);
   const [chargement, setChargement] = useState(false);
   const [recherche, setRecherche] = useState(false);
+  // Étapes repliées dans l'éditeur (par rang) — remis à zéro dès qu'une étape
+  // est insérée, supprimée ou déplacée, les rangs changeant.
+  const [repliees, setRepliees] = useState<Set<number>>(new Set());
+  // Aperçu d'une recette trouvée, dans la fenêtre (œil) : ce qui serait copié.
+  const [apercu, setApercu] = useState<{ item: Trouvee; steps: ComponentStepDraft[] } | null>(null);
   const datalistId = `dl-ingredients-composant-${component.id}`;
   // Consignes pour une nouvelle proposition de l'IA (JEP-254, point 8).
   const [consignes, setConsignes] = useState('');
@@ -173,9 +200,11 @@ export function ComponentResolver({
     setRecherche(true);
     try {
       const q = encodeURIComponent(texte.trim());
+      // Portées cochées, dans l'ordre de PICKER_SCOPES (pas celui des clics).
+      const actives = PICKER_SCOPES.filter((s) => portees.has(s));
       const reponses = await Promise.all(
-        PORTEES.map((p) =>
-          fetch(`/api/recipes/picker?scopes=${p.scope}&q=${q}&limit=10`)
+        actives.map((scope) =>
+          fetch(`/api/recipes/picker?scopes=${scope}&q=${q}&limit=10`)
             // Une erreur reste visible (message d'alerte) plutôt que
             // silencieusement transformée en « aucun résultat » — sans quoi
             // une vraie panne de la recherche se lit exactement comme une
@@ -193,11 +222,12 @@ export function ComponentResolver({
       const vues = new Set<string>();
       const out: Trouvee[] = [];
       reponses.forEach((rep, i) => {
-        const p = PORTEES[i];
+        const scope = actives[i];
+        const kind = PICKER_SCOPE_KIND[scope];
         for (const it of (rep?.items ?? []) as { id: string; title: string; profiles?: { full_name: string | null } | null }[]) {
           if (vues.has(it.id)) continue;
           vues.add(it.id);
-          out.push({ id: it.id, title: it.title, author: it.profiles?.full_name ?? null, kind: p.kind, label: p.label });
+          out.push({ id: it.id, title: it.title, author: it.profiles?.full_name ?? null, kind, label: COMPONENT_SOURCE_LABELS[kind] });
         }
       });
       setResultats(out);
@@ -222,13 +252,17 @@ export function ComponentResolver({
     // `chercher` est recréée à chaque rendu mais ne lit que des refs et des
     // setters stables : seul le terme doit relancer la recherche.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [terme]);
+  }, [terme, portees]);
 
   // Écriture commune aux trois chemins de résolution.
   async function enregistrer(
     steps: ComponentStepDraft[],
     kind: ComponentSourceKind,
     source: { recipeId: string | null; authorId: string | null; title: string | null; authorName: string | null },
+    // Copie d'une recette existante seulement : ses ustensiles, mémorisés sur
+    // la préparation et ajoutés à la liste globale (sans doublon). Absent pour
+    // une proposition de l'IA, une saisie ou une modification : on n'y touche pas.
+    utensils?: ComponentUtensil[],
   ) {
     if (!steps.length) {
       dialog.alert('Ce composant n’a aucune étape : il resterait vide dans la recette.');
@@ -239,7 +273,7 @@ export function ComponentResolver({
     // Rattachement des ingrédients au référentiel, comme dans l'éditeur.
     const prets = steps.map((st) => ({
       ...st,
-      scaling_mode: component.scalingMode ?? st.scaling_mode,
+      scaling_mode: st.scaling_mode ?? component.scalingMode,
       ingredients: st.ingredients.map((it) => ({
         ...it,
         ref_id: it.ref_id ?? (ingredientRefs.length ? resolveIngredientRefId(it.name, ingredientRefs) : null),
@@ -249,8 +283,27 @@ export function ComponentResolver({
       async () => {
         const supabase = createClient();
         try {
-          await writeComponentContent(supabase, projectId, component.id, componentIndex, prets);
+          // Photos d'étape : une data-URL fraîche est déposée sur le stockage
+          // ici, côté navigateur ; une URL déjà déposée revient telle quelle.
+          const avecPhotos = await Promise.all(
+            prets.map(async (st) =>
+              st.photos?.length
+                ? {
+                    ...st,
+                    photos: await Promise.all(
+                      st.photos.map(async (ph) => ({
+                        ...ph,
+                        url: await televerserImage('recette', ph.url),
+                        original_url: await televerserImage('recette', ph.original_url),
+                      })),
+                    ),
+                  }
+                : st,
+            ),
+          );
+          await writeComponentContent(supabase, projectId, component.id, componentIndex, avecPhotos);
           await resequenceProjectSteps(supabase, projectId, componentIds);
+          if (utensils) await attachComponentUtensils(supabase, projectId, component.id, utensils);
         } catch (e) {
           return { error: { message: (e as Error).message } };
         }
@@ -288,19 +341,7 @@ export function ComponentResolver({
     setChargement(true);
     try {
       const supabase = createClient();
-      await clearComponentContent(supabase, projectId, component.id);
-      const { error } = await supabase
-        .from('recipe_project_components')
-        .update({
-          resolved: false,
-          source_kind: 'manual',
-          source_recipe_id: null,
-          source_author_id: null,
-          source_title: null,
-          source_author_name: null,
-        } as never)
-        .eq('id', component.id);
-      if (error) throw error;
+      await resetComponent(supabase, projectId, component.id);
     } catch (e) {
       dialog.alert(`L’effacement a échoué : ${(e as Error).message}`);
       return;
@@ -313,7 +354,9 @@ export function ComponentResolver({
     (onReset ?? onDone)();
   }
 
-  async function attacher(item: Trouvee) {
+  // Lecture seule : les étapes telles qu'`attacher` les copierait (sans
+  // photos, que la copie ne lit pas non plus).
+  async function voirApercu(item: Trouvee) {
     setChargement(true);
     try {
       const { data, error } = await createClient().from('recipes').select(COPY_SELECT).eq('id', item.id).maybeSingle();
@@ -326,12 +369,48 @@ export function ComponentResolver({
         dialog.alert("Cette recette n'a aucune étape à copier.");
         return;
       }
-      await enregistrer(steps, item.kind, {
-        recipeId: item.id,
-        authorId: (data as unknown as { author_id: string }).author_id ?? null,
-        title: item.title,
-        authorName: item.author,
-      });
+      setApercu({ item, steps });
+      setMode('apercu');
+    } finally {
+      setChargement(false);
+    }
+  }
+
+  async function attacher(item: Trouvee) {
+    setChargement(true);
+    try {
+      const { data, error } = await createClient().from('recipes').select(COPY_SELECT).eq('id', item.id).maybeSingle();
+      if (error || !data) {
+        dialog.alert("Cette recette n'a pas pu être lue.");
+        return;
+      }
+      // Le mode choisi pour la préparation (étape 3) prime sur celui de la
+      // source ; l'éditeur d'étape le montre ensuite tel quel.
+      const steps = planComponentCopy(data as unknown as CopyableRecipe).map((st) => ({
+        ...st,
+        scaling_mode: component.scalingMode ?? st.scaling_mode,
+      }));
+      if (!steps.length) {
+        dialog.alert("Cette recette n'a aucune étape à copier.");
+        return;
+      }
+      const ustensiles = [
+        ...((data as unknown as { recipe_utensils?: (ComponentUtensil & { order_index: number | null })[] })
+          .recipe_utensils ?? []),
+      ]
+        .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+        .map((u) => ({ name: u.name, ref_id: u.ref_id ?? null, comment: u.comment ?? null }));
+      await enregistrer(
+        steps,
+        item.kind,
+        {
+          recipeId: item.id,
+          authorId: (data as unknown as { author_id: string }).author_id ?? null,
+          title: item.title,
+          authorName: item.author,
+        },
+        ustensiles,
+      );
     } finally {
       setChargement(false);
     }
@@ -365,7 +444,7 @@ export function ComponentResolver({
         dialog.alert(data?.erreur || 'La proposition a échoué.');
         return;
       }
-      setDraft((data.steps ?? []) as ComponentStepDraft[]);
+      setDraft(((data.steps ?? []) as ComponentStepDraft[]).map((st) => ({ ...st, scaling_mode: component.scalingMode ?? st.scaling_mode })));
       setDraftKind('ai_generated');
       setConsignes('');
       setContexteIA('');
@@ -377,12 +456,27 @@ export function ComponentResolver({
     }
   }
 
+  // Étape vide, avec le mode d'ajustement de la préparation.
+  const vierge = (): ComponentStepDraft => ({
+    title: '',
+    description: '',
+    scaling_mode: component.scalingMode ?? null,
+    sous_etapes: null,
+    prep_time: null,
+    cook_time: null,
+    wait_time: null,
+    cook_temp: null,
+    tips: null,
+    day_offset: null,
+    ingredients: [{ name: '', quantity: '', unit: units[0] ?? null, comment: null, allergen: null, ref_id: null }],
+  });
+
   function saisirAMain() {
     setDraft([
       {
         title: component.name,
         description: '',
-        scaling_mode: null,
+        scaling_mode: component.scalingMode ?? null,
         sous_etapes: null,
         prep_time: null,
         cook_time: null,
@@ -420,7 +514,7 @@ export function ComponentResolver({
       <LoadingOverlay visible={busy || chargement} />
       <div
         onClick={(e) => e.stopPropagation()}
-        className="my-8 w-full max-w-[720px] rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-xl"
+        className="my-8 w-full max-w-[960px] rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-xl"
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
@@ -452,9 +546,32 @@ export function ComponentResolver({
               </span>
             </div>
 
-            {resultats.length === 0 ? (
+            <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2">
+              {PICKER_SCOPES.map((s) => (
+                <label key={s} className="flex cursor-pointer items-center gap-2 font-body-md text-sm">
+                  <input
+                    type="checkbox"
+                    checked={portees.has(s)}
+                    onChange={() =>
+                      setPortees((prev) => {
+                        const n = new Set(prev);
+                        if (n.has(s)) n.delete(s);
+                        else n.add(s);
+                        return n;
+                      })
+                    }
+                    className="h-5 w-5 cursor-pointer rounded border-outline accent-primary"
+                  />
+                  {PICKER_SCOPE_LABELS[s]}
+                </label>
+              ))}
+            </div>
+
+            {portees.size === 0 ? (
+              <p className="text-sm italic text-on-surface-variant">Cochez au moins une portée de recherche.</p>
+            ) : resultats.length === 0 ? (
               <p className="rounded-xl border border-outline-variant bg-surface-container-low p-4 text-sm italic text-on-surface-variant">
-                Aucune recette trouvée dans votre carnet, vos favoris ni chez les pâtissiers que vous suivez.
+                Aucune recette ne correspond dans les portées cochées.
               </p>
             ) : (
               <ul className="max-h-[45vh] space-y-2 overflow-y-auto">
@@ -474,17 +591,17 @@ export function ComponentResolver({
                       </span>
                       <span className="material-symbols-outlined text-[20px] text-primary">add</span>
                     </button>
-                    {/* Consulter la recette avant de la choisir, sans quitter
-                        le parcours (JEP-254, point 14). */}
-                    <a
-                      href={`/recette/${it.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Ouvrir la recette dans un nouvel onglet"
+                    {/* Consulter la recette avant de la choisir, dans la
+                        fenêtre (JEP-254, point 14). */}
+                    <button
+                      type="button"
+                      onClick={() => void voirApercu(it)}
+                      title="Voir la recette"
+                      aria-label={`Voir la recette ${it.title}`}
                       className="shrink-0 rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
                     >
-                      <span className="material-symbols-outlined text-[20px]">open_in_new</span>
-                    </a>
+                      <span className="material-symbols-outlined text-[20px]">visibility</span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -526,6 +643,77 @@ export function ComponentResolver({
               La recette choisie est copiée dans le projet : la modifier ensuite chez son auteur ne changera rien ici.
             </p>
           </>
+        ) : mode === 'apercu' && apercu ? (
+          <>
+            <p className="mb-1 font-label-md text-[12.5px] text-on-surface-variant">
+              {apercu.item.label}
+              {apercu.item.author ? ` · ${apercu.item.author}` : ''}
+            </p>
+            <h4 className="mb-6 font-headline-md text-headline-md text-primary">{apercu.item.title}</h4>
+            <div className="flex flex-col gap-10 pb-8">
+              {apercu.steps.map((st, i) => {
+                const vue: RecipeStepView = {
+                  id: i,
+                  title: st.title,
+                  description: st.description,
+                  day_offset: st.day_offset,
+                  prep_time: st.prep_time,
+                  cook_time: st.cook_time,
+                  wait_time: st.wait_time,
+                  cook_temp: st.cook_temp,
+                  tips: st.tips,
+                  video_url: null,
+                  sous_etapes: st.sous_etapes,
+                  order_index: i,
+                };
+                const ings = st.ingredients.map(
+                  (g, k): IngredientView => ({
+                    id: k,
+                    name: g.name,
+                    quantity: g.quantity || null,
+                    unit: g.unit,
+                    comment: g.comment,
+                    url: null,
+                    allergen: g.allergen,
+                    order_index: k,
+                    ref_id: null,
+                    ingredient_refs: null,
+                  }),
+                );
+                return (
+                  <RecipeStep
+                    key={i}
+                    step={vue}
+                    index={i}
+                    anchorId={`apercu-etape-${i}`}
+                    ingredients={ings}
+                    qty={(it) => [it.quantity, it.unit].filter(Boolean).join(' ')}
+                    last={i === apercu.steps.length - 1}
+                  />
+                );
+              })}
+            </div>
+            {/* Bandeau collé en bas de la zone qui défile : un `fixed` ici suivrait la
+                fenêtre (backdrop-blur du conteneur = nouveau repère) et partirait
+                avec le contenu. */}
+            <div className="sticky bottom-0 z-10 -mx-6 -mb-6 flex justify-end gap-3 rounded-b-2xl border-t border-outline-variant bg-surface-container-lowest px-6 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
+              <div className="flex w-full justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApercu(null);
+                    setMode('sources');
+                  }}
+                  className={btnGhost}
+                >
+                  Annuler
+                </button>
+                <button type="button" onClick={() => void attacher(apercu.item)} className={btnPrimary}>
+                  Sélectionner
+                </button>
+              </div>
+            </div>
+          </>
         ) : mode === 'contexte-ia' ? (
           <>
             <p className="mb-3 text-[12.5px] text-on-surface-variant">
@@ -560,155 +748,96 @@ export function ComponentResolver({
                 : 'Saisissez les étapes de cette préparation.'}
             </p>
 
-            <div className="max-h-[50vh] space-y-4 overflow-y-auto pr-1">
+            <div className="mb-6 flex flex-wrap items-center justify-end gap-6">
+              <button
+                type="button"
+                onClick={() => setRepliees(new Set(draft.map((_, k) => k)))}
+                className="flex items-center gap-1 text-[13px] font-semibold text-on-surface-variant hover:text-primary"
+              >
+                <span className="material-symbols-outlined">unfold_less</span> Tout replier
+              </button>
+              <button
+                type="button"
+                onClick={() => setRepliees(new Set())}
+                className="flex items-center gap-1 text-[13px] font-semibold text-on-surface-variant hover:text-primary"
+              >
+                <span className="material-symbols-outlined">unfold_more</span> Tout déplier
+              </button>
+            </div>
+
+            <div className="space-y-12">
               {draft.map((st, i) => (
-                <div key={i} className="rounded-xl border border-outline-variant p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <input
-                      value={st.title ?? ''}
-                      onChange={(e) => majEtape(i, { title: e.target.value })}
-                      placeholder={`Étape ${i + 1}`}
-                      className={champ}
-                    />
-                    <button
-                      type="button"
-                      title="Retirer l’étape"
-                      onClick={() => setDraft((prev) => prev.filter((_, k) => k !== i))}
-                      className="p-1"
-                    >
-                      <span className="material-symbols-outlined text-[20px] text-error">delete</span>
-                    </button>
-                  </div>
-                  <textarea
-                    ref={autoGrow}
-                    value={st.description ?? ''}
-                    onChange={(e) => {
-                      majEtape(i, { description: e.target.value });
-                      autoGrow(e.target);
-                    }}
-                    rows={2}
-                    placeholder="Le geste, en une ou deux phrases"
-                    className={`${champ} mb-3 resize-none overflow-hidden`}
-                  />
-                  <label className="mb-1 block text-[11px] font-semibold uppercase text-on-surface-variant">
-                    Sous-étapes (une par ligne)
-                  </label>
-                  <textarea
-                    ref={autoGrow}
-                    value={(st.sous_etapes ?? []).join('\n')}
-                    onChange={(e) => {
-                      majEtape(i, { sous_etapes: e.target.value.split('\n') });
-                      autoGrow(e.target);
-                    }}
-                    rows={3}
-                    placeholder="Hydrater la gélatine&#10;Fondre le praliné&#10;Chauffer la crème…"
-                    className={`${champ} mb-3 resize-none overflow-hidden`}
-                  />
-                  <ul className="space-y-2">
-                    {st.ingredients.map((it, j) => (
-                      <li key={j} className="space-y-2">
-                        <div className="flex flex-nowrap items-center gap-2">
-                          <input
-                            value={it.name}
-                            // Nom saisi ≠ ingrédient rattaché : le rattachement
-                            // est refait à l'enregistrement.
-                            onChange={(e) => majIngredient(i, j, { name: e.target.value, ref_id: null })}
-                            list={ingredientRefs.length ? datalistId : undefined}
-                            autoComplete="off"
-                            placeholder="Ingrédient"
-                            className={`${champBase} min-w-0 flex-1`}
-                          />
-                          <input
-                            value={it.quantity ?? ''}
-                            onChange={(e) => majIngredient(i, j, { quantity: e.target.value })}
-                            placeholder="Qté"
-                            inputMode="decimal"
-                            className={`${champBase} w-16 shrink-0`}
-                          />
-                          <select
-                            value={it.unit ?? ''}
-                            onChange={(e) => majIngredient(i, j, { unit: e.target.value || null })}
-                            className={`${champBase} w-fit shrink-0`}
-                          >
-                            <option value="">—</option>
-                            {units.map((u) => (
-                              <option key={u} value={u}>
-                                {u}
-                              </option>
-                            ))}
-                            {it.unit && !units.includes(it.unit) && <option value={it.unit}>{it.unit}</option>}
-                          </select>
-                          <button
-                            type="button"
-                            title="Retirer l’ingrédient"
-                            onClick={() =>
-                              setDraft((prev) =>
-                                prev.map((s, k) => (k === i ? { ...s, ingredients: s.ingredients.filter((_, m) => m !== j) } : s)),
-                              )
+                <StepEditorCard
+                  key={i}
+                  step={st}
+                  index={i}
+                  count={draft.length}
+                  allergenNames={referenceAllergenes?.names}
+                  refAllergens={referenceAllergenes?.byIngredient}
+                  collapsed={repliees.has(i)}
+                  onToggleCollapse={() =>
+                    setRepliees((prev) => {
+                      const n = new Set(prev);
+                      if (n.has(i)) n.delete(i);
+                      else n.add(i);
+                      return n;
+                    })
+                  }
+                  onInsertBefore={() => {
+                    setRepliees(new Set());
+                    setDraft((prev) => [...prev.slice(0, i), vierge(), ...prev.slice(i)]);
+                  }}
+                  onReorder={(from, to) => {
+                    if (from === to || isNaN(from)) return;
+                    setRepliees(new Set());
+                    setDraft((prev) => {
+                      const l = [...prev];
+                      const [deplace] = l.splice(from, 1);
+                      l.splice(to, 0, deplace);
+                      return l;
+                    });
+                  }}
+                  units={units}
+                  datalistId={ingredientRefs.length ? datalistId : undefined}
+                  onChange={(patch) => majEtape(i, patch)}
+                  onIngredientChange={(j, patch) => majIngredient(i, j, patch)}
+                  onIngredientAdd={() =>
+                    setDraft((prev) =>
+                      prev.map((s, k) =>
+                        k === i
+                          ? {
+                              ...s,
+                              ingredients: [
+                                ...s.ingredients,
+                                { name: '', quantity: '', unit: units[0] ?? null, comment: null, allergen: null, ref_id: null },
+                              ],
                             }
-                            className="shrink-0 p-1"
-                          >
-                            <span className="material-symbols-outlined text-[18px] text-error">delete</span>
-                          </button>
-                        </div>
-                        <input
-                          value={it.comment ?? ''}
-                          onChange={(e) => majIngredient(i, j, { comment: e.target.value || null })}
-                          placeholder="Commentaire (optionnel)"
-                          className={`${champ} w-full`}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDraft((prev) =>
-                        prev.map((s, k) =>
-                          k === i
-                            ? {
-                                ...s,
-                                ingredients: [
-                                  ...s.ingredients,
-                                  { name: '', quantity: '', unit: units[0] ?? null, comment: null, allergen: null, ref_id: null },
-                                ],
-                              }
-                            : s,
-                        ),
-                      )
-                    }
-                    className="mt-2 text-[12.5px] font-semibold text-primary"
-                  >
-                    + Ingrédient
-                  </button>
-                </div>
+                          : s,
+                      ),
+                    )
+                  }
+                  onIngredientDelete={(j) =>
+                    setDraft((prev) =>
+                      prev.map((s, k) => (k === i ? { ...s, ingredients: s.ingredients.filter((_, m) => m !== j) } : s)),
+                    )
+                  }
+                  onDelete={() => {
+                    setRepliees(new Set());
+                    setDraft((prev) => prev.filter((_, k) => k !== i));
+                  }}
+                />
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                setDraft((prev) => [
-                  ...prev,
-                  {
-                    title: '',
-                    description: '',
-                    scaling_mode: null,
-                    sous_etapes: null,
-                    prep_time: null,
-                    cook_time: null,
-                    wait_time: null,
-                    cook_temp: null,
-                    tips: null,
-                    day_offset: null,
-                    ingredients: [{ name: '', quantity: '', unit: units[0] ?? null, comment: null, allergen: null, ref_id: null }],
-                  },
-                ])
-              }
-              className="mt-3 text-[12.5px] font-semibold text-primary"
-            >
-              + Étape
-            </button>
+            <div className="flex justify-center py-8">
+              <button
+                type="button"
+                onClick={() => setDraft((prev) => [...prev, vierge()])}
+                className="flex items-center gap-3 px-8 py-3 border border-primary text-primary hover:bg-primary-container hover:text-white transition-all font-label-md text-label-md uppercase tracking-widest"
+              >
+                <span className="material-symbols-outlined">add_circle</span> Ajouter une étape
+              </button>
+            </div>
 
             {ingredientRefs.length > 0 && (
               <datalist id={datalistId}>
@@ -776,7 +905,7 @@ export function ComponentResolver({
                         return { ...s, sous_etapes: sous.length ? sous : null };
                       }),
                     draftKind,
-                    { recipeId: null, authorId: null, title: null, authorName: null },
+                    initialSource ?? { recipeId: null, authorId: null, title: null, authorName: null },
                   )
                 }
                 className={btnPrimary}

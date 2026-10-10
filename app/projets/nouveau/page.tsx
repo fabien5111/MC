@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { requireUser } from '@/lib/auth';
+import { isAdmin, requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements, checkQuota } from '@/lib/entitlements-data';
@@ -22,6 +22,9 @@ export default async function NouveauProjetPage() {
   // session « en tant que » en lecture seule n'y entre pas.
   await requireWritableSession();
 
+  // Version d'essai (v2) : un admin est envoyé directement dessus à la
+  // création ; les autres gardent le parcours en onglets.
+  const versionEssai = await isAdmin(user.id);
   const droits = await getEntitlements(user.id);
   const peutProjet = canAccess(droits, 'mode_projet');
   const peutGenererIA = peutProjet && canAccess(droits, 'mode_projet_ia_mensuel');
@@ -36,7 +39,7 @@ export default async function NouveauProjetPage() {
           Nouveau projet
         </h1>
         {peutProjet ? (
-          <NewProjectStart peutGenererIA={peutGenererIA} quotaProjetIA={quotaProjetIA} />
+          <NewProjectStart peutGenererIA={peutGenererIA} quotaProjetIA={quotaProjetIA} versionEssai={versionEssai} />
         ) : (
           // La route /api/projet refuserait de toute façon (`verifierAcces`) :
           // on le dit avant la saisie plutôt qu'après.

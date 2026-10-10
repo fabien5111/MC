@@ -108,13 +108,45 @@ function targetFormat(project: ProjectFull, forme: string | null): ScalableForma
   };
 }
 
+// Introduction + rappel du dessert visé (JEP-254, point 13) : c'est à lui que
+// chaque composant doit être ramené. Partagé : la v1 l'affiche en tête de
+// l'étape « Quantités », la v2 en tête du bloc « Étapes ».
+export function DessertVise({ project, formatLabel }: { project: ProjectFull; formatLabel: string }) {
+  return (
+    <>
+      <p className="text-sm text-on-surface-variant">
+        Ces quantités sont un <strong>point de départ</strong>, pas un résultat définitif : vous les affinerez au fil de
+        vos essais.
+      </p>
+      <div className="rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
+        <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary">Dessert visé</p>
+        <p className="font-body-md text-[15px] text-on-surface">
+          {project.title}
+          {' — '}
+          {formatLabel}
+          {project.servings ? ` · ${project.servings} parts` : ''}
+        </p>
+      </div>
+    </>
+  );
+}
+
 export function QuantitiesStep({
   project,
   targetForme,
   formatLabel,
+  hideTitle = false,
+  componentId,
 }: {
   project: ProjectFull;
   targetForme: string | null;
+  // La v2 du mode projet porte déjà le titre dans le cadre de son bloc.
+  hideTitle?: boolean;
+  // v2 : une seule préparation, rendue dans sa propre section du bloc
+  // « Étapes » — sans l'introduction ni le rappel du dessert (affichés une
+  // fois en tête du bloc, `DessertVise`), ni le nom (déjà en titre). Les
+  // autres préparations restent connues du calcul (voisins transmis à l'IA).
+  componentId?: number;
   // Format visé, en clair (« Cercle Ø 20 × 4 cm ») : sert à décrire la cible
   // à l'IA quand la géométrie ne suffit pas.
   formatLabel: string;
@@ -350,34 +382,19 @@ export function QuantitiesStep({
   return (
     <section className="space-y-5">
       <LoadingOverlay visible={busy || travail} label={travail ? 'Calcul des quantités…' : undefined} />
-      <h2 className="font-headline-md text-2xl text-primary">Quelles quantités ?</h2>
-      <p className="text-sm text-on-surface-variant">
-        Ces quantités sont un <strong>point de départ</strong>, pas un résultat définitif : vous les affinerez au fil de
-        vos essais.
-      </p>
+      {!hideTitle && componentId == null && <h2 className="font-headline-md text-2xl text-primary">Quelles quantités ?</h2>}
+      {componentId == null && <DessertVise project={project} formatLabel={formatLabel} />}
 
-      {/* Rappel du dessert visé (JEP-254, point 13) : c'est à lui que chaque
-          composant doit être ramené. */}
-      <div className="rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
-        <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary">Dessert visé</p>
-        <p className="font-body-md text-[15px] text-on-surface">
-          {project.title}
-          {' — '}
-          {formatLabel}
-          {project.servings ? ` · ${project.servings} parts` : ''}
-        </p>
-      </div>
-
-      {ordered.map((c) => {
+      {ordered.filter((c) => componentId == null || c.id === componentId).map((c) => {
         const facteur = c.scaleFactor ?? 1;
         const prop = propositions[c.id];
         const masseOrigine = masseGrammes(c.lines, true);
         const masseActuelle = masseGrammes(c.lines, false);
         return (
-          <div key={c.id} className="rounded-xl border border-outline-variant p-4">
+          <div key={c.id} className={componentId == null ? 'rounded-xl border border-outline-variant p-4' : ''}>
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
               <div>
-                <h3 className="font-body-md text-[16px] font-semibold text-on-surface">{c.name}</h3>
+                {componentId == null && <h3 className="font-body-md text-[16px] font-semibold text-on-surface">{c.name}</h3>}
                 <p className="text-[12px] text-on-surface-variant">
                   {COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind}
                   {c.source_title && c.source_recipe_id ? (

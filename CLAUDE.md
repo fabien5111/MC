@@ -1290,6 +1290,78 @@ essais et la validation arrivent par lots successifs.
   nouveau composant sur les étapes : un duplicata est une vraie variante du
   projet. Sans ça, dupliquer puis publier effaçait les crédits.
 
+## Mode projet v2 (essai, admins seulement)
+
+Seconde présentation du mode projet, **à côté** du parcours guidé en onglets
+(`/projets/[id]`), pour comparer les deux : `/projets/[id]/v2`
+(`components/projets/v2/ProjectV2.tsx`). Le projet s'y lit comme la recette
+qu'il deviendra — une seule colonne, les blocs de la recette dans l'ordre de
+l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
+(intention, structure, quantités, validation) sur un fond plus clair.
+
+- **Mêmes données, aucune migration** : les deux versions lisent et écrivent
+  les mêmes colonnes ; un projet s'ouvre indifféremment dans l'une ou l'autre.
+  Lien « Essayer la nouvelle version » sur la v1, « Revenir à la version
+  actuelle » sur la v2. Un non-admin qui suit le lien retombe sur la v1.
+- **Un admin entre directement dans la v2 à la création** : `/projets/nouveau` (page serveur) lit `isAdmin` et le passe à `NewProjectStart` (`versionEssai`), qui redirige vers `/projets/<id>/v2` au lieu de `/projets/<id>`. Les autres membres gardent le parcours en onglets.
+- **Redemander une proposition de l'IA** : dès que le projet a un format ou des préparations, le bouton du bloc « Intention » devient « Redemander une proposition (IA) » (secondaire) et demande confirmation (nombre de préparations remplacées et conservées). La nouvelle proposition remplace le format et les préparations **« À résoudre »** ; celles qui ont déjà leur recette sont conservées (travail réel), puis les blocs d'étapes sont redistribués (`resequenceProjectSteps`) avant l'insertion des nouvelles.
+- **« Structure » juste sous « Votre intention »** : le bloc s'ouvre dès qu'une intention OU un format est renseigné (`projectV2BlockStates`, paramètre `intent`), puisque le format est désormais plus bas.
+- **Ajustement des quantités dans chaque préparation** : plus de bloc « Ajustement des quantités » en v2. Le bloc « Étapes » ouvre sur `DessertVise` (rappel du dessert visé), puis chaque préparation résolue porte un volet replié « Ajustement des quantités · ×coef » qui rend `QuantitiesStep` avec `componentId` (une seule carte, sans intro ni nom ; le calcul connaît toujours les autres préparations). Un seul coefficient par préparation, comme en base (`recipe_project_components.scale_factor`) — jamais par étape. La v1 utilise `QuantitiesStep` sans `componentId`, inchangée.
+- **Recherche d'une recette de base : cinq portées cochables, les mêmes qu'au remplacement d'un ingrédient** (`PICKER_SCOPES`, `lib/projects.ts`) : Mes recettes (non brouillons), Mes brouillons, Mes favoris, Mes abonnements, Toutes les recettes. Défauts : remplacement d'ingrédient = recettes + brouillons + favoris ; mode projet = + abonnements (jamais « toutes » d'office). Le mode projet interroge **une portée à la fois**, dans l'ordre carnet → brouillons → favoris → abonnements → toutes : la première qui trouve la recette décide du crédit (`PICKER_SCOPE_KIND` : recettes et brouillons = `own`, « toutes » = `community`, libellé « Communauté »). `source_kind = 'community'` suppose qu'aucun CHECK de la base ne l'interdise.
+- **Aperçu d'une recette avant de la choisir** (`ComponentResolver`, mode `apercu`) : l'œil (`visibility`) de chaque résultat ouvre, dans la même fenêtre, ce que la copie écrirait (`planComponentCopy`, rendu par `RecipeStep`, sans photos — la copie ne les lit pas), sous un bandeau `sticky bottom-0` (jamais `fixed` : le conteneur défilant a un `backdrop-blur`, qui devient le repère du `fixed` et le fait défiler avec le contenu) « Annuler » (retour à la liste, recherche et cases conservées) / « Sélectionner » (même geste que le « + », mêmes crédits). Remplace l'ancien lien vers un nouvel onglet. Le remplacement d'un ingrédient (`IngredientExpandDialog`) garde son lien d'origine.
+- **« Retirer la recette »** (`retirerRecette`, `useProjectComponents`) : à côté de « Modifier cette préparation » (blocs Structure et Étapes), confirme puis `resetComponent` (`lib/projects-write.ts`) — contenu effacé, source oubliée, préparation « À résoudre » ; même geste que « Réinitialiser » de la fenêtre de résolution.
+- **Ustensiles d'une préparation copiée** : la copie d'une recette existante (`ComponentResolver.attacher`) lit ses `recipe_utensils` et `attachComponentUtensils` (`lib/projects-write.ts`) les mémorise sur la préparation (`recipe_project_components.utensils`, jsonb — la source ne les rattache à aucune étape, ils ne sont donc jamais portés par une étape), puis ajoute à la liste globale `recipe_utensils` ceux qui manquent (`utensilsToAdd`, `lib/projects.ts` : même `ref_id` ou même nom normalisé par `ingredientKey`). **Rien n'est jamais retiré** de la liste globale (retirer ou remplacer une préparation laisse ses ustensiles, à nettoyer dans le bloc « Ustensiles »). Colonne absente (migration pas jouée) : la liste globale est complétée quand même. L'éditeur « Ustensiles » de la v2 est remonté (`key`) quand la liste en base change et garde le `ref_id` des lignes inchangées.
+- **La v2 n'écrit jamais `recipe_projects.wizard_step`** : l'étape du parcours
+  en onglets reste la propriété de la v1. L'état d'un bloc (ouvert / grisé avec
+  ce qui le débloque) se déduit de la base par `projectV2BlockStates`
+  (`lib/projects.ts`), jamais de cette colonne.
+- **Un bloc pas encore atteint reste visible, grisé** — arbitrage produit : on
+  voit d'emblée toute la recette à venir.
+- **Format : un seul contrôle pour les deux écrans** — `ProjectFormatFields`
+  (champs) et `buildProjectFormatUpdate` (contrôle + colonnes à écrire). Le
+  bloc « Format » de la v2 ne réécrit pas le titre (il se modifie dans « Le
+  dessert »). La description se saisit pour tous les formats en v2 ; la v1 ne
+  l'efface donc plus hors format libre.
+- **Tout le parcours tient sur la page** (lots 1 à 5) : intention et
+  proposition de l'IA (`/api/projet/structure` — le format proposé est
+  enregistré s'il est complet, les préparations seulement si le projet n'en a
+  aucune), dessert (photo, nom, description, type, catégories), format,
+  structure et résolution, étapes par préparation avec leur ajustement de
+  quantités (`QuantitiesStep`, une carte par préparation), liste complète des ingrédients,
+  ustensiles / difficulté / temps, conseils et source, essais
+  (`ProjectTrials`) et validation (`validateProject`, `lib/projects-write.ts`,
+  partagé avec la v1).
+- **Étapes : la présentation de la fiche recette, pas une variante.** Le bloc « Étapes » rend chaque étape par `components/recipe/RecipeStep.tsx`, le même composant que `app/recette/[id]` (titre numéroté, pastilles de temps, ingrédients de l'étape, photos, sous-étapes, conseils) ; ne pas recoder une seconde présentation. L'édition d'une préparation (`ComponentResolver`) utilise `StepEditorCard`, calquée sur l'éditeur `/creer`.
+- **Composants : un seul code pour les deux versions** —
+  `useProjectComponents` (ajout, renommage, rôle, ajustement, suppression,
+  réordonnancement, ouverture de la résolution) et `ProjectStructureList`.
+  « Modifier cette préparation » (v2) rouvre `ComponentResolver` en édition
+  **quelle que soit la source**, avec `initialSource` : le crédit d'une copie
+  est conservé à l'enregistrement (§9), au lieu d'être effacé.
+- **Le brouillon d'un composant transporte tout ce qu'une étape porte** :
+  jour, temps, température, astuce (`StepEditorCard`, calquée sur l’éditeur `/creer`), allergènes en texte libre,
+  photos d'étape (`ComponentStepDraft.photos`, déposées sur Swift par
+  `ComponentResolver` avant l'écriture — `projects-write` ne téléverse rien,
+  il sert aussi côté serveur). `readComponentDraft` relit désormais aussi le
+  `scaling_mode` du groupe et la `base_quantity` de chaque ligne : avant,
+  modifier une préparation effaçait son mode d'ajustement et faisait de la
+  quantité ajustée la nouvelle référence. Une quantité retouchée dans la
+  fenêtre efface la base (la ligne sort du recalcul, comme à l'étape
+  « Quantités »).
+- **L'édition d'une préparation reproduit la carte d'étape de `/creer`** (`StepEditorCard`, JEP-254) : poignée de déplacement, « insérer avant », replier / déplier (+ « Tout replier / Tout déplier »), suppression seulement s'il reste plus d'une étape, sélecteur « Ajustement des quantités de cette étape » (mode du groupe d'ingrédients), colonnes INGRÉDIENTS / UNITÉ / ALLERGÈNES, allergènes en pastilles du référentiel (max 3, fenêtre portée dans `document.body` : le conteneur flouté piégerait un `fixed`) pré-remplis au choix d'un ingrédient du référentiel (`referenceAllergenes`, repli : texte libre), Tab sur la dernière ligne pour en ouvrir une, sous-étapes réordonnables, description sur 8 lignes. **Deux copies à garder alignées** : une évolution de la carte de `CreerForm` se reporte ici. Absents volontairement : lien vidéo, glisser-déposer de photos entre emplacements, repères d'ingrédient inconnu et ajout au référentiel (réservés à l'admin de `/creer`). Le mode d'ajustement de la préparation (étape 3) est appliqué aux étapes à la création du brouillon (copie, IA, saisie) ; à l'enregistrement, celui de l'étape prime, celui de la préparation sert de repli.
+- **Éléments de recette écrits section par section**
+  (`components/projets/v2/RecipeDetailEditors.tsx`), mêmes colonnes et tables
+  que `CreerForm`, jamais par son enregistrement global (qui effacerait les
+  `component_id`). Photo d'en-tête : vignettes recalculées seulement pour un
+  dépôt frais. **Catégories** : même principe que `/creer` (pastilles pleines
+  retirables, « + Ajouter un tag » avec recherche sans accents, création d'un
+  tag à la volée), mais la liaison `recipe_tags` ne s'écrit qu'au bouton
+  « Enregistrer ». **Pas de « type de recette »** : `recipes.type_id` n'est
+  saisi dans aucun écran du site (78 recettes sur 78 sans type au relevé du
+  06/10/2026) ; son filtre de recherche et son affichage sur les cartes
+  restent donc vides. En donner un à toutes les recettes suppose de l'ajouter
+  d'abord à `/creer` et à la relecture d'import.
+
 ## Boîte à idées
 
 Module communautaire : `/idees` (liste triable, publique) et `/idees/nouvelle`

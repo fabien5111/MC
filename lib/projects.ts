@@ -15,6 +15,8 @@
 // existe depuis toujours et s'affiche dans le carnet sous « Brouillons ») n'a
 // rien à voir avec `project_stage = 'wizard'`.
 
+import { ingredientKey } from '@/lib/ingredient-name';
+
 export type RecipeKind = 'simple' | 'project';
 export type ProjectStage = 'wizard' | 'ready' | 'dissolved';
 
@@ -287,8 +289,8 @@ export const COMPONENT_ROLES = [
 // de `ingredient_groups.scaling_mode`, avec les libellés de l'éditeur
 // classique (CreerForm) pour qu'un même choix se lise pareil partout.
 // La valeur vide laisse le mode de la recette d'origine.
-export const COMPONENT_SCALING_MODES: { value: string; label: string }[] = [
-  { value: '', label: 'Selon la recette' },
+export const COMPONENT_SCALING_MODES: { value: string; label: string; title?: string }[] = [
+  { value: '', label: 'Selon la recette d’origine', title: 'Information récupérée de la recette d’origine' },
   { value: 'simple', label: 'Volume (appareil, crème, mousse…)' },
   { value: 'foncage', label: 'Recouvre une surface (pâte, glaçage…)' },
   { value: 'aucun', label: 'Pas d’ajustement' },
@@ -300,15 +302,43 @@ export const COMPONENT_SCALING_MODES: { value: string; label: string }[] = [
 // préparations dépassent déjà largement l'entremets le plus construit.
 export const MAX_COMPONENTS = 12;
 
-export const COMPONENT_SOURCE_KINDS = ['own', 'favorite', 'followed', 'ai_generated', 'manual'] as const;
+export const COMPONENT_SOURCE_KINDS = ['own', 'favorite', 'followed', 'community', 'ai_generated', 'manual'] as const;
 export type ComponentSourceKind = (typeof COMPONENT_SOURCE_KINDS)[number];
 
 export const COMPONENT_SOURCE_LABELS: Record<ComponentSourceKind, string> = {
   own: 'Mon carnet',
   favorite: 'Mes favoris',
-  followed: 'Pâtissiers suivis',
+  followed: 'Mes abonnements',
+  community: 'Communauté',
   ai_generated: 'Proposée par l’IA',
   manual: 'Saisie à la main',
+};
+
+// Portées du sélecteur de recettes, partagées par « Remplacer un ingrédient
+// par une recette » et la résolution d'une préparation du mode projet. Même
+// cases, même libellés, mêmes valeurs côté `/api/recipes/picker`.
+//   mine     — mes recettes qui ne sont pas des brouillons
+//   draft    — mes brouillons (un projet en cours n'en fait jamais partie)
+//   fav      — mes favoris
+//   followed — recettes publiées des pâtissiers que je suis (« abonnements »)
+//   all      — toutes les recettes publiées
+export const PICKER_SCOPES = ['mine', 'draft', 'fav', 'followed', 'all'] as const;
+export type PickerScope = (typeof PICKER_SCOPES)[number];
+export const PICKER_SCOPE_LABELS: Record<PickerScope, string> = {
+  mine: 'Mes recettes',
+  draft: 'Mes brouillons',
+  fav: 'Mes favoris',
+  followed: 'Mes abonnements',
+  all: 'Toutes les recettes',
+};
+// Crédit d'auteur enregistré sur un composant selon la portée qui a trouvé la
+// recette — mes recettes ET mes brouillons sont « Mon carnet ».
+export const PICKER_SCOPE_KIND: Record<PickerScope, ComponentSourceKind> = {
+  mine: 'own',
+  draft: 'own',
+  fav: 'favorite',
+  followed: 'followed',
+  all: 'community',
 };
 
 // Position d'un composant : `numeric` en base, pour intercaler sans
@@ -333,7 +363,53 @@ export type ComponentIngredientDraft = {
   comment: string | null;
   allergen: string | null;
   ref_id: number | null;
+  // Quantité d'origine (`ingredients.base_quantity`) quand la ligne est relue
+  // depuis la base : la réécriture d'un composant la conserve, sans quoi
+  // modifier une préparation déjà ajustée ferait de la quantité ajustée la
+  // nouvelle référence (un second ajustement multiplierait deux fois).
+  // `undefined` = ligne neuve (copie, IA, saisie) : base = quantité saisie.
+  // `null` = ligne modifiée à la main : elle sort du recalcul global.
+  base_quantity?: number | null;
 };
+
+// Photo d'une étape, telle que la porte le brouillon. `url` est l'URL du
+// stockage, ou une data-URL fraîche tant que l'écran ne l'a pas déposée
+// (le dépôt se fait côté navigateur, avant l'écriture — cf. ComponentResolver).
+export type ComponentStepPhoto = { url: string; original_url: string | null; ai_retouched: boolean };
+
+// Ustensile d'une préparation, recopié de la recette source à la copie
+// (`recipe_project_components.utensils`). La source ne dit pas quelle étape
+// utilise quel ustensile : ils sont donc portés par la préparation, jamais
+// par une étape.
+export type ComponentUtensil = { name: string; ref_id: number | null; comment: string | null };
+
+// Clé de rapprochement de deux ustensiles : le référentiel quand il est
+// connu, sinon le nom normalisé (même règle que les ingrédients : casse,
+// accents, pluriel).
+function utensilKeys(u: { name: string; ref_id: number | null }): string[] {
+  const nom = `nom:${ingredientKey(u.name)}`;
+  return u.ref_id != null ? [`ref:${u.ref_id}`, nom] : [nom];
+}
+
+// Ustensiles à AJOUTER à la liste globale de la recette : ceux de `incoming`
+// absents de `existing` (même référentiel ou même nom normalisé), sans
+// doublon entre eux. Rien n'est jamais retiré — les ajouts faits à la main
+// restent intacts.
+export function utensilsToAdd<T extends { name: string; ref_id: number | null }>(
+  existing: { name: string; ref_id: number | null }[],
+  incoming: T[],
+): T[] {
+  const vus = new Set<string>(existing.flatMap(utensilKeys));
+  const out: T[] = [];
+  for (const u of incoming) {
+    if (!u.name?.trim()) continue;
+    const cles = utensilKeys(u);
+    if (cles.some((k) => vus.has(k))) continue;
+    cles.forEach((k) => vus.add(k));
+    out.push(u);
+  }
+  return out;
+}
 
 export type ComponentStepDraft = {
   title: string | null;
@@ -352,6 +428,10 @@ export type ComponentStepDraft = {
   tips: string | null;
   day_offset: number | null;
   ingredients: ComponentIngredientDraft[];
+  // Photos de l'étape. Absentes des copies et des propositions de l'IA ;
+  // relues par `readComponentDraft` pour qu'une modification du composant
+  // ne les efface pas (ses étapes sont supprimées puis réécrites).
+  photos?: ComponentStepPhoto[];
 };
 
 // Recette source telle que la lit le sélecteur, réduite à ce que la copie
@@ -544,4 +624,100 @@ export function projectValidationBlockers(project: {
     );
   }
   return blockers;
+}
+
+// ── Format visé : validation de la saisie ─────────────────────────────────
+//
+// Contrôle et mise en forme partagés par l'étape 2 du parcours actuel et par
+// le bloc « Format » de la v2 : les deux écrans doivent refuser et écrire
+// exactement la même chose, sans quoi un projet ouvert dans l'un se lirait
+// de travers dans l'autre. Rend soit un message à afficher, soit les colonnes
+// de `recipes` à écrire (`projectFormatPayload`).
+export function buildProjectFormatUpdate(input: {
+  format: ProjectFormat;
+  title: string;
+  servings: string;
+  count: string;
+  dims: Record<string, string>;
+  moldTypeId: string;
+}): { error: string } | { payload: Record<string, unknown> } {
+  const parts = parseInt(input.servings, 10);
+  if (!(parts > 0)) return { error: 'Indiquez le nombre de parts visé.' };
+  const nb = parseInt(input.count, 10);
+  const countLabel = PROJECT_FORMATS[input.format].countLabel;
+  if (countLabel && !(nb > 0)) return { error: `Indiquez le nombre à réaliser (${countLabel.toLowerCase()}).` };
+  const parsedDims: Record<string, number> = {};
+  for (const d of PROJECT_FORMATS[input.format].dims) {
+    const v = parseFloat((input.dims[d.key] ?? '').replace(',', '.'));
+    if (!isNaN(v) && v > 0) parsedDims[d.key] = v;
+  }
+  return {
+    payload: projectFormatPayload({
+      format: input.format,
+      title: input.title,
+      servings: parts,
+      dims: parsedDims,
+      count: nb > 0 ? nb : 1,
+      moldTypeId: input.format !== 'free' && input.moldTypeId ? Number(input.moldTypeId) : null,
+    }),
+  };
+}
+
+// ── Mode projet v2 : blocs de la page verticale ───────────────────────────
+//
+// La v2 (`/projets/[id]/v2`, admins seulement le temps de la comparaison)
+// présente le projet comme la recette qu'il deviendra : une seule colonne,
+// où les blocs propres au projet (« Atelier projet ») s'intercalent entre
+// ceux de la recette. Un bloc pas encore atteint reste VISIBLE mais grisé,
+// avec ce qui le débloque — on voit d'emblée toute la recette à venir.
+//
+// L'état se déduit de ce que porte la base, jamais de `wizard_step` : cette
+// colonne reste la propriété du parcours actuel, que la v2 n'écrit pas (un
+// projet ouvert dans la v2 ne doit pas changer d'étape dans l'autre vue).
+export const PROJECT_V2_BLOCKS = [
+  'intention',
+  'structure',
+  'identite',
+  'format',
+  'etapes',
+  'ingredients',
+  'organisation',
+  'conseils',
+  'validation',
+] as const;
+export type ProjectV2Block = (typeof PROJECT_V2_BLOCKS)[number];
+
+// Blocs « Atelier projet » : fond plus clair, et ils disparaissent une fois
+// le projet validé — il ne reste alors que la recette.
+export const PROJECT_V2_ATELIER: ReadonlySet<ProjectV2Block> = new Set(['intention', 'structure', 'validation']);
+
+export type ProjectV2BlockState = { unlocked: boolean; lockedReason: string | null };
+
+export function projectV2BlockStates(project: {
+  measure_type: string | null;
+  servings: number | null;
+  // Intention saisie : suffit, avec le format, à ouvrir la structure (qui
+  // remonte juste sous l'intention, avant que le format soit posé).
+  intent?: string | null;
+  components: { resolved: boolean }[];
+}): Record<ProjectV2Block, ProjectV2BlockState> {
+  const formatPose = !!project.measure_type && (project.servings ?? 0) > 0;
+  const unResolu = project.components.some((c) => c.resolved);
+  const tousResolus = project.components.length > 0 && project.components.every((c) => c.resolved);
+  const etat = (unlocked: boolean, reason: string): ProjectV2BlockState => ({
+    unlocked,
+    lockedReason: unlocked ? null : reason,
+  });
+  const apresRecette = 'Disponible dès qu’une préparation a sa recette.';
+  return {
+    intention: etat(true, ''),
+    identite: etat(true, ''),
+    format: etat(true, ''),
+    structure: etat(formatPose || !!project.intent?.trim(), 'Disponible dès qu’une intention ou un format est renseigné.'),
+    etapes: etat(unResolu, apresRecette),
+    ingredients: etat(unResolu, apresRecette),
+    organisation: etat(unResolu, apresRecette),
+    conseils: etat(unResolu, apresRecette),
+    validation: etat(tousResolus, 'Disponible quand toutes les préparations ont leur recette.'),
+  };
 }
