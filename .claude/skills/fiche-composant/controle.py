@@ -28,6 +28,9 @@ def controler(d):
     etapes = d.get('etapes', [])
     if not 1 <= len(etapes) <= 3:
         err.append(f'{len(etapes)} étapes (1 à 3 attendues)')
+    # Une étape unique porte le nom de la recette.
+    if len(etapes) == 1 and etapes[0].get('nom_etape') != d.get('titre'):
+        err.append(f"Étape unique : nom_etape « {etapes[0].get('nom_etape')} » doit être égal au titre « {d.get('titre')} »")
     total = 0.0
     for n, e in enumerate(etapes, 1):
         if set(e) != CLES_ETAPE:

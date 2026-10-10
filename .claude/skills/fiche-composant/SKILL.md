@@ -102,6 +102,7 @@ RÈGLES
 
 Étapes — le moins possible
 1 à 3 étapes AU MAXIMUM. Une seule si le composant est une préparation homogène (génoise, crème d'amande, dacquoise…).
+Étape unique → son "nom_etape" est EXACTEMENT le "titre" de la recette (ex. titre « Pain de Gênes » → nom_etape « Pain de Gênes »), jamais « Préparation » ni un nom générique. Seules les fiches à 2 ou 3 étapes nomment chaque sous-préparation.
 Une étape = une sous-préparation distincte (ex. « Pâte » puis « Cuisson à blanc » pour une pâte sucrée qui doit reposer entre les deux).
 La cuisson n'est PAS une étape à part quand elle suit directement la préparation : elle est portée par l'étape (temps_cuisson_minutes, temperature_cuisson_celsius) et décrite dans ses instructions.
 3 à 8 instructions par étape : une action par instruction, à l'infinitif, avec des repères concrets (°C, durée, texture attendue : « ruban », « bec d'oiseau »…).
@@ -175,6 +176,7 @@ C. Utilisations
 
 D. Format
 - 3 étapes au plus, 3 à 8 instructions chacune, une action par instruction.
+- Étape unique : son "nom_etape" est identique au "titre" de la recette (corrige sinon).
 - Noms d'ingrédients nus : ni état, ni quantité dans "nom".
 - Chaque ustensile cité dans les instructions figure dans "ustensiles".
 - Conseils à leur place : tout conseil qui aide à RÉUSSIR une étape est dans le "conseils_etape" de cette étape (jamais vide) ; "astuces_recette" ne contient que des « Utilisation — » et des « Variante — » (variantes de parfum, de texture, substitutions). Déplace ce qui est mal rangé.
