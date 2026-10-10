@@ -302,15 +302,43 @@ export const COMPONENT_SCALING_MODES: { value: string; label: string; title?: st
 // préparations dépassent déjà largement l'entremets le plus construit.
 export const MAX_COMPONENTS = 12;
 
-export const COMPONENT_SOURCE_KINDS = ['own', 'favorite', 'followed', 'ai_generated', 'manual'] as const;
+export const COMPONENT_SOURCE_KINDS = ['own', 'favorite', 'followed', 'community', 'ai_generated', 'manual'] as const;
 export type ComponentSourceKind = (typeof COMPONENT_SOURCE_KINDS)[number];
 
 export const COMPONENT_SOURCE_LABELS: Record<ComponentSourceKind, string> = {
   own: 'Mon carnet',
   favorite: 'Mes favoris',
-  followed: 'Pâtissiers suivis',
+  followed: 'Mes abonnements',
+  community: 'Communauté',
   ai_generated: 'Proposée par l’IA',
   manual: 'Saisie à la main',
+};
+
+// Portées du sélecteur de recettes, partagées par « Remplacer un ingrédient
+// par une recette » et la résolution d'une préparation du mode projet. Même
+// cases, même libellés, mêmes valeurs côté `/api/recipes/picker`.
+//   mine     — mes recettes qui ne sont pas des brouillons
+//   draft    — mes brouillons (un projet en cours n'en fait jamais partie)
+//   fav      — mes favoris
+//   followed — recettes publiées des pâtissiers que je suis (« abonnements »)
+//   all      — toutes les recettes publiées
+export const PICKER_SCOPES = ['mine', 'draft', 'fav', 'followed', 'all'] as const;
+export type PickerScope = (typeof PICKER_SCOPES)[number];
+export const PICKER_SCOPE_LABELS: Record<PickerScope, string> = {
+  mine: 'Mes recettes',
+  draft: 'Mes brouillons',
+  fav: 'Mes favoris',
+  followed: 'Mes abonnements',
+  all: 'Toutes les recettes',
+};
+// Crédit d'auteur enregistré sur un composant selon la portée qui a trouvé la
+// recette — mes recettes ET mes brouillons sont « Mon carnet ».
+export const PICKER_SCOPE_KIND: Record<PickerScope, ComponentSourceKind> = {
+  mine: 'own',
+  draft: 'own',
+  fav: 'favorite',
+  followed: 'followed',
+  all: 'community',
 };
 
 // Position d'un composant : `numeric` en base, pour intercaler sans

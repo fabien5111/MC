@@ -575,3 +575,30 @@ export async function attachComponentUtensils(
   );
   if (iErr) throw iErr;
 }
+
+// Retire la recette d'une préparation : efface son contenu (étapes et
+// ingrédients, via `clearComponentContent` — jamais un simple delete, cf. ses
+// commentaires), oublie la source et ses ustensiles mémorisés, et la repasse
+// « À résoudre ». Partagé par « Réinitialiser » (fenêtre de résolution) et
+// « Retirer la recette » (listes de préparations). Les ustensiles déjà ajoutés
+// à la liste globale de la recette y restent (rien n'y est jamais retiré).
+export async function resetComponent(supabase: Supabase, recipeId: string, componentId: number) {
+  await clearComponentContent(supabase, recipeId, componentId);
+  const base = {
+    resolved: false,
+    source_kind: 'manual',
+    source_recipe_id: null,
+    source_author_id: null,
+    source_title: null,
+    source_author_name: null,
+  };
+  let { error } = await supabase
+    .from('recipe_project_components')
+    .update({ ...base, utensils: [] } as never)
+    .eq('id', componentId);
+  // Colonne `utensils` absente (migration pas jouée) : on réécrit sans elle.
+  if (error && /utensils/.test(error.message)) {
+    ({ error } = await supabase.from('recipe_project_components').update(base as never).eq('id', componentId));
+  }
+  if (error) throw error;
+}

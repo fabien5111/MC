@@ -17,6 +17,7 @@
 // contenu inséré est une copie, comme le reste de la fournée — la
 // sous-recette peut évoluer ou disparaître ensuite sans rien changer ici
 // (cf. CLAUDE.md « Fournées »).
+import { PICKER_SCOPES, PICKER_SCOPE_LABELS, type PickerScope } from '@/lib/projects';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -60,8 +61,9 @@ type PickerItem = {
   recipe_steps: { prep_time: number | null; cook_time: number | null; wait_time: number | null }[];
 };
 
-type Scope = 'mine' | 'fav' | 'all';
-const SCOPE_LABELS: Record<Scope, string> = { mine: 'Mes recettes', fav: 'Mes favoris', all: 'Toutes les recettes' };
+// Mêmes portées que la résolution d'une préparation du mode projet (lib/projects.ts).
+type Scope = PickerScope;
+const SCOPE_LABELS = PICKER_SCOPE_LABELS;
 
 // Position d'insertion choisie pour une étape de la sous-recette : `anchor` =
 // `order_index` de l'étape du plan après laquelle elle se pose (null = en
@@ -123,7 +125,7 @@ export function IngredientExpandDialog({
 
   // ── Étape 1 : recherche ────────────────────────────────────────────────
   const [term, setTerm] = useState('');
-  const [scopes, setScopes] = useState<Set<Scope>>(new Set<Scope>(['mine', 'fav']));
+  const [scopes, setScopes] = useState<Set<Scope>>(new Set<Scope>(['mine', 'draft', 'fav']));
   const [items, setItems] = useState<PickerItem[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   // État distinct de `loading` : la frappe déclenche une requête à chaque
@@ -524,7 +526,7 @@ export function IngredientExpandDialog({
                 className={INPUT}
               />
               <div className="flex flex-wrap gap-4">
-                {(Object.keys(SCOPE_LABELS) as Scope[]).map((s) => (
+                {PICKER_SCOPES.map((s) => (
                   <label key={s} className="flex items-center gap-2 cursor-pointer font-body-md text-sm">
                     <input
                       type="checkbox"

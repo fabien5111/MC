@@ -12,8 +12,8 @@
 // directement en base (cf. CLAUDE.md), une page de résultats en pèserait
 // plusieurs mégaoctets.
 //
-// Portées : « mes recettes » / « mes favoris » / « pâtissiers suivis » /
-// « toutes ». Les trois premières servent aussi le mode projet, où la spec
+// Portées : « mes recettes » (hors brouillons) / « mes brouillons » / « mes
+// favoris » / « mes abonnements » (`followed`) / « toutes ». Les trois premières servent aussi le mode projet, où la spec
 // impose l'ordre carnet → favoris → suivis : l'appelant interroge alors une
 // portée à la fois pour savoir de laquelle vient chaque résultat (c'est ce
 // qui détermine le crédit d'auteur du composant).
@@ -70,7 +70,17 @@ export async function GET(req: Request) {
   // renvoyait plus aucun résultat (silencieusement, côté appelant — cf.
   // ComponentResolver). Une branche simple, plus le filtre en mémoire déjà en
   // place pour toutes les portées, obtient le même résultat sans ce risque.
-  if (scopes.has('mine') && user) branches.push(`author_id.eq.${user.id}`);
+  // « Mes recettes » et « Mes brouillons » se séparent par le statut. Deux
+  // requêtes d'identifiants plutôt qu'un `and(...)` imbriqué dans le `.or()`
+  // (cf. la mise en garde ci-dessus).
+  if ((scopes.has('mine') || scopes.has('draft')) && user) {
+    const { data: miennes } = await supabase.from('recipes').select('id, status').eq('author_id', user.id);
+    const lignes = (miennes ?? []) as { id: string; status: string | null }[];
+    const ids = lignes
+      .filter((r) => (r.status === 'draft' ? scopes.has('draft') : scopes.has('mine')))
+      .map((r) => r.id);
+    if (ids.length) branches.push(`id.in.(${ids.join(',')})`);
+  }
   // Recettes des pâtissiers suivis (spec §5.3). Le filtre sur le statut se
   // fait dans CETTE requête séparée (comme pour les favoris juste en dessous),
   // jamais dans la branche du `.or()` combiné, pour la même raison que

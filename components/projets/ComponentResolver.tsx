@@ -26,8 +26,15 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LockedAction, LockedHint } from '@/components/LockedAction';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import { planComponentCopy, type ComponentSourceKind, type ComponentStepDraft, type ComponentUtensil, type CopyableRecipe } from '@/lib/projects';
-import { attachComponentUtensils, clearComponentContent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
+import {
+  COMPONENT_SOURCE_LABELS,
+  PICKER_SCOPES,
+  PICKER_SCOPE_KIND,
+  PICKER_SCOPE_LABELS,
+  type PickerScope,
+  planComponentCopy,
+  type ComponentSourceKind, type ComponentStepDraft, type ComponentUtensil, type CopyableRecipe } from '@/lib/projects';
+import { attachComponentUtensils, resetComponent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import type { ProjectComponent } from '@/lib/projects-data';
 import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { StepEditorCard } from '@/components/projets/StepEditorCard';
@@ -47,14 +54,12 @@ function autoGrow(el: HTMLTextAreaElement | null) {
 // même valeur que la recherche avancée.
 const DEBOUNCE_MS = 300;
 
-// Portées de recherche, dans l'ordre d'affichage voulu par la spec. La
-// dernière valeur est le `source_kind` enregistré sur le composant : c'est
-// lui qui portera le crédit (§9).
-const PORTEES: { scope: string; label: string; kind: ComponentSourceKind }[] = [
-  { scope: 'mine', label: 'Mon carnet', kind: 'own' },
-  { scope: 'fav', label: 'Mes favoris', kind: 'favorite' },
-  { scope: 'followed', label: 'Pâtissiers suivis', kind: 'followed' },
-];
+// Portées de recherche : les mêmes cases que « Remplacer un ingrédient par
+// une recette » (PICKER_SCOPES). Interrogées UNE À UNE, dans l'ordre imposé par
+// la spec (carnet → brouillons → favoris → abonnements → toutes) : c'est la
+// portée qui a répondu qui décide du `source_kind` enregistré, donc du crédit
+// d'auteur (§9). « Toutes les recettes » n'est pas cochée par défaut.
+const PORTEES_PAR_DEFAUT: PickerScope[] = ['mine', 'draft', 'fav', 'followed'];
 
 type Trouvee = { id: string; title: string; author: string | null; kind: ComponentSourceKind; label: string };
 
@@ -147,6 +152,7 @@ export function ComponentResolver({
 
   const [mode, setMode] = useState<'sources' | 'edit' | 'contexte-ia'>(initialMode ?? 'sources');
   const [terme, setTerme] = useState(component.name);
+  const [portees, setPortees] = useState<Set<PickerScope>>(new Set(PORTEES_PAR_DEFAUT));
   const [resultats, setResultats] = useState<Trouvee[]>([]);
   const [chargement, setChargement] = useState(false);
   const [recherche, setRecherche] = useState(false);
@@ -182,9 +188,11 @@ export function ComponentResolver({
     setRecherche(true);
     try {
       const q = encodeURIComponent(texte.trim());
+      // Portées cochées, dans l'ordre de PICKER_SCOPES (pas celui des clics).
+      const actives = PICKER_SCOPES.filter((s) => portees.has(s));
       const reponses = await Promise.all(
-        PORTEES.map((p) =>
-          fetch(`/api/recipes/picker?scopes=${p.scope}&q=${q}&limit=10`)
+        actives.map((scope) =>
+          fetch(`/api/recipes/picker?scopes=${scope}&q=${q}&limit=10`)
             // Une erreur reste visible (message d'alerte) plutôt que
             // silencieusement transformée en « aucun résultat » — sans quoi
             // une vraie panne de la recherche se lit exactement comme une
@@ -202,11 +210,12 @@ export function ComponentResolver({
       const vues = new Set<string>();
       const out: Trouvee[] = [];
       reponses.forEach((rep, i) => {
-        const p = PORTEES[i];
+        const scope = actives[i];
+        const kind = PICKER_SCOPE_KIND[scope];
         for (const it of (rep?.items ?? []) as { id: string; title: string; profiles?: { full_name: string | null } | null }[]) {
           if (vues.has(it.id)) continue;
           vues.add(it.id);
-          out.push({ id: it.id, title: it.title, author: it.profiles?.full_name ?? null, kind: p.kind, label: p.label });
+          out.push({ id: it.id, title: it.title, author: it.profiles?.full_name ?? null, kind, label: COMPONENT_SOURCE_LABELS[kind] });
         }
       });
       setResultats(out);
@@ -231,7 +240,7 @@ export function ComponentResolver({
     // `chercher` est recréée à chaque rendu mais ne lit que des refs et des
     // setters stables : seul le terme doit relancer la recherche.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [terme]);
+  }, [terme, portees]);
 
   // Écriture commune aux trois chemins de résolution.
   async function enregistrer(
@@ -320,19 +329,7 @@ export function ComponentResolver({
     setChargement(true);
     try {
       const supabase = createClient();
-      await clearComponentContent(supabase, projectId, component.id);
-      const { error } = await supabase
-        .from('recipe_project_components')
-        .update({
-          resolved: false,
-          source_kind: 'manual',
-          source_recipe_id: null,
-          source_author_id: null,
-          source_title: null,
-          source_author_name: null,
-        } as never)
-        .eq('id', component.id);
-      if (error) throw error;
+      await resetComponent(supabase, projectId, component.id);
     } catch (e) {
       dialog.alert(`L’effacement a échoué : ${(e as Error).message}`);
       return;
@@ -495,9 +492,32 @@ export function ComponentResolver({
               </span>
             </div>
 
-            {resultats.length === 0 ? (
+            <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2">
+              {PICKER_SCOPES.map((s) => (
+                <label key={s} className="flex cursor-pointer items-center gap-2 font-body-md text-sm">
+                  <input
+                    type="checkbox"
+                    checked={portees.has(s)}
+                    onChange={() =>
+                      setPortees((prev) => {
+                        const n = new Set(prev);
+                        if (n.has(s)) n.delete(s);
+                        else n.add(s);
+                        return n;
+                      })
+                    }
+                    className="h-5 w-5 cursor-pointer rounded border-outline accent-primary"
+                  />
+                  {PICKER_SCOPE_LABELS[s]}
+                </label>
+              ))}
+            </div>
+
+            {portees.size === 0 ? (
+              <p className="text-sm italic text-on-surface-variant">Cochez au moins une portée de recherche.</p>
+            ) : resultats.length === 0 ? (
               <p className="rounded-xl border border-outline-variant bg-surface-container-low p-4 text-sm italic text-on-surface-variant">
-                Aucune recette trouvée dans votre carnet, vos favoris ni chez les pâtissiers que vous suivez.
+                Aucune recette ne correspond dans les portées cochées.
               </p>
             ) : (
               <ul className="max-h-[45vh] space-y-2 overflow-y-auto">

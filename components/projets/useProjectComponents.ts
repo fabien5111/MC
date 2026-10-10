@@ -17,6 +17,7 @@ import {
   clearComponentContent,
   readComponentDraft,
   resequenceProjectSteps,
+  resetComponent,
   setComponentScalingMode,
 } from '@/lib/projects-write';
 import { MAX_COMPONENTS, nextComponentPosition, type ComponentSourceKind, type ComponentStepDraft } from '@/lib/projects';
@@ -181,6 +182,26 @@ export function useProjectComponents(project: ProjectFull, mutate: Mutate, dialo
     );
   }
 
+  // « Retirer la recette » : le composant reste dans la structure mais repasse
+  // « À résoudre » (contenu effacé, source oubliée) — même geste que
+  // « Réinitialiser » dans la fenêtre de résolution.
+  async function retirerRecette(c: ProjectComponent) {
+    await mutate(
+      async () => {
+        try {
+          await resetComponent(createClient(), project.id, c.id);
+        } catch (e) {
+          return { error: { message: (e as Error).message } };
+        }
+        return { error: null };
+      },
+      {
+        confirm: `Retirer la recette de « ${c.name} » ? Ses étapes et ses ingrédients seront effacés ; la préparation repassera « À résoudre ».`,
+        errorLabel: 'Retrait de la recette',
+      },
+    );
+  }
+
   // Réordonnancement par glisser-déposer. Renumérote TOUS les composants de 1
   // à n dans le nouvel ordre plutôt que d'échanger deux positions : un
   // déplacement de bout en bout de liste n'est qu'un cas particulier.
@@ -230,6 +251,7 @@ export function useProjectComponents(project: ProjectFull, mutate: Mutate, dialo
     ouvrirComposant,
     fermerResolution,
     removeComponent,
+    retirerRecette,
     reorder,
   };
 }

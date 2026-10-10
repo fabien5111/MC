@@ -141,7 +141,7 @@ export function ProjectV2({
   const v1 = `/projets/${project.id}`;
 
   const composants = useProjectComponents(project, mutate, dialog);
-  const { ordered, resolving, resolvingInit, setResolvingInit, consultBusy, ouvrirComposant, fermerResolution } =
+  const { ordered, resolving, resolvingInit, setResolvingInit, consultBusy, ouvrirComposant, retirerRecette, fermerResolution } =
     composants;
 
   // ── Format (relu depuis la recette, comme l'étape 2 du parcours) ──────
@@ -374,9 +374,16 @@ export function ProjectV2({
 
   function boutonRecette(c: ProjectComponent) {
     return (
-      <button type="button" onClick={() => void ouvrirComposant(c, c.resolved)} className={btnGhost}>
-        {c.resolved ? 'Modifier cette préparation' : 'Choisir une recette'}
-      </button>
+      <span className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => void ouvrirComposant(c, c.resolved)} className={btnGhost}>
+          {c.resolved ? 'Modifier cette préparation' : 'Choisir une recette'}
+        </button>
+        {c.resolved && (
+          <button type="button" onClick={() => void retirerRecette(c)} className={btnGhost}>
+            Retirer la recette
+          </button>
+        )}
+      </span>
     );
   }
 
