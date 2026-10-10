@@ -37,6 +37,8 @@ import {
 import { attachComponentUtensils, resetComponent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import type { ProjectComponent } from '@/lib/projects-data';
 import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { RecipeStep } from '@/components/recipe/RecipeStep';
+import type { IngredientView, RecipeStepView } from '@/lib/recipes';
 import { StepEditorCard } from '@/components/projets/StepEditorCard';
 import { televerserImage } from '@/lib/storage-client';
 
@@ -150,12 +152,14 @@ export function ComponentResolver({
   const dialog = useDialog();
   const { mutate, busy } = useMutation();
 
-  const [mode, setMode] = useState<'sources' | 'edit' | 'contexte-ia'>(initialMode ?? 'sources');
+  const [mode, setMode] = useState<'sources' | 'edit' | 'contexte-ia' | 'apercu'>(initialMode ?? 'sources');
   const [terme, setTerme] = useState(component.name);
   const [portees, setPortees] = useState<Set<PickerScope>>(new Set(PORTEES_PAR_DEFAUT));
   const [resultats, setResultats] = useState<Trouvee[]>([]);
   const [chargement, setChargement] = useState(false);
   const [recherche, setRecherche] = useState(false);
+  // Aperçu d'une recette trouvée, dans la fenêtre (œil) : ce qui serait copié.
+  const [apercu, setApercu] = useState<{ item: Trouvee; steps: ComponentStepDraft[] } | null>(null);
   const datalistId = `dl-ingredients-composant-${component.id}`;
   // Consignes pour une nouvelle proposition de l'IA (JEP-254, point 8).
   const [consignes, setConsignes] = useState('');
@@ -340,6 +344,28 @@ export function ComponentResolver({
     setTerme(component.name);
     setMode('sources');
     (onReset ?? onDone)();
+  }
+
+  // Lecture seule : les étapes telles qu'`attacher` les copierait (sans
+  // photos, que la copie ne lit pas non plus).
+  async function voirApercu(item: Trouvee) {
+    setChargement(true);
+    try {
+      const { data, error } = await createClient().from('recipes').select(COPY_SELECT).eq('id', item.id).maybeSingle();
+      if (error || !data) {
+        dialog.alert("Cette recette n'a pas pu être lue.");
+        return;
+      }
+      const steps = planComponentCopy(data as unknown as CopyableRecipe);
+      if (!steps.length) {
+        dialog.alert("Cette recette n'a aucune étape à copier.");
+        return;
+      }
+      setApercu({ item, steps });
+      setMode('apercu');
+    } finally {
+      setChargement(false);
+    }
   }
 
   async function attacher(item: Trouvee) {
@@ -537,17 +563,17 @@ export function ComponentResolver({
                       </span>
                       <span className="material-symbols-outlined text-[20px] text-primary">add</span>
                     </button>
-                    {/* Consulter la recette avant de la choisir, sans quitter
-                        le parcours (JEP-254, point 14). */}
-                    <a
-                      href={`/recette/${it.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Ouvrir la recette dans un nouvel onglet"
+                    {/* Consulter la recette avant de la choisir, dans la
+                        fenêtre (JEP-254, point 14). */}
+                    <button
+                      type="button"
+                      onClick={() => void voirApercu(it)}
+                      title="Voir la recette"
+                      aria-label={`Voir la recette ${it.title}`}
                       className="shrink-0 rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
                     >
-                      <span className="material-symbols-outlined text-[20px]">open_in_new</span>
-                    </a>
+                      <span className="material-symbols-outlined text-[20px]">visibility</span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -588,6 +614,75 @@ export function ComponentResolver({
             <p className="mt-2 text-[12px] text-on-surface-variant">
               La recette choisie est copiée dans le projet : la modifier ensuite chez son auteur ne changera rien ici.
             </p>
+          </>
+        ) : mode === 'apercu' && apercu ? (
+          <>
+            <p className="mb-1 font-label-md text-[12.5px] text-on-surface-variant">
+              {apercu.item.label}
+              {apercu.item.author ? ` · ${apercu.item.author}` : ''}
+            </p>
+            <h4 className="mb-6 font-headline-md text-headline-md text-primary">{apercu.item.title}</h4>
+            <div className="flex flex-col gap-10 pb-24">
+              {apercu.steps.map((st, i) => {
+                const vue: RecipeStepView = {
+                  id: i,
+                  title: st.title,
+                  description: st.description,
+                  day_offset: st.day_offset,
+                  prep_time: st.prep_time,
+                  cook_time: st.cook_time,
+                  wait_time: st.wait_time,
+                  cook_temp: st.cook_temp,
+                  tips: st.tips,
+                  video_url: null,
+                  sous_etapes: st.sous_etapes,
+                  order_index: i,
+                };
+                const ings = st.ingredients.map(
+                  (g, k): IngredientView => ({
+                    id: k,
+                    name: g.name,
+                    quantity: g.quantity || null,
+                    unit: g.unit,
+                    comment: g.comment,
+                    url: null,
+                    allergen: g.allergen,
+                    order_index: k,
+                    ref_id: null,
+                    ingredient_refs: null,
+                  }),
+                );
+                return (
+                  <RecipeStep
+                    key={i}
+                    step={vue}
+                    index={i}
+                    anchorId={`apercu-etape-${i}`}
+                    ingredients={ings}
+                    qty={(it) => [it.quantity, it.unit].filter(Boolean).join(' ')}
+                    last={i === apercu.steps.length - 1}
+                  />
+                );
+              })}
+            </div>
+            {/* Bandeau fixe : l'aperçu peut être long, le choix reste à portée. */}
+            <div className="fixed inset-x-0 bottom-0 z-[96] flex justify-center border-t border-outline-variant bg-surface-container-lowest/95 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur">
+              <div className="flex w-full max-w-[960px] justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApercu(null);
+                    setMode('sources');
+                  }}
+                  className={btnGhost}
+                >
+                  Annuler
+                </button>
+                <button type="button" onClick={() => void attacher(apercu.item)} className={btnPrimary}>
+                  Sélectionner
+                </button>
+              </div>
+            </div>
           </>
         ) : mode === 'contexte-ia' ? (
           <>
