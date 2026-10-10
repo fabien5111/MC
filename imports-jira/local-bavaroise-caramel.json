@@ -1,0 +1,104 @@
+{
+  "ticket": "local-bavaroise-caramel",
+  "recette": {
+    "titre": "Bavaroise caramel",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse onctueuse et légère au goût de caramel au lait, bâtie sur une anglaise collée puis allégée de crème montée. Elle sert de crème principale d'un entremets ou de garniture d'individuels, avec un sucre total maîtrisé (95 g) pour rester gourmande sans écœurer.",
+    "rendement": "1 cercle Ø 20 cm, 3 cm de hauteur — environ 625 g de bavaroise utilisable (713 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Casserole à fond épais",
+      "Fouet",
+      "Maryse",
+      "Thermomètre de cuisson",
+      "Cul-de-poule",
+      "Batteur électrique",
+      "Cercle à entremets Ø 20 cm"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Lait caramélisé",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre semoule (caramel)",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 250,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Chauffer le lait jusqu'au frémissement et le garder chaud.",
+          "Faire fondre le sucre en trois fois dans une casserole à fond épais, à feu moyen, en ajoutant chaque part quand la précédente est fondue.",
+          "Cuire à sec jusqu'à une couleur ambrée soutenue (environ 180 °C), sans remuer à la fin.",
+          "Décuire hors du feu en versant le lait chaud en trois fois, au fouet, à bout de bras.",
+          "Remettre sur feu doux et remuer jusqu'à dissolution complète des morceaux de caramel, puis garder chaud."
+        ],
+        "conseils_etape": "Un caramel plus foncé est moins sucré et plus aromatique : ne le blondissez pas, mais arrêtez la cuisson avant les premières fumées amères. Décuisez toujours avec du lait chaud pour limiter les projections et éviter que le caramel ne prenne en bloc."
+      },
+      {
+        "nom_etape": "Anglaise et bavaroise",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (anglaise)",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 8,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 %",
+            "quantite": 300,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Ramollir la gélatine dans un grand volume d'eau très froide pendant 10 minutes.",
+          "Blanchir les jaunes avec le sucre de l'anglaise.",
+          "Verser le lait caramélisé chaud sur les jaunes en fouettant, puis remettre le tout dans la casserole.",
+          "Cuire à la maryse, sans cesser de remuer, jusqu'à 83-84 °C : la crème nappe la maryse.",
+          "Hors du feu, ajouter la gélatine essorée et mélanger jusqu'à dissolution complète.",
+          "Refroidir dans un cul-de-poule posé sur de la glace jusqu'à 28-30 °C.",
+          "Monter la crème liquide très froide en chantilly souple, au bec d'oiseau mou.",
+          "Incorporer la crème montée à l'anglaise en trois fois à la maryse, couler dans le cercle et laisser prendre 4 heures au réfrigérateur."
+        ],
+        "conseils_etape": "Sucre total : le caramel apporte 80 g et l'anglaise 15 g, soit 95 g pour 713 g de préparation (environ 13 %). Ne rajoutez pas de sucre dans l'anglaise sans en retirer au caramel, sinon la bavaroise devient écœurante. Incorporez la crème montée quand l'anglaise est à 28-30 °C : plus chaude, la crème retombe ; plus froide, la gélatine fige en grumeaux."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, 3 cm de hauteur : ≈ 400 g de bavaroise, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, 3 cm de hauteur : ≈ 625 g de bavaroise, soit ×1 la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 3 cm de hauteur : ≈ 900 g de bavaroise, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 4 cm de hauteur : ≈ 100 g chacun, soit 6 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, en mousse d'enveloppe autour d'un insert et d'un biscuit (≈ 70 % du volume de la gouttière) : ≈ 180 g de bavaroise, soit ×0,29 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 2,5 cm de hauteur : ≈ 535 g de bavaroise, soit ×0,86 de la recette.",
+      "Utilisation — Insert rond Ø 16 cm, 1,5 cm de hauteur : ≈ 200 g de bavaroise, soit ×0,32 de la recette.",
+      "Variante — Caramel à la fève tonka : infuser une fève râpée dans le lait chaud avant de décuire.",
+      "Variante — Version moins sucrée : réduire le sucre du caramel à 70 g (sucre total 85 g)."
+    ],
+    "conseils_conservation": "À couler dans le montage aussitôt la crème montée incorporée : la gélatine commence à prendre en 10 à 15 minutes et la bavaroise ne se retravaille plus ensuite. Une fois prise, se conserve 2 jours au réfrigérateur sous film au contact. Congélation possible jusqu'à 1 mois après la prise ; décongeler au réfrigérateur pendant 8 heures."
+  }
+}
