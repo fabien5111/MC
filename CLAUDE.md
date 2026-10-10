@@ -70,6 +70,15 @@ le service managé.
   Corrigé en ne recalculant que si `hero`/`heroOriginal` est un dépôt frais
   (`estDataUrlImage`, `lib/storage.ts`) — sinon les colonnes sont omises de
   l'update, gardant les vignettes déjà en base.
+  **Cause réelle** (mesurée le 10/10/2026) : le CORS de `jp-photos` est
+  correct, mais Swift ne renvoie `Access-Control-Allow-Origin` qu'à une
+  requête portant `Origin`, sans `Vary: Origin`, en cache `immutable` d'un
+  an — la copie mise en cache par un `<img>` ordinaire était resservie à la
+  requête CORS du canvas. `chargerImageDepuisSrc` recharge donc toute source
+  distante sous `?cors=1` (ignoré par Swift). La règle ci-dessus reste : un
+  rechargement inutile reste inutile. Le rattrapage d'Admin → Photos du site
+  ne marque plus une image illisible d'une chaîne vide (elle restait
+  condamnée) : il la laisse à `null`, retentée au passage suivant.
 - **Scripts SQL** : ne pas créer de fichier `.sql` dans `db/`. Toute
   migration ou requête SQL doit être affichée directement dans la
   conversation (bloc de code SQL), pour être copiée-collée dans **pgweb**,

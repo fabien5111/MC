@@ -47,6 +47,7 @@ export function RecipeImageBackfill({
     setDone(0);
     setFailed(0);
     const supabase = createClient();
+    const echecs = new Set<string>();
     try {
       for (;;) {
         const { data, error } = await supabase
@@ -54,11 +55,13 @@ export function RecipeImageBackfill({
           .select('id, hero_image_url')
           .not('hero_image_url', 'is', null)
           .is(column, null)
-          .limit(BATCH_SIZE);
+          .order('id')
+          .limit(BATCH_SIZE + echecs.size);
         if (error) throw error;
-        if (!data || data.length === 0) break;
+        const lot = ((data ?? []) as { id: string; hero_image_url: string | null }[]).filter((r) => !echecs.has(r.id));
+        if (lot.length === 0) break;
 
-        for (const r of data as { id: string; hero_image_url: string | null }[]) {
+        for (const r of lot) {
           try {
             const derived = await resizeDataUrlToThumb(r.hero_image_url as string, maxWidth, 'image/jpeg', quality);
             // `derived` est toujours une data-URL fraîche (resizeDataUrlToThumb
@@ -74,15 +77,12 @@ export function RecipeImageBackfill({
             if (updErr) throw updErr;
             setDone((n) => n + 1);
           } catch {
-            // Image illisible (format non décodable, data corrompue…) :
-            // marquée avec une chaîne vide plutôt que laissée à `null`, sinon
-            // le lot suivant la reproposerait indéfiniment. Chaîne vide,
-            // jamais retenue par `hero_card_url || hero_image_url || …`
-            // (RecipeCardLayout) — se comporte comme un dérivé absent.
-            await supabase
-              .from('recipes')
-              .update({ [column]: '' } as never)
-              .eq('id', r.id);
+            // Image illisible : laissée à `null` (jamais marquée d'une chaîne
+            // vide, qui la condamnait définitivement — un échec peut être
+            // passager, cf. le piège de cache de `chargerImageDepuisSrc`), et
+            // écartée du reste de CE passage pour ne pas boucler dessus. Un
+            // nouveau clic sur « Régénérer » la retente.
+            echecs.add(r.id);
             setFailed((n) => n + 1);
           }
         }

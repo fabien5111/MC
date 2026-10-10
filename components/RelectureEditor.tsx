@@ -29,6 +29,7 @@ import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { moveAt } from '@/lib/photo-reorder';
 import { televerserImage } from '@/lib/storage-client';
+import { resizeDataUrlToThumb } from '@/lib/images';
 import { connexionHref } from '@/lib/nav';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
@@ -95,6 +96,22 @@ const slugify = (name: string): string =>
 
 // Ligature « œuf » (« oeuf » → « œuf »), en respectant la casse.
 const ligatureOeuf = (s: string): string => (s || '').replace(/oe(?=ufs?\b)/gi, (m) => (m[0] === 'O' ? 'Œ' : 'œ'));
+
+// Vignette dérivée de la photo principale, déposée sur le stockage objet —
+// même calcul que CreerForm (`hero_thumb_url` ~96 px, `hero_card_url`
+// ~480 px). Best-effort : une vignette manquée ne doit jamais bloquer la
+// création de la recette. Sur une photo déjà déposée (import Jira, reprise
+// après échec), le rechargement dans un canvas exige un en-tête CORS que le
+// conteneur peut ne pas renvoyer (cf. CLAUDE.md « Images ») : l'échec rend
+// alors `null`, que le rattrapage d'Admin → Photos du site reprendra.
+async function deriveVignette(src: string | null, maxWidth: number, quality?: number): Promise<string | null> {
+  if (!src) return null;
+  try {
+    return await televerserImage('recette', await resizeDataUrlToThumb(src, maxWidth, 'image/jpeg', quality));
+  } catch {
+    return null;
+  }
+}
 
 function rendementTxt(r: any): string {
   if (!r) return '';
@@ -956,9 +973,11 @@ export function RelectureEditor({
       // Data-URL fraîche si la photo vient d'être choisie/éditée dans cet
       // écran, ou déjà l'URL de stockage sur une reprise après échec —
       // televerserImage() ne dépose que dans le premier cas (§ 7.5, lot B2).
-      const [heroUrl, heroOriginalUrl] = await Promise.all([
+      const [heroUrl, heroOriginalUrl, heroThumb, heroCard] = await Promise.all([
         televerserImage('recette', p.photo_principale || null),
         televerserImage('recette', p.photo_principale_original || p.photo_principale || null),
+        deriveVignette(p.photo_principale || null, 96),
+        deriveVignette(p.photo_principale || null, 480, 0.7),
       ]);
 
       const payload = {
@@ -974,6 +993,11 @@ export function RelectureEditor({
         serving_advice: p.conseils_degustation || null,
         yield_notes: r.notes_quantites || null,
         hero_image_url: heroUrl,
+        // Vignettes des listes de fournées (~96 px) et des cartes recette
+        // (~480 px) : sans elles, la carte n'affiche que l'illustration par
+        // défaut (RecipeCardLayout ne lit que `hero_card_url`).
+        hero_thumb_url: heroThumb,
+        hero_card_url: heroCard,
         hero_image_original_url: heroOriginalUrl,
         hero_image_ai_retouched: !!p.photo_principale_ai_retouched,
         difficulty_id: diffRow?.id ?? null,
