@@ -128,15 +128,23 @@ export type Rotation90 = 0 | 90 | 180 | 270;
 // d'en-tête `Access-Control-Allow-Origin`, l'attribut fait échouer le
 // chargement au lieu de le laisser réussir en polluant le canvas. C'est le
 // comportement voulu — un canvas pollué est inutilisable ici — mais l'échec
-// remonte comme « Image illisible » : en cas de doute sur une image qui
-// s'affiche ailleurs, c'est le CORS du bucket qu'il faut regarder en premier.
+// remonte comme « Image illisible ».
+//
+// Piège de cache (mesuré le 10/10/2026 sur `jp-photos`) : Swift ne renvoie
+// `Access-Control-Allow-Origin` que si la requête porte un en-tête `Origin`,
+// sans `Vary: Origin`, et sert ses photos en `max-age=31536000, immutable`. La
+// copie mise en cache par un simple `<img>` (fiche, relecture) n'a donc pas
+// l'en-tête, et le navigateur la ressert telle quelle à une requête CORS — d'où
+// « Image illisible » sur une photo qui s'affiche très bien, alors que le CORS
+// du conteneur est correct. Une source distante est donc rechargée sous une
+// adresse distincte (`cors=1`, ignoré par Swift), qui force une vraie requête.
 function chargerImageDepuisSrc(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error('Image illisible'));
-    img.src = src;
+    img.src = /^https?:/i.test(src) ? `${src}${src.includes('?') ? '&' : '?'}cors=1` : src;
   });
 }
 
