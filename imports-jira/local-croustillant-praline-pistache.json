@@ -1,0 +1,75 @@
+{
+  "ticket": "local-croustillant-praline-pistache",
+  "recette": {
+    "titre": "Croustillant praliné pistache",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Croustillant gourmand et net en pistache, relevé par le croquant des crêpes dentelles et des éclats de pistaches. Il sert de fond ou d'insert croquant sous une mousse ou une crème, et garde une belle couleur verte.",
+    "rendement": "2 cercles Ø 20 cm, 5 mm d'épaisseur — environ 370 g de croustillant utilisable (390 g d'ingrédients, perte ≈ 5 %)",
+    "ustensiles": [
+      "Couteau de chef",
+      "Bol",
+      "Bain-marie",
+      "Thermomètre",
+      "Maryse",
+      "Rouleau à pâtisserie",
+      "Papier cuisson",
+      "Cercle à entremets Ø 20 cm"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Croustillant praliné pistache",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de pistache",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Crêpes dentelles",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Pistaches mondées",
+            "quantite": 40,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Concasser les pistaches mondées au couteau en éclats de 2 à 3 mm.",
+          "Émietter les crêpes dentelles dans un bol, en morceaux d'environ 5 mm, sans les réduire en poudre.",
+          "Faire fondre le chocolat blanc au bain-marie à 40 °C maximum.",
+          "Ajouter la pâte de pistache à température ambiante et mélanger à la maryse jusqu'à obtenir une masse lisse et brillante.",
+          "Verser sur les crêpes dentelles et les pistaches réunies dans le bol, puis mélanger délicatement pour enrober sans écraser.",
+          "Étaler à 5 mm d'épaisseur entre deux feuilles de papier cuisson, ou dans un cercle posé sur du papier cuisson.",
+          "Réserver 30 minutes au réfrigérateur, jusqu'à prise ferme."
+        ],
+        "conseils_etape": "Pour garder le vert, ne grillez pas les pistaches et ne chauffez jamais le mélange au-delà de 40 °C : la chaleur brunit la pâte. Mélangez les crêpes dentelles en dernier pour qu'elles restent croquantes, et isolez le croustillant d'un insert humide (griotte, framboise) par une fine couche de chocolat blanc ou de beurre de cacao."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 5 mm : ≈ 120 g de croustillant, soit ×0,32 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 5 mm : ≈ 185 g de croustillant, soit ×0,50 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 5 mm : ≈ 265 g de croustillant, soit ×0,72 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 5 mm : ≈ 23 g par pièce, soit 16 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, fond de 5 mm : ≈ 80 g de croustillant, soit ×0,22 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, fond de 5 mm : ≈ 140 g de croustillant, soit ×0,38 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 5 mm : ≈ 190 g de croustillant, soit ×0,51 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, fond de 5 mm : ≈ 340 g de croustillant, soit ×0,92 de la recette.",
+      "Variante — Alternative maison : remplacer les 150 g de pâte du commerce par 125 g de pistaches mondées non salées, 20 g de sucre glace et 5 g d'huile neutre, mixés 10 à 15 minutes jusqu'à une pâte lisse ; la couleur est souvent plus douce et le coût moindre en achetant les pistaches en gros."
+    ],
+    "conseils_conservation": "Se conserve 1 semaine au réfrigérateur dans une boîte hermétique, entre deux feuilles de papier cuisson, et 2 mois au congélateur. À utiliser froid, directement en fond de montage, et à glacer ou couvrir rapidement pour protéger le croquant de l'humidité."
+  }
+}
