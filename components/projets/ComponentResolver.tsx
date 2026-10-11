@@ -26,6 +26,8 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LockedAction, LockedHint } from '@/components/LockedAction';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { SearchResultsBusy } from '@/components/SearchResultsBusy';
+import { PickerStatusBadge, pickerRatingText } from '@/components/recipe/PickerStatusBadge';
 import {
   COMPONENT_SOURCE_LABELS,
   PICKER_SCOPES,
@@ -63,7 +65,17 @@ const DEBOUNCE_MS = 300;
 // d'auteur (§9). « Toutes les recettes » n'est pas cochée par défaut.
 const PORTEES_PAR_DEFAUT: PickerScope[] = ['mine', 'draft', 'fav', 'followed'];
 
-type Trouvee = { id: string; title: string; author: string | null; kind: ComponentSourceKind; label: string };
+type Trouvee = {
+  id: string;
+  title: string;
+  author: string | null;
+  kind: ComponentSourceKind;
+  label: string;
+  status: string | null;
+  isPublic: boolean | null;
+  ratingAvg: number | null;
+  ratingCount: number | null;
+};
 
 // Lecture d'une recette source, réduite à ce que la copie exige : ni photos
 // (data-URL, inutiles ici) ni ustensiles. Volontairement plus étroit que le
@@ -224,10 +236,28 @@ export function ComponentResolver({
       reponses.forEach((rep, i) => {
         const scope = actives[i];
         const kind = PICKER_SCOPE_KIND[scope];
-        for (const it of (rep?.items ?? []) as { id: string; title: string; profiles?: { full_name: string | null } | null }[]) {
+        for (const it of (rep?.items ?? []) as {
+          id: string;
+          title: string;
+          status?: string | null;
+          is_public?: boolean | null;
+          rating_avg?: number | null;
+          rating_count?: number | null;
+          profiles?: { full_name: string | null } | null;
+        }[]) {
           if (vues.has(it.id)) continue;
           vues.add(it.id);
-          out.push({ id: it.id, title: it.title, author: it.profiles?.full_name ?? null, kind, label: COMPONENT_SOURCE_LABELS[kind] });
+          out.push({
+            id: it.id,
+            title: it.title,
+            author: it.profiles?.full_name ?? null,
+            kind,
+            label: COMPONENT_SOURCE_LABELS[kind],
+            status: it.status ?? null,
+            isPublic: it.is_public ?? null,
+            ratingAvg: it.rating_avg ?? null,
+            ratingCount: it.rating_count ?? null,
+          });
         }
       });
       setResultats(out);
@@ -567,6 +597,7 @@ export function ComponentResolver({
               ))}
             </div>
 
+            <SearchResultsBusy busy={recherche}>
             {portees.size === 0 ? (
               <p className="text-sm italic text-on-surface-variant">Cochez au moins une portée de recherche.</p>
             ) : resultats.length === 0 ? (
@@ -574,7 +605,7 @@ export function ComponentResolver({
                 Aucune recette ne correspond dans les portées cochées.
               </p>
             ) : (
-              <ul className="max-h-[45vh] space-y-2 overflow-y-auto">
+              <ul className="max-h-[45vh] min-h-[6rem] space-y-2 overflow-y-auto">
                 {resultats.map((it) => (
                   <li key={it.id} className="flex items-center gap-2">
                     <button
@@ -584,9 +615,15 @@ export function ComponentResolver({
                     >
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-body-md text-[15px] text-on-surface">{it.title}</span>
-                        <span className="block text-[12px] text-on-surface-variant">
-                          {it.label}
-                          {it.author ? ` · ${it.author}` : ''}
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-on-surface-variant">
+                          <span>
+                            {it.label}
+                            {it.author ? ` · ${it.author}` : ''}
+                          </span>
+                          <PickerStatusBadge status={it.status} isPublic={it.isPublic} />
+                          {pickerRatingText(it.ratingAvg, it.ratingCount) && (
+                            <span>{pickerRatingText(it.ratingAvg, it.ratingCount)}</span>
+                          )}
                         </span>
                       </span>
                       <span className="material-symbols-outlined text-[20px] text-primary">add</span>
@@ -606,6 +643,7 @@ export function ComponentResolver({
                 ))}
               </ul>
             )}
+            </SearchResultsBusy>
 
             <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
               {!peutGenererIA ? (
