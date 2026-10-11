@@ -211,8 +211,8 @@ export function StepEditorCard({
       </div>
 
       <div className="flex flex-col">
-        <div className="border-l-2 border-transparent pl-4 xl:border-l-0 xl:pl-0 flex items-center gap-4 mb-2">
-          <div className="flex-1 min-w-0">
+        <div className="border-l-2 border-transparent pl-4 min-[1232px]:border-l-0 min-[1232px]:pl-0 flex items-center gap-4 mb-2">
+          <div className="flex-[2] min-w-0">
             <span className={label}>INGRÉDIENTS</span>
           </div>
           <div className="w-20 shrink-0" />
@@ -229,7 +229,7 @@ export function StepEditorCard({
               </select>
             </div>
           </div>
-          <div className="hidden xl:contents">
+          <div className="hidden min-[1232px]:contents">
             <div className="flex-1 min-w-0">
               <span className={label}>ALLERGÈNES</span>
             </div>
@@ -243,9 +243,9 @@ export function StepEditorCard({
           {step.ingredients.map((g, j) => {
             const alle = parseAllergens(g.allergen);
             return (
-              <div key={j} className="border-l-2 border-outline-variant/50 pl-4 xl:border-l-0 xl:pl-0">
-                <div className="flex flex-wrap xl:flex-nowrap items-center gap-x-4 gap-y-1.5">
-                  <div className="relative flex-1 min-w-0">
+              <div key={j} className="border-l-2 border-outline-variant/50 pl-4 min-[1232px]:border-l-0 min-[1232px]:pl-0">
+                <div className="flex flex-wrap min-[1232px]:flex-nowrap items-center gap-x-4 gap-y-1.5">
+                  <div className="relative flex-[2] min-w-0">
                     <input
                       value={g.name}
                       // Nom saisi ≠ ingrédient rattaché : le rattachement est refait
@@ -282,7 +282,7 @@ export function StepEditorCard({
                         ...(g.base_quantity !== undefined ? { base_quantity: null } : {}),
                       })
                     }
-                    className="w-16 xl:w-20 editorial-input text-on-surface"
+                    className="w-16 min-[1232px]:w-20 editorial-input text-on-surface"
                     type="text"
                     placeholder="Qté"
                   />
@@ -300,8 +300,8 @@ export function StepEditorCard({
                     ))}
                     {g.unit && !units.includes(g.unit) && <option value={g.unit}>{g.unit}</option>}
                   </select>
-                  <div className="basis-full xl:hidden" />
-                  <div className="flex-1 min-w-0 order-1 xl:order-2">
+                  <div className="basis-full min-[1232px]:hidden" />
+                  <div className="flex-1 min-w-0 order-1 min-[1232px]:order-2">
                     <textarea
                       value={g.comment ?? ''}
                       onChange={(e) => {
@@ -326,11 +326,11 @@ export function StepEditorCard({
                       placeholder="Commentaire (optionnel)"
                     />
                   </div>
-                  <div className="basis-full xl:hidden order-2" />
-                  <div className="flex-1 min-w-0 order-3 xl:order-1">
+                  <div className="basis-full min-[1232px]:hidden order-2" />
+                  <div className="flex-1 min-w-0 order-3 min-[1232px]:order-1">
                     {allergenNames ? (
                       <>
-                        <span className="xl:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">
+                        <span className="min-[1232px]:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">
                           Allergènes
                         </span>
                         <div className="flex flex-wrap items-center gap-1">
@@ -397,7 +397,7 @@ export function StepEditorCard({
                     type="button"
                     title="Supprimer"
                     onClick={() => onIngredientDelete(j)}
-                    className="p-1 text-error hover:opacity-70 transition-opacity shrink-0 order-4 xl:order-3"
+                    className="p-1 text-error hover:opacity-70 transition-opacity shrink-0 order-4 min-[1232px]:order-3"
                   >
                     <span className="material-symbols-outlined text-[18px]">delete</span>
                   </button>

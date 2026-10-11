@@ -514,7 +514,7 @@ export function ComponentResolver({
       <LoadingOverlay visible={busy || chargement} />
       <div
         onClick={(e) => e.stopPropagation()}
-        className="my-8 w-full max-w-[960px] rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-xl"
+        className={`my-8 w-full ${mode === 'edit' ? 'max-w-[1200px]' : 'max-w-[960px]'} rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-xl`}
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
