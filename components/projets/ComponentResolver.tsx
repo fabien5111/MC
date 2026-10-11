@@ -748,6 +748,41 @@ export function ComponentResolver({
                 : 'Saisissez les étapes de cette préparation.'}
             </p>
 
+            {/* Nouvelle proposition de l'IA, corrigée (JEP-254, point 8) : on
+                dit ce qui ne va pas plutôt que de tout reprendre à la main. La
+                base soumise est le brouillon tel qu'affiché, retouches
+                comprises. Placé EN HAUT de l'éditeur, au-dessus de la première étape :
+                sous une proposition de plusieurs étapes, il fallait défiler jusqu'en bas
+                pour le trouver. */}
+            {draftKind === 'ai_generated' && peutGenererIA && (
+              <div className="mb-6 rounded-xl border border-outline-variant bg-surface-container-low p-4">
+                <label className="mb-2 block font-label-md text-[12px] text-outline">
+                  CE QU’IL FAUT CORRIGER DANS LA PROPOSITION
+                </label>
+                <textarea
+                  ref={autoGrow}
+                  value={consignes}
+                  onChange={(e) => {
+                    setConsignes(e.target.value.slice(0, 1000));
+                    autoGrow(e.target);
+                  }}
+                  rows={2}
+                  placeholder="Moins sucré, sans gélatine, une version au beurre noisette…"
+                  className={`${champ} resize-none overflow-hidden`}
+                />
+                <LockedHint message={iaMessage} active={iaEpuise}>
+                  <button
+                    type="button"
+                    onClick={() => void demanderIA(true)}
+                    disabled={iaEpuise || !consignes.trim()}
+                    className={`${btnGhost} mt-3 disabled:cursor-not-allowed`}
+                  >
+                    Demander une nouvelle proposition
+                  </button>
+                </LockedHint>
+              </div>
+            )}
+
             <div className="mb-6 flex flex-wrap items-center justify-end gap-6">
               <button
                 type="button"
@@ -845,39 +880,6 @@ export function ComponentResolver({
                   <option key={r.id} value={r.name} />
                 ))}
               </datalist>
-            )}
-
-            {/* Nouvelle proposition de l'IA, corrigée (JEP-254, point 8) : on
-                dit ce qui ne va pas plutôt que de tout reprendre à la main. La
-                base soumise est le brouillon tel qu'affiché, retouches
-                comprises. */}
-            {draftKind === 'ai_generated' && peutGenererIA && (
-              <div className="mt-5 rounded-xl border border-outline-variant bg-surface-container-low p-4">
-                <label className="mb-2 block font-label-md text-[12px] text-outline">
-                  CE QU’IL FAUT CORRIGER DANS LA PROPOSITION
-                </label>
-                <textarea
-                  ref={autoGrow}
-                  value={consignes}
-                  onChange={(e) => {
-                    setConsignes(e.target.value.slice(0, 1000));
-                    autoGrow(e.target);
-                  }}
-                  rows={2}
-                  placeholder="Moins sucré, sans gélatine, une version au beurre noisette…"
-                  className={`${champ} resize-none overflow-hidden`}
-                />
-                <LockedHint message={iaMessage} active={iaEpuise}>
-                  <button
-                    type="button"
-                    onClick={() => void demanderIA(true)}
-                    disabled={iaEpuise || !consignes.trim()}
-                    className={`${btnGhost} mt-3 disabled:cursor-not-allowed`}
-                  >
-                    Demander une nouvelle proposition
-                  </button>
-                </LockedHint>
-              </div>
             )}
 
             <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
