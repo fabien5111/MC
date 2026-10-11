@@ -637,7 +637,11 @@ export function ComponentResolver({
                           )}
                         </span>
                       </span>
-                      <span className="material-symbols-outlined text-[20px] text-primary">add</span>
+                      {/* Faux bouton : le clic remonte à la carte, qui est le vrai bouton (un
+                          <button> dans un <button> serait invalide). */}
+                      <span className="shrink-0 rounded-pill border border-outline-variant px-4 py-1.5 font-label-md text-[13px] font-semibold text-primary">
+                        Ajouter
+                      </span>
                     </button>
                   </li>
                 ))}
