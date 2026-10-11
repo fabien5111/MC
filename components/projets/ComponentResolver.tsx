@@ -608,6 +608,17 @@ export function ComponentResolver({
               <ul className="max-h-[45vh] min-h-[6rem] space-y-2 overflow-y-auto">
                 {resultats.map((it) => (
                   <li key={it.id} className="flex items-center gap-2">
+                    {/* Consulter la recette avant de la choisir, dans la
+                        fenêtre (JEP-254, point 14). */}
+                    <button
+                      type="button"
+                      onClick={() => void voirApercu(it)}
+                      title="Voir la recette"
+                      aria-label={`Voir la recette ${it.title}`}
+                      className="shrink-0 rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">visibility</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => void attacher(it)}
@@ -627,17 +638,6 @@ export function ComponentResolver({
                         </span>
                       </span>
                       <span className="material-symbols-outlined text-[20px] text-primary">add</span>
-                    </button>
-                    {/* Consulter la recette avant de la choisir, dans la
-                        fenêtre (JEP-254, point 14). */}
-                    <button
-                      type="button"
-                      onClick={() => void voirApercu(it)}
-                      title="Voir la recette"
-                      aria-label={`Voir la recette ${it.title}`}
-                      className="shrink-0 rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">visibility</span>
                     </button>
                   </li>
                 ))}
