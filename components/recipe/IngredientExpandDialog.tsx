@@ -472,7 +472,6 @@ export function IngredientExpandDialog({
       aria-modal="true"
       aria-label="Remplacer un ingrédient par une recette"
       className="fixed inset-0 z-[95] flex items-start justify-center bg-background/60 backdrop-blur-[2px] p-4 overflow-y-auto"
-      onClick={onClose}
     >
       {/* Le spinner « Le Fouet » est monté au-dessus (z-100) : il couvre le
           chargement initial de la liste (avant la première recherche
@@ -480,7 +479,6 @@ export function IngredientExpandDialog({
           les recherches suivantes, déclenchées à chaque frappe. */}
       <LoadingOverlay visible={(searching && !hasSearchedOnce) || loading || busy} label={busy ? 'Insertion des étapes…' : 'Chargement…'} />
       <div
-        onClick={(e) => e.stopPropagation()}
         className="w-full max-w-3xl my-8 bg-surface-container-low border border-outline-variant rounded-xl shadow-lg flex flex-col"
       >
         <div className="flex items-start justify-between gap-4 p-6 border-b border-outline-variant">
