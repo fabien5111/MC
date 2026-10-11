@@ -33,16 +33,6 @@ export function ProjectStructureList({
         </p>
       ) : (
         <>
-          {/* En-tête de colonnes : les libellés « Rôle » et « Ajustement » ne
-              sont donnés qu'une fois ici, plutôt que répétés dans chaque menu. */}
-          <div className="hidden items-center gap-3 px-4 text-[11px] font-label-md uppercase tracking-wide text-outline sm:flex">
-            <span className="w-5 shrink-0" aria-hidden />
-            <span className="w-4 shrink-0" aria-hidden />
-            <span className="min-w-0 flex-1">Préparation</span>
-            <span className="w-[132px] shrink-0">Rôle</span>
-            <span className="w-[220px] shrink-0">Ajustement</span>
-            <span className="w-[52px] shrink-0" aria-hidden />
-          </div>
           <ul className="space-y-2">
             {ordered.map((c, i) => (
               <li
@@ -76,11 +66,22 @@ export function ProjectStructureList({
                     drag_indicator
                   </span>
                   <span className="font-label-md text-[12px] text-outline">{i + 1}</span>
-                  <span className="min-w-0 flex-1 truncate font-body-md text-[15px] text-on-surface">{c.name}</span>
+                  <span className="min-w-0 flex-1 break-words font-body-md text-[15px] text-on-surface">{c.name}</span>
+                  <span className="flex items-center gap-1">
+                    <button type="button" onClick={() => renameComponent(c)} title="Renommer" className="p-1">
+                      <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
+                    </button>
+                    <button type="button" onClick={() => removeComponent(c)} title="Retirer" className="p-1">
+                      <span className="material-symbols-outlined text-[20px] text-error">delete</span>
+                    </button>
+                  </span>
+                </div>
+                {/* Rôle et ajustement sous le nom, pour que celui-ci ne soit plus tronqué. */}
+                <div className="mt-2 flex flex-wrap gap-2 pl-[2.6rem]">
                   <select
                     value={c.role ?? ''}
                     onChange={(e) => setRole(c, e.target.value)}
-                    className="w-full shrink-0 rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary sm:w-[132px]"
+                    className="min-w-0 flex-1 sm:flex-none rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary sm:w-[132px]"
                   >
                     <option value="">Rôle…</option>
                     {COMPONENT_ROLES.map((r) => (
@@ -99,7 +100,7 @@ export function ProjectStructureList({
                       COMPONENT_SCALING_MODES.find((m) => m.value === (c.scalingMode ?? ''))?.title ??
                       'Ajustement des quantités'
                     }
-                    className="w-full shrink-0 rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary sm:w-[220px]"
+                    className="min-w-0 flex-1 sm:flex-none rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary sm:w-[220px]"
                   >
                     {COMPONENT_SCALING_MODES.map((m) => (
                       <option key={m.value} value={m.value} title={m.title}>
@@ -107,14 +108,6 @@ export function ProjectStructureList({
                       </option>
                     ))}
                   </select>
-                  <span className="flex items-center gap-1">
-                    <button type="button" onClick={() => renameComponent(c)} title="Renommer" className="p-1">
-                      <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
-                    </button>
-                    <button type="button" onClick={() => removeComponent(c)} title="Retirer" className="p-1">
-                      <span className="material-symbols-outlined text-[20px] text-error">delete</span>
-                    </button>
-                  </span>
                 </div>
                 {extra?.(c)}
               </li>
