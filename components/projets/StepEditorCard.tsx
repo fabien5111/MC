@@ -230,10 +230,12 @@ export function StepEditorCard({
             </div>
           </div>
           <div className="hidden min-[1232px]:contents">
-            <div className="flex-1 min-w-0">
+            <div className="w-56 shrink-0">
               <span className={label}>ALLERGÈNES</span>
             </div>
-            <div className="flex-1 min-w-0" />
+            <div className="flex-1 min-w-[12rem]">
+              <span className={label}>COMMENTAIRE</span>
+            </div>
             <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
               <span className="material-symbols-outlined text-[18px]">delete</span>
             </button>
@@ -301,14 +303,13 @@ export function StepEditorCard({
                     {g.unit && !units.includes(g.unit) && <option value={g.unit}>{g.unit}</option>}
                   </select>
                   <div className="basis-full min-[1232px]:hidden" />
-                  <div className="flex-1 min-w-0 order-1 min-[1232px]:order-2">
-                    <textarea
+                  <div className="flex-1 min-w-0 min-[1232px]:min-w-[12rem] order-1 min-[1232px]:order-2">
+                    <input
+                      type="text"
                       value={g.comment ?? ''}
                       onChange={(e) => {
                         onIngredientChange(j, { comment: e.target.value || null });
-                        autoGrow(e.target);
                       }}
-                      ref={autoGrow}
                       onKeyDown={(e) => {
                         // Tab (sans Maj) depuis le dernier champ de la dernière
                         // ligne → nouvelle ligne d'ingrédient, curseur dessus.
@@ -321,13 +322,12 @@ export function StepEditorCard({
                           }, 0);
                         }
                       }}
-                      className="editorial-input text-on-surface w-full resize-none overflow-hidden"
-                      rows={1}
-                      placeholder="Commentaire (optionnel)"
+                      className="editorial-input text-on-surface w-full"
+                      placeholder="Commentaire"
                     />
                   </div>
                   <div className="basis-full min-[1232px]:hidden order-2" />
-                  <div className="flex-1 min-w-0 order-3 min-[1232px]:order-1">
+                  <div className="flex-1 min-w-0 order-3 min-[1232px]:order-1 min-[1232px]:flex-none min-[1232px]:w-56">
                     {allergenNames ? (
                       <>
                         <span className="min-[1232px]:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">
