@@ -1,0 +1,107 @@
+{
+  "ticket": "local-pate-sablee",
+  "recette": {
+    "titre": "Pâte sablée",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Pâte friable et beurrée, à la légère note d'amande, qui se brise net sous la dent. Elle sert de base croustillante aux tartes, tartelettes et entremets.",
+    "rendement": "1 plaque 40 x 30 cm, abaisse de 3,5 mm — environ 550 g de pâte utilisable (572 g d'ingrédients, perte ≈ 4 %)",
+    "ustensiles": [
+      "Batteur avec feuille",
+      "Tamis",
+      "Film alimentaire",
+      "Rouleau à pâtisserie",
+      "Papier cuisson",
+      "Cercles à entremets",
+      "Fourchette",
+      "Tapis de cuisson microperforé",
+      "Grille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Pâte",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Farine T55",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 40,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Tamiser la farine, le sucre glace et la poudre d'amande dans la cuve du batteur.",
+          "Ajouter le sel et le beurre froid coupé en dés de 1 cm.",
+          "Sabler à la feuille en vitesse lente jusqu'à obtenir un sable fin, sans morceau de beurre visible.",
+          "Ajouter les jaunes et mélanger juste jusqu'à ce que la pâte s'agglomère en boule.",
+          "Fraser la pâte deux fois sous la paume sur le plan de travail pour l'homogénéiser.",
+          "Aplatir la pâte en pavé de 2 cm d'épaisseur.",
+          "Filmer au contact et réserver 2 h au réfrigérateur."
+        ],
+        "conseils_etape": "Le beurre doit rester froid : un beurre qui fond pendant le sablage donne une pâte élastique et dure au lieu de friable. Ne pas travailler la pâte après l'ajout des jaunes au-delà de l'agglomération, sinon elle développe du corps et se rétracte à la cuisson."
+      },
+      {
+        "nom_etape": "Abaisse et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 16,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Abaisser la pâte à 3 mm d'épaisseur entre deux feuilles de papier cuisson.",
+          "Réserver l'abaisse 15 min au réfrigérateur pour la raffermir.",
+          "Détailler les fonds au cercle ou foncer les cercles.",
+          "Piquer la pâte à la fourchette.",
+          "Réserver de nouveau 15 min au réfrigérateur.",
+          "Cuire à 160 °C en chaleur ventilée sur tapis microperforé, 15 à 18 min, jusqu'à une coloration blond doré uniforme.",
+          "Laisser refroidir sur grille avant de décercler."
+        ],
+        "conseils_etape": "Abaisser entre deux feuilles évite d'ajouter de la farine, qui durcirait la pâte. Une abaisse bien froide au moment d'enfourner garde sa forme ; la cuisson est juste quand le fond est doré jusqu'au centre, une pâte pâle reste molle dans un montage."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Fond d'entremets rond Ø 16 cm, 3 mm : ≈ 80 g de pâte, soit ×0,15 de la recette.",
+      "Utilisation — Fond d'entremets rond Ø 20 cm, 3 mm : ≈ 125 g de pâte, soit ×0,23 de la recette.",
+      "Utilisation — Fond d'entremets rond Ø 24 cm, 3 mm : ≈ 180 g de pâte, soit ×0,33 de la recette.",
+      "Utilisation — Fond de tarte Ø 24 cm foncé, bord de 2 cm, 3 mm : ≈ 235 g de pâte, soit ×0,43 de la recette.",
+      "Utilisation — Tartelettes Ø 8 cm foncées, bord de 2 cm, 3 mm : ≈ 40 g de pâte par pièce, soit 13 pièces avec la recette entière (11 à 12 en pratique avec les chutes).",
+      "Utilisation — Fonds individuels plats Ø 8 cm, 3 mm : ≈ 20 g de pâte par pièce, soit 27 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, semelle de 3 mm : ≈ 55 g de pâte, soit ×0,10 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, fond de 3 mm : ≈ 225 g de pâte, soit ×0,41 de la recette.",
+      "Variante — Cacao : remplacer 25 g de farine par 25 g de cacao en poudre non sucré.",
+      "Variante — Noisette : remplacer la poudre d'amande par de la poudre de noisette torréfiée."
+    ],
+    "conseils_conservation": "Pâte crue filmée : 3 jours au réfrigérateur, 2 mois au congélateur, décongélation une nuit au réfrigérateur. Fonds cuits : 5 jours en boîte hermétique au sec, 1 mois au congélateur. Dans un montage, protéger le fond de l'humidité par une fine couche de chocolat ou de beurre de cacao, et assembler le plus tard possible."
+  }
+}
