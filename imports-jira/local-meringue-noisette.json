@@ -1,0 +1,77 @@
+{
+  "ticket": "local-meringue-noisette",
+  "recette": {
+    "titre": "Meringue noisette",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Meringue aux noisettes torréfiées cuite longuement jusqu'à devenir sèche et croquante, dans l'esprit d'un biscuit Bourgogne. Elle sert de base croquante à un entremets ou, brisée en éclats, de croquant dans un insert.",
+    "rendement": "1 plaque 40 x 30 cm, 1 cm d'épaisseur — environ 495 g de meringue utilisable (550 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Batteur électrique",
+      "Cul-de-poule",
+      "Tamis",
+      "Maryse",
+      "Poche à douille",
+      "Douille unie 10 mm",
+      "Plaque 40 x 30 cm",
+      "Papier cuisson",
+      "Grille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Meringue noisette",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 40,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisette",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 125,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 150 °C chaleur tournante, torréfier la poudre de noisette 10 min sur une plaque, puis la laisser refroidir complètement.",
+          "Tamiser ensemble la poudre de noisette refroidie et le sucre glace.",
+          "Monter les blancs au batteur à vitesse moyenne jusqu'à ce qu'ils soient mousseux, puis ajouter le sucre semoule en trois fois.",
+          "Serrer la meringue à vitesse rapide jusqu'à obtenir un bec d'oiseau ferme et brillant.",
+          "Incorporer le mélange noisette-sucre glace en deux fois à la maryse, en soulevant la masse sans la faire retomber.",
+          "Pocher en boudins jointifs avec la douille unie 10 mm sur la plaque recouverte de papier cuisson, sur 1 cm d'épaisseur (en spirale pour un disque).",
+          "Cuire 35 à 40 min à 150 °C, jusqu'à une coloration blonde uniforme et une surface sèche au toucher.",
+          "Laisser refroidir sur grille, puis décoller le papier cuisson à froid."
+        ],
+        "conseils_etape": "La poudre de noisette doit être totalement froide avant incorporation, sinon elle fait retomber la meringue. Une meringue bien serrée et une cuisson menée jusqu'au cœur sec donnent le croquant recherché : si le centre reste souple au refroidissement, prolonger de 10 min à 130 °C."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 1 cm : ≈ 85 g de meringue, soit ×0,17 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 1 cm : ≈ 130 g de meringue, soit ×0,26 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 1 cm : ≈ 185 g de meringue, soit ×0,37 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 1 cm : ≈ 16 g par pièce, soit environ 30 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, fond croquant de 1 cm : ≈ 60 g de meringue, soit ×0,12 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, fond croquant de 1 cm : ≈ 100 g de meringue, soit ×0,20 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 1 cm : ≈ 135 g de meringue, soit ×0,27 de la recette.",
+      "Variante — Version amande : remplacer la poudre de noisette par de la poudre d'amande torréfiée.",
+      "Variante — Version cacao : remplacer 15 g de sucre glace par 15 g de cacao en poudre, tamisés ensemble."
+    ],
+    "conseils_conservation": "Se conserve 1 semaine à température ambiante dans une boîte hermétique, à l'abri de l'humidité ; congélation déconseillée, elle ramollit à la décongélation. À monter au dernier moment ou à isoler d'une crème humide par une fine couche de chocolat fondu pour garder son croquant."
+  }
+}
