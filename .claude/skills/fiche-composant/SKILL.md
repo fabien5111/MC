@@ -117,7 +117,7 @@ Quantités — tout en grammes
 Liquides en grammes (lait, crème, eau : 100 ml ≈ 100 g). Gélatine en grammes, le type dans le nom ("Gélatine en feuilles" : 1 feuille ≈ 2 g, ou "Gélatine en poudre", avec son eau d'hydratation en ingrédient distinct "Eau d'hydratation").
 Petites quantités en décimales avec un point (0.5, 2.5). Jamais de fraction ni de texte dans "quantite".
 "quantite": null seulement pour un colorant ou un ingrédient « quantité suffisante » (beurre pour le moule…).
-"nom" = l'ingrédient seul, sous son nom courant : "Farine T55", "Sucre semoule", "Sucre glace", "Beurre doux", "Crème liquide 30 %", "Poudre d'amande". La crème liquide s'écrit toujours "Crème liquide 30 %", jamais 35 %, même si la source indique autre chose. L'état (fondu, tamisé, tempéré, à température ambiante) va dans les instructions, JAMAIS dans le nom. Un même ingrédient utilisé deux fois dans une étape se distingue par une parenthèse : "Sucre semoule (meringue)".
+"nom" = l'ingrédient seul, sous son nom courant : "Farine T55", "Sucre semoule", "Sucre glace", "Beurre doux", "Crème liquide 30%", "Poudre d'amande". La crème liquide s'écrit toujours "Crème liquide 30%", jamais 35%, même si la source indique autre chose. L'état (fondu, tamisé, tempéré, à température ambiante) va dans les instructions, JAMAIS dans le nom. Un même ingrédient utilisé deux fois dans une étape se distingue par une parenthèse : "Sucre semoule (meringue)".
 
 Perte de réalisation
 Tout ce qui est pesé n'arrive pas dans le moule : ce qui reste sur le fouet, la maryse, dans le cul-de-poule et la poche, et ce qui s'évapore pendant une cuisson à la casserole. Estime cette perte P (en %) pour CE composant, d'après sa préparation réelle :
