@@ -22,7 +22,7 @@ import { demanderVignettes } from '@/lib/storage-client';
 
 type Ligne = { id: string; hero_image_url: string; hero_thumb_url: string | null; hero_card_url: string | null };
 
-const BATCH_SIZE = 20;
+const PAGE = 200;
 
 export function RecipeImageBackfill({
   column,
@@ -39,6 +39,9 @@ export function RecipeImageBackfill({
   const [finished, setFinished] = useState(false);
   const [done, setDone] = useState(0);
   const [failed, setFailed] = useState(0);
+  // Nombre de recettes trouvées à traiter : « 0 » doit se lire comme tel, pas
+  // comme une panne silencieuse.
+  const [total, setTotal] = useState<number | null>(null);
   // Cause de chaque échec (titre → message du serveur) : « illisible » ne
   // disait pas si la lecture, le décodage ou le dépôt avait échoué.
   const [causes, setCauses] = useState<string[]>([]);
@@ -48,43 +51,47 @@ export function RecipeImageBackfill({
     setFinished(false);
     setDone(0);
     setFailed(0);
+    setTotal(null);
     setCauses([]);
     const supabase = createClient();
-    const echecs = new Set<string>();
     try {
-      for (;;) {
+      // Les recettes à traiter sont triées ICI, pas dans la requête : un filtre
+      // `colonne.is.null,colonne.eq.` ne retrouvait pas les lignes marquées d'une
+      // chaîne vide (« 0 image générée » alors que la base en comptait). Lecture
+      // par pages de l'ensemble des recettes illustrées — des URL, pas des
+      // images —, puis `!r[column]` couvre null ET chaîne vide sans ambiguïté.
+      const aTraiter: Ligne[] = [];
+      for (let from = 0; ; from += PAGE) {
         const { data, error } = await supabase
           .from('recipes')
           .select('id, hero_image_url, hero_thumb_url, hero_card_url')
           .not('hero_image_url', 'is', null)
-          .or(`${column}.is.null,${column}.eq.`)
           .order('id')
-          .limit(BATCH_SIZE + echecs.size);
+          .range(from, from + PAGE - 1);
         if (error) throw error;
-        const lot = ((data ?? []) as Ligne[]).filter((r) => !echecs.has(r.id));
-        if (lot.length === 0) break;
+        const lignes = (data ?? []) as Ligne[];
+        aTraiter.push(...lignes.filter((r) => r.hero_image_url && !r[column]));
+        if (lignes.length < PAGE) break;
+      }
+      setTotal(aTraiter.length);
 
-        for (const r of lot) {
-          try {
-            const v = await demanderVignettes(r.hero_image_url);
-            const maj: Record<string, string> = {};
-            if (!r.hero_thumb_url) maj.hero_thumb_url = v.thumb;
-            if (!r.hero_card_url) maj.hero_card_url = v.card;
-            const { error: updErr } = await supabase
-              .from('recipes')
-              .update(maj as never)
-              .eq('id', r.id);
-            if (updErr) throw updErr;
-            setDone((n) => n + 1);
-          } catch (e) {
-            setCauses((c) => [...c, (e as Error).message]);
-            // Échec : la colonne n'est pas touchée (jamais marquée d'une
-            // chaîne vide, qui condamnait la ligne), et la recette est écartée
-            // du reste de CE passage pour ne pas boucler dessus. Un nouveau
-            // clic sur « Régénérer » la retente.
-            echecs.add(r.id);
-            setFailed((n) => n + 1);
-          }
+      for (const r of aTraiter) {
+        try {
+          const v = await demanderVignettes(r.hero_image_url);
+          const maj: Record<string, string> = {};
+          if (!r.hero_thumb_url) maj.hero_thumb_url = v.thumb;
+          if (!r.hero_card_url) maj.hero_card_url = v.card;
+          const { error: updErr } = await supabase
+            .from('recipes')
+            .update(maj as never)
+            .eq('id', r.id);
+          if (updErr) throw updErr;
+          setDone((n) => n + 1);
+        } catch (e) {
+          // Échec : la colonne n'est pas touchée (jamais marquée d'une chaîne
+          // vide, qui condamnait la ligne). Un nouveau clic la retente.
+          setCauses((c) => [...c, (e as Error).message]);
+          setFailed((n) => n + 1);
         }
       }
       setFinished(true);
@@ -109,6 +116,7 @@ export function RecipeImageBackfill({
       </button>
       {(running || finished) && (
         <p className="mt-4 text-sm text-on-surface-variant">
+          {total === null ? 'Recherche des recettes à traiter…' : `${total} recette${total > 1 ? 's' : ''} à traiter · `}
           {done} image{done > 1 ? 's' : ''} générée{done > 1 ? 's' : ''}
           {failed > 0 ? ` · ${failed} échec${failed > 1 ? 's' : ''}` : ''}
           {finished ? ' · terminé' : ''}
