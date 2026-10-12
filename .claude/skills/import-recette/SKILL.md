@@ -112,7 +112,8 @@ Il manque l'un des trois → le demander, ne rien deviner.
      vérifier. Pour une autre recette, il arrive en description libre :
      choisir le mode (moule de référence, forme + dimensions, pour pouvoir
      ajuster par moule) ;
-   - catégorie, tags, difficulté ;
+   - catégorie, tags, difficulté ; pour une **fiche de composant**, le tag
+     « Recette de base » est à cocher (le JSON d'import ne porte pas de tags) ;
    - photo principale (toujours, pour une clé locale).
 
 ## À savoir

@@ -71,6 +71,7 @@ qualifications à refaire.
 
 6. **Lien.** Livrer `https://dev.jepatisse.com/relecture/<id>` et le rappel
    de relecture d'`import-recette` (rendement déjà réglé en poids
-   utilisable, à vérifier ; catégorie, tags, difficulté ; photo principale — toujours à
+   utilisable, à vérifier ; catégorie, difficulté ; tag « Recette de base » à
+   cocher, le JSON d'import ne portant pas de tags ; photo principale — toujours à
    ajouter pour une clé locale).
    Une phrase de bilan, pas de récapitulatif de la démarche.
