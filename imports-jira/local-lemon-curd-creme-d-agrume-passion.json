@@ -1,0 +1,92 @@
+{
+  "ticket": "local-lemon-curd-creme-d-agrume-passion",
+  "recette": {
+    "titre": "Lemon curd / crème d'agrume passion",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème d'agrumes onctueuse et franchement acidulée, relevée par la passion, à la texture de beurre émulsionné. Elle sert de garniture ou d'insert acidulé dans un entremets, une bûche ou une tartelette.",
+    "rendement": "1 cercle Ø 20 cm, 1,7 cm de hauteur (≈ 530 cm³) — environ 530 g de crème utilisable (604 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Casserole",
+      "Fouet",
+      "Râpe à zeste",
+      "Thermomètre",
+      "Chinois",
+      "Récipient haut",
+      "Mixeur plongeant",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Lemon curd / crème d'agrume passion",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": 83,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Purée de fruit de la passion",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron jaune",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Zestes de citron jaune",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 150,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Râper les zestes de citron au-dessus du sucre et frotter du bout des doigts pour libérer les huiles essentielles.",
+          "Fouetter dans une casserole la purée de passion, le jus de citron, les œufs entiers, les jaunes et le sucre zesté.",
+          "Cuire à feu doux en fouettant sans cesse jusqu'à 82-84 °C, la crème nappant le fouet.",
+          "Passer aussitôt au chinois dans un récipient haut et propre pour retirer les zestes et les filaments d'œuf.",
+          "Laisser refroidir jusqu'à 40 °C en remuant de temps en temps.",
+          "Ajouter le beurre froid coupé en dés.",
+          "Mixer 2 minutes au mixeur plongeant jusqu'à une crème lisse et brillante.",
+          "Filmer au contact et réserver au réfrigérateur au moins 12 heures avant emploi."
+        ],
+        "conseils_etape": "Ne jamais dépasser 85 °C : au-delà, les œufs granulent et la crème devient grumeleuse. Le beurre s'émulsionne à 40 °C : plus chaud, la crème tranche ; plus froid, le beurre ne se fond pas. Garder le mixeur plongé au fond du récipient pour ne pas incorporer d'air."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert d'entremets rond Ø 16 cm, 1 cm de hauteur : ≈ 200 g de crème, soit ×0,38 de la recette.",
+      "Utilisation — Insert d'entremets rond Ø 20 cm, 1 cm de hauteur : ≈ 315 g de crème, soit ×0,59 de la recette.",
+      "Utilisation — Insert d'entremets rond Ø 24 cm, 1 cm de hauteur : ≈ 450 g de crème, soit ×0,85 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, couche de 1,5 cm de hauteur : ≈ 60 g par pièce, soit 9 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert central en demi-cylindre de 5 cm de large et 2,5 cm de haut : ≈ 195 g de crème, soit ×0,37 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 1 cm de hauteur : ≈ 325 g de crème, soit ×0,61 de la recette.",
+      "Utilisation — Tartelettes Ø 8 cm, garniture de 1,2 cm : ≈ 60 g par pièce, soit 8 pièces avec la recette entière.",
+      "Variante — Version insert : ajouter 8 g de gélatine en feuilles (4 feuilles de 2 g) réhydratées dans l'eau froide, essorées et fondues dans la crème à la fin de la cuisson, avant de la laisser refroidir à 40 °C.",
+      "Variante — Lemon curd classique : remplacer la purée de passion par 80 g de jus de citron jaune.",
+      "Variante — Crème d'agrume : remplacer 30 g de jus de citron jaune par du jus d'orange ou de citron vert."
+    ],
+    "conseils_conservation": "5 jours au réfrigérateur, filmée au contact. Congélation possible 2 mois : décongeler 12 heures au réfrigérateur puis remixer brièvement pour retrouver la texture lisse. Idéale en insert congelé ou bien pris, posé dans l'entremets avant la mousse."
+  }
+}
