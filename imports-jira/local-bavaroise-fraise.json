@@ -1,0 +1,84 @@
+{
+  "ticket": "local-bavaroise-fraise",
+  "recette": {
+    "titre": "Bavaroise fraise",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse légère et fondante à base de purée de fraise et de crème fouettée, au goût franc de fruit frais. Elle forme le corps d'un entremets ou d'une bûche aux fraises, autour d'un insert et sur un biscuit.",
+    "rendement": "1 cercle Ø 20 cm, 3 cm de hauteur — environ 565 g de bavaroise utilisable (629 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Batteur électrique",
+      "Fouet",
+      "Maryse",
+      "Thermomètre de cuisson",
+      "Cercle Ø 20 cm",
+      "Rhodoïd",
+      "Plaque",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Bavaroise fraise",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Purée de fraise",
+            "quantite": 280,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 9,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30 %",
+            "quantite": 275,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire tremper la gélatine 10 minutes dans un grand volume d'eau très froide.",
+          "Fouetter la crème bien froide au batteur jusqu'à une texture mi-montée, souple et mousseuse, puis la réserver au réfrigérateur.",
+          "Chauffer un tiers de la purée de fraise avec le sucre semoule dans la casserole jusqu'à 50-60 °C, sans faire bouillir.",
+          "Hors du feu, ajouter la gélatine essorée et mélanger au fouet jusqu'à dissolution complète.",
+          "Verser ce mélange sur le reste de purée froide et le jus de citron dans le cul-de-poule, puis mélanger.",
+          "Laisser refroidir en remuant jusqu'à 18-20 °C au thermomètre : l'appareil doit commencer à épaissir légèrement.",
+          "Incorporer un tiers de la crème au fouet pour détendre, puis le reste délicatement à la maryse.",
+          "Couler aussitôt dans le cercle chemisé de rhodoïd, posé sur une plaque filmée, et laisser prendre au moins 4 heures au réfrigérateur."
+        ],
+        "conseils_etape": "La fraise étant très aqueuse, le collage est légèrement renforcé : ne pas réduire la gélatine, sinon la bavaroise s'affaisse au démoulage. Incorporer la crème quand la base fruitée est à 18-20 °C : plus chaude, elle fait retomber la crème ; plus froide, la gélatine fige et forme des grumeaux. Ne pas trop monter la crème, une crème ferme donne une texture granuleuse."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, 3 cm de hauteur : ≈ 360 g de bavaroise, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, 3 cm de hauteur : ≈ 565 g de bavaroise, soit ×1,00 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 3 cm de hauteur : ≈ 815 g de bavaroise, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 8 cm, 3 cm de hauteur : ≈ 90 g par pièce, soit 6 pièces avec la recette entière (×0,16 par pièce).",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, en enveloppe (≈ 70 % du volume, le reste pour l'insert et le biscuit) : ≈ 160 g de bavaroise, soit ×0,28 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, en enveloppe (≈ 70 % du volume) : ≈ 315 g de bavaroise, soit ×0,56 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 3 cm de hauteur : ≈ 585 g de bavaroise, soit ×1,04 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, 3 cm de hauteur : ≈ 1035 g de bavaroise, soit ×1,83 de la recette.",
+      "Variante — Fraise des bois : remplacer la purée de fraise par le même poids de purée de fraise des bois, plus parfumée, et réduire le sucre à 45 g si la purée est déjà sucrée.",
+      "Variante — Éclats de fraises des bois : parsemer 60 à 80 g de fraises des bois fraîches sur la bavaroise juste coulée, sans les mélanger à l'appareil pour ne pas l'alourdir."
+    ],
+    "conseils_conservation": "Se conserve 48 heures au réfrigérateur, filmée au contact. Se congèle jusqu'à 1 mois dans le cercle, bien filmée ; décongeler 6 à 8 heures au réfrigérateur. Idéalement, démouler et glacer l'entremets encore congelé pour des bords nets."
+  }
+}
