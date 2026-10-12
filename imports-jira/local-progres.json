@@ -1,0 +1,85 @@
+{
+  "ticket": "local-progres",
+  "recette": {
+    "titre": "Progrès",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Biscuit meringué aux poudres d'amande et de noisette, croustillant en surface et légèrement moelleux à cœur, au goût prononcé de fruits secs. Cousin plus riche du succès, il sert de fond ou de disque intermédiaire dans les entremets pralinés, au café ou au chocolat.",
+    "rendement": "1 cadre 30 x 20 cm, 1 cm d'épaisseur — environ 405 g d'appareil utilisable (450 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Batteur électrique",
+      "Cul-de-poule",
+      "Tamis",
+      "Maryse",
+      "Poche à douille",
+      "Douille unie n°10",
+      "Spatule coudée",
+      "Cadre 30 x 20 cm",
+      "Plaque de cuisson",
+      "Papier cuisson",
+      "Grille",
+      "Couteau d'office"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Progrès",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisette",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 170 °C et poser le cadre 30 x 20 cm sur une plaque de cuisson couverte de papier cuisson.",
+          "Tamiser ensemble la poudre d'amande, la poudre de noisette et le sucre glace.",
+          "Monter les blancs d'œufs au batteur électrique en ajoutant le sucre semoule en trois fois, jusqu'à une meringue ferme et brillante qui forme un bec d'oiseau.",
+          "Incorporer les poudres tamisées en deux fois à la maryse, en soulevant délicatement la masse, jusqu'à un appareil homogène.",
+          "Garnir la poche munie de la douille unie n°10 et dresser l'appareil dans le cadre en bandes serrées, puis lisser à la spatule coudée sur 1 cm d'épaisseur.",
+          "Cuire 20 à 25 minutes à 170 °C, jusqu'à une surface blonde, sèche et ferme au toucher.",
+          "Laisser refroidir sur une grille, puis décadrer au couteau d'office et retirer le papier cuisson."
+        ],
+        "conseils_etape": "Des poudres bien sèches et finement tamisées évitent un appareil qui graisse et retombe. Incorporer sans travailler la masse : une meringue trop mélangée donne un biscuit plat et dur. Sortir le biscuit dès qu'il est sec en surface, sans le laisser brunir, sinon les fruits secs prennent de l'amertume."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, disque de 1 cm : ≈ 135 g d'appareil, soit ×0,33 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, disque de 1 cm : ≈ 210 g d'appareil, soit ×0,52 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, disque de 1 cm : ≈ 305 g d'appareil, soit ×0,75 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, disque de 1 cm : ≈ 25 g d'appareil par pièce, soit 15 disques avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, fond de 1 cm : ≈ 95 g d'appareil, soit ×0,23 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, fond de 1 cm : ≈ 160 g d'appareil, soit ×0,40 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 1 cm : ≈ 220 g d'appareil, soit ×0,54 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, fond de 1 cm : ≈ 390 g d'appareil, soit ×0,96 de la recette.",
+      "Variante — Pistache : remplacer la poudre de noisette par de la poudre de pistache.",
+      "Variante — Croquant : parsemer la surface de 30 g de noisettes concassées avant cuisson."
+    ],
+    "conseils_conservation": "Se conserve 3 à 4 jours dans une boîte hermétique au sec, à température ambiante, ou 1 mois au congélateur filmé à plat ; décongeler sans le déballer pour éviter la condensation. À monter idéalement la veille de la dégustation : il s'attendrit légèrement au contact de la crème ou de la mousse."
+  }
+}
