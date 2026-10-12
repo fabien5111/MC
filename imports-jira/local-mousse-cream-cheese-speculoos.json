@@ -1,0 +1,96 @@
+{
+  "ticket": "local-mousse-cream-cheese-speculoos",
+  "recette": {
+    "titre": "Mousse cream cheese spéculoos",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse onctueuse et légèrement acidulée, parfumée à la pâte de spéculoos aux notes caramélisées et épicées. Idéale en entremets ou en individuels d'hiver, elle se marie avec un croustillant spéculoos.",
+    "rendement": "1 cercle Ø 20 cm, 3 cm de hauteur — environ 605 g de mousse utilisable (673 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Balance",
+      "Casserole",
+      "Cul-de-poule",
+      "Fouet électrique",
+      "Maryse",
+      "Thermomètre de cuisine",
+      "Cercle à entremets"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Mousse cream cheese spéculoos",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 36,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30 %",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Cream cheese",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de spéculoos",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Cannelle moulue",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30 % (montage)",
+            "quantite": 250,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans l'eau froide et laisser gonfler 10 minutes.",
+          "Chauffer la crème liquide de 40 g à 60 °C dans une casserole, puis y dissoudre la gélatine gonflée.",
+          "Assouplir le cream cheese à température ambiante au fouet avec le sucre glace, la pâte de spéculoos et la cannelle, jusqu'à une crème lisse sans grumeaux.",
+          "Verser la crème chaude à la gélatine en filet sur cette base en fouettant, jusqu'à un mélange lisse et brillant à 25–30 °C.",
+          "Monter la crème liquide de montage, bien froide, en chantilly souple aux pics mous.",
+          "Incorporer un tiers de la chantilly énergiquement à la base pour la détendre, puis le reste délicatement à la maryse.",
+          "Couler aussitôt dans le cercle ou les moules et lisser.",
+          "Laisser prendre au moins 4 heures au réfrigérateur, ou 2 heures au congélateur."
+        ],
+        "conseils_etape": "Sortir le cream cheese et la pâte de spéculoos 1 heure à l'avance : froids, ils font des grumeaux. Incorporer la chantilly quand la base est entre 25 et 30 °C : plus chaude, elle fait retomber la chantilly, plus froide, la gélatine commence à prendre et fige en filaments. La chantilly doit rester souple, jamais ferme, sinon la mousse devient granuleuse."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, 3 cm de hauteur : ≈ 385 g de mousse, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, 3 cm de hauteur : ≈ 605 g de mousse, soit ×1,00 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 3 cm de hauteur : ≈ 870 g de mousse, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 4 cm de hauteur : ≈ 100 g par pièce (×0,17 de la recette), soit 6 pièces avec la recette entière.",
+      "Utilisation — Individuels en cercles Ø 8 cm, 4 cm de hauteur : ≈ 130 g par pièce (×0,21 de la recette), soit 4 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, mousse en enveloppe, gouttière remplie (volume de l'insert et du croustillant à déduire) : ≈ 245 g de mousse, soit ×0,40 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, mousse en enveloppe, gouttière remplie (volume de l'insert et du croustillant à déduire) : ≈ 485 g de mousse, soit ×0,80 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 2,5 cm de hauteur : ≈ 520 g de mousse, soit ×0,86 de la recette.",
+      "Variante — Version plus épicée : porter la cannelle à 2 g et ajouter 1 g de gingembre moulu.",
+      "Variante — Version caramel : remplacer 20 g de pâte de spéculoos par 20 g de caramel au beurre salé froid."
+    ],
+    "conseils_conservation": "Mousse prise : 3 jours au réfrigérateur, protégée d'un film au contact. Congélation possible 1 mois dans le moule ou montée, décongélation 6 heures au réfrigérateur. À couler sur le croustillant spéculoos déjà froid pour qu'il garde son croquant."
+  }
+}
