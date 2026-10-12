@@ -1,0 +1,112 @@
+{
+  "ticket": "local-sable-breton",
+  "recette": {
+    "titre": "Sablé breton",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Un sablé épais, friable et fondant, très beurré et relevé d'une pointe de fleur de sel. Il sert de base croustillante aux tartes aux fruits frais, entremets et desserts individuels.",
+    "rendement": "1 cercle Ø 24 cm, environ 1 cm d'épaisseur crue — environ 600 g de pâte utilisable (632 g d'ingrédients, perte ≈ 5 %)",
+    "ustensiles": [
+      "Batteur électrique",
+      "Cul-de-poule",
+      "Tamis",
+      "Maryse",
+      "Film alimentaire",
+      "Papier cuisson",
+      "Rouleau à pâtisserie",
+      "Cercle Ø 24 cm",
+      "Plaque de cuisson",
+      "Grille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Pâte",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 220,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 10,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Fouetter les jaunes d'œufs et le sucre semoule au batteur dans un cul-de-poule pendant 3 à 4 minutes, jusqu'à ce que le mélange blanchisse et double de volume.",
+          "Ajouter le beurre en pommade et la fleur de sel, puis fouetter jusqu'à obtenir une crème lisse et homogène.",
+          "Tamiser ensemble la farine et la levure chimique.",
+          "Incorporer la farine et la levure à la maryse, en mélangeant juste jusqu'à ce qu'il ne reste plus de traces de farine.",
+          "Étaler la pâte au rouleau entre deux feuilles de papier cuisson en un disque de 24 cm de diamètre (tracé au cercle) et d'environ 1 cm d'épaisseur.",
+          "Filmer la pâte et la réserver à plat au moins 2 heures au réfrigérateur."
+        ],
+        "conseils_etape": "Le beurre doit être en pommade, souple mais jamais fondu, sinon la pâte devient grasse et s'étale à la cuisson. Ne pas travailler la pâte après l'ajout de la farine : c'est ce qui garde la texture friable. La pâte est très collante à cru, le repos au froid est indispensable pour la manipuler."
+      },
+      {
+        "nom_etape": "Cuisson",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (moule)",
+            "quantite": null,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 170 °C.",
+          "Beurrer l'intérieur du cercle Ø 24 cm.",
+          "Poser le disque de pâte froide sur une plaque de cuisson avec sa feuille de papier cuisson inférieure, puis retirer celle du dessus.",
+          "Entourer la pâte du cercle beurré, en ajustant les bords pour qu'elle touche la paroi.",
+          "Cuire 25 minutes environ, jusqu'à ce que le sablé soit doré de façon uniforme, bords compris.",
+          "Laisser tiédir 15 minutes dans le cercle.",
+          "Décercler, puis laisser refroidir complètement sur une grille."
+        ],
+        "conseils_etape": "Cuire impérativement dans un cercle : la levure fait gonfler et s'étaler la pâte, le cercle donne des bords nets et une épaisseur régulière. Un sablé insuffisamment cuit reste pâteux au cœur : le centre doit être doré, pas seulement les bords. Ne pas décercler à chaud, le sablé est encore fragile et se briserait."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets ou tarte ronde Ø 16 cm, fond de 1 cm : ≈ 265 g de pâte, soit ×0,44 de la recette.",
+      "Utilisation — Entremets ou tarte ronde Ø 20 cm, fond de 1 cm : ≈ 415 g de pâte, soit ×0,69 de la recette.",
+      "Utilisation — Tarte aux fruits frais Ø 24 cm, fond de 1 cm : ≈ 600 g de pâte, soit la recette entière (×1).",
+      "Utilisation — Individuels en cercles Ø 8 cm, fond de 1 cm : ≈ 65 g de pâte par pièce, soit 9 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, semelle (fond) de 1 cm : ≈ 185 g de pâte, soit ×0,31 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 1 cm : ≈ 430 g de pâte, soit ×0,72 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, fond de 1 cm : ≈ 765 g de pâte, soit ×1,28 de la recette.",
+      "Variante — Sablé breton au cacao : remplacer 20 g de farine par 20 g de cacao en poudre non sucré.",
+      "Variante — Parfumé : ajouter le zeste d'un citron ou les graines d'une gousse de vanille au mélange jaunes-sucre."
+    ],
+    "conseils_conservation": "Pâte crue : 3 jours au réfrigérateur ou 2 mois au congélateur, filmée à plat ; décongeler une nuit au réfrigérateur avant de détailler. Sablé cuit : 5 jours dans une boîte hermétique à température ambiante, à l'abri de l'humidité, ou 1 mois au congélateur. Le garnir au dernier moment, ou l'isoler d'une fine couche de beurre de cacao ou de chocolat blanc, pour qu'il reste croustillant."
+  }
+}
