@@ -1,0 +1,91 @@
+{
+  "ticket": "local-ganache-montee-caramel",
+  "recette": {
+    "titre": "Ganache montée caramel",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Ganache montée onctueuse et aérienne, au goût franc de caramel ambré relevé d'une pointe de sel. Assez ferme une fois montée pour se couler en insert et se congeler, elle apporte le moelleux et le caramel d'un entremets.",
+    "rendement": "1 cercle Ø 20 cm, 3,3 cm de hauteur — environ 620 g de ganache montée utilisable (690 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Balance",
+      "Casserole",
+      "Thermomètre",
+      "Mixeur plongeant",
+      "Bol haut",
+      "Maryse",
+      "Film alimentaire",
+      "Batteur avec fouet",
+      "Cul-de-poule"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache montée caramel",
+        "page": null,
+        "temps_preparation_minutes": 40,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (caramel)",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (ganache)",
+            "quantite": 300,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans l'eau d'hydratation froide pendant 10 minutes.",
+          "Chauffer la crème du caramel avec la fleur de sel jusqu'au frémissement et la garder au chaud.",
+          "Cuire le sucre à sec dans la casserole, en 2 ou 3 fois, jusqu'à un caramel ambré foncé (environ 185 °C au thermomètre).",
+          "Décuire le caramel avec la crème chaude versée en 3 fois, puis remuer sur feu doux jusqu'à dissolution complète des éclats et retirer du feu.",
+          "Ajouter la gélatine hydratée avec toute son eau, puis verser le tout sur le chocolat blanc haché dans le bol haut.",
+          "Mixer au mixeur plongeant 1 minute pour obtenir une émulsion lisse et brillante, puis incorporer la crème froide de la ganache et mixer de nouveau.",
+          "Filmer au contact et réserver au réfrigérateur à 4 °C pendant 12 heures.",
+          "Le lendemain, monter la ganache bien froide au batteur avec fouet jusqu'à une texture de crème fouettée ferme, puis l'utiliser aussitôt."
+        ],
+        "conseils_etape": "Pousser le caramel jusqu'à une couleur ambrée foncée : trop clair, il manque de goût, trop foncé, il devient amer. La ganache doit reposer 12 heures complètes à 4 °C pour cristalliser ses matières grasses, sinon elle ne monte pas. Arrêter de fouetter dès que les traces du fouet restent nettes : au-delà, elle grumelle et tranche."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert Ø 16 cm (pour entremets Ø 20 cm), 1,5 cm d'épaisseur : ≈ 180 g de ganache montée, soit ×0,29 de la recette.",
+      "Utilisation — Couche Ø 20 cm, 1,5 cm d'épaisseur (entremets Ø 20 cm monté en cercle, ou insert d'un entremets Ø 24 cm) : ≈ 285 g de ganache montée, soit ×0,46 de la recette.",
+      "Utilisation — Couche Ø 24 cm, 1,5 cm d'épaisseur (entremets Ø 24 cm monté en cercle) : ≈ 405 g de ganache montée, soit ×0,65 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 2 cm de hauteur : ≈ 45 g par pièce (×0,07 de la recette), soit environ 13 pièces avec la recette entière.",
+      "Utilisation — Insert de bûche, gouttière à insert Ø 4 cm sur 28 cm (demi-cylindre, pour bûche de 30 cm) : ≈ 105 g de ganache montée, soit ×0,17 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 2 cm d'épaisseur : ≈ 390 g de ganache montée, soit ×0,63 de la recette.",
+      "Variante — Ganache prise caramel : supprimer le repos de 12 heures et le montage, couler la ganache lisse et tiède (environ 35 °C) dans le moule et laisser prendre 4 heures au froid.",
+      "Variante — Caramel au beurre salé : ajouter 20 g de beurre doux à la ganache chaude après la décuisson, avant de mixer."
+    ],
+    "conseils_conservation": "Avant montage, la ganache se garde 48 heures au réfrigérateur, filmée au contact. Une fois montée, elle s'utilise aussitôt. En insert, elle se congèle jusqu'à 1 mois, bien filmée ; la décongeler 4 à 6 heures au réfrigérateur. Idéale en insert congelé, qui se démoule net et se décongèle dans l'entremets."
+  }
+}
