@@ -74,11 +74,23 @@ le service managé.
   correct, mais Swift ne renvoie `Access-Control-Allow-Origin` qu'à une
   requête portant `Origin`, sans `Vary: Origin`, en cache `immutable` d'un
   an — la copie mise en cache par un `<img>` ordinaire était resservie à la
-  requête CORS du canvas. `chargerImageDepuisSrc` recharge donc toute source
-  distante sous `?cors=1` (ignoré par Swift). La règle ci-dessus reste : un
-  rechargement inutile reste inutile. Le rattrapage d'Admin → Photos du site
-  ne marque plus une image illisible d'une chaîne vide (elle restait
-  condamnée) : il la laisse à `null`, retentée au passage suivant.
+  requête CORS du canvas.
+  **Solution définitive (12/10/2026) : les vignettes d'une photo DÉJÀ sur
+  Swift sont fabriquées par le SERVEUR**, jamais relues dans un canvas.
+  `POST /api/stockage/vignettes` (`lib/vignettes-data.ts`, `sharp`) lit
+  l'objet `jp-photos/recettes/…`, dépose `hero_thumb_url` (96 px) et
+  `hero_card_url` (480 px) et rend leurs URL ; l'appelant les écrit en base
+  sous sa session (`demanderVignettes`, `lib/storage-client.ts`). Entre le
+  serveur et Swift il n'y a ni CORS ni cache de navigateur. Utilisé par la
+  relecture d'import et par Admin → Photos du site, dont le message d'échec
+  nomme la vraie cause (lecture, décodage, dépôt) et qui reprend aussi les
+  vignettes marquées d'une chaîne vide par l'ancien rattrapage. La source est
+  restreinte aux objets `recettes/` de `jp-photos` (jamais d'URL libre : SSRF).
+  Reste côté navigateur : le dépôt **frais** de `CreerForm`, dont la photo est
+  déjà en mémoire (aucune relecture, donc aucun CORS). `chargerImageDepuisSrc`
+  garde `?cors=1` pour ce qui l'utilise encore. Une vignette qui manque
+  n'est **pas** compensée par la photo pleine sur la carte : ce serait masquer
+  l'échec en alourdissant la page.
 - **Scripts SQL** : ne pas créer de fichier `.sql` dans `db/`. Toute
   migration ou requête SQL doit être affichée directement dans la
   conversation (bloc de code SQL), pour être copiée-collée dans **pgweb**,

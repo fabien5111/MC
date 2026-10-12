@@ -9,30 +9,29 @@
 // accueil, recherche, carnet, profils, suggestions). Les recettes créées ou
 // modifiées depuis en obtiennent déjà un à l'enregistrement (CreerForm).
 //
-// Traité par lots dans ce navigateur, pas par un job serveur : le projet ne
-// dépend d'aucune lib d'image côté serveur (doctrine « compression côté
-// client », lib/images.ts) et n'en gagne pas une pour ce seul usage. Chaque
-// lot requête les recettes qui ont une photo mais pas encore ce dérivé —
-// reprenable si interrompu, sans état à suivre entre deux passages.
+// Traité par lots depuis ce navigateur, mais les vignettes sont FABRIQUÉES PAR
+// LE SERVEUR (`/api/stockage/vignettes`, lib/vignettes-data.ts) : relire la
+// photo dans un canvas échouait faute d'en-tête CORS sur Swift. Chaque lot
+// requête les recettes qui ont une photo mais pas ce dérivé (absent ou marqué
+// vide par l'ancien rattrapage) — reprenable si interrompu, sans état à suivre
+// entre deux passages. Un appel produit les DEUX vignettes : celle qui manque
+// encore est écrite, l'autre n'est jamais remplacée.
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { resizeDataUrlToThumb } from '@/lib/images';
-import { televerserImage } from '@/lib/storage-client';
+import { demanderVignettes } from '@/lib/storage-client';
+
+type Ligne = { id: string; hero_image_url: string; hero_thumb_url: string | null; hero_card_url: string | null };
 
 const BATCH_SIZE = 20;
 
 export function RecipeImageBackfill({
   column,
-  maxWidth,
-  quality,
   title,
   description,
 }: {
   // Absente de lib/database.types.ts tant que sa migration n'a pas été
   // régénérée (npm run gen:types) — même contournement que dans CreerForm.
   column: 'hero_thumb_url' | 'hero_card_url';
-  maxWidth: number;
-  quality?: number;
   title: string;
   description: string;
 }) {
@@ -40,48 +39,49 @@ export function RecipeImageBackfill({
   const [finished, setFinished] = useState(false);
   const [done, setDone] = useState(0);
   const [failed, setFailed] = useState(0);
+  // Cause de chaque échec (titre → message du serveur) : « illisible » ne
+  // disait pas si la lecture, le décodage ou le dépôt avait échoué.
+  const [causes, setCauses] = useState<string[]>([]);
 
   async function run() {
     setRunning(true);
     setFinished(false);
     setDone(0);
     setFailed(0);
+    setCauses([]);
     const supabase = createClient();
     const echecs = new Set<string>();
     try {
       for (;;) {
         const { data, error } = await supabase
           .from('recipes')
-          .select('id, hero_image_url')
+          .select('id, hero_image_url, hero_thumb_url, hero_card_url')
           .not('hero_image_url', 'is', null)
-          .is(column, null)
+          .or(`${column}.is.null,${column}.eq.`)
           .order('id')
           .limit(BATCH_SIZE + echecs.size);
         if (error) throw error;
-        const lot = ((data ?? []) as { id: string; hero_image_url: string | null }[]).filter((r) => !echecs.has(r.id));
+        const lot = ((data ?? []) as Ligne[]).filter((r) => !echecs.has(r.id));
         if (lot.length === 0) break;
 
         for (const r of lot) {
           try {
-            const derived = await resizeDataUrlToThumb(r.hero_image_url as string, maxWidth, 'image/jpeg', quality);
-            // `derived` est toujours une data-URL fraîche (resizeDataUrlToThumb
-            // en produit une systématiquement) : televerserImage() la dépose
-            // sur le stockage objet plutôt que de l'écrire telle quelle
-            // (§ 7.5, lot B2) — même chemin que CreerForm pour ces deux
-            // dérivés, une seule implémentation de dépôt.
-            const derivedUrl = await televerserImage('recette', derived);
+            const v = await demanderVignettes(r.hero_image_url);
+            const maj: Record<string, string> = {};
+            if (!r.hero_thumb_url) maj.hero_thumb_url = v.thumb;
+            if (!r.hero_card_url) maj.hero_card_url = v.card;
             const { error: updErr } = await supabase
               .from('recipes')
-              .update({ [column]: derivedUrl } as never)
+              .update(maj as never)
               .eq('id', r.id);
             if (updErr) throw updErr;
             setDone((n) => n + 1);
-          } catch {
-            // Image illisible : laissée à `null` (jamais marquée d'une chaîne
-            // vide, qui la condamnait définitivement — un échec peut être
-            // passager, cf. le piège de cache de `chargerImageDepuisSrc`), et
-            // écartée du reste de CE passage pour ne pas boucler dessus. Un
-            // nouveau clic sur « Régénérer » la retente.
+          } catch (e) {
+            setCauses((c) => [...c, (e as Error).message]);
+            // Échec : la colonne n'est pas touchée (jamais marquée d'une
+            // chaîne vide, qui condamnait la ligne), et la recette est écartée
+            // du reste de CE passage pour ne pas boucler dessus. Un nouveau
+            // clic sur « Régénérer » la retente.
             echecs.add(r.id);
             setFailed((n) => n + 1);
           }
@@ -110,9 +110,16 @@ export function RecipeImageBackfill({
       {(running || finished) && (
         <p className="mt-4 text-sm text-on-surface-variant">
           {done} image{done > 1 ? 's' : ''} générée{done > 1 ? 's' : ''}
-          {failed > 0 ? ` · ${failed} illisible${failed > 1 ? 's' : ''}` : ''}
+          {failed > 0 ? ` · ${failed} échec${failed > 1 ? 's' : ''}` : ''}
           {finished ? ' · terminé' : ''}
         </p>
+      )}
+      {causes.length > 0 && (
+        <ul className="mt-2 list-disc pl-5 text-sm text-error">
+          {[...new Set(causes)].map((c) => (
+            <li key={c}>{c}</li>
+          ))}
+        </ul>
       )}
     </div>
   );

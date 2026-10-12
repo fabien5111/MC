@@ -100,3 +100,20 @@ export async function televerserImage(
 
   return urlFinale;
 }
+
+/**
+ * Demande au serveur les vignettes (~96 px, ~480 px) d'une photo de recette
+ * DÉJÀ sur le stockage. Remplace le recalcul dans un `<canvas>` du navigateur,
+ * qui exigeait un en-tête CORS sur la relecture (cf. lib/vignettes-data.ts).
+ * Lève une erreur au message lisible (la cause réelle, pas « illisible »).
+ */
+export async function demanderVignettes(urlPhoto: string): Promise<{ thumb: string; card: string }> {
+  const rep = await fetch('/api/stockage/vignettes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: urlPhoto }),
+  });
+  const json = (await rep.json().catch(() => null)) as { thumb?: string; card?: string; error?: string } | null;
+  if (!rep.ok || !json?.thumb || !json.card) throw new Error(json?.error || `Vignettes refusées (HTTP ${rep.status}).`);
+  return { thumb: json.thumb, card: json.card };
+}
