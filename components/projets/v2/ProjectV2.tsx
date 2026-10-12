@@ -782,6 +782,7 @@ export function ProjectV2({
           units={units}
           ingredientRefs={ingredientRefs}
           referenceAllergenes={referenceAllergenes}
+          tagsReference={tags}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
           initialMode={resolvingInit?.mode}

@@ -52,6 +52,16 @@ export async function GET(req: Request) {
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number(searchParams.get('limit')) || MAX_LIMIT));
   const scopes = new Set((searchParams.get('scopes') ?? '').split(',').filter(Boolean));
 
+  // Tags (identifiants numériques) : la recette doit les porter TOUS. Un
+  // embed `recipe_tags!inner` par tag, sous un alias propre — le filtre se fait
+  // en SQL, sans passer par une liste d'identifiants de recettes (414).
+  const tagIds = (searchParams.get('tags') ?? '')
+    .split(',')
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n) && n > 0)
+    .slice(0, 5);
+  const select = SELECT + tagIds.map((_, i) => `, t${i}:recipe_tags!inner(tag_id)`).join('');
+
   const user = await getCurrentUser();
   const supabase = await createClient();
 
@@ -73,7 +83,7 @@ export async function GET(req: Request) {
   };
 
   type Builder = (q: ReturnType<typeof base>) => ReturnType<typeof base>;
-  const base = () => supabase.from('recipes').select(SELECT);
+  const base = () => supabase.from('recipes').select(select);
   const filtres: Builder[] = [];
 
   if (scopes.has('all')) filtres.push((q) => q.eq('status', 'published'));
@@ -105,6 +115,9 @@ export async function GET(req: Request) {
     const resultats = await Promise.all(
       filtres.map((f) => {
         let q = f(base()).limit(limit);
+        tagIds.forEach((id, i) => {
+          q = q.eq(`t${i}.tag_id`, id);
+        });
         // Le titre est un filtre supplémentaire (ET) : il restreint la portée
         // choisie, il ne l'élargit pas. Colonne normalisée `title_norm`
         // (JEP-254) ; les deux variantes tolèrent le singulier/pluriel.

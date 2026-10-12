@@ -42,6 +42,8 @@ import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredie
 import { RecipeStep } from '@/components/recipe/RecipeStep';
 import type { IngredientView, RecipeStepView } from '@/lib/recipes';
 import { StepEditorCard } from '@/components/projets/StepEditorCard';
+import { TagFilter, type TagOption } from '@/components/projets/TagFilter';
+import { normSearch } from '@/lib/text-search';
 import { televerserImage } from '@/lib/storage-client';
 
 // Hauteur d'une zone de texte calée sur son contenu (JEP-254, point 7) : une
@@ -111,6 +113,7 @@ export function ComponentResolver({
   units,
   ingredientRefs = [],
   referenceAllergenes,
+  tagsReference = [],
   peutGenererIA = true,
   quotaProjetIA = null,
   initialMode,
@@ -138,6 +141,10 @@ export function ComponentResolver({
   // du référentiel (pré-remplissage) — comme l'éditeur de recette. Absent :
   // champ texte libre.
   referenceAllergenes?: { names: string[]; byIngredient: Record<string, string> };
+  // Tags du référentiel, pour filtrer la recherche d'une recette de base.
+  // « Recette de base » est présélectionné s'il existe (retirable) ; absent,
+  // la recherche s'ouvre sans filtre.
+  tagsReference?: TagOption[];
   // Droit `mode_projet_ia_mensuel` (défaut `true` : le parent l'a déjà
   // vérifié avant de monter cette fenêtre).
   peutGenererIA?: boolean;
@@ -172,6 +179,10 @@ export function ComponentResolver({
   const [mode, setMode] = useState<'sources' | 'edit' | 'contexte-ia' | 'apercu'>(initialMode ?? 'sources');
   const [terme, setTerme] = useState(component.name);
   const [portees, setPortees] = useState<Set<PickerScope>>(new Set(PORTEES_PAR_DEFAUT));
+  const [tagsChoisis, setTagsChoisis] = useState<number[]>(() => {
+    const t = tagsReference.find((x) => normSearch(x.name) === 'recette de base');
+    return t ? [t.id] : [];
+  });
   const [resultats, setResultats] = useState<Trouvee[]>([]);
   const [chargement, setChargement] = useState(false);
   const [recherche, setRecherche] = useState(false);
@@ -216,7 +227,7 @@ export function ComponentResolver({
       const actives = PICKER_SCOPES.filter((s) => portees.has(s));
       const reponses = await Promise.all(
         actives.map((scope) =>
-          fetch(`/api/recipes/picker?scopes=${scope}&q=${q}&limit=10`)
+          fetch(`/api/recipes/picker?scopes=${scope}&q=${q}&limit=10${tagsChoisis.length ? `&tags=${tagsChoisis.join(',')}` : ''}`)
             // Une erreur reste visible (message d'alerte) plutôt que
             // silencieusement transformée en « aucun résultat » — sans quoi
             // une vraie panne de la recherche se lit exactement comme une
@@ -282,7 +293,7 @@ export function ComponentResolver({
     // `chercher` est recréée à chaque rendu mais ne lit que des refs et des
     // setters stables : seul le terme doit relancer la recherche.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [terme, portees]);
+  }, [terme, portees, tagsChoisis]);
 
   // Écriture commune aux trois chemins de résolution.
   async function enregistrer(
@@ -595,12 +606,15 @@ export function ComponentResolver({
               ))}
             </div>
 
+            {tagsReference.length > 0 && <TagFilter tags={tagsReference} selected={tagsChoisis} onChange={setTagsChoisis} />}
+
             <SearchResultsBusy busy={recherche}>
             {portees.size === 0 ? (
               <p className="text-sm italic text-on-surface-variant">Cochez au moins une portée de recherche.</p>
             ) : resultats.length === 0 ? (
               <p className="rounded-xl border border-outline-variant bg-surface-container-low p-4 text-sm italic text-on-surface-variant">
-                Aucune recette ne correspond dans les portées cochées.
+                Aucune recette ne correspond dans les portées cochées
+                {tagsChoisis.length > 0 ? ' et avec ces tags — retirez un tag pour élargir la recherche.' : '.'}
               </p>
             ) : (
               <ul className="max-h-[45vh] min-h-[6rem] space-y-2 overflow-y-auto">

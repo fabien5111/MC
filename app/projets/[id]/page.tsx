@@ -9,7 +9,7 @@ import { getCurrentPlan, getEntitlements, checkQuota } from '@/lib/entitlements-
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getRecipeFull } from '@/lib/recipes';
-import { getAllergenRefs, getIngredientRefAllergens, getIngredientRefsList } from '@/lib/data/reference';
+import { getAllergenRefs, getIngredientRefAllergens, getIngredientRefsList, getTags } from '@/lib/data/reference';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -66,7 +66,7 @@ export default async function ProjetPage({ params, searchParams }: Params) {
     );
   }
 
-  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, admin, allergenRefs, refAllergens] = await Promise.all([
+  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, admin, allergenRefs, refAllergens, tagsRef] = await Promise.all([
     getMoldTypes(),
     getUnits(),
     // Table de conversions : sert au récapitulatif (étape 6), qui consolide
@@ -85,6 +85,7 @@ export default async function ProjetPage({ params, searchParams }: Params) {
     isAdmin(user.id),
     getAllergenRefs(),
     getIngredientRefAllergens(),
+    getTags(),
   ]);
   // Droit + quota des générations IA du mode projet (`mode_projet_ia_mensuel`,
   // §/api/projet/structure, /api/projet/composant) — lecture d'affichage
@@ -121,6 +122,7 @@ export default async function ProjetPage({ params, searchParams }: Params) {
           unitRefs={units.map((u) => ({ id: u.id, name: u.name }))}
           ingredientRefs={ingredientRefs}
           referenceAllergenes={{ names: allergenRefs.map((a) => a.name), byIngredient: refAllergens }}
+          tagsReference={tagsRef.map((t) => ({ id: t.id, name: t.name }))}
           fromAI={ia === '1'}
           recipe={recipe}
           trials={trials}
