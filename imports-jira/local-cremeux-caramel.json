@@ -1,0 +1,90 @@
+{
+  "ticket": "local-cremeux-caramel",
+  "recette": {
+    "titre": "Crémeux caramel",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème anglaise au caramel collée à la gélatine, onctueuse et fondante, qui se tient à la découpe une fois congelée. Elle sert d'insert ou de couche gourmande dans un entremets, avec un goût de caramel profond et légèrement salé.",
+    "rendement": "1 cercle Ø 16 cm, 2 cm de hauteur — environ 400 g de crémeux utilisable (456 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Casserole à fond épais",
+      "Petite casserole",
+      "Bol",
+      "Fouet",
+      "Maryse",
+      "Thermomètre de cuisine",
+      "Mixeur plongeant",
+      "Chinois",
+      "Cercle à pâtisserie Ø 16 cm",
+      "Plaque à pâtisserie",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crémeux caramel",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 83,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 %",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans un grand volume d'eau très froide pendant 10 minutes.",
+          "Chauffer la crème, le lait et la fleur de sel dans la petite casserole jusqu'au frémissement, puis garder au chaud.",
+          "Cuire le sucre à sec dans la casserole à fond épais, en trois fois, jusqu'à un caramel ambré foncé (environ 185 °C).",
+          "Déglacer le caramel avec le mélange chaud, en versant en trois fois, puis lisser au fouet jusqu'à dissolution complète.",
+          "Verser progressivement le caramel au lait chaud sur les jaunes dans le bol, en fouettant sans monter, puis remettre le tout dans la casserole.",
+          "Cuire à 82-84 °C en remuant à la maryse, jusqu'à ce que la crème nappe la maryse (le doigt trace un sillon net).",
+          "Hors du feu, ajouter la gélatine essorée, mixer au mixeur plongeant sans incorporer d'air, puis passer au chinois.",
+          "Couler dans le cercle filmé au fond et posé sur la plaque, filmer au contact, laisser tiédir 20 minutes au plus puis congeler au moins 4 heures avant de démouler."
+        ],
+        "conseils_etape": "Pousser le caramel jusqu'à une couleur ambrée foncée : trop clair, le crémeux est plat et sucré. Déglacer uniquement avec le liquide chaud, en reculant le visage, car le caramel projette et brûle. Ne jamais dépasser 84 °C sur la crème, sous peine de grains d'œuf, et mixer sans lever le mixeur pour garder une texture lisse sans bulles."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, couche de 1 cm : ≈ 200 g de crémeux, soit ×0,50 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, couche de 1 cm : ≈ 315 g de crémeux, soit ×0,79 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche de 1 cm : ≈ 450 g de crémeux, soit ×1,13 de la recette.",
+      "Utilisation — Insert Ø 16 cm, 2 cm de hauteur, dans un entremets Ø 20 cm : ≈ 400 g de crémeux, soit ×1,00 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, couche de 1 cm : ≈ 40 g par pièce, soit 10 pièces avec la recette entière.",
+      "Utilisation — Inserts Ø 5 cm, 1 cm de hauteur, au cœur d'individuels : ≈ 20 g par pièce, soit 20 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, rôle d'insert (bande de 20 x 4 cm sur 1,5 cm) : ≈ 120 g de crémeux, soit ×0,30 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 1 cm : ≈ 325 g de crémeux, soit ×0,81 de la recette.",
+      "Variante — Caramel au beurre salé : porter la fleur de sel à 3 g et incorporer au mixeur 30 g de beurre doux froid dans le crémeux refroidi à 40 °C, juste avant de couler.",
+      "Variante — Caramel vanille : porter le lait et la crème à frémissement avec une gousse de vanille fendue et grattée, couvrir et laisser infuser 15 minutes hors du feu, retirer la gousse puis réchauffer avant de déglacer."
+    ],
+    "conseils_conservation": "Se conserve 48 heures au réfrigérateur sous film au contact et 2 mois au congélateur. Utiliser congelé pour un insert, puis laisser décongeler au réfrigérateur pendant le montage (4 à 6 heures) : le crémeux retrouve alors sa texture onctueuse."
+  }
+}
