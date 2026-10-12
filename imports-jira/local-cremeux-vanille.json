@@ -1,0 +1,87 @@
+{
+  "ticket": "local-cremeux-vanille",
+  "recette": {
+    "titre": "Crémeux vanille",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème anglaise collée à la gélatine, onctueuse et fondante, qui se tient à la découpe une fois congelée. Elle apporte un cœur vanillé net et crémeux, idéal en insert d'entremets ou d'individuel.",
+    "rendement": "1 cercle Ø 20 cm, 1,5 cm de hauteur — environ 470 g de crémeux utilisable (520 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Fouet",
+      "Maryse",
+      "Thermomètre de cuisson",
+      "Mixeur plongeant",
+      "Cercle à pâtisserie Ø 20 cm",
+      "Plaque tapissée de papier cuisson",
+      "Passoire fine",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crémeux vanille",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 180,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 %",
+            "quantite": 180,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 6,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réhydrater les feuilles de gélatine dans un grand volume d'eau très froide pendant 10 minutes.",
+          "Fendre les 2 gousses de vanille, gratter les graines, porter à frémissement le lait, la crème, les graines et les gousses, puis couvrir et infuser 15 minutes hors du feu.",
+          "Fouetter les jaunes avec le sucre sans les faire blanchir, juste pour les homogénéiser.",
+          "Réchauffer l'infusion, la verser en filet sur les jaunes en fouettant, puis remettre l'ensemble dans la casserole.",
+          "Cuire à feu moyen en remuant à la maryse en 8, jusqu'à 82-84 °C : la crème nappe la maryse et le doigt y trace un sillon net.",
+          "Hors du feu, ajouter la gélatine essorée, mélanger, filtrer dans un cul-de-poule en ôtant les gousses puis mixer au mixeur plongeant sans incorporer d'air.",
+          "Couler aussitôt dans le cercle, fond filmé bien tendu, posé sur une plaque tapissée de papier cuisson, lisser et filmer au contact.",
+          "Congeler au moins 4 heures avant de démouler."
+        ],
+        "conseils_etape": "Ne dépasser jamais 84 °C : au-delà, les jaunes coagulent et le crémeux devient granuleux. Mixer le crémeux en gardant le mixeur bien immergé pour ne pas faire entrer d'air, qui laisserait des bulles à la découpe."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert d'entremets Ø 16 cm, 1 cm de hauteur : ≈ 200 g de crémeux, soit ×0,43 de la recette.",
+      "Utilisation — Insert d'entremets Ø 20 cm, 1 cm de hauteur : ≈ 315 g de crémeux, soit ×0,67 de la recette.",
+      "Utilisation — Insert d'entremets Ø 24 cm, 1 cm de hauteur : ≈ 450 g de crémeux, soit ×0,96 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 1 cm de hauteur : ≈ 40 g par pièce (×0,08 de la recette), soit 12 pièces avec la recette entière (12 × 38,5 g = 462 g).",
+      "Utilisation — Cadre carré 18 x 18 cm, 1 cm de hauteur : ≈ 325 g de crémeux, soit ×0,69 de la recette.",
+      "Utilisation — Insert de bûche 18 x 4 cm, 1,5 cm de hauteur, glissé au centre d'une gouttière 20 x 7 cm : ≈ 110 g de crémeux, soit ×0,23 de la recette.",
+      "Variante — Crémeux vanille-tonka : infuser 1 g de fève tonka râpée avec la vanille.",
+      "Variante — Version plus gourmande : ajouter 40 g de chocolat blanc haché dans la crème chaude avant de mixer."
+    ],
+    "conseils_conservation": "Se conserve 3 jours au réfrigérateur dans un récipient filmé au contact, et jusqu'à 3 mois au congélateur. Idéal en insert congelé, démoulé puis glissé directement dans l'entremets, à décongeler lentement au réfrigérateur."
+  }
+}
