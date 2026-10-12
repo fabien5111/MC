@@ -1,0 +1,74 @@
+{
+  "ticket": "local-ganache-montee-chocolat-noir",
+  "recette": {
+    "titre": "Ganache montée chocolat noir",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Ganache légère et aérienne au goût intense de chocolat noir, émulsionnée à chaud puis montée après une nuit de repos au froid. Sa tenue en fait une garniture d'entremets ou un insert qui se congèle et se découpe proprement.",
+    "rendement": "1 cercle Ø 20 cm, 3,3 cm de hauteur — environ 630 g de ganache montée utilisable (700 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Maryse",
+      "Mixeur plongeant",
+      "Film alimentaire",
+      "Batteur avec fouet ballon",
+      "Poche à douille",
+      "Spatule coudée",
+      "Cercle à entremets",
+      "Moule à insert"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache montée chocolat noir",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir 66 %",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (émulsion)",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (complément)",
+            "quantite": 300,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hacher finement le chocolat noir et le placer dans un cul-de-poule.",
+          "Porter la crème liquide (émulsion) à ébullition dans une casserole.",
+          "Verser la crème bouillante sur le chocolat en trois fois, en émulsionnant à la maryse du centre vers l'extérieur jusqu'à obtenir une ganache lisse et brillante.",
+          "Ajouter la crème liquide (complément) bien froide en deux fois et mixer au mixeur plongeant, lame immergée pour ne pas incorporer d'air.",
+          "Filmer au contact et réserver au réfrigérateur à 4 °C pendant 12 h minimum.",
+          "Le lendemain, verser la ganache très froide dans la cuve du batteur et la fouetter à vitesse moyenne jusqu'à obtenir une texture de mousse ferme, en bec d'oiseau.",
+          "Pocher ou couler aussitôt la ganache montée dans le cercle ou le moule d'insert, puis lisser à la spatule coudée.",
+          "Congeler 4 h minimum si la ganache sert d'insert."
+        ],
+        "conseils_etape": "Les 12 h de repos au froid sont indispensables : le beurre de cacao cristallise et donne à la ganache sa capacité à foisonner et à tenir une fois congelée. Fouetter la ganache bien froide et s'arrêter dès le bec d'oiseau : trop fouettée, elle devient granuleuse et se tranche. Mixer sans air à l'émulsion, sinon la ganache prend du volume avant le fouettage et perd en tenue."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, couche de 2 cm : ≈ 245 g de ganache montée, soit ×0,39 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, couche de 2 cm : ≈ 380 g de ganache montée, soit ×0,60 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche de 2 cm : ≈ 550 g de ganache montée, soit ×0,87 de la recette.",
+      "Utilisation — Insert congelé Ø 16 cm, 1,5 cm de hauteur, à placer au centre d'un entremets Ø 20 cm : ≈ 185 g de ganache montée, soit ×0,29 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, couche de 2 cm : ≈ 45 g par pièce, soit 13 pièces avec la recette entière.",
+      "Utilisation — Inserts individuels Ø 5 cm, 1,5 cm de hauteur, congelés : ≈ 20 g par pièce (18 g calculés), soit 35 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, enveloppe remplissant la gouttière (insert et fond de biscuit non déduits) : ≈ 235 g de ganache montée, soit ×0,37 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 2 cm : ≈ 395 g de ganache montée, soit ×0,63 de la recette.",
+      "Variante — Ganache prise : 250 g de crème liquide 35 % chauffée à ébullition sur 250 g de chocolat noir 66 %, couler à 35 °C et laisser prendre 4 h à 4 °C, sans repos de 12 h ni fouettage.",
+      "Variante — Tenue renforcée pour un insert plus ferme à la décongélation : 2 g de gélatine en feuilles hydratée et fondue dans la crème chaude."
+    ],
+    "conseils_conservation": "Avant fouettage, la ganache émulsionnée se garde 3 jours au réfrigérateur, filmée au contact. Une fois montée, l'utiliser immédiatement. En insert, congeler jusqu'à 1 mois à -18 °C, puis démouler gelé et laisser décongeler 4 à 6 h au réfrigérateur dans l'entremets monté."
+  }
+}
