@@ -28,8 +28,7 @@ import { useDialog } from '@/components/Dialog';
 import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { moveAt } from '@/lib/photo-reorder';
-import { televerserImage } from '@/lib/storage-client';
-import { resizeDataUrlToThumb } from '@/lib/images';
+import { demanderVignettes, televerserImage } from '@/lib/storage-client';
 import { connexionHref } from '@/lib/nav';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
@@ -97,19 +96,19 @@ const slugify = (name: string): string =>
 // Ligature « œuf » (« oeuf » → « œuf »), en respectant la casse.
 const ligatureOeuf = (s: string): string => (s || '').replace(/oe(?=ufs?\b)/gi, (m) => (m[0] === 'O' ? 'Œ' : 'œ'));
 
-// Vignette dérivée de la photo principale, déposée sur le stockage objet —
-// même calcul que CreerForm (`hero_thumb_url` ~96 px, `hero_card_url`
-// ~480 px). Best-effort : une vignette manquée ne doit jamais bloquer la
-// création de la recette. Sur une photo déjà déposée (import Jira, reprise
-// après échec), le rechargement dans un canvas exige un en-tête CORS que le
-// conteneur peut ne pas renvoyer (cf. CLAUDE.md « Images ») : l'échec rend
-// alors `null`, que le rattrapage d'Admin → Photos du site reprendra.
-async function deriveVignette(src: string | null, maxWidth: number, quality?: number): Promise<string | null> {
-  if (!src) return null;
+// Vignettes (`hero_thumb_url` ~96 px, `hero_card_url` ~480 px) de la photo
+// principale, fabriquées par le SERVEUR à partir de l'objet déposé sur le
+// stockage (plus de relecture CORS dans un canvas, cf. lib/vignettes-data.ts).
+// Best-effort : un échec ne doit jamais bloquer la création de la recette ; les
+// colonnes restent à `null`, reprises par le rattrapage d'Admin → Photos du
+// site, qui affichera la cause.
+async function deriveVignettes(urlPhoto: string | null): Promise<{ thumb: string | null; card: string | null }> {
+  if (!urlPhoto) return { thumb: null, card: null };
   try {
-    return await televerserImage('recette', await resizeDataUrlToThumb(src, maxWidth, 'image/jpeg', quality));
-  } catch {
-    return null;
+    return await demanderVignettes(urlPhoto);
+  } catch (e) {
+    console.warn('[relecture] vignettes non calculées :', (e as Error).message);
+    return { thumb: null, card: null };
   }
 }
 
@@ -973,12 +972,12 @@ export function RelectureEditor({
       // Data-URL fraîche si la photo vient d'être choisie/éditée dans cet
       // écran, ou déjà l'URL de stockage sur une reprise après échec —
       // televerserImage() ne dépose que dans le premier cas (§ 7.5, lot B2).
-      const [heroUrl, heroOriginalUrl, heroThumb, heroCard] = await Promise.all([
+      const [heroUrl, heroOriginalUrl] = await Promise.all([
         televerserImage('recette', p.photo_principale || null),
         televerserImage('recette', p.photo_principale_original || p.photo_principale || null),
-        deriveVignette(p.photo_principale || null, 96),
-        deriveVignette(p.photo_principale || null, 480, 0.7),
       ]);
+      // Les vignettes se fabriquent APRÈS le dépôt : le serveur lit l'objet.
+      const { thumb: heroThumb, card: heroCard } = await deriveVignettes(heroUrl);
 
       const payload = {
         author_id: user.id,
