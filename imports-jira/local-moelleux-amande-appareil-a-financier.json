@@ -1,0 +1,91 @@
+{
+  "ticket": "local-moelleux-amande-appareil-a-financier",
+  "recette": {
+    "titre": "Moelleux amande (appareil à financier)",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Biscuit dense et fondant au beurre noisette et à la poudre d'amande, croustillant en surface et très moelleux à cœur. Il sert de fond moelleux pour un entremets, une bûche ou une tarte, ou se cuit tel quel en financiers.",
+    "rendement": "1 cadre 24 x 24 cm, environ 1 cm d'épaisseur — environ 625 g d'appareil utilisable (680 g d'ingrédients, perte ≈ 8 %)",
+    "ustensiles": [
+      "Casserole",
+      "Chinois",
+      "Thermomètre de cuisson",
+      "Tamis",
+      "Cul-de-poule",
+      "Fouet",
+      "Cadre 24 x 24 cm",
+      "Plaque de cuisson",
+      "Papier cuisson",
+      "Spatule coudée",
+      "Couteau d'office"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Appareil et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 16,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 170,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 170,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 180,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Cuire le beurre dans une casserole jusqu'à coloration noisette (dépôt brun clair, odeur de noisette), puis le passer au chinois et le laisser tiédir à 40-45 °C.",
+          "Préchauffer le four à 180 °C et poser le cadre sur une plaque garnie de papier cuisson.",
+          "Tamiser ensemble le sucre glace, la poudre d'amande et la farine dans un cul-de-poule.",
+          "Ajouter les blancs non montés et mélanger au fouet, sans incorporer d'air, jusqu'à une pâte lisse.",
+          "Incorporer le miel, puis verser le beurre noisette tiède en filet en fouettant jusqu'à un appareil homogène et brillant.",
+          "Couler l'appareil dans le cadre et l'étaler régulièrement à la spatule coudée.",
+          "Cuire 15 à 18 minutes, jusqu'à ce que la surface soit dorée et que la pointe d'un couteau d'office ressorte sèche.",
+          "Laisser refroidir dans le cadre, puis passer la lame d'un couteau d'office le long des bords avant de décercler."
+        ],
+        "conseils_etape": "Arrêter la cuisson du beurre dès qu'il sent la noisette : au-delà, il devient amer. Les blancs ne doivent pas être fouettés vigoureusement, l'appareil doit rester dense pour garder sa texture fondante. Un beurre trop chaud cuit les blancs, trop froid il fige et ne s'incorpore pas."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 1 cm : ≈ 220 g d'appareil, soit ×0,35 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 1 cm : ≈ 340 g d'appareil, soit ×0,54 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 1 cm : ≈ 490 g d'appareil, soit ×0,78 de la recette.",
+      "Utilisation — Individuels en cercles Ø 8 cm, fond de 1 cm : ≈ 55 g par pièce, soit 11 pièces avec la recette entière (×0,09 par pièce).",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, semelle (fond) de 1 cm : ≈ 150 g d'appareil, soit ×0,24 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, semelle (fond) de 1 cm : ≈ 260 g d'appareil, soit ×0,42 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 1 cm : ≈ 350 g d'appareil, soit ×0,56 de la recette.",
+      "Utilisation — Financiers en moules rectangulaires 8 x 4 cm, remplis aux trois quarts : ≈ 25 g par pièce, soit 25 financiers avec la recette entière (×0,04 par pièce).",
+      "Variante — Noisette : remplacer la poudre d'amande par de la poudre de noisette torréfiée.",
+      "Variante — Pistache : remplacer 30 g de poudre d'amande par 30 g de pâte de pistache, ajoutée avec le miel.",
+      "Variante — Fruits : parsemer la surface de framboises ou de myrtilles (≈ 100 g pour le cadre) avant cuisson."
+    ],
+    "conseils_conservation": "Appareil cru : 3 jours au réfrigérateur, filmé au contact ; il gagne même en saveur après une nuit (le remettre à température ambiante et le mélanger avant de le couler). Biscuit cuit : 3 jours au réfrigérateur ou 2 mois au congélateur, filmé ; décongeler une nuit au réfrigérateur. Le découper froid, idéalement la veille du montage."
+  }
+}
