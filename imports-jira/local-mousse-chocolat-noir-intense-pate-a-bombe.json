@@ -1,0 +1,95 @@
+{
+  "ticket": "local-mousse-chocolat-noir-intense-pate-a-bombe",
+  "recette": {
+    "titre": "Mousse chocolat noir intense à la pâte à bombe",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse dense et soyeuse au chocolat noir 70 %, au goût profond et peu sucré, rendue très stable par la pâte à bombe et une touche de gélatine. Elle sert d'enveloppe ou de corps principal d'un entremets premium et se démoule et se glace sans s'affaisser.",
+    "rendement": "1 cercle Ø 20 cm, hauteur 4,5 cm, rempli entièrement de mousse — environ 815 g de mousse",
+    "ustensiles": [
+      "Casseroles",
+      "Thermomètre de cuisson",
+      "Robot pâtissier ou batteur électrique avec fouet",
+      "Saladiers",
+      "Fouet",
+      "Maryse",
+      "Bol pour bain-marie",
+      "Cercle à entremets Ø 20 cm, hauteur 4,5 cm",
+      "Rhodoïd",
+      "Plaque à pâtisserie",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Mousse",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 118,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 18,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 %",
+            "quantite": 400,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir 70 %",
+            "quantite": 230,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 80,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans l'eau d'hydratation froide pendant 10 minutes ; pendant ce temps, chemiser le cercle de rhodoïd et le poser sur une plaque recouverte de film alimentaire.",
+          "Monter la crème liquide très froide au fouet jusqu'à une texture mi-montée, souple et formant un bec d'oiseau mou, puis la réserver au réfrigérateur.",
+          "Faire fondre le chocolat au bain-marie jusqu'à 45-50 °C, puis y dissoudre la gélatine hydratée.",
+          "Cuire le sucre et l'eau dans la casserole jusqu'à 118 °C ; dès que le sirop atteint 110 °C, commencer à fouetter les jaunes au robot à vitesse moyenne.",
+          "Verser le sirop à 118 °C en mince filet le long de la paroi sur les jaunes en fouettant, puis fouetter jusqu'à refroidissement vers 30 °C : la pâte à bombe doit être blanchie, mousseuse et faire le ruban.",
+          "Incorporer vivement au fouet environ un tiers de la crème mi-montée au chocolat fondu pour obtenir une base lisse, élastique et brillante.",
+          "Ajouter la pâte à bombe à la maryse, puis le reste de la crème mi-montée en soulevant délicatement, jusqu'à une mousse homogène vers 30 °C.",
+          "Couler aussitôt dans le cercle chemisé de rhodoïd, lisser et laisser prendre au réfrigérateur au moins 4 heures, ou au congélateur pour un démoulage net."
+        ],
+        "conseils_etape": "La crème doit rester mi-montée et non ferme : trop montée, elle donne une mousse granuleuse et le chocolat fige en grains au contact. Le mélange chocolat + premier tiers de crème doit rester au-dessus de 35 °C avant l'ajout de la pâte à bombe."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, 3,5 cm de mousse (cercle de 4,5 cm avec biscuit de 1 cm) : ≈ 405 g de mousse, soit ×0,50 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, 3,5 cm de mousse (cercle de 4,5 cm avec biscuit de 1 cm) : ≈ 635 g de mousse, soit ×0,78 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 3,5 cm de mousse (cercle de 4,5 cm avec biscuit de 1 cm) : ≈ 915 g de mousse, soit ×1,12 de la recette.",
+      "Utilisation — Individuels en cercles Ø 8 cm, 3,5 cm de mousse : ≈ 100 g par pièce, soit 8 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, mousse en enveloppe autour d'un insert et d'un biscuit (environ 2/3 du volume) : ≈ 150 g de mousse, soit ×0,18 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, mousse en enveloppe autour d'un insert et d'un biscuit (environ 2/3 du volume) : ≈ 290 g de mousse, soit ×0,36 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 3,5 cm de mousse : ≈ 655 g de mousse, soit ×0,80 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, 3,5 cm de mousse : ≈ 1160 g de mousse, soit ×1,42 de la recette.",
+      "Astuce — Pour une tenue maximale et un glaçage miroir sans défaut, surgeler l'entremets complet au moins 6 heures avant de le démouler et de le glacer.",
+      "Astuce — Variante : ajouter 1 g de fleur de sel ou 2 g de café soluble dans le chocolat fondu pour renforcer l'intensité ; un chocolat 64-66 % donne une mousse plus souple et plus ronde."
+    ],
+    "conseils_conservation": "2 jours au réfrigérateur, filmée au contact ou dans l'entremets fermé. 1 mois au congélateur, bien filmée, de préférence déjà montée en entremets. Décongeler 8 à 12 heures au réfrigérateur, jamais à température ambiante. Couler la mousse dès qu'elle est prête : elle commence à prendre en quelques minutes."
+  }
+}
