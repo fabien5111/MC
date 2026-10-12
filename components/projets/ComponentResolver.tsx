@@ -295,6 +295,13 @@ export function ComponentResolver({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terme, portees, tagsChoisis]);
 
+  // Retour de l'aperçu à la liste (bouton « Annuler » ET croix de l'en-tête) :
+  // recherche et cases cochées sont conservées.
+  function fermerApercu() {
+    setApercu(null);
+    setMode('sources');
+  }
+
   // Écriture commune aux trois chemins de résolution.
   async function enregistrer(
     steps: ComponentStepDraft[],
@@ -560,7 +567,8 @@ export function ComponentResolver({
             <h3 className="font-headline-md text-xl text-primary">{component.name}</h3>
             {component.role && <p className="text-[12.5px] text-on-surface-variant">{component.role}</p>}
           </div>
-          <button type="button" onClick={onClose} title="Fermer" className="p-1">
+          {/* En aperçu, la croix fait comme « Annuler » : retour à la liste. */}
+          <button type="button" onClick={mode === 'apercu' ? fermerApercu : onClose} title="Fermer" className="p-1">
             <span className="material-symbols-outlined text-[22px] text-on-surface-variant">close</span>
           </button>
         </div>
@@ -754,10 +762,7 @@ export function ComponentResolver({
               <div className="flex w-full justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setApercu(null);
-                    setMode('sources');
-                  }}
+                  onClick={fermerApercu}
                   className={btnGhost}
                 >
                   Annuler
