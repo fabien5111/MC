@@ -1,0 +1,105 @@
+{
+  "ticket": "local-ganache-montee-tonka",
+  "recette": {
+    "titre": "Ganache montée tonka",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Ganache montée au chocolat blanc, légère et crémeuse, parfumée à la fève tonka infusée dans la crème. Assez tenue pour être pochée ou coulée en insert puis congelée.",
+    "rendement": "1 cercle Ø 20 cm, 3,5 cm de hauteur — environ 660 g de ganache montée utilisable (736 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Casserole",
+      "Râpe fine (type Microplane)",
+      "Passoire fine",
+      "Cul-de-poule",
+      "Maryse",
+      "Thermomètre",
+      "Mixeur plongeant",
+      "Film alimentaire",
+      "Batteur électrique ou robot muni du fouet",
+      "Poche à douille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache infusée",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 35 % (infusion)",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Fève tonka",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Sirop de glucose",
+            "quantite": 16,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc 35 %",
+            "quantite": 190,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (froide)",
+            "quantite": 365,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réhydrater la gélatine 10 minutes dans un grand volume d'eau froide.",
+          "Porter à frémissement la crème d'infusion avec le glucose, hors du feu y râper la fève tonka, couvrir et laisser infuser 10 minutes.",
+          "Pendant l'infusion, fondre le chocolat blanc au bain-marie, sans dépasser 45 °C.",
+          "Filtrer la crème, la repeser et compléter à 176 g avec de la crème si nécessaire, puis la reporter à frémissement.",
+          "Ajouter hors du feu la gélatine essorée et mélanger jusqu'à dissolution.",
+          "Verser la crème chaude en trois fois sur le chocolat blanc fondu en émulsionnant à la maryse.",
+          "Ajouter la crème froide et mixer au mixeur plongeant sans incorporer d'air.",
+          "Filmer au contact et réserver 12 heures au réfrigérateur à 4 °C."
+        ],
+        "conseils_etape": "La fève tonka est très puissante : 1 g suffit, la râper au dernier moment et ne pas dépasser la dose (coumarine). Ne jamais chauffer le chocolat blanc au-delà de 45 °C, il graisserait ; l'émulsion doit être lisse et brillante avant d'ajouter la crème froide. Le repos de 12 heures est indispensable pour que le beurre de cacao et la gélatine cristallisent, sans quoi la ganache ne montera pas."
+      },
+      {
+        "nom_etape": "Ganache montée",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Sortir la ganache du réfrigérateur juste avant de la monter, bien froide (4 °C).",
+          "Monter au fouet à vitesse moyenne jusqu'à une texture souple qui marque les sillons du fouet.",
+          "Arrêter dès que la ganache tient au bec d'oiseau ferme, sans la serrer davantage.",
+          "Utiliser aussitôt, à la poche à douille ou à la maryse."
+        ],
+        "conseils_etape": "Surveiller de près la fin du foisonnement : quelques secondes de trop suffisent à faire trancher une ganache au chocolat blanc, qui devient granuleuse. Le matériel froid aide ; une ganache trop serrée se rattrape en incorporant délicatement à la maryse un peu de crème liquide froide."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert d'entremets Ø 16 cm, 2 cm de hauteur : ≈ 240 g de ganache montée, soit ×0,36 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, couche de 2 cm : ≈ 375 g de ganache montée, soit ×0,57 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche de 2 cm : ≈ 545 g de ganache montée, soit ×0,83 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 2 cm de hauteur : ≈ 45 g par pièce, soit 14 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert de 20 x 4 x 2 cm : ≈ 95 g de ganache montée, soit ×0,14 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 2 cm : ≈ 390 g de ganache montée, soit ×0,59 de la recette.",
+      "Utilisation — Décor poché sur tartelettes Ø 8 cm, ≈ 0,8 cm de hauteur moyenne : ≈ 25 g par tartelette, soit 26 tartelettes avec la recette entière.",
+      "Variante — Chocolat au lait : remplacer le chocolat blanc par 170 g de chocolat au lait 35-40 %, accord classique avec la tonka.",
+      "Variante — Tonka-vanille : infuser une demi-gousse de vanille grattée avec la fève tonka."
+    ],
+    "conseils_conservation": "Ganache non montée : 48 heures au réfrigérateur, filmée au contact. Une fois montée, l'utiliser aussitôt. Insert ou couche congelés : 1 mois au congélateur, sous film. Décongeler au réfrigérateur, entremets monté, 6 à 8 heures avant le service."
+  }
+}
