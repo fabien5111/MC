@@ -1,0 +1,92 @@
+{
+  "ticket": "local-biscuit-joconde",
+  "recette": {
+    "titre": "Biscuit Joconde",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Biscuit fin, souple et moelleux, parfumé à l'amande, qui se roule et se découpe sans casser. Il sert de fond ou de chemisage dans les entremets et les bûches, et de support aux décors imprimés.",
+    "rendement": "1 plaque 40 x 30 cm, 5 mm d'épaisseur — environ 485 g de pâte utilisable (540 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Batteur sur socle avec fouet",
+      "Tamis",
+      "Cul-de-poule",
+      "Maryse",
+      "Spatule coudée",
+      "Plaque de cuisson 40 x 30 cm",
+      "Papier cuisson",
+      "Grille de refroidissement"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Biscuit Joconde",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": 220,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 220 °C, chemiser la plaque de papier cuisson, faire fondre le beurre et le laisser tiédir.",
+          "Tamiser ensemble la poudre d'amande, le sucre glace et la farine.",
+          "Ajouter les œufs entiers et fouetter 8 à 10 minutes à vitesse rapide jusqu'à un appareil blanchi, doublé de volume et formant un ruban, puis le transvaser dans un cul-de-poule.",
+          "Monter les blancs en neige dans la cuve propre et sèche du batteur en ajoutant le sucre semoule en trois fois, jusqu'à un bec d'oiseau souple.",
+          "Incorporer un tiers des blancs à l'appareil à la maryse pour le détendre, puis le reste en soulevant la masse.",
+          "Incorporer le beurre fondu tiède (environ 40 °C) en filet, sans trop mélanger.",
+          "Étaler l'appareil sur la plaque à la spatule coudée en une couche régulière de 5 mm.",
+          "Cuire 7 minutes à 220 °C jusqu'à une coloration blonde, puis glisser sur une grille à la sortie du four et décoller le papier tant que le biscuit est tiède."
+        ],
+        "conseils_etape": "Ne pas travailler les blancs trop longtemps ni les grainer : un appareil perd son volume et le biscuit devient dense. Étaler finement et uniformément, puis cuire très court à four chaud : au-delà de 8 minutes le biscuit sèche et casse au chemisage. Décoller le papier tant que le biscuit est tiède pour garder sa souplesse."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 5 mm : ≈ 80 g de pâte, soit ×0,16 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 5 mm : ≈ 125 g de pâte, soit ×0,26 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 5 mm : ≈ 185 g de pâte, soit ×0,38 de la recette.",
+      "Utilisation — Chemisage d'un entremets Ø 20 cm, bande de 4,5 cm de haut : ≈ 115 g de pâte, soit ×0,24 de la recette.",
+      "Utilisation — Individuels en cercles Ø 8 cm : fond seul ≈ 20 g par pièce (23 pièces en théorie avec la recette entière, environ 18 détaillés dans une plaque 40 x 30 cm à cause des chutes) ; chemisage d'une bande de 4,5 cm plus fond ≈ 65 g par pièce (environ 7 pièces).",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, chemisage de l'enveloppe : ≈ 90 g de pâte, soit ×0,19 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 5 mm : ≈ 130 g de pâte, soit ×0,27 de la recette ; cadre 24 x 24 cm, fond de 5 mm : ≈ 235 g, soit ×0,48.",
+      "Utilisation — Décor imprimé : appareil étalé en 5 mm sur la pâte à décor déjà posée sur la plaque 40 x 30 cm (tapis imprimé ou peigne), soit la recette entière, ≈ 485 g (×1) ; la pâte à décor est une préparation à part.",
+      "Variante — Joconde cacao : remplacer 10 g de farine par 10 g de cacao en poudre non sucré, tamisé avec les poudres.",
+      "Variante — Joconde pistache : remplacer 30 g de poudre d'amande par 30 g de poudre de pistache."
+    ],
+    "conseils_conservation": "Se garde 2 à 3 jours au réfrigérateur, filmé au contact. Se congèle jusqu'à 2 mois, à plat entre deux feuilles de papier cuisson ; le décongeler 30 minutes à température ambiante dans son film. À monter idéalement le jour même ou le lendemain de la cuisson. À utiliser rapidement une fois découpé, car il sèche vite."
+  }
+}
