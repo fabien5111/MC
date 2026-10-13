@@ -20,6 +20,9 @@ export type ProjectLine = {
   quantity: string | null;
   baseQuantity: number | null;
   unit: string | null;
+  // Commentaire de l'ingrédient (« température ambiante », « tamisée »…) : ce
+  // qui distingue deux lignes du même ingrédient.
+  comment: string | null;
   scalingMode: string | null;
   stepTitle: string | null;
 };
@@ -133,6 +136,7 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     unit: string | null;
     order_index: number | null;
     base_quantity?: number | null;
+    comment?: string | null;
   };
   let ingredients: IngRow[] = [];
   if (groups.length) {
@@ -169,6 +173,7 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
         quantity: it.quantity,
         baseQuantity: it.base_quantity ?? null,
         unit: it.unit,
+        comment: it.comment?.trim() || null,
         scalingMode: groupe.scaling_mode,
         stepTitle: st.title,
       });

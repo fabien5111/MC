@@ -398,6 +398,19 @@ export function QuantitiesStep({
       <LoadingOverlay visible={busy || travail} label={travail ? 'Calcul des quantités…' : undefined} />
       {!hideTitle && componentId == null && <h2 className="font-headline-md text-2xl text-primary">Quelles quantités ?</h2>}
       {componentId == null && <DessertVise project={project} formatLabel={formatLabel} />}
+      {/* Le dessert visé reste sous les yeux dans le volet d'UNE préparation
+          (v2) : les coefficients proposés en dépendent, et la carte complète
+          est loin au-dessus quand on a déroulé plusieurs préparations. */}
+      {componentId != null && (
+        <p className="text-[12.5px] text-on-surface-variant">
+          <span className="font-label-md uppercase tracking-widest text-secondary">Dessert visé</span>
+          {' : '}
+          {project.title}
+          {' — '}
+          {formatLabel}
+          {project.servings ? ` · ${project.servings} parts` : ''}
+        </p>
+      )}
 
       {ordered.filter((c) => componentId == null || c.id === componentId).map((c) => {
         const facteur = c.scaleFactor ?? 1;
@@ -533,7 +546,10 @@ export function QuantitiesStep({
                         l.baseQuantity != null && (!isFinite(actuelle) || Math.abs(l.baseQuantity - actuelle) > 1e-9);
                       return (
                         <li key={l.id} className="flex flex-wrap items-center gap-2 text-[13.5px]">
-                          <span className="min-w-0 flex-1 truncate text-on-surface">{l.name}</span>
+                          <span className="min-w-0 flex-1 text-on-surface">
+                            {l.name}
+                            {l.comment && <span className="italic text-on-surface-variant"> — {l.comment}</span>}
+                          </span>
                           {montrerOrigine && (
                             <span
                               className="w-20 shrink-0 text-right text-[12px] italic text-on-surface-variant"
