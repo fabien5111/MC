@@ -26,6 +26,7 @@ import {
   COMPONENT_SOURCE_LABELS,
   componentScaleProposal,
   projectFormatKey,
+  lignesRendement,
   quantitiesStale,
   scaledQuantityText,
   type ComponentSourceKind,
@@ -462,20 +463,20 @@ export function QuantitiesStep({
               </p>
             ) : (
               <>
-                {/* Justification consultable en une phrase (§6.4) : la
-                    proposition du moment, sinon celle qui a été appliquée. */}
-                {(prop?.reason || c.scaleReason) && (
-                  <p className="mb-3 rounded-lg bg-surface-container-low px-3 py-2 text-[12.5px] text-on-surface-variant">
-                    {prop?.reason || c.scaleReason}
-                  </p>
-                )}
-
                 {/* Ce que produit la recette choisie (JEP-254, point 13) :
                     son rendement d'origine, et le poids de la préparation
                     avant / après ajustement. */}
                 <dl className="mb-3 grid grid-cols-1 gap-x-4 gap-y-1 text-[12.5px] sm:grid-cols-[auto_1fr]">
                   <dt className="text-outline">Recette d’origine</dt>
-                  <dd className="text-on-surface">{c.sourceYield ?? 'rendement non précisé'}</dd>
+                  <dd className="text-on-surface">
+                    {c.sourceYield
+                      ? lignesRendement(c.sourceYield).map((l, i) => (
+                          <span key={i} className="block">
+                            {l}
+                          </span>
+                        ))
+                      : 'rendement non précisé'}
+                  </dd>
                   {masseActuelle != null && (
                     <>
                       <dt className="text-outline">Ingrédients pesés</dt>
@@ -500,6 +501,15 @@ export function QuantitiesStep({
                     className={`${champ} w-full`}
                   />
                 </div>
+
+                {/* Justification consultable en une phrase (§6.4) : la
+                    proposition du moment, sinon celle qui a été appliquée.
+                    Juste au-dessus du coefficient qu'elle explique. */}
+                {(prop?.reason || c.scaleReason) && (
+                  <p className="mb-3 rounded-lg bg-surface-container-low px-3 py-2 text-[12.5px] text-on-surface-variant">
+                    {prop?.reason || c.scaleReason}
+                  </p>
+                )}
 
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <button type="button" onClick={() => void proposer(c)} className={btnGhost}>

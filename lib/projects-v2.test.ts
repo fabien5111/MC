@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, quantitiesStale, utensilsToAdd } from '@/lib/projects';
+import { buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, utensilsToAdd } from '@/lib/projects';
 
 describe('projectV2BlockStates', () => {
   it('ne débloque que l’intention, l’identité et le format sur un projet vierge', () => {
@@ -110,5 +110,20 @@ describe('empreinte du format et quantités périmées', () => {
     // Non résolue ou sans étape : pas de quantités à périmer.
     expect(quantitiesStale({ resolved: false, stepCount: 2, scaleFormatKey: ancienne }, cle)).toBe(false);
     expect(quantitiesStale({ resolved: true, stepCount: 0, scaleFormatKey: ancienne }, cle)).toBe(false);
+  });
+});
+
+describe('lignesRendement', () => {
+  it('met chaque phrase sur sa ligne sans toucher au texte', () => {
+    const t =
+      '285 g — 1 cadre 24 x 24 cm, 5 mm d’épaisseur Perte de réalisation ≈ 5 % : 300 g pour 285 g utilisables. Entremets rond Ø 16 cm : ≈ 100 g, soit ×0,35 de la recette. Bûche en gouttière 20 x 7 cm : ≈ 80 g.';
+    const l = lignesRendement(t);
+    expect(l).toHaveLength(4);
+    expect(l[1]).toMatch(/^Perte de réalisation/);
+    expect(l[2]).toMatch(/^Entremets/);
+    expect(l.join(' ')).toBe(t);
+  });
+  it('garde une phrase unique telle quelle', () => {
+    expect(lignesRendement('12 sablés')).toEqual(['12 sablés']);
   });
 });

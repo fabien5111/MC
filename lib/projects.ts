@@ -761,3 +761,13 @@ export function projectV2BlockStates(project: {
     validation: etat(tousResolus, 'Disponible quand toutes les préparations ont leur recette.'),
   };
 }
+
+// Découpe le rendement d'une recette d'origine en lignes lisibles : une phrase
+// par ligne (point suivi d'une majuscule), et la « perte de réalisation » à
+// part, même quand la source l'a collée à la phrase précédente. Texte inchangé.
+export function lignesRendement(texte: string): string[] {
+  return texte
+    .split(/(?<=[.!?])\s+(?=[A-ZÀ-ÖØ-ÞŒ])|\s+(?=Perte de réalisation)/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+}
