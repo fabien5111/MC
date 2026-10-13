@@ -25,6 +25,8 @@ import { applyComponentScale, setLineQuantity } from '@/lib/projects-write';
 import {
   COMPONENT_SOURCE_LABELS,
   componentScaleProposal,
+  projectFormatKey,
+  quantitiesStale,
   scaledQuantityText,
   type ComponentSourceKind,
   type ScalableFormat,
@@ -173,6 +175,8 @@ export function QuantitiesStep({
   };
 
   const cible = targetFormat(project, targetForme);
+  // Empreinte du format enregistré, posée à chaque ajustement appliqué.
+  const cleFormat = projectFormatKey(project);
   const ordered = [...project.components].sort((a, b) => a.position - b.position);
 
   // Proposition géométrique : lue en direct sur la recette source, jamais
@@ -348,7 +352,7 @@ export function QuantitiesStep({
         } catch (e) {
           return { error: { message: (e as Error).message } };
         }
-        return supabase
+        const res = await supabase
           .from('recipe_project_components')
           .update({
             scale_factor: factor,
@@ -359,6 +363,16 @@ export function QuantitiesStep({
             manually_adjusted: false,
           } as never)
           .eq('id', c.id);
+        if (res.error) return res;
+        // Format pour lequel ces quantités sont calculées : sert à signaler
+        // plus tard qu'elles sont périmées si le format change. Écrit à part,
+        // en tolérant l'absence de la colonne (migration pas encore jouée) :
+        // l'ajustement lui-même ne doit jamais échouer pour ça.
+        await supabase
+          .from('recipe_project_components')
+          .update({ scale_format_key: cleFormat } as never)
+          .eq('id', c.id);
+        return res;
       },
       { errorLabel: 'Ajustement du composant' },
     );
@@ -390,8 +404,16 @@ export function QuantitiesStep({
         const prop = propositions[c.id];
         const masseOrigine = masseGrammes(c.lines, true);
         const masseActuelle = masseGrammes(c.lines, false);
+        const perime = quantitiesStale(c, cleFormat);
         return (
           <div key={c.id} className={componentId == null ? 'rounded-xl border border-outline-variant p-4' : ''}>
+            {perime && (
+              <p className="mb-3 flex items-start gap-2 rounded-lg border border-error/40 bg-error-container/40 px-3 py-2 text-[12.5px] text-on-error-container">
+                <span className="material-symbols-outlined text-[18px] shrink-0">sync_problem</span>
+                Ces quantités ont été calculées pour un autre format que le format visé actuel. Recalculez-les :
+                « Proposer », puis « Appliquer ».
+              </p>
+            )}
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 {componentId == null && <h3 className="font-body-md text-[16px] font-semibold text-on-surface">{c.name}</h3>}

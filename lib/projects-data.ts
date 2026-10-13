@@ -37,6 +37,9 @@ export type ProjectComponent = {
   resolved: boolean;
   scaleFactor: number | null;
   scaleReason: string | null;
+  // Empreinte du format pour lequel le coefficient a été appliqué (cf.
+  // `projectFormatKey`) ; `null` avant la migration ou avant tout ajustement.
+  scaleFormatKey: string | null;
   manuallyAdjusted: boolean;
   // Mode d'ajustement choisi à l'étape 3 (`simple` = volume, `foncage` =
   // surface, `aucun`), `null` = celui de la recette d'origine (JEP-254).
@@ -179,6 +182,7 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     | 'lines'
     | 'scaleFactor'
     | 'scaleReason'
+    | 'scaleFormatKey'
     | 'manuallyAdjusted'
     | 'scalingMode'
     | 'sourceYield'
@@ -186,6 +190,7 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
   > & {
     scale_factor: number | null;
     scale_reason: string | null;
+    scale_format_key?: string | null;
     manually_adjusted: boolean;
     scaling_mode?: string | null;
     utensils?: ComponentUtensil[] | null;
@@ -208,6 +213,7 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     resolved: c.resolved,
     scaleFactor: c.scale_factor,
     scaleReason: c.scale_reason,
+    scaleFormatKey: c.scale_format_key ?? null,
     manuallyAdjusted: c.manually_adjusted,
     scalingMode: c.scaling_mode ?? null,
     sourceYield: c.source_recipe_id ? (rendements.get(c.source_recipe_id) ?? null) : null,

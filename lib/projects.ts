@@ -251,6 +251,46 @@ export function projectFormatPayload(input: {
   };
 }
 
+// Empreinte du format ENREGISTRÉ d'un projet : tout ce qui change ce que
+// « pour ce format » veut dire pour les quantités (type, moule, dimensions,
+// nombre de pièces, parts). Posée sur chaque préparation à l'« Appliquer » de
+// son ajustement (`recipe_project_components.scale_format_key`) et comparée au
+// format courant : une différence = les quantités ont été calculées pour un
+// AUTRE format. Pure et stable (clés triées, nombres normalisés).
+export function projectFormatKey(p: {
+  measure_type?: string | null;
+  mold_type_id?: number | null;
+  mold_dims?: unknown;
+  yield_qty?: string | null;
+  servings?: number | null;
+}): string {
+  const dims =
+    p.mold_dims && typeof p.mold_dims === 'object' && !Array.isArray(p.mold_dims)
+      ? Object.entries(p.mold_dims as Record<string, unknown>)
+          .map(([k, v]) => [k, Number(v)] as [string, number])
+          .filter(([, v]) => isFinite(v) && v > 0)
+          .sort(([a], [b]) => a.localeCompare(b))
+      : [];
+  return JSON.stringify([
+    p.measure_type ?? '',
+    p.mold_type_id ?? '',
+    dims,
+    String(p.yield_qty ?? '').trim(),
+    p.servings ?? '',
+  ]);
+}
+
+// Une préparation dont les quantités ont été calculées pour un autre format
+// que le format courant. Prudent : sans empreinte (ajustement antérieur à la
+// colonne, ou colonne absente), on ne dit rien — mieux vaut se taire qu'alerter
+// à tort ; et une préparation non résolue ou sans contenu n'a pas de quantités.
+export function quantitiesStale(
+  c: { resolved: boolean; stepCount: number; scaleFormatKey?: string | null },
+  currentKey: string,
+): boolean {
+  return c.resolved && c.stepCount > 0 && !!c.scaleFormatKey && c.scaleFormatKey !== currentKey;
+}
+
 // Description lisible du format, écrite dans `recipes.yield_desc` — la même
 // que celle composée par l'éditeur classique (`composeMoldDesc`), pour qu'une
 // recette de projet et une recette saisie à la main affichent leur rendement

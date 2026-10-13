@@ -47,7 +47,9 @@ import {
   PROJECT_V2_ATELIER,
   buildProjectFormatUpdate,
   deduceProjectFormat,
+  projectFormatKey,
   projectTargetForme,
+  quantitiesStale,
   projectV2BlockStates,
   projectValidationBlockers,
   type ComponentSourceKind,
@@ -188,6 +190,28 @@ export function ProjectV2({
   // Format visé tel qu'il est ENREGISTRÉ (et non tel qu'affiché) : c'est lui
   // qui sert au calcul des quantités et à la description passée à l'IA.
   const formeCible = projectTargetForme({ measure_type: project.measure_type, forme: formeBase, dims: dimsBase, count: nbBase });
+  // Préparations dont les quantités ont été calculées pour un autre format que
+  // le format enregistré aujourd'hui : rien ne les recalcule d'office (un
+  // recalcul automatique écraserait les ajustements voulus), on le signale.
+  const cleFormat = projectFormatKey(project);
+  const perimees = ordered.filter((c) => quantitiesStale(c, cleFormat));
+  // Après un changement de format enregistré : dit lesquelles sont touchées.
+  // Sans empreinte connue (ajustement antérieur à la colonne), tout coefficient
+  // différent de ×1 est compté — mieux vaut prévenir une fois de trop ici.
+  async function signalerQuantites(payload: Record<string, unknown>) {
+    const nouvelle = projectFormatKey({ ...project, ...payload });
+    if (nouvelle === cleFormat) return;
+    const touchees = ordered.filter(
+      (c) =>
+        c.resolved &&
+        c.stepCount > 0 &&
+        (c.scaleFormatKey ? c.scaleFormatKey !== nouvelle : c.scaleFactor != null && c.scaleFactor !== 1),
+    );
+    if (!touchees.length) return;
+    await dialog.alert(
+      `Le format a changé. Les quantités de ${touchees.length} préparation(s) (${touchees.map((c) => c.name).join(', ')}) avaient été calculées pour l’ancien format : elles n’ont pas été recalculées. Faites-le dans le bloc « Étapes », volet « Ajustement des quantités » de chaque préparation (« Proposer », puis « Appliquer »).`,
+    );
+  }
   const formatLabel =
     [moldTypes.find((m) => m.id === project.mold_type_id)?.name, project.yield_desc].filter(Boolean).join(' — ') ||
     (project.servings ? `${project.servings} parts` : 'format libre');
@@ -203,7 +227,10 @@ export function ProjectV2({
     const ok = await mutate(() => createClient().from('recipes').update(built.payload as never).eq('id', project.id), {
       errorLabel: 'Enregistrement du format',
     });
-    if (ok) setFormatEnregistre(empreinteFormat({ format, dims, moldTypeId, servings, count }));
+    if (ok) {
+      setFormatEnregistre(empreinteFormat({ format, dims, moldTypeId, servings, count }));
+      await signalerQuantites(built.payload);
+    }
     return ok;
   }
 
@@ -333,7 +360,10 @@ export function ProjectV2({
       },
       { errorLabel: 'Enregistrement de la proposition' },
     );
-    if (ecrit && 'payload' in built) setFormatEnregistre(empreinteFormat({ format: f, dims: d, moldTypeId: moule, servings: s, count: n }));
+    if (ecrit && 'payload' in built) {
+      setFormatEnregistre(empreinteFormat({ format: f, dims: d, moldTypeId: moule, servings: s, count: n }));
+      await signalerQuantites(built.payload);
+    }
     if ('error' in built) dialog.alert(`Proposition reportée dans le format : ${built.error}`);
   }
 
@@ -413,6 +443,12 @@ export function ProjectV2({
     if (blockers.length) {
       dialog.alert(`Le projet ne peut pas encore être validé :\n\n${blockers.join('\n')}`);
       return;
+    }
+    if (perimees.length) {
+      const go = await dialog.confirm(
+        `Les quantités de ${perimees.length} préparation(s) (${perimees.map((c) => c.name).join(', ')}) ont été calculées pour un autre format que le format visé. Valider quand même ?`,
+      );
+      if (!go) return;
     }
     // Ce qui est saisi mais pas encore écrit est enregistré d'abord : la
     // validation lit la base, pas les champs de la page.
@@ -751,6 +787,7 @@ export function ProjectV2({
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
                           <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
                             Ajustement des quantités · ×{String(Math.round((c.scaleFactor ?? 1) * 100) / 100).replace('.', ',')}
+                            {quantitiesStale(c, cleFormat) && <span className="text-error"> · à recalculer (format modifié)</span>}
                           </span>
                           <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                         </summary>
@@ -859,6 +896,13 @@ export function ProjectV2({
               </ul>
             ) : (
               <p className="text-green-700">Le projet peut être validé.</p>
+            )}
+            {perimees.length > 0 && (
+              <p className="flex items-start gap-2 rounded-lg border border-error/40 bg-error-container/40 px-3 py-2 text-on-error-container">
+                <span className="material-symbols-outlined text-[18px] shrink-0">sync_problem</span>
+                Quantités à recalculer (calculées pour un autre format que le format visé) :{' '}
+                {perimees.map((c) => c.name).join(', ')}.
+              </p>
             )}
             {recipe && (
               <ProjectTrials recipe={recipe} trials={trials} unresolved={ordered.filter((c) => !c.resolved).map((c) => c.name)} />

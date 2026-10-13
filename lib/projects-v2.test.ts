@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildProjectFormatUpdate, projectV2BlockStates, utensilsToAdd } from '@/lib/projects';
+import { buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, quantitiesStale, utensilsToAdd } from '@/lib/projects';
 
 describe('projectV2BlockStates', () => {
   it('ne débloque que l’intention, l’identité et le format sur un projet vierge', () => {
@@ -79,5 +79,36 @@ describe('utensilsToAdd', () => {
       { name: 'cercle Ø 20', ref_id: null, comment: null },
     ];
     expect(utensilsToAdd(existants, entrants).map((u) => u.name)).toEqual(['Cercle Ø 20']);
+  });
+});
+
+describe('empreinte du format et quantités périmées', () => {
+  const rond = { measure_type: 'mold', mold_type_id: 3, mold_dims: { diametre: 26, hauteur: 2 }, yield_qty: '1', servings: 8 };
+
+  it("est stable : l'ordre des dimensions et les nombres écrits en texte n'y changent rien", () => {
+    expect(projectFormatKey(rond)).toBe(
+      projectFormatKey({ ...rond, mold_dims: { hauteur: '2', diametre: 26.0 } as never }),
+    );
+  });
+
+  it('change dès que le moule, une dimension, le nombre ou les parts changent', () => {
+    const base = projectFormatKey(rond);
+    expect(projectFormatKey({ ...rond, mold_dims: { diametre: 28, hauteur: 2 } })).not.toBe(base);
+    expect(projectFormatKey({ ...rond, mold_type_id: 4 })).not.toBe(base);
+    expect(projectFormatKey({ ...rond, yield_qty: '2' })).not.toBe(base);
+    expect(projectFormatKey({ ...rond, servings: 10 })).not.toBe(base);
+  });
+
+  it('ne signale que les préparations ajustées pour un AUTRE format', () => {
+    const cle = projectFormatKey(rond);
+    const ancienne = projectFormatKey({ ...rond, mold_dims: { diametre: 20, hauteur: 2 } });
+    const c = { resolved: true, stepCount: 2 };
+    expect(quantitiesStale({ ...c, scaleFormatKey: ancienne }, cle)).toBe(true);
+    expect(quantitiesStale({ ...c, scaleFormatKey: cle }, cle)).toBe(false);
+    // Sans empreinte (avant la migration) : on se tait.
+    expect(quantitiesStale({ ...c, scaleFormatKey: null }, cle)).toBe(false);
+    // Non résolue ou sans étape : pas de quantités à périmer.
+    expect(quantitiesStale({ resolved: false, stepCount: 2, scaleFormatKey: ancienne }, cle)).toBe(false);
+    expect(quantitiesStale({ resolved: true, stepCount: 0, scaleFormatKey: ancienne }, cle)).toBe(false);
   });
 });
