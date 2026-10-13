@@ -15,7 +15,7 @@
 // - les éléments de recette (photo, catégories, ustensiles…) s'écrivent
 //   section par section, jamais par l'enregistrement global de `CreerForm`
 //   (cf. RecipeDetailEditors).
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -31,6 +31,7 @@ import { DessertVise, QuantitiesStep } from '@/components/projets/ProjectQuantit
 import { ProjectTrials } from '@/components/projets/ProjectTrials';
 import { useProjectComponents } from '@/components/projets/useProjectComponents';
 import { ProjectV2Block } from '@/components/projets/v2/ProjectV2Block';
+import { useRegisterSection, useSectionRegistry } from '@/components/projets/v2/sections';
 import { RecipeToc, stepAnchorId, type TocAction, type TocSections } from '@/components/recipe/RecipeToc';
 import {
   ConseilsEditor,
@@ -139,6 +140,11 @@ export function ProjectV2({
   const router = useRouter();
   const dialog = useDialog();
   const { mutate, busy, refresh } = useMutation();
+  // Sections modifiées et non enregistrées (cf. sections.ts) : alimente les
+  // boutons « Enregistrer le brouillon » / « Quitter » / « Valider » du rail.
+  const { registry: sectionRegistry, dirtyLabels, saveAll } = useSectionRegistry();
+  const anyDirty = dirtyLabels.length > 0;
+  const [leaving, setLeaving] = useState(false);
   const states = projectV2BlockStates({ ...project, intent: project.intent });
   const v1 = `/projets/${project.id}`;
 
@@ -163,6 +169,22 @@ export function ProjectV2({
   const [moldTypeId, setMoldTypeId] = useState(project.mold_type_id ? String(project.mold_type_id) : '');
   const [servings, setServings] = useState(project.servings ? String(project.servings) : '');
   const [count, setCount] = useState(project.measure_type === 'mold' ? String(nbBase) : '1');
+  // Empreinte du format saisi, comparée à celle du dernier enregistrement : le
+  // format affiché est DÉDUIT de la base (`deduceProjectFormat`) et pourrait
+  // différer de la saisie après relecture — une comparaison avec les props
+  // signalerait alors une modification fantôme. L'empreinte de référence est
+  // donc posée à l'ouverture, puis à chaque enregistrement réussi.
+  const empreinteFormat = (f: { format: ProjectFormat; dims: Record<string, string>; moldTypeId: string; servings: string; count: string }) =>
+    JSON.stringify({
+      format: f.format,
+      dims: Object.entries(f.dims)
+        .filter(([, v]) => String(v).trim() !== '')
+        .sort(([a], [b]) => a.localeCompare(b)),
+      moldTypeId: f.moldTypeId,
+      servings: f.servings.trim(),
+      count: f.count.trim(),
+    });
+  const [formatEnregistre, setFormatEnregistre] = useState(() => empreinteFormat({ format, dims, moldTypeId, servings, count }));
   // Format visé tel qu'il est ENREGISTRÉ (et non tel qu'affiché) : c'est lui
   // qui sert au calcul des quantités et à la description passée à l'IA.
   const formeCible = projectTargetForme({ measure_type: project.measure_type, forme: formeBase, dims: dimsBase, count: nbBase });
@@ -170,17 +192,19 @@ export function ProjectV2({
     [moldTypes.find((m) => m.id === project.mold_type_id)?.name, project.yield_desc].filter(Boolean).join(' — ') ||
     (project.servings ? `${project.servings} parts` : 'format libre');
 
-  async function saveFormat() {
+  async function saveFormat(): Promise<boolean> {
     // Le titre passé est celui DÉJÀ enregistré : il se modifie dans « Le
     // dessert », le format ne doit pas l'écraser avec une saisie en cours.
     const built = buildProjectFormatUpdate({ format, title: project.title, servings, count, dims, moldTypeId });
     if ('error' in built) {
       dialog.alert(built.error);
-      return;
+      return false;
     }
-    await mutate(() => createClient().from('recipes').update(built.payload as never).eq('id', project.id), {
+    const ok = await mutate(() => createClient().from('recipes').update(built.payload as never).eq('id', project.id), {
       errorLabel: 'Enregistrement du format',
     });
+    if (ok) setFormatEnregistre(empreinteFormat({ format, dims, moldTypeId, servings, count }));
+    return ok;
   }
 
   // ── Intention, et proposition de l'IA ─────────────────────────────────
@@ -191,8 +215,8 @@ export function ProjectV2({
     ? `Quota de générations par IA atteint ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Le crédit se renouvelle à la prochaine période.`
     : 'La proposition de format et de préparations par IA n’est pas incluse dans votre formule.';
 
-  async function saveIntent() {
-    await mutate(
+  async function saveIntent(): Promise<boolean> {
+    return await mutate(
       () =>
         createClient()
           .from('recipe_projects')
@@ -270,7 +294,7 @@ export function ProjectV2({
     const built = buildProjectFormatUpdate({ format: f, title: titre, servings: s, count: n, dims: d, moldTypeId: moule });
     const proposees = (data.components ?? []).slice(0, Math.max(0, MAX_COMPONENTS - resolues.length));
 
-    await mutate(
+    const ecrit = await mutate(
       async () => {
         const supabase = createClient();
         const { error } = await supabase.from('recipe_projects').update({ intent: texte } as never).eq('recipe_id', project.id);
@@ -309,14 +333,15 @@ export function ProjectV2({
       },
       { errorLabel: 'Enregistrement de la proposition' },
     );
+    if (ecrit && 'payload' in built) setFormatEnregistre(empreinteFormat({ format: f, dims: d, moldTypeId: moule, servings: s, count: n }));
     if ('error' in built) dialog.alert(`Proposition reportée dans le format : ${built.error}`);
   }
 
   // ── Le dessert : titre + description ──────────────────────────────────
   const [title, setTitle] = useState(project.title === 'Nouveau projet' ? '' : project.title);
   const [description, setDescription] = useState(project.description ?? '');
-  async function saveIdentite() {
-    await mutate(
+  async function saveIdentite(): Promise<boolean> {
+    return await mutate(
       () =>
         createClient()
           .from('recipes')
@@ -326,6 +351,62 @@ export function ProjectV2({
     );
   }
 
+  // ── Sections déclarées au registre (rail : enregistrer / quitter / valider) ──
+  useRegisterSection(sectionRegistry, 'intention', {
+    label: 'Intention',
+    dirty: intent.trim().slice(0, INTENT_MAX) !== (project.intent ?? '').trim(),
+    save: saveIntent,
+  });
+  useRegisterSection(sectionRegistry, 'dessert', {
+    label: 'Nom et description',
+    dirty: (title.trim() || 'Nouveau projet') !== project.title || description.trim() !== (project.description ?? '').trim(),
+    save: saveIdentite,
+  });
+  useRegisterSection(sectionRegistry, 'format', {
+    label: 'Format',
+    dirty: empreinteFormat({ format, dims, moldTypeId, servings, count }) !== formatEnregistre,
+    save: saveFormat,
+  });
+
+  // Fermeture ou rechargement de l'onglet avec une saisie non écrite. Les clics
+  // sur les liens de l'en-tête ne sont pas interceptables en App Router :
+  // seul « Quitter » du rail protège la navigation interne.
+  useEffect(() => {
+    if (!anyDirty) return;
+    const avertir = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', avertir);
+    return () => window.removeEventListener('beforeunload', avertir);
+  }, [anyDirty]);
+
+  const versCarnet = '/carnet?scope=proj';
+  async function quitter() {
+    if (!anyDirty) {
+      setLeaving(true);
+      router.push(versCarnet);
+      return;
+    }
+    const choix = await dialog.choice(
+      `Des modifications n’ont pas été enregistrées (${dirtyLabels.join(', ')}). Que souhaitez-vous faire ?`,
+      [
+        { label: 'Quitter sans enregistrer', value: 'discard' },
+        { label: 'Enregistrer et quitter', value: 'save', variant: 'primary' },
+      ],
+    );
+    if (choix === 'discard') {
+      setLeaving(true);
+      router.push(versCarnet);
+    } else if (choix === 'save') {
+      if (await saveAll()) {
+        setLeaving(true);
+        router.push(versCarnet);
+      }
+    }
+    // choix === null (Annuler / Échap) : on reste sur la page.
+  }
+
   // ── Validation (§8) ───────────────────────────────────────────────────
   const blockers = projectValidationBlockers({ measure_type: project.measure_type, components: project.components });
   async function valider() {
@@ -333,6 +414,9 @@ export function ProjectV2({
       dialog.alert(`Le projet ne peut pas encore être validé :\n\n${blockers.join('\n')}`);
       return;
     }
+    // Ce qui est saisi mais pas encore écrit est enregistré d'abord : la
+    // validation lit la base, pas les champs de la page.
+    if (anyDirty && !(await saveAll())) return;
     const ok = await mutate(
       async () => {
         try {
@@ -439,15 +523,26 @@ export function ProjectV2({
   const tocSteps =
     states.etapes.unlocked && recipe ? steps.map((st, i) => ({ key: String(st.id), title: st.title || `Étape ${i + 1}` })) : [];
   const tocActions: TocAction[] = [
-    { id: 'v1', icon: 'arrow_back', label: 'Revenir à la version actuelle', variant: 'outline', onClick: () => router.push(v1) },
+    { id: 'quitter', icon: 'close', label: 'Quitter', variant: 'outline', onClick: () => void quitter(), disabled: busy || leaving },
+    {
+      id: 'brouillon',
+      icon: 'save',
+      label: anyDirty
+        ? `Enregistrer le brouillon (${dirtyLabels.length} section${dirtyLabels.length > 1 ? 's' : ''} modifiée${dirtyLabels.length > 1 ? 's' : ''})`
+        : 'Brouillon enregistré',
+      variant: 'outline-strong',
+      onClick: () => void saveAll(),
+      disabled: busy || leaving || !anyDirty,
+    },
     {
       id: 'valider',
       icon: 'task_alt',
       label: blockers.length ? 'Valider le projet (des préparations restent à résoudre)' : 'Valider le projet',
       variant: 'filled',
       onClick: () => void valider(),
-      disabled: busy || blockers.length > 0,
+      disabled: busy || leaving || blockers.length > 0,
     },
+    { id: 'v1', icon: 'arrow_back', label: 'Revenir à la version actuelle', variant: 'outline', onClick: () => router.push(v1) },
   ];
 
   const sansRecette = <p className="text-sm text-on-surface-variant">La recette du projet n’a pas pu être lue.</p>;
@@ -455,7 +550,7 @@ export function ProjectV2({
   return (
     <>
       <LoadingOverlay
-        visible={busy || thinking || consultBusy}
+        visible={busy || thinking || consultBusy || leaving}
         label={thinking ? 'Composition du projet…' : undefined}
       />
 
@@ -468,6 +563,16 @@ export function ProjectV2({
         <h1 className="mb-3 font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[34px]">
           {project.title === 'Nouveau projet' ? 'Nouveau projet' : project.title}
         </h1>
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <span className="bg-secondary px-3 py-1 font-label-md text-[10px] uppercase tracking-widest text-white">Brouillon</span>
+          {anyDirty ? (
+            <span className="border border-error px-3 py-1 font-label-md text-[10px] uppercase tracking-widest text-error">
+              Modifications non enregistrées · {dirtyLabels.join(', ')}
+            </span>
+          ) : (
+            <span className="font-label-md text-[12px] text-green-700">Tout est enregistré</span>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <Link href={v1} className="text-sm text-secondary underline underline-offset-2 hover:text-primary">
             Revenir à la version actuelle
@@ -555,7 +660,7 @@ export function ProjectV2({
         {bloc(
           'identite',
           <div className="space-y-6">
-            {recipe && <HeroEditor recipe={recipe} mutate={mutate} busy={busy} />}
+            {recipe && <HeroEditor recipe={recipe} mutate={mutate} busy={busy} sections={sectionRegistry} />}
             <div className="space-y-4">
               <div>
                 <label className={etiquette}>NOM DU DESSERT</label>
@@ -584,7 +689,7 @@ export function ProjectV2({
               )}
             </div>
             {recipe && (
-              <TagsEditor recipe={recipe} tags={tags} mutate={mutate} busy={busy} />
+              <TagsEditor recipe={recipe} tags={tags} mutate={mutate} busy={busy} sections={sectionRegistry} />
             )}
           </div>,
         )}
@@ -717,6 +822,7 @@ export function ProjectV2({
                 utensilNames={utensilNames}
                 mutate={mutate}
                 busy={busy}
+                sections={sectionRegistry}
               />
               {days.length > 1 && (
                 <div className="text-sm">
@@ -740,7 +846,7 @@ export function ProjectV2({
           ),
         )}
 
-        {bloc('conseils', recipe ? <ConseilsEditor recipe={recipe} mutate={mutate} busy={busy} /> : sansRecette)}
+        {bloc('conseils', recipe ? <ConseilsEditor recipe={recipe} mutate={mutate} busy={busy} sections={sectionRegistry} /> : sansRecette)}
 
         {bloc(
           'validation',

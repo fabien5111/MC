@@ -22,6 +22,7 @@ import { resizeDataUrlToThumb } from '@/lib/images';
 import { televerserImage } from '@/lib/storage-client';
 import { estDataUrlImage } from '@/lib/storage';
 import type { RecipeFull } from '@/lib/recipes';
+import { useRegisterSection, type SectionRegistry } from '@/components/projets/v2/sections';
 
 type Mutate = ReturnType<typeof useMutation>['mutate'];
 export type RefOption = { id: number; name: string };
@@ -48,14 +49,25 @@ function minutes(v: string): number | null {
 // (listes « En cuisine » ~96 px, cartes ~480 px), recalculées seulement pour
 // un dépôt frais — jamais en rechargeant dans un canvas une image déjà sur le
 // stockage (cf. CLAUDE.md, « Image illisible »).
-export function HeroEditor({ recipe, mutate, busy }: { recipe: RecipeFull; mutate: Mutate; busy: boolean }) {
+export function HeroEditor({
+  recipe,
+  mutate,
+  busy,
+  sections,
+}: {
+  recipe: RecipeFull;
+  mutate: Mutate;
+  busy: boolean;
+  sections?: SectionRegistry;
+}) {
   const [hero, setHero] = useState<string | null>(recipe.hero_image_url ?? null);
   const [original, setOriginal] = useState<string | null>(recipe.hero_image_original_url ?? recipe.hero_image_url ?? null);
   const [ai, setAi] = useState(recipe.hero_image_ai_retouched);
   const modifie = hero !== (recipe.hero_image_url ?? null) || ai !== recipe.hero_image_ai_retouched;
+  useRegisterSection(sections, 'photo', { label: 'Photo', dirty: modifie, save: enregistrer });
 
   async function enregistrer() {
-    await mutate(
+    return await mutate(
       async () => {
         try {
           if (!hero) {
@@ -143,11 +155,13 @@ export function TagsEditor({
   tags,
   mutate,
   busy,
+  sections,
 }: {
   recipe: RecipeFull;
   tags: RefOption[];
   mutate: Mutate;
   busy: boolean;
+  sections?: SectionRegistry;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -182,6 +196,7 @@ export function TagsEditor({
   }, [remaining, search]);
 
   const modifie = selected.size !== initiaux.size || [...initiaux.keys()].some((id) => !selected.has(id));
+  useRegisterSection(sections, 'tags', { label: 'Catégories', dirty: modifie, save: enregistrer });
 
   async function addTag(name: string) {
     const clean = capitalizeSentences(name.trim());
@@ -211,7 +226,7 @@ export function TagsEditor({
   }
 
   async function enregistrer() {
-    await mutate(
+    return await mutate(
       async () => {
         const supabase = createClient();
         // Même geste que l'éditeur : liaisons supprimées puis réinsérées.
@@ -331,6 +346,7 @@ export function OrganisationEditor({
   utensilNames,
   mutate,
   busy,
+  sections,
 }: {
   recipe: RecipeFull;
   difficultyId: number | null;
@@ -338,6 +354,7 @@ export function OrganisationEditor({
   utensilNames: string[];
   mutate: Mutate;
   busy: boolean;
+  sections?: SectionRegistry;
 }) {
   const init = {
     ustensiles: [...recipe.recipe_utensils]
@@ -357,9 +374,10 @@ export function OrganisationEditor({
   const [total, setTotal] = useState(init.total);
   const modifie =
     JSON.stringify({ ustensiles, difficulte, prep, cook, wait, total }) !== JSON.stringify(init);
+  useRegisterSection(sections, 'organisation', { label: 'Ustensiles, difficulté et temps', dirty: modifie, save: enregistrer });
 
   async function enregistrer() {
-    await mutate(
+    return await mutate(
       async () => {
         const supabase = createClient();
         const { error } = await majRecette(recipe.id, {
@@ -484,7 +502,17 @@ export function OrganisationEditor({
 }
 
 // ── Conseils et source ──────────────────────────────────────────────────
-export function ConseilsEditor({ recipe, mutate, busy }: { recipe: RecipeFull; mutate: Mutate; busy: boolean }) {
+export function ConseilsEditor({
+  recipe,
+  mutate,
+  busy,
+  sections,
+}: {
+  recipe: RecipeFull;
+  mutate: Mutate;
+  busy: boolean;
+  sections?: SectionRegistry;
+}) {
   const init = {
     tips: recipe.tips ?? '',
     serving: recipe.serving_advice ?? '',
@@ -494,10 +522,11 @@ export function ConseilsEditor({ recipe, mutate, busy }: { recipe: RecipeFull; m
   };
   const [v, setV] = useState(init);
   const modifie = JSON.stringify(v) !== JSON.stringify(init);
+  useRegisterSection(sections, 'conseils', { label: 'Conseils et source', dirty: modifie, save: enregistrer });
   const maj = (k: keyof typeof init) => (e: { target: { value: string } }) => setV((p) => ({ ...p, [k]: e.target.value }));
 
   async function enregistrer() {
-    await mutate(
+    return await mutate(
       () =>
         majRecette(recipe.id, {
           tips: v.tips.trim() || null,
