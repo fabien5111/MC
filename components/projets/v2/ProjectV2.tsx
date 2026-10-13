@@ -55,10 +55,15 @@ import {
   type ComponentSourceKind,
   type ProjectFormat,
   type ProjectV2Block as BlockKey,
+  empreinteEtapes,
+  empreinteQuantites,
+  projectTodo,
+  type TodoItem,
 } from '@/lib/projects';
 import { resequenceProjectSteps, validateProject } from '@/lib/projects-write';
 import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
 import { PlanningTimeline } from '@/components/recipe/PlanningTimeline';
+import { ProjectTodo } from '@/components/projets/v2/ProjectTodo';
 import { mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
@@ -495,6 +500,45 @@ export function ProjectV2({
     : [];
   const days = planningDays(steps);
 
+  // ── Reste à faire ─────────────────────────────────────────────────────
+  const todo = projectTodo({
+    intent: project.intent,
+    titleSet: !!project.title && project.title !== 'Nouveau projet',
+    measure_type: project.measure_type,
+    formatKey: cleFormat,
+    verifsDispo: ordered.length > 0 && ordered.every((c) => c.checksAvailable),
+    components: ordered.map((c) => ({
+      id: c.id,
+      name: c.name,
+      resolved: c.resolved,
+      stepCount: c.stepCount,
+      scaleFormatKey: c.scaleFormatKey,
+      checkedStepsKey: c.checkedStepsKey,
+      checkedQuantitiesKey: c.checkedQuantitiesKey,
+      cleEtapes: empreinteEtapes(steps.filter((s) => componentOf(s) === c.id)),
+      cleQuantites: empreinteQuantites(c.lines, c.scaleFactor),
+    })),
+  });
+
+  // Coche / décoche une vérification : on y range l'empreinte du contenu
+  // vérifié ; elle ne vaut plus dès que ce contenu change.
+  async function basculerVerif(it: TodoItem) {
+    const v = it.verif;
+    if (!v) return;
+    const comp = ordered.find((c) => c.id === v.componentId);
+    if (!comp) return;
+    const courant = v.type === 'etapes' ? comp.checkedStepsKey : comp.checkedQuantitiesKey;
+    const colonne = v.type === 'etapes' ? 'checked_steps_key' : 'checked_quantities_key';
+    await mutate(
+      () =>
+        createClient()
+          .from('recipe_project_components')
+          .update({ [colonne]: courant === v.cle ? null : v.cle } as never)
+          .eq('id', v.componentId),
+      { errorLabel: 'Vérification' },
+    );
+  }
+
   function boutonRecette(c: ProjectComponent) {
     return (
       <span className="flex flex-wrap items-center gap-2">
@@ -622,6 +666,8 @@ export function ProjectV2({
           </span>
         </div>
       </header>
+
+      <ProjectTodo items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
 
       <div className="space-y-6">
         {bloc(

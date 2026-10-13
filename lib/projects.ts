@@ -771,3 +771,178 @@ export function lignesRendement(texte: string): string[] {
     .map((l) => l.trim())
     .filter(Boolean);
 }
+
+// ── Reste à faire (v2) ────────────────────────────────────────────────────
+
+// Empreinte courte et stable d'un contenu (djb2, en base 36). Ce n'est pas de
+// la sécurité : juste de quoi reconnaître « ce que j'ai vérifié n'a pas bougé ».
+export function empreinteContenu(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+type EtapeContenu = {
+  title: string | null;
+  description: string | null;
+  sous_etapes: string[] | null;
+  prep_time: number | null;
+  cook_time: number | null;
+  wait_time: number | null;
+  cook_temp: number | null;
+  tips: string | null;
+  day_offset: number | null;
+};
+
+// Empreinte du contenu des étapes d'UNE préparation (texte, temps, jour,
+// astuces). « Étapes relues » est valable tant qu'elle ne change pas : toute
+// écriture sur les étapes la fait bouger, sans qu'aucun chemin d'écriture ait
+// à penser à décocher quoi que ce soit.
+export function empreinteEtapes(steps: EtapeContenu[]): string {
+  return empreinteContenu(
+    JSON.stringify(
+      steps.map((s) => [
+        s.title ?? '',
+        s.description ?? '',
+        s.sous_etapes ?? [],
+        s.prep_time ?? null,
+        s.cook_time ?? null,
+        s.wait_time ?? null,
+        s.cook_temp ?? null,
+        s.tips ?? '',
+        s.day_offset ?? null,
+      ]),
+    ),
+  );
+}
+
+// Empreinte des quantités d'UNE préparation : lignes (nom, quantité, unité,
+// commentaire) et coefficient appliqué.
+export function empreinteQuantites(
+  lines: { name: string; quantity: string | null; unit: string | null; comment: string | null }[],
+  scaleFactor: number | null,
+): string {
+  return empreinteContenu(
+    JSON.stringify([scaleFactor ?? null, lines.map((l) => [l.name, l.quantity ?? '', l.unit ?? '', l.comment ?? ''])]),
+  );
+}
+
+export type TodoEtat = 'fait' | 'afaire' | 'arefaire';
+export type TodoItem = {
+  id: string;
+  groupe: string;
+  libelle: string;
+  etat: TodoEtat;
+  // Bloc vers lequel mène le clic (`bloc-<clé>`).
+  ancre: string;
+  // Point à cocher à la main : la préparation et la vérification concernées.
+  verif?: { componentId: number; type: 'etapes' | 'quantites'; cle: string };
+  // Case non cochable pour l'instant (quantités calculées pour un autre
+  // format : il faut d'abord les recalculer).
+  bloque?: boolean;
+};
+
+// Ce qui reste à faire sur un projet. Deux sortes de points : ceux que la base
+// permet de constater seule (intention, format, recettes choisies,
+// quantités à jour) et ceux que seul le membre peut confirmer (« étapes
+// relues », « quantités vérifiées »), qui ne valent que tant que le contenu
+// vérifié n'a pas changé depuis (empreinte). Sans colonne (`verifsDispo`
+// faux), les points manuels ne sont pas proposés.
+export function projectTodo(input: {
+  intent: string | null;
+  titleSet: boolean;
+  measure_type: string | null;
+  formatKey: string;
+  verifsDispo: boolean;
+  components: {
+    id: number;
+    name: string;
+    resolved: boolean;
+    stepCount: number;
+    scaleFormatKey: string | null;
+    checkedStepsKey: string | null;
+    checkedQuantitiesKey: string | null;
+    cleEtapes: string;
+    cleQuantites: string;
+  }[];
+}): TodoItem[] {
+  const out: TodoItem[] = [];
+  out.push({
+    id: 'intention',
+    groupe: 'Le projet',
+    libelle: 'Intention décrite',
+    etat: input.intent?.trim() ? 'fait' : 'afaire',
+    ancre: 'bloc-intention',
+  });
+  out.push({
+    id: 'nom',
+    groupe: 'Le projet',
+    libelle: 'Dessert nommé',
+    etat: input.titleSet ? 'fait' : 'afaire',
+    ancre: 'bloc-identite',
+  });
+  out.push({
+    id: 'format',
+    groupe: 'Le projet',
+    libelle: 'Format défini',
+    etat: input.measure_type ? 'fait' : 'afaire',
+    ancre: 'bloc-format',
+  });
+  out.push({
+    id: 'preparations',
+    groupe: 'Le projet',
+    libelle: 'Préparations ajoutées',
+    etat: input.components.length > 0 ? 'fait' : 'afaire',
+    ancre: 'bloc-structure',
+  });
+  for (const c of input.components) {
+    out.push({
+      id: `recette-${c.id}`,
+      groupe: c.name,
+      libelle: 'Recette choisie',
+      etat: c.resolved ? 'fait' : 'afaire',
+      ancre: 'bloc-structure',
+    });
+    if (!c.resolved || c.stepCount === 0) continue;
+    const perimee = quantitiesStale(c, input.formatKey);
+    if (input.verifsDispo) {
+      const etapes = c.checkedStepsKey == null ? 'afaire' : c.checkedStepsKey === c.cleEtapes ? 'fait' : 'arefaire';
+      out.push({
+        id: `etapes-${c.id}`,
+        groupe: c.name,
+        libelle: etapes === 'arefaire' ? 'Étapes à relire (modifiées depuis)' : 'Étapes relues',
+        etat: etapes,
+        ancre: 'bloc-etapes',
+        verif: { componentId: c.id, type: 'etapes', cle: c.cleEtapes },
+      });
+      const quantites =
+        perimee || (c.checkedQuantitiesKey != null && c.checkedQuantitiesKey !== c.cleQuantites)
+          ? 'arefaire'
+          : c.checkedQuantitiesKey == null
+            ? 'afaire'
+            : 'fait';
+      out.push({
+        id: `quantites-${c.id}`,
+        groupe: c.name,
+        libelle: perimee
+          ? 'Quantités à recalculer (format modifié)'
+          : quantites === 'arefaire'
+            ? 'Quantités à revérifier (modifiées depuis)'
+            : 'Quantités vérifiées',
+        etat: quantites,
+        ancre: 'bloc-etapes',
+        verif: { componentId: c.id, type: 'quantites', cle: c.cleQuantites },
+        bloque: perimee,
+      });
+    } else if (perimee) {
+      out.push({
+        id: `quantites-${c.id}`,
+        groupe: c.name,
+        libelle: 'Quantités à recalculer (format modifié)',
+        etat: 'arefaire',
+        ancre: 'bloc-etapes',
+      });
+    }
+  }
+  return out;
+}

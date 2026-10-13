@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, utensilsToAdd } from '@/lib/projects';
+import { empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, utensilsToAdd } from '@/lib/projects';
 
 describe('projectV2BlockStates', () => {
   it('ne débloque que l’intention, l’identité et le format sur un projet vierge', () => {
@@ -125,5 +125,56 @@ describe('lignesRendement', () => {
   });
   it('garde une phrase unique telle quelle', () => {
     expect(lignesRendement('12 sablés')).toEqual(['12 sablés']);
+  });
+});
+
+describe('projectTodo', () => {
+  const etape = { title: 'Pâte', description: 'Mélanger', sous_etapes: null, prep_time: 10, cook_time: null, wait_time: null, cook_temp: null, tips: null, day_offset: null };
+  const lignes = [{ name: 'Farine', quantity: '100', unit: 'g', comment: null }];
+  const base = (over: Record<string, unknown> = {}) => ({
+    id: 1,
+    name: 'Pâte sucrée',
+    resolved: true,
+    stepCount: 1,
+    scaleFormatKey: null,
+    checkedStepsKey: null,
+    checkedQuantitiesKey: null,
+    cleEtapes: empreinteEtapes([etape]),
+    cleQuantites: empreinteQuantites(lignes, 1),
+    ...over,
+  });
+  const todo = (c: ReturnType<typeof base>, verifsDispo = true) =>
+    projectTodo({ intent: 'Une tarte', titleSet: true, measure_type: 'mold', formatKey: 'F1', verifsDispo, components: [c] });
+  const etat = (items: ReturnType<typeof todo>, id: string) => items.find((i) => i.id === id)?.etat;
+
+  it('constate seul intention, nom, format et recette choisie', () => {
+    const t = todo(base());
+    expect(['intention', 'nom', 'format', 'preparations', 'recette-1'].map((id) => etat(t, id))).toEqual(Array(5).fill('fait'));
+    expect(etat(t, 'etapes-1')).toBe('afaire');
+  });
+  it('« étapes relues » ne vaut que tant que le contenu est le même', () => {
+    const cle = empreinteEtapes([etape]);
+    expect(etat(todo(base({ checkedStepsKey: cle })), 'etapes-1')).toBe('fait');
+    const modifiee = empreinteEtapes([{ ...etape, description: 'Mélanger bien' }]);
+    expect(etat(todo(base({ checkedStepsKey: cle, cleEtapes: modifiee })), 'etapes-1')).toBe('arefaire');
+  });
+  it('quantités : une modification ou un autre format les remet à refaire', () => {
+    const cle = empreinteQuantites(lignes, 1);
+    expect(etat(todo(base({ checkedQuantitiesKey: cle })), 'quantites-1')).toBe('fait');
+    expect(etat(todo(base({ checkedQuantitiesKey: cle, cleQuantites: empreinteQuantites(lignes, 2) })), 'quantites-1')).toBe('arefaire');
+    const perimee = todo(base({ checkedQuantitiesKey: cle, scaleFormatKey: 'AUTRE' }));
+    expect(etat(perimee, 'quantites-1')).toBe('arefaire');
+    expect(perimee.find((i) => i.id === 'quantites-1')?.bloque).toBe(true);
+  });
+  it('sans colonne : pas de cases, seulement l’alerte de format', () => {
+    const t = todo(base({ scaleFormatKey: 'AUTRE' }), false);
+    expect(t.some((i) => i.verif)).toBe(false);
+    expect(etat(t, 'quantites-1')).toBe('arefaire');
+    expect(todo(base(), false).some((i) => i.id === 'etapes-1')).toBe(false);
+  });
+  it('une préparation non résolue n’a que sa recette à choisir', () => {
+    const t = todo(base({ resolved: false, stepCount: 0 }));
+    expect(etat(t, 'recette-1')).toBe('afaire');
+    expect(t.some((i) => i.id === 'etapes-1')).toBe(false);
   });
 });
