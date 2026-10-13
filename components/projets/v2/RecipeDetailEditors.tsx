@@ -18,6 +18,7 @@ import { normLoose } from '@/lib/search-params';
 import { capitalizeSentences, slugify } from '@/lib/text';
 import type { useMutation } from '@/lib/use-mutation';
 import { ImageSlot } from '@/components/ImageSlot';
+import { MaryseIcon } from '@/components/MaryseIcon';
 import { resizeDataUrlToThumb } from '@/lib/images';
 import { televerserImage } from '@/lib/storage-client';
 import { estDataUrlImage } from '@/lib/storage';
@@ -37,6 +38,18 @@ const etiquette = 'mb-1 block font-label-md text-label-md text-outline';
 // Écriture d'un ensemble de colonnes de la recette du projet.
 function majRecette(recipeId: string, payload: Record<string, unknown>) {
   return createClient().from('recipes').update(payload as never).eq('id', recipeId);
+}
+
+// Ustensiles par ordre alphabétique (sans accents ni casse) ; les lignes encore
+// vides restent en fin de liste, pour ne pas faire sauter une ligne en cours
+// de saisie.
+function trierUstensiles<T extends { name: string }>(liste: T[]): T[] {
+  return [...liste].sort((a, b) => {
+    const na = normLoose(a.name.trim());
+    const nb = normLoose(b.name.trim());
+    if (!na !== !nb) return na ? -1 : 1;
+    return na.localeCompare(nb, 'fr');
+  });
 }
 
 function minutes(v: string): number | null {
@@ -357,9 +370,13 @@ export function OrganisationEditor({
   sections?: SectionRegistry;
 }) {
   const init = {
-    ustensiles: [...recipe.recipe_utensils]
-      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
-      .map((u) => ({ name: u.name, comment: u.comment ?? '' })),
+    // Affichée triée dès l'ouverture : la référence de « modifié » l'est aussi
+    // (sinon l'ordre d'enregistrement passerait pour une modification).
+    ustensiles: trierUstensiles(
+      [...recipe.recipe_utensils]
+        .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+        .map((u) => ({ name: u.name, comment: u.comment ?? '' })),
+    ),
     difficulte: difficultyId ? String(difficultyId) : '',
     prep: recipe.prep_time ? String(recipe.prep_time) : '',
     cook: recipe.cook_time ? String(recipe.cook_time) : '',
@@ -375,6 +392,21 @@ export function OrganisationEditor({
   const modifie =
     JSON.stringify({ ustensiles, difficulte, prep, cook, wait, total }) !== JSON.stringify(init);
   useRegisterSection(sections, 'organisation', { label: 'Ustensiles, difficulté et temps', dirty: modifie, save: enregistrer });
+
+  // Niveau (1 à 5) de la difficulté choisie, 0 si aucune. Un niveau cliqué sans
+  // difficulté de ce niveau au référentiel prend la plus proche, comme l'éditeur.
+  const niveauActuel = difficulties.find((d) => String(d.id) === difficulte)?.level ?? 0;
+  function choisirNiveau(niveau: number) {
+    if (niveau === niveauActuel) {
+      setDifficulte('');
+      return;
+    }
+    const proche = difficulties.reduce<DifficultyOption | null>(
+      (best, d) => (!best || Math.abs(d.level - niveau) < Math.abs(best.level - niveau) ? d : best),
+      null,
+    );
+    setDifficulte(proche ? String(proche.id) : '');
+  }
 
   async function enregistrer() {
     return await mutate(
@@ -397,7 +429,7 @@ export function OrganisationEditor({
         const refs = new Map(
           (recipe.recipe_utensils as unknown as { name: string; ref_id: number | null }[]).map((u) => [u.name, u.ref_id ?? null]),
         );
-        const rows = ustensiles
+        const rows = trierUstensiles(ustensiles)
           .map((u, i) => ({
             recipe_id: recipe.id,
             name: u.name.trim(),
@@ -424,6 +456,7 @@ export function OrganisationEditor({
                 value={u.name}
                 onChange={(e) => setUstensiles((prev) => prev.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))}
                 list="dl-ustensiles-v2"
+                onBlur={() => setUstensiles((prev) => trierUstensiles(prev))}
                 placeholder="Cercle à tarte"
                 className={`${champ} min-w-0 flex-[2]`}
               />
@@ -460,14 +493,25 @@ export function OrganisationEditor({
 
       <div>
         <label className={etiquette}>DIFFICULTÉ</label>
-        <select value={difficulte} onChange={(e) => setDifficulte(e.target.value)} className={`${champ} sm:w-auto`}>
-          <option value="">— À préciser —</option>
-          {difficulties.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
+        {/* Même rendu que l'éditeur de recette : cinq maryses, le nom du niveau
+            dessous. Un second clic sur le niveau atteint efface la difficulté. */}
+        <div className="flex gap-2">
+          {[1, 2, 3, 4, 5].map((niveau) => (
+            <button
+              key={niveau}
+              type="button"
+              onClick={() => choisirNiveau(niveau)}
+              className={`transition-transform hover:scale-110 ${niveau <= niveauActuel ? 'text-primary' : 'text-outline-variant'}`}
+              aria-label={`Niveau ${niveau}`}
+              title={`Niveau ${niveau}`}
+            >
+              <MaryseIcon size={28} />
+            </button>
           ))}
-        </select>
+        </div>
+        <span className="mt-1 block font-label-md text-label-md text-on-surface">
+          {difficulties.find((d) => String(d.id) === difficulte)?.name ?? 'À préciser'}
+        </span>
       </div>
 
       <div>
