@@ -4,7 +4,7 @@
 // c'est justement ce qui justifie de la tester ici aussi, sinon les deux
 // versions divergeraient sans que rien ne le signale.
 import { describe, expect, it } from 'vitest';
-import { adfVersTexte, resoudreTransition, texteVersAdf, verifierConfigADeployer } from './jira.mjs';
+import { adfVersTexte, markdownLegerVersAdf, resoudreTransition, texteVersAdf, verifierConfigADeployer } from './jira.mjs';
 
 describe('adfVersTexte', () => {
   it('aplatit paragraphes, sauts de ligne et listes', () => {
@@ -119,3 +119,19 @@ describe('verifierConfigADeployer', () => {
   });
 });
 
+
+describe('markdownLegerVersAdf', () => {
+  it('rend titres, listes numérotées et à puces, paragraphes', () => {
+    const doc = markdownLegerVersAdf('## Objectif\nMontrer.\nsuite\n\n1. un\n2. deux\n- puce\n### Fin');
+    expect(doc.content.map((b) => b.type)).toEqual(['heading', 'paragraph', 'orderedList', 'bulletList', 'heading']);
+    expect(doc.content[0].attrs.level).toBe(2);
+    expect(doc.content[1].content.map((n) => n.type)).toEqual(['text', 'hardBreak', 'text']);
+    expect(doc.content[2].content).toHaveLength(2);
+    expect(doc.content[4].attrs.level).toBe(3);
+    expect(adfVersTexte(doc)).toContain('- deux');
+  });
+
+  it('ne renvoie jamais un document vide', () => {
+    expect(markdownLegerVersAdf('\n\n').content).toHaveLength(1);
+  });
+});
