@@ -1330,6 +1330,7 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   (`ProjectTrials`) et validation (`validateProject`, `lib/projects-write.ts`,
   partagé avec la v1).
 - **Étapes : la présentation de la fiche recette, pas une variante.** Le bloc « Étapes » rend chaque étape par `components/recipe/RecipeStep.tsx`, le même composant que `app/recette/[id]` (titre numéroté, pastilles de temps, ingrédients de l'étape, photos, sous-étapes, conseils) ; ne pas recoder une seconde présentation. L'édition d'une préparation (`ComponentResolver`) utilise `StepEditorCard`, calquée sur l'éditeur `/creer`.
+- **Texte des étapes en 16 px** (`text-body-md`) : sous-étapes et description, dans `RecipeStep` (fiche recette, mode projet v2) et dans les sous-étapes de `BatchStepDonePanel` (fournée, Préparer). `font-body-lg` n'est qu'une famille de police, sans effet sur la taille.
 - **Composants : un seul code pour les deux versions** —
   `useProjectComponents` (ajout, renommage, rôle, ajustement, suppression,
   réordonnancement, ouverture de la résolution) et `ProjectStructureList`.

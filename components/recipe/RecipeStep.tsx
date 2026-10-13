@@ -89,7 +89,7 @@ export function RecipeStep({
       <StepPhotoGallery photos={photos} />
       {s.video_url && <StepVideoPlayer url={s.video_url} />}
       {Array.isArray(s.sous_etapes) && s.sous_etapes.length > 0 ? (
-        <ul className="flex flex-col gap-3 font-body-lg text-body-lg leading-relaxed text-on-surface">
+        <ul className="flex flex-col gap-3 font-body-lg text-body-md leading-relaxed text-on-surface">
           {s.sous_etapes.map((t, k) => (
             <li key={k} className="flex gap-3">
               <span className="text-primary shrink-0">–</span>
@@ -98,7 +98,7 @@ export function RecipeStep({
           ))}
         </ul>
       ) : s.description ? (
-        <div className="font-body-lg text-body-lg leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
+        <div className="font-body-lg text-body-md leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
       ) : null}
       {s.tips && (
         <details className="group border border-outline-variant" open>
