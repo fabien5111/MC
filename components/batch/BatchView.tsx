@@ -1896,7 +1896,7 @@ function StepCookCard({
       {s.user_note && (
         <div className="mx-4 mb-3 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
-          <div className="font-body-md text-sm whitespace-pre-line">{s.user_note}</div>
+          <div className="font-body-md text-[16px] whitespace-pre-line">{s.user_note}</div>
         </div>
       )}
 
@@ -1905,7 +1905,7 @@ function StepCookCard({
       {s.tips && (
         <div className="mx-4 mb-3 p-3 bg-primary/5 border-l-4 border-primary rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-primary mb-1">Conseils &amp; astuces</p>
-          <div className="font-body-md text-sm italic whitespace-pre-line">{s.tips}</div>
+          <div className="font-body-md text-[16px] italic whitespace-pre-line">{s.tips}</div>
         </div>
       )}
 
@@ -1973,7 +1973,7 @@ function StepCookCard({
               <li key={ing.id} className="flex flex-col gap-1.5 py-2.5 border-b border-outline-variant/30">
                 <label className="flex items-center gap-3">
                   {checkbox}
-                  <span className={`font-body-md text-[14px] flex-1 min-w-0${struck}`}>
+                  <span className={`font-body-md text-[16px] flex-1 min-w-0${struck}`}>
                     {ing.name}
                     {ing.comment && <span className="italic text-on-surface-variant"> ({ing.comment})</span>}
                   </span>
@@ -2015,7 +2015,7 @@ function StepCookCard({
                     }}
                     className={`w-6 h-6 rounded border-outline accent-primary focus:ring-primary shrink-0 mt-0.5 ${subLocked ? '' : 'cursor-pointer'}`}
                   />
-                  <span className={`font-body-md text-[14px] leading-relaxed${su.done || subExcluded ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
+                  <span className={`font-body-md text-[16px] leading-relaxed${su.done || subExcluded ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
                 </label>
                 {subIngredients.length > 0 && (
                   <ul className="ml-9 flex flex-col gap-1">
@@ -2051,7 +2051,7 @@ function StepCookCard({
           })}
         </ul>
       ) : (
-        s.description && <div className="px-4 pb-3 font-body-md text-[14px] leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
+        s.description && <div className="px-4 pb-3 font-body-md text-[16px] leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
       )}
 
       {s.video_url && (
