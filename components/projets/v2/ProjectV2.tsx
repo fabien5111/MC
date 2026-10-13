@@ -58,7 +58,8 @@ import {
 } from '@/lib/projects';
 import { resequenceProjectSteps, validateProject } from '@/lib/projects-write';
 import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
-import { dayLabel, mergeIngredientLines, planningDays } from '@/lib/recipe-view';
+import { PlanningTimeline } from '@/components/recipe/PlanningTimeline';
+import { mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
@@ -862,20 +863,11 @@ export function ProjectV2({
                 sections={sectionRegistry}
               />
               {days.length > 1 && (
-                <div className="text-sm">
-                  <h3 className={sousTitre}>Planning</h3>
-                  <ul className="space-y-1">
-                    {days.map((d) => (
-                      <li key={d.offset}>
-                        <span className="font-label-md text-primary">{dayLabel(d.offset)}</span> —{' '}
-                        {d.items.map((it) => it.title || 'Sans titre').join(', ')}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="mt-1 text-[12px] text-on-surface-variant">
-                    Le jour de chaque étape se règle dans « Modifier cette préparation ».
-                  </p>
-                </div>
+                <PlanningTimeline
+                  days={days}
+                  className="py-6"
+                  note="Le jour de chaque étape se règle dans « Modifier cette préparation »."
+                />
               )}
             </div>
           ) : (

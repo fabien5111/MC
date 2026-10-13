@@ -21,7 +21,8 @@ import { getRecipeDefaultPhoto } from '@/lib/site';
 import { getApprovedComments } from '@/lib/reviews-data';
 import { getProjectCredits, getProjectTrials } from '@/lib/projects-data';
 import { formatTime, formatDate, formatDateHeure } from '@/lib/format';
-import { UNITS_LBL, yieldInfo, mergeIngredients, mergeIngredientLines, dayLabel, planningDays, effectiveTimes } from '@/lib/recipe-view';
+import { PlanningTimeline } from '@/components/recipe/PlanningTimeline';
+import { UNITS_LBL, yieldInfo, mergeIngredients, mergeIngredientLines, planningDays, effectiveTimes } from '@/lib/recipe-view';
 import { recipeJsonLd } from '@/lib/recipe-jsonld';
 import { siteUrl } from '@/lib/site-url';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
@@ -285,7 +286,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
     stepByGroupOrder.set(s.order_index || 0, { title: s.title || `Étape ${i + 1}`, anchor: `sec-etape-${i + 1}` });
   });
   const days = planningDays(steps);
-  const dLabel = (offset: number | null | undefined) => dayLabel(offset);
 
   // Sommaire de consultation : contrairement à l'éditeur, une section absente
   // de la recette n'existe pas dans le DOM — elle n'a donc rien à faire dans
@@ -637,25 +637,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
               toutes les étapes tombent le même jour (un seul jalon à
               afficher) : masqué dans ce cas, conservé à l'écran. */}
           {steps.length > 0 && (
-            <div id="sec-planning" className={`scroll-mt-28 ${days.length <= 1 ? 'no-print ' : ''}mb-12 py-10 border-y border-outline-variant`}>
-              <h3 className="font-headline-md text-headline-md text-primary mb-8">Planning de préparation</h3>
-              <div className="relative flex flex-col md:flex-row gap-8">
-                <div className="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-outline-variant" />
-                {days.map((d, i) => (
-                  <div key={i} className="relative flex flex-col items-center text-center gap-4 z-10 flex-1 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">
-                      {i + 1}
-                    </div>
-                    <span className="font-label-md text-[12px] text-secondary">{dLabel(d.offset)}</span>
-                    {d.items.map((it, k) => (
-                      <p key={k} className="font-body-md text-body-md font-semibold">
-                        {it.title}
-                      </p>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <PlanningTimeline
+              days={days}
+              id="sec-planning"
+              className={`scroll-mt-28 ${days.length <= 1 ? 'no-print ' : ''}mb-12 py-10 border-y border-outline-variant`}
+            />
           )}
 
           {/* Ustensiles */}
