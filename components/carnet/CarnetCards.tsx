@@ -104,7 +104,7 @@ export function MineCard({
               <span className="material-symbols-outlined text-5xl">cake</span>
             </div>
           )}
-          <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2">
+          <div className="absolute bottom-3 left-3 z-10 flex flex-wrap gap-2">
             {projet ? (
               <span className="rounded bg-primary px-2 py-1 font-label-md text-[10px] text-on-primary">Projet en cours</span>
             ) : (
@@ -118,35 +118,41 @@ export function MineCard({
           </div>
         </div>
       </Link>
-      {!projet && (
-        <>
-          <Link
-            href={`/recette/${r.id}?planifier=1`}
-            title="Lancer une fournée"
-            prefetch={false}
-            className="absolute right-[9rem] top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
-          >
-            <PlanBadgeIcon />
-          </Link>
-          <Link
-            href={`/creer?id=${r.id}`}
-            title="Modifier"
-            prefetch={false}
-            className="absolute right-[6.25rem] top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
-          >
-            <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
-          </Link>
-          <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} className="top-3 right-14" />
-        </>
-      )}
-      <button
-        type="button"
-        title="Supprimer"
-        onClick={() => onDelete(r.id, r.title)}
-        className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
-      >
-        <span className="material-symbols-outlined text-[20px] text-error">delete</span>
-      </button>
+      {/* Boutons dans une seule rangée alignée à droite : des positions fixes
+          par bouton se rejoignaient sur une carte étroite, et le retrait d'un
+          bouton (projet en cours) laissait un trou. Les étiquettes de statut
+          sont en bas de la photo, hors de leur chemin. */}
+      <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+        {!projet && (
+          <>
+            <Link
+              href={`/recette/${r.id}?planifier=1`}
+              title="Lancer une fournée"
+              prefetch={false}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+            >
+              <PlanBadgeIcon />
+            </Link>
+            <Link
+              href={`/creer?id=${r.id}`}
+              title="Modifier"
+              prefetch={false}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+            >
+              <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
+            </Link>
+            <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} inline />
+          </>
+        )}
+        <button
+          type="button"
+          title="Supprimer"
+          onClick={() => onDelete(r.id, r.title)}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+        >
+          <span className="material-symbols-outlined text-[20px] text-error">delete</span>
+        </button>
+      </div>
       <div className="p-6">
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -215,7 +221,7 @@ export function OtherCard({
               <span className="material-symbols-outlined text-5xl">cake</span>
             </div>
           )}
-          <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2">
+          <div className="absolute bottom-3 left-3 z-10 flex flex-wrap gap-2">
             {item.favorite && (
               <span className="rounded bg-white/90 px-2 py-1 font-label-md text-[10px] text-primary">Favori</span>
             )}
@@ -232,25 +238,27 @@ export function OtherCard({
           </div>
         </div>
       </Link>
-      <Link
-        href={`/recette/${r.id}?planifier=1`}
-        title="Lancer une fournée"
-        prefetch={false}
-        className="absolute right-14 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
-      >
-        <PlanBadgeIcon />
-      </Link>
-      {item.shared && (
-        <button
-          type="button"
-          title="Retirer ce partage"
-          onClick={() => onRevokeShare(item)}
-          className="absolute right-[6.25rem] top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+      <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+        {item.shared && (
+          <button
+            type="button"
+            title="Retirer ce partage"
+            onClick={() => onRevokeShare(item)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+          >
+            <span className="material-symbols-outlined text-[20px] text-error">link_off</span>
+          </button>
+        )}
+        <Link
+          href={`/recette/${r.id}?planifier=1`}
+          title="Lancer une fournée"
+          prefetch={false}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
         >
-          <span className="material-symbols-outlined text-[20px] text-error">link_off</span>
-        </button>
-      )}
-      <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} className="top-3 right-3" />
+          <PlanBadgeIcon />
+        </Link>
+        <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} inline />
+      </div>
       <div className="p-6">
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">

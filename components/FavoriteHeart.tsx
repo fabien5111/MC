@@ -15,10 +15,14 @@ export function FavoriteHeart({
   recipeId,
   initialFav,
   className = 'top-3 right-3',
+  inline = false,
 }: {
   recipeId: string;
   initialFav: boolean;
   className?: string;
+  // Dans une rangée de boutons (`flex`) plutôt que posé en `absolute` sur sa
+  // carte : `className` n'est alors plus lu.
+  inline?: boolean;
 }) {
   const router = useRouter();
   const { busy, mutate } = useMutation();
@@ -73,7 +77,7 @@ export function FavoriteHeart({
       onClick={toggle}
       disabled={busy}
       title={fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-      className={`absolute ${className} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-60`}
+      className={`${inline ? 'relative shrink-0' : `absolute ${className}`} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-60`}
     >
       <span
         className={`material-symbols-outlined text-[20px] ${fav ? 'text-error' : 'text-on-surface-variant'}`}
