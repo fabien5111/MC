@@ -12,7 +12,15 @@ type ChoiceOption = { label: string; value: string; variant?: 'primary' | 'defau
 
 type DialogState =
   | { kind: 'alert'; message: string; resolve: () => void }
-  | { kind: 'confirm'; message: string; okLabel: string; cancelLabel: string; resolve: (ok: boolean) => void }
+  | {
+      kind: 'confirm';
+      message: string;
+      okLabel: string;
+      cancelLabel: string;
+      large: boolean;
+      focusCancel: boolean;
+      resolve: (ok: boolean) => void;
+    }
   | {
       kind: 'prompt';
       message: string;
@@ -24,9 +32,15 @@ type DialogState =
     }
   | { kind: 'choice'; message: string; options: ChoiceOption[]; resolve: (value: string | null) => void };
 
+// Options de `confirm`. `largeur: 'large'` élargit la fenêtre (messages à
+// lignes longues, listes) ; `focus: 'annuler'` met le focus d'ouverture sur
+// « Annuler » — pour une action qu'un Entrée distrait ne doit pas lancer. Par
+// défaut rien ne change : fenêtre étroite, focus sur la confirmation.
+type ConfirmOpts = { okLabel?: string; cancelLabel?: string; largeur?: 'large'; focus?: 'annuler' };
+
 type DialogApi = {
   alert: (message: string) => Promise<void>;
-  confirm: (message: string, opts?: { okLabel?: string; cancelLabel?: string }) => Promise<boolean>;
+  confirm: (message: string, opts?: ConfirmOpts) => Promise<boolean>;
   // Saisie libre (motif de refus, §9 « Rejeter avec motif ») — résout à
   // `null` sur annulation, à la chaîne saisie sinon. `required` bloque la
   // validation tant que le champ est vide (un motif de refus vide n'a pas
@@ -59,13 +73,15 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
     [],
   );
   const confirmFn = useCallback(
-    (message: string, opts?: { okLabel?: string; cancelLabel?: string }) =>
+    (message: string, opts?: ConfirmOpts) =>
       new Promise<boolean>((resolve) =>
         setState({
           kind: 'confirm',
           message,
           okLabel: opts?.okLabel ?? 'Confirmer',
           cancelLabel: opts?.cancelLabel ?? 'Annuler',
+          large: opts?.largeur === 'large',
+          focusCancel: opts?.focus === 'annuler',
           resolve,
         }),
       ),
@@ -140,7 +156,9 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-sm bg-surface-container-low border border-outline-variant rounded-xl p-6 shadow-lg"
+            className={`relative w-full ${
+              state.kind === 'confirm' && state.large ? 'max-w-xl' : 'max-w-sm'
+            } bg-surface-container-low border border-outline-variant rounded-xl p-6 shadow-lg`}
           >
             {state.kind === 'choice' && (
               <button
@@ -207,6 +225,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                   <button
                     type="button"
                     onClick={() => respond(false)}
+                    autoFocus={state.kind === 'confirm' && state.focusCancel}
                     className="px-4 py-2 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors"
                   >
                     {state.kind === 'confirm' ? state.cancelLabel : 'Annuler'}
@@ -214,7 +233,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                 )}
                 <button
                   type="button"
-                  autoFocus={state.kind !== 'prompt'}
+                  autoFocus={state.kind !== 'prompt' && !(state.kind === 'confirm' && state.focusCancel)}
                   disabled={state.kind === 'prompt' && state.required && !state.value.trim()}
                   onClick={() => respond(true)}
                   className="px-5 py-2 rounded-full font-label-md text-label-md bg-primary text-on-primary hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"

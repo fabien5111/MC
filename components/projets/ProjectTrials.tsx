@@ -98,6 +98,9 @@ export function ProjectTrials({
         : '';
       const ok = await dialog.confirm(
         `Il reste ${pointsRestants.length} point${pointsRestants.length > 1 ? 's' : ''} à faire dans le projet :\n\n${liste}${reste}${suite}\n\nLancer quand même la fournée d’essai ?`,
+        // Fenêtre large (pas de retour à la ligne dans la liste) et focus sur
+        // « Annuler » : un Entrée distrait ne doit pas lancer l'essai.
+        { largeur: 'large', focus: 'annuler' },
       );
       if (!ok) return;
     } else if (unresolved.length) {
