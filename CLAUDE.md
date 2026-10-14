@@ -558,6 +558,37 @@ remontant** en dessous.
   **et** le curseur de temps. Même correctif que `CarnetToolbar`.
 - **Compatibilité** : `?category=` (liens de catégorie de l'accueil) est un
   alias de `cat`, fusionné à la lecture — aucune redirection.
+- **Terme libre : 3 caractères minimum** (`MIN_QUERY_LENGTH` /
+  `effectiveQuery`, `lib/search-params.ts`, même seuil dans la RPC). En deçà le
+  terme est ignoré partout — requête, résumé, option « Pertinence » — et le
+  champ l'annonce. Le champ garde ce qu'on tape (`criteria.q`).
+- **Morceau de mot** : le plein texte (`recipes.fts`, dictionnaire `french`)
+  compare des racines — « Canelés » → `canel` —, donc « cane » ne trouvait rien
+  alors que « canel » tombait juste. La RPC cherche aussi le terme normalisé en
+  sous-chaîne du titre (`mc_norm(title) like`), avec un bonus de pertinence pour
+  qu'une telle recette ne finisse pas en bas de liste.
+- **Portée : tout ce que le carnet du membre contient**, pas seulement le
+  publié — ses recettes à tout statut, les recettes partagées une à une
+  (`recipe_shares`) et celles d'un carnet partagé « brouillons compris »
+  (`book_shares.scope = 'all'`), via `auth.uid()`. Favoris et abonnements ne
+  portant que du publié, ils sont déjà couverts. Les projets en cours
+  (`kind = 'project'`, `project_stage = 'wizard'`) restent exclus
+  (`isProjectDraft`). Le compte de recettes d'un **pâtissier**, lui, ne compte
+  que le publié.
+- **Une recette de mon carnet se montre comme dans le carnet.** La RPC ne
+  renvoie que le contenu d'une carte publique ; `getCarnetMarks`
+  (`lib/search.ts`, sous la session du membre, RLS) relit statut, visibilité,
+  partage reçu et abonnement des recettes affichées. La page choisit alors :
+  `MineCard` si j'en suis l'auteur (statut, Privée/Publique, fournée, édition,
+  favori, suppression), `OtherCard` si elle me vient d'un favori, d'un
+  abonnement ou d'un partage (retrait du partage compris), `RecipeCard` sinon —
+  une recette publique hors carnet n'a pas à porter des gestes de carnet. Les
+  deux cartes vivent dans `components/carnet/CarnetCards.tsx`, **partagées**
+  avec `CarnetContent` (suppression et retrait de partage :
+  `supprimerRecette` / `retirerPartage`) ; `SearchCarnetCards.tsx` ne fait que
+  leur donner leur propre mutation et les masquer après suppression, la grille
+  restant rendue par le serveur. Modifier l'une des deux cartes, c'est modifier
+  le carnet ET la recherche.
 
 ## Recherche textuelle sans accents
 
