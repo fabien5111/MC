@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { stepTimeSums } from '@/lib/recipe-view';
-import { empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, utensilsToAdd } from '@/lib/projects';
+import { pointsRestants, empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, utensilsToAdd } from '@/lib/projects';
 
 describe('projectV2BlockStates', () => {
   it('ne débloque que l’intention, l’identité et le format sur un projet vierge', () => {
@@ -203,5 +203,28 @@ describe('stepTimeSums', () => {
   });
   it('vaut zéro sans étape', () => {
     expect(stepTimeSums([])).toEqual({ prep: 0, cook: 0, wait: 0, total: 0 });
+  });
+});
+
+describe('pointsRestants', () => {
+  it('liste les points non faits, la préparation devant le sien', () => {
+    const etape = { title: 'P', description: 'x', sous_etapes: null, prep_time: null, cook_time: null, wait_time: null, cook_temp: null, tips: null, day_offset: null };
+    const t = projectTodo({
+      intent: 'Une tarte',
+      titleSet: true,
+      measure_type: null,
+      formatKey: 'F',
+      verifsDispo: true,
+      components: [
+        { id: 1, name: 'Ganache', resolved: true, stepCount: 1, scaleFormatKey: null, checkedStepsKey: null, checkedQuantitiesKey: null, cleEtapes: empreinteEtapes([etape]), cleQuantites: 'q' },
+      ],
+    });
+    const r = pointsRestants(t);
+    expect(r).toContain('Format défini');
+    expect(r).toContain('Ganache — Étapes relues');
+    expect(r).not.toContain('Intention décrite');
+  });
+  it('est vide quand tout est fait', () => {
+    expect(pointsRestants([{ id: 'a', groupe: 'Le projet', libelle: 'x', etat: 'fait', ancre: 'a' }])).toEqual([]);
   });
 });

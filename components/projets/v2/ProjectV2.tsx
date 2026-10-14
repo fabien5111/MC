@@ -57,6 +57,7 @@ import {
   type ProjectV2Block as BlockKey,
   empreinteEtapes,
   empreinteQuantites,
+  pointsRestants,
   projectTodo,
   type TodoItem,
 } from '@/lib/projects';
@@ -965,7 +966,12 @@ export function ProjectV2({
               </p>
             )}
             {recipe && (
-              <ProjectTrials recipe={recipe} trials={trials} unresolved={ordered.filter((c) => !c.resolved).map((c) => c.name)} />
+              <ProjectTrials
+                recipe={recipe}
+                trials={trials}
+                unresolved={ordered.filter((c) => !c.resolved).map((c) => c.name)}
+                pointsRestants={pointsRestants(todo)}
+              />
             )}
             <div className="border-t border-outline-variant pt-5">
               <button type="button" onClick={() => void valider()} disabled={busy || blockers.length > 0} className={btnPrimary}>

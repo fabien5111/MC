@@ -50,6 +50,7 @@ export function ProjectTrials({
   trials,
   unresolved,
   canLaunch = true,
+  pointsRestants,
 }: {
   // Recette du projet, telle que le moteur de fournée la lit. C'est la même
   // lecture que sur une fiche recette : aucun chemin particulier au projet.
@@ -64,6 +65,10 @@ export function ProjectTrials({
   // ferait deux portes d'entrée pour le même geste. Seuls l'historique, la
   // comparaison et la promotion des quantités restent affichés.
   canLaunch?: boolean;
+  // v2 : points du « Reste à faire » pas encore faits. Rappelés et confirmés à
+  // CHAQUE lancement d'un essai (jamais mémorisés : un oubli ne doit pas passer
+  // inaperçu au deuxième essai). Absent (v1, fiche recette) : rien n'est demandé.
+  pointsRestants?: string[];
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -80,7 +85,22 @@ export function ProjectTrials({
       dialog.alert('Ce projet n’a encore aucune étape : résolvez au moins un composant.');
       return;
     }
-    if (unresolved.length) {
+    if (pointsRestants?.length) {
+      // Une seule confirmation : les composants non résolus figurent déjà parmi
+      // les points (« Recette choisie »), leur conséquence est ajoutée au texte.
+      const MAX = 6;
+      const liste = pointsRestants.slice(0, MAX).map((p) => `• ${p}`).join('\n');
+      const reste = pointsRestants.length > MAX ? `\n… et ${pointsRestants.length - MAX} autre(s)` : '';
+      const suite = unresolved.length
+        ? `\n\nLa fournée d’essai ne contiendra que les composants résolus (${unresolved.length} non résolu${
+            unresolved.length > 1 ? 's' : ''
+          }).`
+        : '';
+      const ok = await dialog.confirm(
+        `Il reste ${pointsRestants.length} point${pointsRestants.length > 1 ? 's' : ''} à faire dans le projet :\n\n${liste}${reste}${suite}\n\nLancer quand même la fournée d’essai ?`,
+      );
+      if (!ok) return;
+    } else if (unresolved.length) {
       const ok = await dialog.confirm(
         `${unresolved.length} composant${unresolved.length > 1 ? 's ne sont' : ' n’est'} pas encore résolu${
           unresolved.length > 1 ? 's' : ''

@@ -946,3 +946,12 @@ export function projectTodo(input: {
   }
   return out;
 }
+
+// Libellés des points du « Reste à faire » pas encore faits — ce qu'on rappelle
+// avant de lancer une fournée d'essai. « Le projet » n'est pas répété devant les
+// points généraux ; une préparation précède le sien (« Ganache — Étapes relues »).
+export function pointsRestants(todo: TodoItem[]): string[] {
+  return todo
+    .filter((i) => i.etat !== 'fait')
+    .map((i) => (i.groupe === 'Le projet' ? i.libelle : `${i.groupe} — ${i.libelle}`));
+}
