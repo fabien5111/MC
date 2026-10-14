@@ -23,6 +23,7 @@ import { resizeDataUrlToThumb } from '@/lib/images';
 import { televerserImage } from '@/lib/storage-client';
 import { estDataUrlImage } from '@/lib/storage';
 import type { RecipeFull } from '@/lib/recipes';
+import { stepTimeSums } from '@/lib/recipe-view';
 import { useRegisterSection, type SectionRegistry } from '@/components/projets/v2/sections';
 
 type Mutate = ReturnType<typeof useMutation>['mutate'];
@@ -389,6 +390,8 @@ export function OrganisationEditor({
   const [cook, setCook] = useState(init.cook);
   const [wait, setWait] = useState(init.wait);
   const [total, setTotal] = useState(init.total);
+  // Somme des temps des étapes : ce qui sert tant qu'un champ est vide.
+  const sommes = stepTimeSums(recipe.recipe_steps);
   const modifie =
     JSON.stringify({ ustensiles, difficulte, prep, cook, wait, total }) !== JSON.stringify(init);
   useRegisterSection(sections, 'organisation', { label: 'Ustensiles, difficulté et temps', dirty: modifie, save: enregistrer });
@@ -516,23 +519,55 @@ export function OrganisationEditor({
 
       <div>
         <label className={etiquette}>TEMPS (EN MINUTES)</label>
+        {/* Somme des temps des étapes (lecture seule) : la valeur qui fait foi
+            tant qu'un champ ci-dessous est vide, comme dans l'éditeur /creer. */}
+        <div className="mb-3 rounded-lg bg-surface-container-low px-3 py-2">
+          <span className="mb-1 block font-label-md text-[11.5px] uppercase tracking-widest text-outline">
+            Somme des temps des étapes
+          </span>
+          <div className="grid grid-cols-2 gap-3 text-[14px] text-on-surface sm:grid-cols-4">
+            <span>Préparation : {sommes.prep} min</span>
+            <span>Cuisson : {sommes.cook} min</span>
+            <span>Repos : {sommes.wait} min</span>
+            <span>Total : {sommes.total} min</span>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(
             [
-              ['Préparation', prep, setPrep],
-              ['Cuisson', cook, setCook],
-              ['Repos', wait, setWait],
-              ['Total', total, setTotal],
+              ['Préparation', prep, setPrep, sommes.prep],
+              ['Cuisson', cook, setCook, sommes.cook],
+              ['Repos', wait, setWait, sommes.wait],
+              ['Total', total, setTotal, sommes.total],
             ] as const
-          ).map(([libelle, valeur, maj]) => (
-            <div key={libelle}>
-              <span className="mb-0.5 block text-[12px] text-on-surface-variant">{libelle}</span>
-              <input value={valeur} onChange={(e) => maj(e.target.value)} inputMode="numeric" className={champ} />
-            </div>
-          ))}
+          ).map(([libelle, valeur, maj, somme]) => {
+            // Saisi et différent de la somme : corrigé à la main.
+            const corrige = valeur.trim() !== '' && Number(valeur) !== somme;
+            return (
+              <div key={libelle}>
+                <span className="mb-0.5 block text-[12px] text-on-surface-variant">{libelle}</span>
+                <input
+                  value={valeur}
+                  onChange={(e) => maj(e.target.value)}
+                  inputMode="numeric"
+                  placeholder={somme ? String(somme) : ''}
+                  className={champ}
+                />
+                {corrige && (
+                  <button
+                    type="button"
+                    onClick={() => maj('')}
+                    className="mt-0.5 text-left text-[11.5px] text-primary underline underline-offset-2"
+                  >
+                    corrigé à la main · revenir à {somme} min
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
         <p className="mt-1 text-[12px] text-on-surface-variant">
-          Laissés vides, les temps sont calculés à partir de ceux des étapes.
+          Laissés vides, les temps suivent la somme des étapes ; saisis, votre valeur prime.
         </p>
       </div>
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { stepTimeSums } from '@/lib/recipe-view';
 import { empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, utensilsToAdd } from '@/lib/projects';
 
 describe('projectV2BlockStates', () => {
@@ -188,5 +189,19 @@ describe('projectTodo', () => {
     const t = todo(base({ resolved: false, stepCount: 0 }));
     expect(etat(t, 'recette-1')).toBe('afaire');
     expect(t.some((i) => i.id === 'etapes-1')).toBe(false);
+  });
+});
+
+describe('stepTimeSums', () => {
+  it('additionne préparation, cuisson et repos de toutes les étapes', () => {
+    expect(
+      stepTimeSums([
+        { prep_time: 20, cook_time: 20, wait_time: 105 },
+        { prep_time: 15, cook_time: null, wait_time: undefined },
+      ]),
+    ).toEqual({ prep: 35, cook: 20, wait: 105, total: 160 });
+  });
+  it('vaut zéro sans étape', () => {
+    expect(stepTimeSums([])).toEqual({ prep: 0, cook: 0, wait: 0, total: 0 });
   });
 });
