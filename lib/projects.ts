@@ -906,15 +906,6 @@ export function projectTodo(input: {
     if (!c.resolved || c.stepCount === 0) continue;
     const perimee = quantitiesStale(c, input.formatKey);
     if (input.verifsDispo) {
-      const etapes = c.checkedStepsKey == null ? 'afaire' : c.checkedStepsKey === c.cleEtapes ? 'fait' : 'arefaire';
-      out.push({
-        id: `etapes-${c.id}`,
-        groupe: c.name,
-        libelle: etapes === 'arefaire' ? 'Étapes à relire (modifiées depuis)' : 'Étapes relues',
-        etat: etapes,
-        ancre: 'bloc-etapes',
-        verif: { componentId: c.id, type: 'etapes', cle: c.cleEtapes },
-      });
       const quantites =
         perimee || (c.checkedQuantitiesKey != null && c.checkedQuantitiesKey !== c.cleQuantites)
           ? 'arefaire'
@@ -933,6 +924,15 @@ export function projectTodo(input: {
         ancre: 'bloc-etapes',
         verif: { componentId: c.id, type: 'quantites', cle: c.cleQuantites },
         bloque: perimee,
+      });
+      const etapes = c.checkedStepsKey == null ? 'afaire' : c.checkedStepsKey === c.cleEtapes ? 'fait' : 'arefaire';
+      out.push({
+        id: `etapes-${c.id}`,
+        groupe: c.name,
+        libelle: etapes === 'arefaire' ? 'Étapes à relire (modifiées depuis)' : 'Étapes relues',
+        etat: etapes,
+        ancre: 'bloc-etapes',
+        verif: { componentId: c.id, type: 'etapes', cle: c.cleEtapes },
       });
     } else if (perimee) {
       out.push({

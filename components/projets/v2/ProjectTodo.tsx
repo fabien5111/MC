@@ -22,7 +22,9 @@ export function ProjectTodo({
   items,
   onToggle,
   busy,
+  id,
 }: {
+  id?: string;
   items: TodoItem[];
   onToggle: (it: TodoItem) => void;
   busy: boolean;
@@ -39,7 +41,7 @@ export function ProjectTodo({
   }
 
   return (
-    <details open className="mb-6 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest p-4">
+    <details id={id} open className="mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest p-4">
       <summary className="flex cursor-pointer flex-wrap items-center gap-3">
         <span className="font-label-md text-[13px] uppercase tracking-widest text-secondary">Reste à faire</span>
         <span className="font-label-md text-[12px] text-on-surface-variant">

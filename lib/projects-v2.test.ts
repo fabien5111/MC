@@ -166,6 +166,11 @@ describe('projectTodo', () => {
     expect(etat(perimee, 'quantites-1')).toBe('arefaire');
     expect(perimee.find((i) => i.id === 'quantites-1')?.bloque).toBe(true);
   });
+  it('propose « quantités vérifiées » avant « étapes relues »', () => {
+    const ids = todo(base()).map((i) => i.id);
+    expect(ids.indexOf('quantites-1')).toBeGreaterThan(-1);
+    expect(ids.indexOf('quantites-1')).toBeLessThan(ids.indexOf('etapes-1'));
+  });
   it('sans colonne : pas de cases, seulement l’alerte de format', () => {
     const t = todo(base({ scaleFormatKey: 'AUTRE' }), false);
     expect(t.some((i) => i.verif)).toBe(false);

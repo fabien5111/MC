@@ -64,6 +64,7 @@ import { resequenceProjectSteps, validateProject } from '@/lib/projects-write';
 import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
 import { PlanningTimeline } from '@/components/recipe/PlanningTimeline';
 import { ProjectTodo } from '@/components/projets/v2/ProjectTodo';
+import { VerifCase } from '@/components/projets/v2/VerifCase';
 import { mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
@@ -520,6 +521,9 @@ export function ProjectV2({
     })),
   });
 
+  const verifDe = (componentId: number, type: 'etapes' | 'quantites') =>
+    todo.find((i) => i.verif?.componentId === componentId && i.verif.type === type);
+
   // Coche / décoche une vérification : on y range l'empreinte du contenu
   // vérifié ; elle ne vaut plus dès que ce contenu change.
   async function basculerVerif(it: TodoItem) {
@@ -598,7 +602,15 @@ export function ProjectV2({
   const avantEtapes = ORDRE_BLOCS.indexOf('etapes') + 1;
   const entree = (k: BlockKey) => ({ id: `bloc-${k}`, label: BLOCS[k].court, icon: BLOCS[k].icone, level: 1 as const });
   const tocSections: TocSections = {
-    before: ORDRE_BLOCS.slice(0, avantEtapes).map(entree),
+    before: [
+      {
+        id: 'reste-a-faire',
+        label: `Reste à faire (${todo.filter((i) => i.etat === 'fait').length}/${todo.length})`,
+        icon: 'checklist',
+        level: 1 as const,
+      },
+      ...ORDRE_BLOCS.slice(0, avantEtapes).map(entree),
+    ],
     after: ORDRE_BLOCS.slice(avantEtapes).map(entree),
   };
   const tocSteps =
@@ -667,7 +679,7 @@ export function ProjectV2({
         </div>
       </header>
 
-      <ProjectTodo items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
+      <ProjectTodo id="reste-a-faire" items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
 
       <div className="space-y-6">
         {bloc(
@@ -839,12 +851,18 @@ export function ProjectV2({
                           <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                         </summary>
                         <div className="border-t border-outline-variant/40 px-4 py-4">
-                          <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel} componentId={c.id} />
+                          <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel}
+                            componentId={c.id}
+                            pied={<VerifCase item={verifDe(c.id, 'quantites')} onToggle={(it) => void basculerVerif(it)} busy={busy} />}
+                          />
                         </div>
                       </details>
                     )}
                     {own.length ? (
-                      <div className="space-y-10">{own.map((s, k) => etape(s, steps.indexOf(s), k === own.length - 1))}</div>
+                      <>
+                        <div className="space-y-10">{own.map((s, k) => etape(s, steps.indexOf(s), k === own.length - 1))}</div>
+                        <VerifCase item={verifDe(c.id, 'etapes')} onToggle={(it) => void basculerVerif(it)} busy={busy} />
+                      </>
                     ) : (
                       <p className="text-sm italic text-on-surface-variant">Pas encore de recette pour cette préparation.</p>
                     )}

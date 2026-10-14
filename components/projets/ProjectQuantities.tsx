@@ -14,7 +14,7 @@
 //
 // Les quantités proposées sont des POINTS DE DÉPART (spec §6.2), et l'écran
 // le dit. L'utilisateur les affine ici, puis au fil de ses essais.
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
@@ -140,6 +140,7 @@ export function QuantitiesStep({
   formatLabel,
   hideTitle = false,
   componentId,
+  pied,
 }: {
   project: ProjectFull;
   targetForme: string | null;
@@ -150,6 +151,9 @@ export function QuantitiesStep({
   // fois en tête du bloc, `DessertVise`), ni le nom (déjà en titre). Les
   // autres préparations restent connues du calcul (voisins transmis à l'IA).
   componentId?: number;
+  // v2 : contenu posé tout en bas de la préparation (case « Quantités
+  // vérifiées »), sous la note sur les quantités modifiées à la main.
+  pied?: ReactNode;
   // Format visé, en clair (« Cercle Ø 20 × 4 cm ») : sert à décrire la cible
   // à l'IA quand la géométrie ne suffit pas.
   formatLabel: string;
@@ -591,6 +595,7 @@ export function QuantitiesStep({
                 <p className="mt-2 text-[11.5px] text-outline">
                   Une quantité modifiée à la main n’est plus recalculée par un changement de coefficient.
                 </p>
+                {pied}
               </>
             )}
           </div>
