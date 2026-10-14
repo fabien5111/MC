@@ -63,7 +63,7 @@ import {
 import { resequenceProjectSteps, validateProject } from '@/lib/projects-write';
 import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
 import { PlanningTimeline } from '@/components/recipe/PlanningTimeline';
-import { ProjectTodo } from '@/components/projets/v2/ProjectTodo';
+import { ProjectTodo, ProjectVerifs } from '@/components/projets/v2/ProjectTodo';
 import { mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
@@ -844,7 +844,14 @@ export function ProjectV2({
                       </details>
                     )}
                     {own.length ? (
-                      <div className="space-y-10">{own.map((s, k) => etape(s, steps.indexOf(s), k === own.length - 1))}</div>
+                      <>
+                        <div className="space-y-10">{own.map((s, k) => etape(s, steps.indexOf(s), k === own.length - 1))}</div>
+                        <ProjectVerifs
+                          items={todo.filter((t) => t.verif?.componentId === c.id)}
+                          onToggle={(it) => void basculerVerif(it)}
+                          busy={busy || leaving}
+                        />
+                      </>
                     ) : (
                       <p className="text-sm italic text-on-surface-variant">Pas encore de recette pour cette préparation.</p>
                     )}

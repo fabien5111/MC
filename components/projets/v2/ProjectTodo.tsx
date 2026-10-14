@@ -103,3 +103,42 @@ export function ProjectTodo({
     </details>
   );
 }
+
+// Les deux mêmes points à cocher que « Reste à faire » (étapes relues,
+// quantités vérifiées), repris sous les étapes d'une préparation : on les
+// confirme là où l'on vient de relire, sans remonter en haut de la page. Même
+// données, même écriture (`onToggle`) : cocher ici ou là revient au même, et
+// les deux endroits se mettent à jour ensemble au rendu suivant.
+export function ProjectVerifs({
+  items,
+  onToggle,
+  busy,
+}: {
+  items: TodoItem[];
+  onToggle: (it: TodoItem) => void;
+  busy: boolean;
+}) {
+  const points = items.filter((i) => i.verif);
+  if (!points.length) return null;
+  return (
+    <ul className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest px-4 py-3">
+      {points.map((it) => {
+        const ic = ICONE[it.etat];
+        return (
+          <li key={it.id}>
+            <button
+              type="button"
+              onClick={() => onToggle(it)}
+              disabled={busy || it.bloque}
+              title={it.bloque ? 'Recalculez d’abord les quantités' : it.etat === 'fait' ? 'Décocher' : 'Cocher quand c’est vérifié'}
+              className="flex items-center gap-2 text-[13.5px] disabled:opacity-40"
+            >
+              <span className={`material-symbols-outlined text-[20px] ${ic.cls}`}>{ic.nom}</span>
+              <span className={it.etat === 'fait' ? 'text-on-surface-variant' : 'text-on-surface'}>{it.libelle}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
