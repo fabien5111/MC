@@ -77,7 +77,7 @@ export function FavoriteHeart({
       onClick={toggle}
       disabled={busy}
       title={fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-      className={`${inline ? 'relative shrink-0' : `absolute ${className}`} z-10 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-60`}
+      className={`${inline ? 'relative h-8 w-8 shrink-0' : `absolute ${className} h-9 w-9`} z-10 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-60`}
     >
       <span
         className={`material-symbols-outlined text-[20px] ${fav ? 'text-error' : 'text-on-surface-variant'}`}
