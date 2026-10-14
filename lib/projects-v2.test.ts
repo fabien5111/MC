@@ -171,6 +171,13 @@ describe('projectTodo', () => {
     expect(ids.indexOf('quantites-1')).toBeGreaterThan(-1);
     expect(ids.indexOf('quantites-1')).toBeLessThan(ids.indexOf('etapes-1'));
   });
+  it('chaque point mène à l’ancre de SA préparation', () => {
+    const t = todo(base({ id: 7 }));
+    const ancre = (id: string) => t.find((i) => i.id === id)?.ancre;
+    expect(ancre('recette-7')).toBe('prep-7-recette');
+    expect(ancre('etapes-7')).toBe('prep-7-etapes');
+    expect(ancre('quantites-7')).toBe('prep-7-quantites');
+  });
   it('sans colonne : pas de cases, seulement l’alerte de format', () => {
     const t = todo(base({ scaleFormatKey: 'AUTRE' }), false);
     expect(t.some((i) => i.verif)).toBe(false);

@@ -732,7 +732,7 @@ export function ProjectV2({
             <ProjectStructureList
               components={composants}
               extra={(c) => (
-                <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-2">
+                <div id={`prep-${c.id}-recette`} className="mt-2 flex scroll-mt-28 flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-2">
                   <span className={`min-w-0 flex-1 text-[12.5px] ${c.resolved ? 'text-green-700' : 'text-secondary'}`}>
                     {c.resolved
                       ? [
@@ -823,7 +823,11 @@ export function ProjectV2({
                   // Filet épais entre deux préparations, plus marqué que celui
                   // qui sépare deux étapes : la hiérarchie préparation → étape
                   // se lit d'un coup d'œil.
-                  <div key={c.id} className={ci > 0 ? 'mt-4 border-t-2 border-primary pt-10' : ''}>
+                  <div
+                    key={c.id}
+                    id={`prep-${c.id}-etapes`}
+                    className={`scroll-mt-28 ${ci > 0 ? 'mt-4 border-t-2 border-primary pt-10' : ''}`}
+                  >
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                       <h3 className="font-headline-md text-headline-md text-primary">{c.name}</h3>
                       {boutonRecette(c)}
@@ -842,7 +846,7 @@ export function ProjectV2({
                         par défaut : les étapes dessous montrent déjà les
                         quantités ajustées. */}
                     {c.resolved && (
-                      <details className="group mb-6 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest">
+                      <details id={`prep-${c.id}-quantites`} className="group mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
                           <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
                             Ajustement des quantités · ×{String(Math.round((c.scaleFactor ?? 1) * 100) / 100).replace('.', ',')}

@@ -8,8 +8,13 @@
 // l'écriture est faite par le parent.
 import type { TodoItem } from '@/lib/projects';
 
+// Défile jusqu'à l'ancre ; un volet replié qui la porte (« Ajustement des
+// quantités ») est ouvert d'abord, sinon on arriverait sur un simple titre.
 function allerA(ancre: string) {
-  document.getElementById(ancre)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const el = document.getElementById(ancre);
+  if (!el) return;
+  if (el instanceof HTMLDetailsElement) el.open = true;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 const ICONE: Record<TodoItem['etat'], { nom: string; cls: string }> = {

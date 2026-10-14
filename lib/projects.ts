@@ -901,7 +901,7 @@ export function projectTodo(input: {
       groupe: c.name,
       libelle: 'Recette choisie',
       etat: c.resolved ? 'fait' : 'afaire',
-      ancre: 'bloc-structure',
+      ancre: `prep-${c.id}-recette`,
     });
     if (!c.resolved || c.stepCount === 0) continue;
     const perimee = quantitiesStale(c, input.formatKey);
@@ -921,7 +921,7 @@ export function projectTodo(input: {
             ? 'Quantités à revérifier (modifiées depuis)'
             : 'Quantités vérifiées',
         etat: quantites,
-        ancre: 'bloc-etapes',
+        ancre: `prep-${c.id}-quantites`,
         verif: { componentId: c.id, type: 'quantites', cle: c.cleQuantites },
         bloque: perimee,
       });
@@ -931,7 +931,7 @@ export function projectTodo(input: {
         groupe: c.name,
         libelle: etapes === 'arefaire' ? 'Étapes à relire (modifiées depuis)' : 'Étapes relues',
         etat: etapes,
-        ancre: 'bloc-etapes',
+        ancre: `prep-${c.id}-etapes`,
         verif: { componentId: c.id, type: 'etapes', cle: c.cleEtapes },
       });
     } else if (perimee) {
@@ -940,7 +940,7 @@ export function projectTodo(input: {
         groupe: c.name,
         libelle: 'Quantités à recalculer (format modifié)',
         etat: 'arefaire',
-        ancre: 'bloc-etapes',
+        ancre: `prep-${c.id}-quantites`,
       });
     }
   }
