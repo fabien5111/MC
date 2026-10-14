@@ -32,7 +32,7 @@ import { getAllergensWithPicto } from '@/lib/recipes';
 import { getCurrentUser } from '@/lib/auth';
 import { getRecipeDefaultPhoto } from '@/lib/site';
 import { relaxationSuggestions, searchAdvanced, type Relaxation } from '@/lib/search';
-import { countActiveCriteria, hasAnySearch, parseSearchCriteria } from '@/lib/search-params';
+import { countActiveCriteria, effectiveQuery, hasAnySearch, parseSearchCriteria } from '@/lib/search-params';
 import { getDifficulties, getRecipeTypes, getTags } from '@/lib/taxonomy';
 
 // Grille en 3 colonnes (lg) → 2 lignes = 6 cartes entre deux publicités.
@@ -87,7 +87,7 @@ export default async function RecherchePage({
   // Titre : une catégorie seule (lien de l'accueil) garde son intitulé
   // d'origine, pour ne pas dérouter qui arrive de la page d'accueil.
   const soleCategory =
-    !criteria.q && criteria.cat.length === 1 && countActiveCriteria(criteria) === 1
+    !effectiveQuery(criteria) && criteria.cat.length === 1 && countActiveCriteria(criteria) === 1
       ? (tags.find((t) => t.slug === criteria.cat[0])?.name ?? criteria.cat[0])
       : null;
 

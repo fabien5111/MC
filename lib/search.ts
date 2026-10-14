@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { RecipeCard } from '@/lib/recipes';
 import {
   criteriaToQueryString,
+  effectiveQuery,
   TIME_MAX,
   timeLabel,
   type SearchCriteria,
@@ -71,7 +72,7 @@ function toRpcArgs(
   opts: { limit: number; offset: number; countOnly: boolean },
 ): RpcArgs {
   return {
-    search_term: c.q || null,
+    search_term: effectiveQuery(c) || null,
     inc_ingredients: c.inc.length ? c.inc : null,
     exc_ingredients: c.exc.length ? c.exc : null,
     type_slug: c.type,

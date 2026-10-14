@@ -14,6 +14,7 @@ import { IngredientBadge } from '@/components/search/IngredientBadge';
 import { useSearch } from '@/components/search/SearchProvider';
 import {
   countActiveCriteria,
+  effectiveQuery,
   ratingLabel,
   removeIngredient,
   SORT_KEYS,
@@ -46,7 +47,7 @@ export function SearchSummary({
 }) {
   const { criteria, update } = useSearch();
   const activeCount = countActiveCriteria(criteria);
-  const sortOptions = SORT_KEYS.filter((k) => k !== 'relevance' || criteria.q);
+  const sortOptions = SORT_KEYS.filter((k) => k !== 'relevance' || effectiveQuery(criteria));
   // Sans terme de recherche l'option « Pertinence » disparaît, mais le critère
   // peut encore la porter : on affiche alors le tri réellement appliqué par le
   // SQL (les plus récentes), plutôt qu'une option choisie par défaut par le
@@ -112,7 +113,7 @@ export function SearchSummary({
           <strong className="font-headline-md text-[19px] text-primary">
             {summaryLabel(criteria, total, authorTotal)}
           </strong>
-          {criteria.q && <> pour «&nbsp;{criteria.q}&nbsp;»</>}
+          {effectiveQuery(criteria) && <> pour «&nbsp;{effectiveQuery(criteria)}&nbsp;»</>}
         </p>
 
         {/* Tri — mobile / tablette (le desktop l'a dans la barre haute). */}

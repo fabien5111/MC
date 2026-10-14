@@ -558,6 +558,23 @@ remontant** en dessous.
   **et** le curseur de temps. Même correctif que `CarnetToolbar`.
 - **Compatibilité** : `?category=` (liens de catégorie de l'accueil) est un
   alias de `cat`, fusionné à la lecture — aucune redirection.
+- **Terme libre : 3 caractères minimum** (`MIN_QUERY_LENGTH` /
+  `effectiveQuery`, `lib/search-params.ts`, même seuil dans la RPC). En deçà le
+  terme est ignoré partout — requête, résumé, option « Pertinence » — et le
+  champ l'annonce. Le champ garde ce qu'on tape (`criteria.q`).
+- **Morceau de mot** : le plein texte (`recipes.fts`, dictionnaire `french`)
+  compare des racines — « Canelés » → `canel` —, donc « cane » ne trouvait rien
+  alors que « canel » tombait juste. La RPC cherche aussi le terme normalisé en
+  sous-chaîne du titre (`mc_norm(title) like`), avec un bonus de pertinence pour
+  qu'une telle recette ne finisse pas en bas de liste.
+- **Portée : tout ce que le carnet du membre contient**, pas seulement le
+  publié — ses recettes à tout statut, les recettes partagées une à une
+  (`recipe_shares`) et celles d'un carnet partagé « brouillons compris »
+  (`book_shares.scope = 'all'`), via `auth.uid()`. Favoris et abonnements ne
+  portant que du publié, ils sont déjà couverts. Les projets en cours
+  (`kind = 'project'`, `project_stage = 'wizard'`) restent exclus
+  (`isProjectDraft`). Le compte de recettes d'un **pâtissier**, lui, ne compte
+  que le publié.
 
 ## Recherche textuelle sans accents
 
