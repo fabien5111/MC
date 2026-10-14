@@ -104,54 +104,57 @@ export function MineCard({
               <span className="material-symbols-outlined text-5xl">cake</span>
             </div>
           )}
-          <div className="absolute bottom-3 left-3 z-10 flex flex-wrap gap-2">
-            {projet ? (
-              <span className="rounded bg-primary px-2 py-1 font-label-md text-[10px] text-on-primary">Projet en cours</span>
-            ) : (
-              <>
-                <span className={`${st.badge} rounded px-2 py-1 font-label-md text-[10px] text-white`}>{st.label}</span>
-                <span className="rounded bg-white/90 px-2 py-1 font-label-md text-[10px] text-primary">
-                  {r.is_public === false ? 'Privée' : 'Publique'}
-                </span>
-              </>
-            )}
-          </div>
         </div>
       </Link>
-      {/* Boutons dans une seule rangée alignée à droite : des positions fixes
-          par bouton se rejoignaient sur une carte étroite, et le retrait d'un
-          bouton (projet en cours) laissait un trou. Les étiquettes de statut
-          sont en bas de la photo, hors de leur chemin. */}
-      <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
-        {!projet && (
-          <>
-            <Link
-              href={`/recette/${r.id}?planifier=1`}
-              title="Lancer une fournée"
-              prefetch={false}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
-            >
-              <PlanBadgeIcon />
-            </Link>
-            <Link
-              href={`/creer?id=${r.id}`}
-              title="Modifier"
-              prefetch={false}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
-            >
-              <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
-            </Link>
-            <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} inline />
-          </>
-        )}
-        <button
-          type="button"
-          title="Supprimer"
-          onClick={() => onDelete(r.id, r.title)}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
-        >
-          <span className="material-symbols-outlined text-[20px] text-error">delete</span>
-        </button>
+      {/* Barre du haut : étiquettes à gauche (elles passent à la ligne si la place
+          manque), boutons à droite. Plus de position fixe par bouton : c'est ce
+          qui les faisait se chevaucher sur une carte étroite. La barre laisse
+          passer les clics (vers le lien de la photo) ; seuls les boutons les
+          reçoivent. */}
+      <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap gap-1.5">
+          {projet ? (
+            <span className="rounded bg-primary px-1.5 py-0.5 font-label-md text-[9px] text-on-primary">Projet en cours</span>
+          ) : (
+            <>
+              <span className={`${st.badge} rounded px-1.5 py-0.5 font-label-md text-[9px] text-white`}>{st.label}</span>
+              <span className="rounded bg-white/90 px-1.5 py-0.5 font-label-md text-[9px] text-primary">
+                {r.is_public === false ? 'Privée' : 'Publique'}
+              </span>
+            </>
+          )}
+        </div>
+        <div className="pointer-events-auto ml-auto flex shrink-0 items-center gap-1.5">
+          {!projet && (
+            <>
+              <Link
+                href={`/recette/${r.id}?planifier=1`}
+                title="Lancer une fournée"
+                prefetch={false}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+              >
+                <PlanBadgeIcon />
+              </Link>
+              <Link
+                href={`/creer?id=${r.id}`}
+                title="Modifier"
+                prefetch={false}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+              >
+                <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
+              </Link>
+              <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} inline />
+            </>
+          )}
+          <button
+            type="button"
+            title="Supprimer"
+            onClick={() => onDelete(r.id, r.title)}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+          >
+            <span className="material-symbols-outlined text-[20px] text-error">delete</span>
+          </button>
+        </div>
       </div>
       <div className="p-6">
         <div className="mb-2 flex items-center justify-between gap-2">
@@ -221,43 +224,50 @@ export function OtherCard({
               <span className="material-symbols-outlined text-5xl">cake</span>
             </div>
           )}
-          <div className="absolute bottom-3 left-3 z-10 flex flex-wrap gap-2">
-            {item.favorite && (
-              <span className="rounded bg-white/90 px-2 py-1 font-label-md text-[10px] text-primary">Favori</span>
-            )}
-            {/* Statut connu seulement pour ce qui est partagé (favoris/abonnements
-                ne portent que du déjà-publié) — même badge que MineCard, pour
-                qu'un brouillon partagé se distingue au premier coup d'œil. Pas
-                de « Partagée avec vous » à côté : le bouton de révocation
-                (lien barré) ci-dessous porte déjà cette information. */}
-            {item.shared && item.status && (
-              <span className={`${(STATUS[item.status] || STATUS.draft).badge} rounded px-2 py-1 font-label-md text-[10px] text-white`}>
-                {(STATUS[item.status] || STATUS.draft).label}
-              </span>
-            )}
-          </div>
         </div>
       </Link>
-      <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
-        {item.shared && (
-          <button
-            type="button"
-            title="Retirer ce partage"
-            onClick={() => onRevokeShare(item)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+      {/* Barre du haut : étiquettes à gauche (elles passent à la ligne si la place
+          manque), boutons à droite. Plus de position fixe par bouton : c'est ce
+          qui les faisait se chevaucher sur une carte étroite. La barre laisse
+          passer les clics (vers le lien de la photo) ; seuls les boutons les
+          reçoivent. */}
+      <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap gap-1.5">
+          {item.favorite && (
+            <span className="rounded bg-white/90 px-1.5 py-0.5 font-label-md text-[9px] text-primary">Favori</span>
+          )}
+          {/* Statut connu seulement pour ce qui est partagé (favoris/abonnements
+              ne portent que du déjà-publié) — même badge que MineCard, pour
+              qu'un brouillon partagé se distingue au premier coup d'œil. Pas
+              de « Partagée avec vous » à côté : le bouton de révocation
+              (lien barré) ci-dessous porte déjà cette information. */}
+          {item.shared && item.status && (
+            <span className={`${(STATUS[item.status] || STATUS.draft).badge} rounded px-1.5 py-0.5 font-label-md text-[9px] text-white`}>
+              {(STATUS[item.status] || STATUS.draft).label}
+            </span>
+          )}
+        </div>
+        <div className="pointer-events-auto ml-auto flex shrink-0 items-center gap-1.5">
+          {item.shared && (
+            <button
+              type="button"
+              title="Retirer ce partage"
+              onClick={() => onRevokeShare(item)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+            >
+              <span className="material-symbols-outlined text-[20px] text-error">link_off</span>
+            </button>
+          )}
+          <Link
+            href={`/recette/${r.id}?planifier=1`}
+            title="Lancer une fournée"
+            prefetch={false}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
           >
-            <span className="material-symbols-outlined text-[20px] text-error">link_off</span>
-          </button>
-        )}
-        <Link
-          href={`/recette/${r.id}?planifier=1`}
-          title="Lancer une fournée"
-          prefetch={false}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
-        >
-          <PlanBadgeIcon />
-        </Link>
-        <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} inline />
+            <PlanBadgeIcon />
+          </Link>
+          <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} inline />
+        </div>
       </div>
       <div className="p-6">
         <div className="mb-2 flex items-center justify-between gap-2">
