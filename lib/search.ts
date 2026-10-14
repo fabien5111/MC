@@ -284,3 +284,67 @@ export async function relaxationSuggestions(c: SearchCriteria): Promise<Relaxati
     .sort((a, b) => b.gain - a.gain)
     .slice(0, MAX_RELAXATIONS);
 }
+
+// ── Recherche : ce que le carnet du membre sait d'une recette trouvée ─────
+//
+// La RPC ne renvoie que le contenu d'une carte publique. Pour montrer une
+// recette avec les mêmes étiquettes et les mêmes gestes que dans le carnet
+// (`MineCard` / `OtherCard`), on lit ici ce qui manque — statut, visibilité,
+// partage reçu, abonnement — sous la session du membre : la RLS décide de ce
+// qu'il voit, aucune clé service n'intervient. Une seule lecture par table,
+// bornée aux recettes affichées (12 à 60), et seulement pour un membre
+// connecté.
+export type CarnetMark = {
+  status: string;
+  is_public: boolean;
+  kind: string;
+  project_stage: string | null;
+  // Partage reçu — direct (cette recette) ou via le carnet de son auteur.
+  shared: { kind: 'direct' } | { kind: 'book'; ownerId: string } | null;
+  // L'auteur fait partie des pâtissiers suivis.
+  subscription: boolean;
+};
+
+export async function getCarnetMarks(
+  userId: string,
+  recipes: { id: string; author_id: string }[],
+): Promise<Map<string, CarnetMark>> {
+  const marks = new Map<string, CarnetMark>();
+  if (recipes.length === 0) return marks;
+  const supabase = await createClient();
+  const ids = recipes.map((r) => r.id);
+  const authorIds = [...new Set(recipes.map((r) => r.author_id))];
+
+  const [recipesRes, directRes, bookRes, followsRes] = await Promise.all([
+    supabase.from('recipes').select('id, status, is_public, kind, project_stage').in('id', ids),
+    supabase.from('recipe_shares' as never).select('recipe_id').eq('shared_with_id', userId).in('recipe_id', ids),
+    supabase.from('book_shares' as never).select('owner_id').eq('shared_with_id', userId).in('owner_id', authorIds),
+    supabase.from('follows').select('following_id').eq('follower_id', userId).in('following_id', authorIds),
+  ]);
+  for (const [nom, res] of [
+    ['recettes', recipesRes],
+    ['partages directs', directRes],
+    ['partages de carnet', bookRes],
+    ['abonnements', followsRes],
+  ] as const) {
+    if (res.error) console.error(`getCarnetMarks (${nom}):`, res.error.message);
+  }
+
+  const direct = new Set(((directRes.data as unknown as { recipe_id: string }[]) ?? []).map((r) => r.recipe_id));
+  const books = new Set(((bookRes.data as unknown as { owner_id: string }[]) ?? []).map((r) => r.owner_id));
+  const followed = new Set((followsRes.data ?? []).map((f) => f.following_id));
+  const authorOf = new Map(recipes.map((r) => [r.id, r.author_id]));
+
+  for (const r of recipesRes.data ?? []) {
+    const author = authorOf.get(r.id) ?? '';
+    marks.set(r.id, {
+      status: r.status ?? 'draft',
+      is_public: r.is_public !== false,
+      kind: r.kind,
+      project_stage: r.project_stage,
+      shared: direct.has(r.id) ? { kind: 'direct' } : books.has(author) ? { kind: 'book', ownerId: author } : null,
+      subscription: followed.has(author),
+    });
+  }
+  return marks;
+}

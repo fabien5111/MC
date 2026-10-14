@@ -575,6 +575,20 @@ remontant** en dessous.
   (`kind = 'project'`, `project_stage = 'wizard'`) restent exclus
   (`isProjectDraft`). Le compte de recettes d'un **pâtissier**, lui, ne compte
   que le publié.
+- **Une recette de mon carnet se montre comme dans le carnet.** La RPC ne
+  renvoie que le contenu d'une carte publique ; `getCarnetMarks`
+  (`lib/search.ts`, sous la session du membre, RLS) relit statut, visibilité,
+  partage reçu et abonnement des recettes affichées. La page choisit alors :
+  `MineCard` si j'en suis l'auteur (statut, Privée/Publique, fournée, édition,
+  favori, suppression), `OtherCard` si elle me vient d'un favori, d'un
+  abonnement ou d'un partage (retrait du partage compris), `RecipeCard` sinon —
+  une recette publique hors carnet n'a pas à porter des gestes de carnet. Les
+  deux cartes vivent dans `components/carnet/CarnetCards.tsx`, **partagées**
+  avec `CarnetContent` (suppression et retrait de partage :
+  `supprimerRecette` / `retirerPartage`) ; `SearchCarnetCards.tsx` ne fait que
+  leur donner leur propre mutation et les masquer après suppression, la grille
+  restant rendue par le serveur. Modifier l'une des deux cartes, c'est modifier
+  le carnet ET la recherche.
 
 ## Recherche textuelle sans accents
 

@@ -15,6 +15,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { RecipeCard } from '@/components/RecipeCard';
+import { SearchMineCard, SearchOtherCard } from '@/components/search/SearchCarnetCards';
 import { AuthorCard } from '@/components/search/AuthorCard';
 import { SearchProvider } from '@/components/search/SearchProvider';
 import { SearchHeaderBar } from '@/components/search/SearchHeaderBar';
@@ -28,10 +29,10 @@ import type { FacetRefs } from '@/components/search/SearchFacets';
 import { getActiveAds } from '@/lib/ads';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getFollowerCounts } from '@/lib/follows';
-import { getAllergensWithPicto } from '@/lib/recipes';
+import { getAllergensWithPicto, withAllergenNames } from '@/lib/recipes';
 import { getCurrentUser } from '@/lib/auth';
 import { getRecipeDefaultPhoto } from '@/lib/site';
-import { relaxationSuggestions, searchAdvanced, type Relaxation } from '@/lib/search';
+import { getCarnetMarks, relaxationSuggestions, searchAdvanced, type Relaxation } from '@/lib/search';
 import { countActiveCriteria, effectiveQuery, hasAnySearch, parseSearchCriteria } from '@/lib/search-params';
 import { getDifficulties, getRecipeTypes, getTags } from '@/lib/taxonomy';
 
@@ -93,6 +94,13 @@ export default async function RecherchePage({
 
   const blocks = chunk(result.recipes, CARDS_PER_BLOCK);
 
+  // Une recette de mon carnet (la mienne, ou venue d'un autre par favori,
+  // abonnement ou partage) s'affiche comme dans le carnet, avec ses étiquettes
+  // et ses gestes ; les autres gardent la carte publique. Lecture sous ma
+  // session, uniquement pour un membre connecté.
+  const marks = user ? await getCarnetMarks(user.id, result.recipes) : new Map();
+  const withNames = new Map(withAllergenNames(result.recipes).map((r) => [r.id, r]));
+
   // Nombre d'abonnés des pâtissiers affichés — calculé en une seule requête
   // pour tout le lot (JEP-22), une fois `result.authors` connu : ne dépend
   // pas de la portée « recettes » du Promise.all ci-dessus.
@@ -153,16 +161,51 @@ export default async function RecherchePage({
                       blocks.map((block, i) => (
                         <section key={i} className="mb-12">
                           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                            {block.map((r) => (
-                              <RecipeCard
-                                key={r.id}
-                                recipe={r}
-                                isFav={favIds.has(r.id)}
-                                isOwner={!!user && r.author_id === user.id}
-                                showPlan={!!user}
-                                defaultPhoto={defaultPhoto}
-                              />
-                            ))}
+                            {block.map((r) => {
+                              const mark = marks.get(r.id);
+                              const recipe = withNames.get(r.id);
+                              const mine = !!user && r.author_id === user.id;
+                              if (mark && recipe && mine) {
+                                return (
+                                  <SearchMineCard
+                                    key={r.id}
+                                    item={{ kind: 'mine', recipe: { ...recipe, ...mark }, favorite: favIds.has(r.id) }}
+                                    isFav={favIds.has(r.id)}
+                                    defaultPhoto={defaultPhoto}
+                                    allergenRefs={allergens}
+                                  />
+                                );
+                              }
+                              if (mark && recipe && (favIds.has(r.id) || mark.subscription || mark.shared)) {
+                                return (
+                                  <SearchOtherCard
+                                    key={r.id}
+                                    item={{
+                                      kind: 'other',
+                                      recipe,
+                                      favorite: favIds.has(r.id),
+                                      subscription: mark.subscription,
+                                      shared: mark.shared,
+                                      status: mark.shared ? mark.status : null,
+                                      publishedAt: mark.subscription ? r.created_at : null,
+                                    }}
+                                    isFav={favIds.has(r.id)}
+                                    defaultPhoto={defaultPhoto}
+                                    allergenRefs={allergens}
+                                  />
+                                );
+                              }
+                              return (
+                                <RecipeCard
+                                  key={r.id}
+                                  recipe={r}
+                                  isFav={favIds.has(r.id)}
+                                  isOwner={mine}
+                                  showPlan={!!user}
+                                  defaultPhoto={defaultPhoto}
+                                />
+                              );
+                            })}
                           </div>
                           {/* Bandeau de pub après chaque bloc de 2 lignes, sauf le
                               dernier. `index` fait défiler les campagnes en cours
