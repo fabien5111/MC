@@ -946,6 +946,11 @@ export function ProjectV2({
 
         {bloc('conseils', recipe ? <ConseilsEditor recipe={recipe} mutate={mutate} busy={busy} sections={sectionRegistry} /> : sansRecette)}
 
+        {/* Second exemplaire du « Reste à faire », juste avant la validation :
+            mêmes `todo`, même écriture, donc synchronisé avec celui du haut.
+            Sans `id` : l'ancre `reste-a-faire` (sommaire) reste sur le premier. */}
+        <ProjectTodo items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
+
         {bloc(
           'validation',
           <div className="space-y-5 text-sm">
