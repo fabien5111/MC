@@ -8,10 +8,10 @@
 // résolue, migration pas jouée).
 import type { TodoItem } from '@/lib/projects';
 
-const ICONE: Record<TodoItem['etat'], { nom: string; cls: string }> = {
-  fait: { nom: 'check_circle', cls: 'text-green-700' },
-  afaire: { nom: 'radio_button_unchecked', cls: 'text-outline' },
-  arefaire: { nom: 'history', cls: 'text-error' },
+const ICONE: Record<TodoItem['etat'], { icon: string; cls: string }> = {
+  fait: { icon: 'check_circle', cls: 'text-green-700' },
+  afaire: { icon: 'radio_button_unchecked', cls: 'text-outline' },
+  arefaire: { icon: 'history', cls: 'text-error' },
 };
 
 export function VerifCase({
@@ -33,7 +33,7 @@ export function VerifCase({
       title={item.bloque ? 'Recalculez d’abord les quantités' : item.etat === 'fait' ? 'Décocher' : 'Cocher quand c’est vérifié'}
       className="mt-4 flex items-center gap-2 text-left text-[14px] text-on-surface disabled:opacity-60"
     >
-      <span className={`material-symbols-outlined text-[22px] ${ic.cls}`}>{ic.nom}</span>
+      <span className={`material-symbols-outlined text-[22px] ${ic.cls}`}>{ic.icon}</span>
       {item.libelle}
     </button>
   );

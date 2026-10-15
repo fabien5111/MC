@@ -17,10 +17,10 @@ function allerA(ancre: string) {
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-const ICONE: Record<TodoItem['etat'], { nom: string; cls: string }> = {
-  fait: { nom: 'check_circle', cls: 'text-green-700' },
-  afaire: { nom: 'radio_button_unchecked', cls: 'text-outline' },
-  arefaire: { nom: 'history', cls: 'text-error' },
+const ICONE: Record<TodoItem['etat'], { icon: string; cls: string }> = {
+  fait: { icon: 'check_circle', cls: 'text-green-700' },
+  afaire: { icon: 'radio_button_unchecked', cls: 'text-outline' },
+  arefaire: { icon: 'history', cls: 'text-error' },
 };
 
 export function ProjectTodo({
@@ -84,10 +84,10 @@ export function ProjectTodo({
                         title={it.bloque ? 'Recalculez d’abord les quantités' : it.etat === 'fait' ? 'Décocher' : 'Cocher quand c’est vérifié'}
                         className={`material-symbols-outlined shrink-0 text-[20px] ${ic.cls} disabled:opacity-40`}
                       >
-                        {ic.nom}
+                        {ic.icon}
                       </button>
                     ) : (
-                      <span className={`material-symbols-outlined shrink-0 text-[20px] ${ic.cls}`}>{ic.nom}</span>
+                      <span className={`material-symbols-outlined shrink-0 text-[20px] ${ic.cls}`}>{ic.icon}</span>
                     )}
                     <button
                       type="button"
