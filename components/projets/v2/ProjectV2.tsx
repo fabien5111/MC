@@ -15,7 +15,7 @@
 // - les éléments de recette (photo, catégories, ustensiles…) s'écrivent
 //   section par section, jamais par l'enregistrement global de `CreerForm`
 //   (cf. RecipeDetailEditors).
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -525,6 +525,23 @@ export function ProjectV2({
   const verifDe = (componentId: number, type: 'etapes' | 'quantites') =>
     todo.find((i) => i.verif?.componentId === componentId && i.verif.type === type);
 
+  // Ouverture des volets « quantités » et « étapes » d'une préparation : fixée
+  // UNE fois, au premier rendu (chargement ou réouverture de la page) — ouverte
+  // tant que le contenu n'est pas vérifié, repliée s'il l'est. Jamais recalculée
+  // ensuite : cocher la case ne replie rien sous le doigt, et la valeur de
+  // `open` restant constante d'un rendu à l'autre, React ne referme pas un volet
+  // que le membre a ouvert ou fermé lui-même. Sans les colonnes de vérification
+  // (`checksAvailable` faux) : étapes ouvertes, quantités repliées, comme avant.
+  const ouvertInitial = useRef<Record<string, boolean>>({});
+  const ouvertAuChargement = (c: ProjectComponent, type: 'etapes' | 'quantites') => {
+    const k = `${c.id}-${type}`;
+    if (!(k in ouvertInitial.current)) {
+      const verifie = c.checksAvailable && verifDe(c.id, type)?.etat === 'fait';
+      ouvertInitial.current[k] = type === 'etapes' ? !verifie : c.checksAvailable && !verifie;
+    }
+    return ouvertInitial.current[k];
+  };
+
   // Coche / décoche une vérification : on y range l'empreinte du contenu
   // vérifié ; elle ne vaut plus dès que ce contenu change.
   async function basculerVerif(it: TodoItem) {
@@ -826,7 +843,7 @@ export function ProjectV2({
                   // se lit d'un coup d'œil.
                   <div
                     key={c.id}
-                    id={`prep-${c.id}-etapes`}
+                    id={own.length ? undefined : `prep-${c.id}-etapes`}
                     className={`scroll-mt-28 ${ci > 0 ? 'mt-4 border-t-2 border-primary pt-10' : ''}`}
                   >
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -847,7 +864,7 @@ export function ProjectV2({
                         par défaut : les étapes dessous montrent déjà les
                         quantités ajustées. */}
                     {c.resolved && (
-                      <details id={`prep-${c.id}-quantites`} className="group mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest">
+                      <details id={`prep-${c.id}-quantites`} open={ouvertAuChargement(c, 'quantites')} className="group mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
                           <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
                             Ajustement des quantités · ×{String(Math.round((c.scaleFactor ?? 1) * 100) / 100).replace('.', ',')}
@@ -864,10 +881,17 @@ export function ProjectV2({
                       </details>
                     )}
                     {own.length ? (
-                      <>
+                      <details id={`prep-${c.id}-etapes`} open={ouvertAuChargement(c, 'etapes')} className="group scroll-mt-28">
+                        <summary className="mb-6 flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest px-4 py-3">
+                          <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
+                            Étapes · {own.length}
+                            {verifDe(c.id, 'etapes')?.etat === 'fait' && <span className="text-green-700"> · relues</span>}
+                          </span>
+                          <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+                        </summary>
                         <div className="space-y-10">{own.map((s, k) => etape(s, steps.indexOf(s), k === own.length - 1))}</div>
                         <VerifCase item={verifDe(c.id, 'etapes')} onToggle={(it) => void basculerVerif(it)} busy={busy} />
-                      </>
+                      </details>
                     ) : (
                       <p className="text-sm italic text-on-surface-variant">Pas encore de recette pour cette préparation.</p>
                     )}
