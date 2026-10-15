@@ -2,9 +2,8 @@
 
 // Gestion des composants d'un projet — ajout, renommage, rôle, mode
 // d'ajustement, suppression, réordonnancement, ouverture de la fenêtre de
-// résolution. Partagée par le parcours en onglets (`ProjectWizard`, étapes 3
-// et 4) et par la v2 (`ProjectV2`, bloc « Structure ») : les deux écrans
-// écrivent exactement la même chose, de la même façon.
+// résolution. Utilisée par la page projet (`ProjectV2`, blocs « Structure »
+// et « Étapes »).
 //
 // Même doctrine que le reste du mode projet : aucune liste tenue en état
 // local, chaque geste écrit puis resynchronise via le `mutate` du parent

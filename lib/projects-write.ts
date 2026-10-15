@@ -522,7 +522,7 @@ export async function writeAssemblyStep(
 }
 
 // Validation d'un projet (§8) : section d'assemblage final, puis passage à
-// `ready`. Partagée par le parcours en onglets et par la v2 — les blocages
+// `ready`. Appelée par la page projet — les blocages
 // (`projectValidationBlockers`) sont vérifiés par l'appelant, à l'affichage
 // comme avant l'appel. `status` ne bouge pas : la validation rend le projet
 // utilisable comme une recette (§8.2), elle ne la publie pas.

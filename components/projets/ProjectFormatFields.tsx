@@ -1,11 +1,10 @@
 'use client';
 
 // Champs du format visé — type de format, dimensions, nombre d'exemplaires,
-// moule du référentiel, nombre de parts. Partagés par l'étape 2 du parcours
-// actuel (`ProjectWizard`) et par le bloc « Format » de la v2
-// (`ProjectV2`) : composant contrôlé, sans écriture — chaque écran garde son
-// propre geste d'enregistrement, mais contrôle et écrit la même chose via
-// `buildProjectFormatUpdate` (lib/projects.ts).
+// moule du référentiel, nombre de parts. Rendus par le bloc « Format » de la
+// page projet (`ProjectV2`) : composant contrôlé, sans écriture — le contrôle
+// et les colonnes à écrire viennent de `buildProjectFormatUpdate`
+// (lib/projects.ts).
 import { PROJECT_FORMATS, PROJECT_FORMAT_KEYS, type ProjectFormat } from '@/lib/projects';
 
 export type MoldTypeOption = { id: number; name: string; forme: string | null };

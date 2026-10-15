@@ -1,7 +1,7 @@
 'use client';
 
-// Étapes 5 et 6 du parcours guidé : proposition des quantités, puis
-// récapitulatif (spec §6 et §4 étape 6).
+// Ajustement des quantités d'une préparation (spec §6), rendu dans le volet
+// « Ajustement des quantités » de chaque préparation du mode projet.
 //
 // **Rien n'est redéveloppé ici.** Le coefficient sort du même calcul que
 // pour une fournée — rapport des volumes ou des surfaces entre le moule de la
@@ -19,7 +19,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import { moldMetrics, mergeIngredients, UNITS_LBL } from '@/lib/recipe-view';
+import { moldMetrics } from '@/lib/recipe-view';
 import { scalingCoef } from '@/lib/recipe-plan';
 import { applyComponentScale, setLineQuantity } from '@/lib/projects-write';
 import {
@@ -35,8 +35,6 @@ import {
   type ScaleProposal,
 } from '@/lib/projects';
 import type { ProjectComponent, ProjectFull } from '@/lib/projects-data';
-import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
-import type { RecipeFull } from '@/lib/recipes';
 
 const btnGhost =
   'rounded-pill border border-outline-variant px-4 py-2 font-label-md text-[12.5px] font-semibold text-primary transition-colors hover:bg-surface-container disabled:opacity-40';
@@ -690,95 +688,6 @@ export function QuantitiesStep({
           </div>
         );
       })}
-    </section>
-  );
-}
-
-export function RecapStep({
-  project,
-  formatLabel,
-  conversions,
-  unitRefs,
-}: {
-  project: ProjectFull;
-  formatLabel: string;
-  conversions: ConversionRef[];
-  unitRefs: UnitRef[];
-}) {
-  const ordered = [...project.components].sort((a, b) => a.position - b.position);
-
-  // Consolidation des ingrédients : la fonction de la fiche recette, pas une
-  // seconde implémentation. Elle sait fusionner deux lignes du même
-  // ingrédient exprimées dans des unités différentes (300 g d'œufs ici, 1
-  // unité là) via la table de conversions — ce qu'une somme naïve par nom ne
-  // saurait pas faire, et qui compte d'autant plus ici que les composants
-  // viennent de recettes différentes.
-  const pseudoRecipe = {
-    ingredient_groups: ordered.map((c) => ({
-      ingredients: c.lines.map((l) => ({
-        name: l.name,
-        quantity: l.quantity,
-        unit: l.unit,
-        comment: null,
-        ref_id: null,
-      })),
-    })),
-  } as unknown as RecipeFull;
-  const merged = mergeIngredients(pseudoRecipe, conversions, unitRefs);
-
-  return (
-    <section className="space-y-6">
-      <h2 className="font-headline-md text-2xl text-primary">Votre projet</h2>
-
-      <div className="rounded-xl border border-outline-variant p-4">
-        <h3 className="mb-2 font-label-md text-label-md uppercase tracking-widest text-secondary">Format</h3>
-        <p className="font-body-md text-[15px] text-on-surface">
-          {formatLabel}
-          {project.servings ? ` — ${project.servings} parts` : ''}
-        </p>
-      </div>
-
-      <div className="rounded-xl border border-outline-variant p-4">
-        <h3 className="mb-3 font-label-md text-label-md uppercase tracking-widest text-secondary">
-          Composants, du bas vers le haut
-        </h3>
-        <ol className="space-y-2">
-          {ordered.map((c, i) => (
-            <li key={c.id} className="flex flex-wrap items-baseline gap-2 text-[14px]">
-              <span className="font-label-md text-[12px] text-outline">{i + 1}</span>
-              <span className="font-semibold text-on-surface">{c.name}</span>
-              <span className="text-[12.5px] text-on-surface-variant">
-                {c.resolved
-                  ? `${c.stepCount} étape${c.stepCount > 1 ? 's' : ''} · ×${fr(c.scaleFactor ?? 1)}`
-                  : 'non résolu'}
-              </span>
-              {c.source_author_name && (
-                <span className="text-[12px] text-secondary">d’après {c.source_author_name}</span>
-              )}
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      <div className="rounded-xl border border-outline-variant p-4">
-        <h3 className="mb-3 font-label-md text-label-md uppercase tracking-widest text-secondary">
-          Ingrédients consolidés
-        </h3>
-        {merged.length === 0 ? (
-          <p className="text-[13px] italic text-on-surface-variant">Aucun ingrédient pour l’instant.</p>
-        ) : (
-          <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-            {merged.map((m) => (
-              <li key={`${m.name}-${m.unit}`} className="flex justify-between gap-3 text-[13.5px]">
-                <span className="min-w-0 truncate text-on-surface">{m.name}</span>
-                <span className="shrink-0 text-on-surface-variant">
-                  {m.qty} {UNITS_LBL[m.unit] || m.unit}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
     </section>
   );
 }

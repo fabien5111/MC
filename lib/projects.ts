@@ -735,8 +735,7 @@ export function buildProjectFormatUpdate(input: {
 
 // ── Mode projet v2 : blocs de la page verticale ───────────────────────────
 //
-// La v2 (`/projets/[id]/v2`, admins seulement le temps de la comparaison)
-// présente le projet comme la recette qu'il deviendra : une seule colonne,
+// La page projet (`/projets/[id]`) présente le projet comme la recette qu'il deviendra : une seule colonne,
 // où les blocs propres au projet (« Atelier projet ») s'intercalent entre
 // ceux de la recette. Un bloc pas encore atteint reste VISIBLE mais grisé,
 // avec ce qui le débloque — on voit d'emblée toute la recette à venir.
