@@ -998,6 +998,7 @@ d'en créer une nouvelle.
   Ces deux colonnes existaient déjà et étaient déjà affichées sous le titre
   de la fiche recette ; c'est l'absence d'écriture dans `comments` qui les
   laissait à zéro jusqu'ici.
+- **Pas d'avis sur une fournée d'essai d'un projet en cours** : quand la recette d'origine est un projet `wizard` (`isProjectDraft`), ni la carte d'avis, ni la question à la clôture (`BatchView` `essaiProjet`, `PlanningDayView`) ne sont proposées, et `submitOrUpdateReview` refuse l'écriture (`recetteEstProjetEnCours`, `lib/reviews-data.ts`) — la route reste appelable, la règle n'est donc pas qu'un masquage. Calculé à la lecture, sans colonne : une fois le projet validé (`ready`), une fournée lancée depuis la fiche redevient ordinaire et propose l'avis. Lecture en échec : on propose comme avant.
 - **Affichage** : note + nombre d'avis sous le titre (`app/recette/[id]`,
   déjà en place), avis publiés en bas de fiche (`RecipeComments`, section
   `#sec-commentaires`, uniquement les `approved` — filtré par la RLS, pas

@@ -145,6 +145,7 @@ export function BatchView({
   lecture,
   initialMode,
   myReview,
+  essaiProjet = false,
   droits,
 }: {
   batch: BatchFull;
@@ -163,6 +164,8 @@ export function BatchView({
   // `null` si aucun avis n'a encore été déposé, quelle que soit la fournée.
   // cf. CLAUDE.md « Avis sur une recette ».
   myReview: MyRecipeReview | null;
+  // Fournée d'essai d'un projet en cours : ni carte d'avis, ni proposition.
+  essaiProjet?: boolean;
   // Fournée qui vient d'être lancée (BatchWidget) : on atterrit sur Préparer,
   // jamais sur Pâtisser, même si la date de dégustation tombe aujourd'hui —
   // l'ajustement se fait au calme avant de passer aux fourneaux.
@@ -210,7 +213,7 @@ export function BatchView({
   // d'entrée principal. Donner son avis n'est pas modifier la fournée.
   // Seule l'impersonation lecture seule reste bloquante (garde réelle,
   // revérifiée côté serveur par la route avec la propriété de la fournée).
-  const canReview = batch.status === 'terminee' && !batch.review_dismissed && !impersonationReadOnly;
+  const canReview = batch.status === 'terminee' && !batch.review_dismissed && !impersonationReadOnly && !essaiProjet;
 
   // Un avis sera effectivement proposable une fois la fournée marquée
   // terminée : mêmes conditions que `canReview` (sans le statut, qu'on
@@ -229,6 +232,7 @@ export function BatchView({
     !!batch.recipe_id &&
     !batch.review_dismissed &&
     !impersonationReadOnly &&
+    !essaiProjet &&
     (!myReview || (myReview.batch_id === batch.id && myReview.status === 'rejected'));
 
   // Écriture partagée « marquer comme terminée » : rail Préparer, rail
