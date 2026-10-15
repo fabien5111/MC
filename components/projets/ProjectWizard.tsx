@@ -68,6 +68,7 @@ export function ProjectWizard({
   trials,
   peutGenererIA = true,
   quotaProjetIA = null,
+  quotaAjustementIA = null,
   fromAI = false,
 }: {
   project: ProjectFull;
@@ -98,6 +99,8 @@ export function ProjectWizard({
   // reste `mc_consume`), transmis à `ComponentResolver` pour griser
   // « Demander une proposition à l'IA » une fois épuisé (JEP-77).
   quotaProjetIA?: { allowed: boolean; limit?: number; usage?: number } | null;
+  // Quota `ajustement_ia_mensuel`, affichage seulement (« Ajuster avec l'IA »).
+  quotaAjustementIA?: { allowed: boolean; limit?: number; usage?: number } | null;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -582,7 +585,7 @@ export function ProjectWizard({
 
       {step === 5 && (
         <>
-          <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel} />
+          <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel} quotaAjustementIA={quotaAjustementIA} />
           {navigation('bas')}
         </>
       )}

@@ -14,7 +14,7 @@
 //
 // Les quantités proposées sont des POINTS DE DÉPART (spec §6.2), et l'écran
 // le dit. L'utilisateur les affine ici, puis au fil de ses essais.
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
@@ -142,6 +142,7 @@ export function QuantitiesStep({
   hideTitle = false,
   componentId,
   pied,
+  quotaAjustementIA = null,
 }: {
   project: ProjectFull;
   targetForme: string | null;
@@ -155,6 +156,11 @@ export function QuantitiesStep({
   // v2 : contenu posé tout en bas de la préparation (case « Quantités
   // vérifiées »), sous la note sur les quantités modifiées à la main.
   pied?: ReactNode;
+  // État du quota `ajustement_ia_mensuel` (`mc_check_quota`, affichage seulement,
+  // lu par la page) : sert à montrer les crédits restants et à griser « Ajuster
+  // avec l'IA » une fois le quota atteint. `null` = pas de droit, ou lecture
+  // absente : rien n'est affiché. La vraie garde reste `mc_consume` côté route.
+  quotaAjustementIA?: { allowed: boolean; limit?: number; usage?: number } | null;
   // Format visé, en clair (« Cercle Ø 20 × 4 cm ») : sert à décrire la cible
   // à l'IA quand la géométrie ne suffit pas.
   formatLabel: string;
@@ -162,6 +168,17 @@ export function QuantitiesStep({
   const dialog = useDialog();
   const { mutate, busy } = useMutation();
   const [travail, setTravail] = useState(false);
+  // Ajustements par IA réussis depuis le dernier rendu serveur : la page ne
+  // relit le quota qu'à son rendu, le décompte baisse donc ici sans attendre.
+  // Remis à zéro dès que le serveur rend un `usage` à jour.
+  const [iaConsommes, setIaConsommes] = useState(0);
+  useEffect(() => setIaConsommes(0), [quotaAjustementIA?.usage]);
+  const iaLimite = quotaAjustementIA?.limit;
+  const iaRestants =
+    iaLimite != null && quotaAjustementIA?.usage != null
+      ? Math.max(0, iaLimite - quotaAjustementIA.usage - iaConsommes)
+      : null;
+  const iaEpuise = quotaAjustementIA != null && (!quotaAjustementIA.allowed || iaRestants === 0);
   const [propositions, setPropositions] = useState<Record<number, ScaleProposal>>({});
   const [saisie, setSaisie] = useState<Record<number, string>>({});
   // Précisions libres pour l'ajustement par IA, par composant (JEP-254,
@@ -330,6 +347,7 @@ export function QuantitiesStep({
       );
       setPropositions((p) => ({ ...p, [c.id]: propAvecPerte }));
       setSaisie((p) => ({ ...p, [c.id]: fr(propAvecPerte.factor) }));
+      setIaConsommes((n) => n + 1);
     } catch {
       dialog.alert('L’ajustement n’a pas abouti.');
     } finally {
@@ -525,9 +543,27 @@ export function QuantitiesStep({
                   <button type="button" onClick={() => void proposer(c)} className={btnGhost}>
                     Proposer d’après le format
                   </button>
-                  <button type="button" onClick={() => void proposerIA(c)} className={btnGhost}>
+                  <button
+                    type="button"
+                    onClick={() => void proposerIA(c)}
+                    disabled={iaEpuise}
+                    title={
+                      iaEpuise
+                        ? `Quota d’ajustements par IA atteint ce mois-ci (${iaLimite ?? '?'}/${iaLimite ?? '?'}). Le crédit se renouvelle à la prochaine période.`
+                        : undefined
+                    }
+                    className={`${btnGhost} disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
                     Ajuster avec l’IA
                   </button>
+                  {iaRestants != null && (
+                    <span
+                      className={`text-[12px] ${iaEpuise ? 'text-error' : 'text-on-surface-variant'}`}
+                      title="Ajustements par IA du mois (« Ajuster avec l’IA » des quantités). Les propositions de préparations du mode projet ont leur propre quota."
+                    >
+                      {iaRestants} / {iaLimite} restant{iaRestants > 1 ? 's' : ''} ce mois-ci
+                    </span>
+                  )}
                   <span
                     className="flex items-center gap-2"
                     title="Ce qui reste sur le fouet, dans les bols, sur les cuillères : appliquée aux propositions ci-dessus, jamais à un coefficient saisi à la main."

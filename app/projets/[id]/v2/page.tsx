@@ -66,6 +66,11 @@ export default async function ProjetV2Page({ params }: Params) {
     ]);
   const peutGenererIA = canAccess(droits, 'mode_projet_ia_mensuel');
   const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, 'mode_projet_ia_mensuel') : null;
+  // Quota des ajustements par IA des quantités (`ajustement_ia_mensuel`),
+  // lecture d'affichage seule : crédits restants à côté de « Ajuster avec l'IA ».
+  const quotaAjustementIA = canAccess(droits, 'ajustement_ia_mensuel')
+    ? await checkQuota(user.id, 'ajustement_ia_mensuel')
+    : null;
   const ligne = (ids.data ?? null) as { difficulty_id: number | null } | null;
 
   return (
@@ -84,6 +89,7 @@ export default async function ProjetV2Page({ params }: Params) {
           trials={trials}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
+          quotaAjustementIA={quotaAjustementIA}
           tags={tags.map((t) => ({ id: t.id, name: t.name }))}
           difficulties={difficulties.map((d) => ({ id: d.id, name: d.name, level: d.level }))}
           utensilNames={utensilNames}

@@ -95,6 +95,11 @@ export default async function ProjetPage({ params, searchParams }: Params) {
   // clic.
   const peutGenererIA = canAccess(droits, 'mode_projet_ia_mensuel');
   const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, 'mode_projet_ia_mensuel') : null;
+  // Quota des ajustements par IA des quantités (`ajustement_ia_mensuel`),
+  // lecture d'affichage seule : crédits restants à côté de « Ajuster avec l'IA ».
+  const quotaAjustementIA = canAccess(droits, 'ajustement_ia_mensuel')
+    ? await checkQuota(user.id, 'ajustement_ia_mensuel')
+    : null;
 
   return (
     <>
@@ -128,6 +133,7 @@ export default async function ProjetPage({ params, searchParams }: Params) {
           trials={trials}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
+          quotaAjustementIA={quotaAjustementIA}
         />
       </main>
       <Footer />

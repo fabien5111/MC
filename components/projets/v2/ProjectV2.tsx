@@ -124,6 +124,7 @@ export function ProjectV2({
   trials,
   peutGenererIA,
   quotaProjetIA,
+  quotaAjustementIA = null,
   tags,
   difficulties,
   utensilNames,
@@ -142,6 +143,8 @@ export function ProjectV2({
   trials: ProjectTrial[];
   peutGenererIA: boolean;
   quotaProjetIA: { allowed: boolean; limit?: number; usage?: number } | null;
+  // Quota `ajustement_ia_mensuel`, affichage seulement (« Ajuster avec l'IA »).
+  quotaAjustementIA?: { allowed: boolean; limit?: number; usage?: number } | null;
   tags: RefOption[];
   difficulties: DifficultyOption[];
   utensilNames: string[];
@@ -893,6 +896,7 @@ export function ProjectV2({
                         <div className="border-t border-outline-variant/40 px-4 py-4">
                           <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel}
                             componentId={c.id}
+                            quotaAjustementIA={quotaAjustementIA}
                             pied={<VerifCase item={verifDe(c.id, 'quantites')} onToggle={(it) => void basculerVerif(it)} busy={busy} />}
                           />
                         </div>
