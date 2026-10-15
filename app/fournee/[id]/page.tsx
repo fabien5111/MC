@@ -5,7 +5,7 @@ import { canAccess } from '@/lib/entitlements';
 import { getEntitlements } from '@/lib/entitlements-data';
 import { getBatch, getUnits, getShoppingLists } from '@/lib/profile';
 import { getIngredientConversions, getIngredientDensities, getAllergensWithPicto } from '@/lib/recipes';
-import { getMyRecipeReview } from '@/lib/reviews-data';
+import { getMyRecipeReview, recetteEstProjetEnCours } from '@/lib/reviews-data';
 import { createClient } from '@/lib/supabase/server';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
@@ -79,7 +79,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
   const batch = Number.isFinite(batchId) ? await getBatch(batchId) : null;
   if (!batch) notFound();
 
-  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements] =
+  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements, essaiProjet] =
     await Promise.all([
       getUnits(),
       getIngredientConversions(),
@@ -89,6 +89,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
       getAllergensWithPicto(),
       batch.recipe_id ? getMyRecipeReview(batch.recipe_id, batch.user_id!) : Promise.resolve(null),
       getEntitlements(user.id),
+      recetteEstProjetEnCours(batch.recipe_id),
     ]);
   // Droits d'abonnement (§4 « Lancer une fournée ») : calculés une fois ici,
   // jamais recalculés plus bas dans l'arbre de composants.
@@ -132,6 +133,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
           lecture={lecture === '1'}
           initialMode={mode === 'preparer' || mode === 'patisser' ? mode : undefined}
           myReview={myReview}
+          essaiProjet={essaiProjet}
           droits={droits}
         />
       </main>

@@ -3,7 +3,7 @@
 // client, qui n'y tirerait que le build cassé. Le pendant pur —
 // constantes, types et prédicats — est dans lib/projects.ts.
 import { createClient } from '@/lib/supabase/server';
-import { parseWizardStep, type WizardStep } from '@/lib/projects';
+import { parseWizardStep, type ComponentUtensil, type WizardStep } from '@/lib/projects';
 import type { Json } from '@/lib/database.types';
 
 // Un composant tel que l'écran de dialogue en a besoin. `steps` n'est pas la
@@ -20,6 +20,9 @@ export type ProjectLine = {
   quantity: string | null;
   baseQuantity: number | null;
   unit: string | null;
+  // Commentaire de l'ingrédient (« température ambiante », « tamisée »…) : ce
+  // qui distingue deux lignes du même ingrédient.
+  comment: string | null;
   scalingMode: string | null;
   stepTitle: string | null;
 };
@@ -37,6 +40,15 @@ export type ProjectComponent = {
   resolved: boolean;
   scaleFactor: number | null;
   scaleReason: string | null;
+  // Empreinte du format pour lequel le coefficient a été appliqué (cf.
+  // `projectFormatKey`) ; `null` avant la migration ou avant tout ajustement.
+  scaleFormatKey: string | null;
+  // Vérifications posées à la main (« étapes relues », « quantités
+  // vérifiées ») : empreinte du contenu au moment de la case cochée, `null` =
+  // pas cochée. `checksAvailable` faux = migration pas jouée, cases masquées.
+  checkedStepsKey: string | null;
+  checkedQuantitiesKey: string | null;
+  checksAvailable: boolean;
   manuallyAdjusted: boolean;
   // Mode d'ajustement choisi à l'étape 3 (`simple` = volume, `foncage` =
   // surface, `aucun`), `null` = celui de la recette d'origine (JEP-254).
@@ -47,6 +59,9 @@ export type ProjectComponent = {
   sourceYield: string | null;
   stepCount: number;
   lines: ProjectLine[];
+  // Ustensiles recopiés de la recette source (vide pour une préparation
+  // proposée par l'IA ou saisie à la main, ou avant la migration).
+  utensils: ComponentUtensil[];
 };
 
 export type ProjectFull = {
@@ -127,6 +142,7 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     unit: string | null;
     order_index: number | null;
     base_quantity?: number | null;
+    comment?: string | null;
   };
   let ingredients: IngRow[] = [];
   if (groups.length) {
@@ -163,6 +179,7 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
         quantity: it.quantity,
         baseQuantity: it.base_quantity ?? null,
         unit: it.unit,
+        comment: it.comment?.trim() || null,
         scalingMode: groupe.scaling_mode,
         stepTitle: st.title,
       });
@@ -176,14 +193,23 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     | 'lines'
     | 'scaleFactor'
     | 'scaleReason'
+    | 'scaleFormatKey'
+    | 'checkedStepsKey'
+    | 'checkedQuantitiesKey'
+    | 'checksAvailable'
     | 'manuallyAdjusted'
     | 'scalingMode'
     | 'sourceYield'
+    | 'utensils'
   > & {
     scale_factor: number | null;
     scale_reason: string | null;
+    scale_format_key?: string | null;
+    checked_steps_key?: string | null;
+    checked_quantities_key?: string | null;
     manually_adjusted: boolean;
     scaling_mode?: string | null;
+    utensils?: ComponentUtensil[] | null;
   };
   const rows = (componentsRes.data ?? []) as unknown as ComponentRow[];
   const rendements = await sourceYields(
@@ -203,11 +229,17 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     resolved: c.resolved,
     scaleFactor: c.scale_factor,
     scaleReason: c.scale_reason,
+    scaleFormatKey: c.scale_format_key ?? null,
+    checkedStepsKey: c.checked_steps_key ?? null,
+    checkedQuantitiesKey: c.checked_quantities_key ?? null,
+    // `select('*')` ne renvoie la clé que si la colonne existe.
+    checksAvailable: 'checked_steps_key' in c && 'checked_quantities_key' in c,
     manuallyAdjusted: c.manually_adjusted,
     scalingMode: c.scaling_mode ?? null,
     sourceYield: c.source_recipe_id ? (rendements.get(c.source_recipe_id) ?? null) : null,
     stepCount: parStep.get(c.id) ?? 0,
     lines: parComposant.get(c.id) ?? [],
+    utensils: Array.isArray(c.utensils) ? c.utensils : [],
   }));
 
   return {

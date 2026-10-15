@@ -18,9 +18,13 @@ import type { ProposedStructure } from '@/lib/ai/project-structure';
 export function NewProjectStart({
   peutGenererIA,
   quotaProjetIA,
+  versionEssai = false,
 }: {
   peutGenererIA: boolean;
   quotaProjetIA: { allowed: boolean; limit?: number; usage?: number } | null;
+  // Admin : le projet s'ouvre sur la v2 (page verticale), lisible depuis la v1
+  // par le lien « Revenir à la version actuelle ». Décidé par le serveur.
+  versionEssai?: boolean;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -65,7 +69,7 @@ export function NewProjectStart({
       // `replace` : revenir en arrière depuis le projet ne doit pas rouvrir
       // un écran de création, qui en créerait un second. Le voile reste
       // affiché jusqu'au démontage par la navigation.
-      router.replace(`/projets/${data.id}${proposal?.format || proposal?.components.length ? '?ia=1' : ''}`);
+      router.replace(`/projets/${data.id}${versionEssai ? '/v2' : ''}${proposal?.format || proposal?.components.length ? '?ia=1' : ''}`);
     } catch {
       dialog.alert('La création du projet a échoué.');
       setBusy(false);

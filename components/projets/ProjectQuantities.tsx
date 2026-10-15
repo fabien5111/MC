@@ -14,7 +14,7 @@
 //
 // Les quantités proposées sont des POINTS DE DÉPART (spec §6.2), et l'écran
 // le dit. L'utilisateur les affine ici, puis au fil de ses essais.
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
@@ -25,6 +25,10 @@ import { applyComponentScale, setLineQuantity } from '@/lib/projects-write';
 import {
   COMPONENT_SOURCE_LABELS,
   componentScaleProposal,
+  scaleIncompatibility,
+  projectFormatKey,
+  lignesRendement,
+  quantitiesStale,
   scaledQuantityText,
   type ComponentSourceKind,
   type ScalableFormat,
@@ -108,13 +112,55 @@ function targetFormat(project: ProjectFull, forme: string | null): ScalableForma
   };
 }
 
+// Introduction + rappel du dessert visé (JEP-254, point 13) : c'est à lui que
+// chaque composant doit être ramené. Partagé : la v1 l'affiche en tête de
+// l'étape « Quantités », la v2 en tête du bloc « Étapes ».
+export function DessertVise({ project, formatLabel }: { project: ProjectFull; formatLabel: string }) {
+  return (
+    <>
+      <p className="text-sm text-on-surface-variant">
+        Ces quantités sont un <strong>point de départ</strong>, pas un résultat définitif : vous les affinerez au fil de
+        vos essais.
+      </p>
+      <div className="rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
+        <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary">Dessert visé</p>
+        <p className="font-body-md text-[15px] text-on-surface">
+          {project.title}
+          {' — '}
+          {formatLabel}
+          {project.servings ? ` · ${project.servings} parts` : ''}
+        </p>
+      </div>
+    </>
+  );
+}
+
 export function QuantitiesStep({
   project,
   targetForme,
   formatLabel,
+  hideTitle = false,
+  componentId,
+  pied,
+  quotaAjustementIA = null,
 }: {
   project: ProjectFull;
   targetForme: string | null;
+  // La v2 du mode projet porte déjà le titre dans le cadre de son bloc.
+  hideTitle?: boolean;
+  // v2 : une seule préparation, rendue dans sa propre section du bloc
+  // « Étapes » — sans l'introduction ni le rappel du dessert (affichés une
+  // fois en tête du bloc, `DessertVise`), ni le nom (déjà en titre). Les
+  // autres préparations restent connues du calcul (voisins transmis à l'IA).
+  componentId?: number;
+  // v2 : contenu posé tout en bas de la préparation (case « Quantités
+  // vérifiées »), sous la note sur les quantités modifiées à la main.
+  pied?: ReactNode;
+  // État du quota `ajustement_ia_mensuel` (`mc_check_quota`, affichage seulement,
+  // lu par la page) : sert à montrer les crédits restants et à griser « Ajuster
+  // avec l'IA » une fois le quota atteint. `null` = pas de droit, ou lecture
+  // absente : rien n'est affiché. La vraie garde reste `mc_consume` côté route.
+  quotaAjustementIA?: { allowed: boolean; limit?: number; usage?: number } | null;
   // Format visé, en clair (« Cercle Ø 20 × 4 cm ») : sert à décrire la cible
   // à l'IA quand la géométrie ne suffit pas.
   formatLabel: string;
@@ -122,6 +168,17 @@ export function QuantitiesStep({
   const dialog = useDialog();
   const { mutate, busy } = useMutation();
   const [travail, setTravail] = useState(false);
+  // Ajustements par IA réussis depuis le dernier rendu serveur : la page ne
+  // relit le quota qu'à son rendu, le décompte baisse donc ici sans attendre.
+  // Remis à zéro dès que le serveur rend un `usage` à jour.
+  const [iaConsommes, setIaConsommes] = useState(0);
+  useEffect(() => setIaConsommes(0), [quotaAjustementIA?.usage]);
+  const iaLimite = quotaAjustementIA?.limit;
+  const iaRestants =
+    iaLimite != null && quotaAjustementIA?.usage != null
+      ? Math.max(0, iaLimite - quotaAjustementIA.usage - iaConsommes)
+      : null;
+  const iaEpuise = quotaAjustementIA != null && (!quotaAjustementIA.allowed || iaRestants === 0);
   const [propositions, setPropositions] = useState<Record<number, ScaleProposal>>({});
   const [saisie, setSaisie] = useState<Record<number, string>>({});
   // Précisions libres pour l'ajustement par IA, par composant (JEP-254,
@@ -135,12 +192,18 @@ export function QuantitiesStep({
   // à la main n'en tient PAS compte : il est déjà la décision finale de
   // l'utilisateur.
   const [pertes, setPertes] = useState<Record<number, string>>({});
+  // Dernière proposition AVANT perte, par composant : la perte se recalcule
+  // toujours depuis elle (jamais depuis le coefficient affiché, qui dériverait
+  // à force de retaper). Absente = coefficient saisi à la main, pas de perte.
+  const [basesSansPerte, setBasesSansPerte] = useState<Record<number, ScaleProposal>>({});
   const perteDe = (id: number) => {
     const v = parseFloat((pertes[id] ?? '10').replace(',', '.'));
     return isFinite(v) && v >= 0 ? v : 0;
   };
 
   const cible = targetFormat(project, targetForme);
+  // Empreinte du format enregistré, posée à chaque ajustement appliqué.
+  const cleFormat = projectFormatKey(project);
   const ordered = [...project.components].sort((a, b) => a.position - b.position);
 
   // Proposition géométrique : lue en direct sur la recette source, jamais
@@ -184,6 +247,11 @@ export function QuantitiesStep({
         yieldQty: parseFloat(String(row.yield_qty ?? '').replace(',', '.')) || null,
         yieldUnit: row.yield_unit,
       };
+      const incompat = scaleIncompatibility(source, cible);
+      if (incompat) {
+        dialog.alert(incompat);
+        return;
+      }
       const prop = componentScaleProposal(source, cible, moldMetrics);
       if (!prop) {
         dialog.alert(
@@ -192,6 +260,7 @@ export function QuantitiesStep({
         return;
       }
       const propAvecPerte = appliquerPerte(prop, perteDe(c.id));
+      setBasesSansPerte((p) => ({ ...p, [c.id]: prop }));
       setPropositions((p) => ({ ...p, [c.id]: propAvecPerte }));
       setSaisie((p) => ({ ...p, [c.id]: fr(propAvecPerte.factor) }));
     } finally {
@@ -277,17 +346,54 @@ export function QuantitiesStep({
         dialog.alert(data?.erreur || data?.explication || 'L’ajustement n’a pas abouti.');
         return;
       }
-      const propAvecPerte = appliquerPerte(
-        { factor: data.coefficient, moldCoefs: null, reason: data.explication || `Coefficient ×${fr(data.coefficient)}.` },
-        perteDe(c.id),
-      );
+      const baseIA: ScaleProposal = {
+        factor: data.coefficient,
+        moldCoefs: null,
+        reason: data.explication || `Coefficient ×${fr(data.coefficient)}.`,
+      };
+      const propAvecPerte = appliquerPerte(baseIA, perteDe(c.id));
+      setBasesSansPerte((p) => ({ ...p, [c.id]: baseIA }));
       setPropositions((p) => ({ ...p, [c.id]: propAvecPerte }));
       setSaisie((p) => ({ ...p, [c.id]: fr(propAvecPerte.factor) }));
+      setIaConsommes((n) => n + 1);
     } catch {
       dialog.alert('L’ajustement n’a pas abouti.');
     } finally {
       setTravail(false);
     }
+  }
+
+  // Changer la perte recalcule aussitôt le coefficient depuis la proposition
+  // d'origine (calcul pur, sans réseau : fluide à chaque frappe, y compris sur
+  // mobile). Champ vide ou en cours de frappe = 0 %.
+  function changerPerte(c: ProjectComponent, texte: string) {
+    setPertes((p) => ({ ...p, [c.id]: texte }));
+    // Sans proposition en mémoire (page rechargée), la base est le coefficient
+    // en vigueur : la perte ne se compose jamais sur elle-même, on la fige ici.
+    const base: ScaleProposal = basesSansPerte[c.id] ?? {
+      factor: c.scaleFactor ?? 1,
+      moldCoefs: null,
+      reason: `Coefficient ×${fr(c.scaleFactor ?? 1)}.`,
+    };
+    if (!basesSansPerte[c.id]) setBasesSansPerte((p) => ({ ...p, [c.id]: base }));
+    const v = parseFloat(texte.replace(',', '.'));
+    const avec = appliquerPerte(base, isFinite(v) && v >= 0 ? v : 0);
+    setPropositions((p) => ({ ...p, [c.id]: avec }));
+    setSaisie((p) => ({ ...p, [c.id]: fr(avec.factor) }));
+  }
+
+  // Un coefficient saisi à la main devient la nouvelle base et la perte repart
+  // à 0 % : c'est la décision de l'utilisateur, la perte peut ensuite s'y
+  // ajouter en direct.
+  function saisirCoefficient(c: ProjectComponent, texte: string) {
+    setSaisie((p) => ({ ...p, [c.id]: texte }));
+    const v = parseFloat(texte.replace(',', '.'));
+    if (!(v > 0)) return;
+    setBasesSansPerte((p) => ({
+      ...p,
+      [c.id]: { factor: v, moldCoefs: null, reason: `Coefficient ×${fr(v)} saisi à la main.` },
+    }));
+    setPertes((p) => ({ ...p, [c.id]: '0' }));
   }
 
   async function appliquer(c: ProjectComponent) {
@@ -316,7 +422,7 @@ export function QuantitiesStep({
         } catch (e) {
           return { error: { message: (e as Error).message } };
         }
-        return supabase
+        const res = await supabase
           .from('recipe_project_components')
           .update({
             scale_factor: factor,
@@ -327,6 +433,16 @@ export function QuantitiesStep({
             manually_adjusted: false,
           } as never)
           .eq('id', c.id);
+        if (res.error) return res;
+        // Format pour lequel ces quantités sont calculées : sert à signaler
+        // plus tard qu'elles sont périmées si le format change. Écrit à part,
+        // en tolérant l'absence de la colonne (migration pas encore jouée) :
+        // l'ajustement lui-même ne doit jamais échouer pour ça.
+        await supabase
+          .from('recipe_project_components')
+          .update({ scale_format_key: cleFormat } as never)
+          .eq('id', c.id);
+        return res;
       },
       { errorLabel: 'Ajustement du composant' },
     );
@@ -350,34 +466,40 @@ export function QuantitiesStep({
   return (
     <section className="space-y-5">
       <LoadingOverlay visible={busy || travail} label={travail ? 'Calcul des quantités…' : undefined} />
-      <h2 className="font-headline-md text-2xl text-primary">Quelles quantités ?</h2>
-      <p className="text-sm text-on-surface-variant">
-        Ces quantités sont un <strong>point de départ</strong>, pas un résultat définitif : vous les affinerez au fil de
-        vos essais.
-      </p>
-
-      {/* Rappel du dessert visé (JEP-254, point 13) : c'est à lui que chaque
-          composant doit être ramené. */}
-      <div className="rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
-        <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary">Dessert visé</p>
-        <p className="font-body-md text-[15px] text-on-surface">
+      {!hideTitle && componentId == null && <h2 className="font-headline-md text-2xl text-primary">Quelles quantités ?</h2>}
+      {componentId == null && <DessertVise project={project} formatLabel={formatLabel} />}
+      {/* Le dessert visé reste sous les yeux dans le volet d'UNE préparation
+          (v2) : les coefficients proposés en dépendent, et la carte complète
+          est loin au-dessus quand on a déroulé plusieurs préparations. */}
+      {componentId != null && (
+        <p className="text-[12.5px] text-on-surface-variant">
+          <span className="font-label-md uppercase tracking-widest text-secondary">Dessert visé</span>
+          {' : '}
           {project.title}
           {' — '}
           {formatLabel}
           {project.servings ? ` · ${project.servings} parts` : ''}
         </p>
-      </div>
+      )}
 
-      {ordered.map((c) => {
+      {ordered.filter((c) => componentId == null || c.id === componentId).map((c) => {
         const facteur = c.scaleFactor ?? 1;
         const prop = propositions[c.id];
         const masseOrigine = masseGrammes(c.lines, true);
         const masseActuelle = masseGrammes(c.lines, false);
+        const perime = quantitiesStale(c, cleFormat);
         return (
-          <div key={c.id} className="rounded-xl border border-outline-variant p-4">
+          <div key={c.id} className={componentId == null ? 'rounded-xl border border-outline-variant p-4' : ''}>
+            {perime && (
+              <p className="mb-3 flex items-start gap-2 rounded-lg border border-error/40 bg-error-container/40 px-3 py-2 text-[12.5px] text-on-error-container">
+                <span className="material-symbols-outlined text-[18px] shrink-0">sync_problem</span>
+                Ces quantités ont été calculées pour un autre format que le format visé actuel. Recalculez-les :
+                « Proposer », puis « Appliquer ».
+              </p>
+            )}
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
               <div>
-                <h3 className="font-body-md text-[16px] font-semibold text-on-surface">{c.name}</h3>
+                {componentId == null && <h3 className="font-body-md text-[16px] font-semibold text-on-surface">{c.name}</h3>}
                 <p className="text-[12px] text-on-surface-variant">
                   {COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind}
                   {c.source_title && c.source_recipe_id ? (
@@ -410,20 +532,20 @@ export function QuantitiesStep({
               </p>
             ) : (
               <>
-                {/* Justification consultable en une phrase (§6.4) : la
-                    proposition du moment, sinon celle qui a été appliquée. */}
-                {(prop?.reason || c.scaleReason) && (
-                  <p className="mb-3 rounded-lg bg-surface-container-low px-3 py-2 text-[12.5px] text-on-surface-variant">
-                    {prop?.reason || c.scaleReason}
-                  </p>
-                )}
-
                 {/* Ce que produit la recette choisie (JEP-254, point 13) :
                     son rendement d'origine, et le poids de la préparation
                     avant / après ajustement. */}
                 <dl className="mb-3 grid grid-cols-1 gap-x-4 gap-y-1 text-[12.5px] sm:grid-cols-[auto_1fr]">
                   <dt className="text-outline">Recette d’origine</dt>
-                  <dd className="text-on-surface">{c.sourceYield ?? 'rendement non précisé'}</dd>
+                  <dd className="text-on-surface">
+                    {c.sourceYield
+                      ? lignesRendement(c.sourceYield).map((l, i) => (
+                          <span key={i} className="block">
+                            {l}
+                          </span>
+                        ))
+                      : 'rendement non précisé'}
+                  </dd>
                   {masseActuelle != null && (
                     <>
                       <dt className="text-outline">Ingrédients pesés</dt>
@@ -449,30 +571,63 @@ export function QuantitiesStep({
                   />
                 </div>
 
+                {/* Justification consultable en une phrase (§6.4) : la
+                    proposition du moment, sinon celle qui a été appliquée.
+                    Juste au-dessus du coefficient qu'elle explique. */}
+                {(prop?.reason || c.scaleReason) && (
+                  <p className="mb-3 rounded-lg bg-surface-container-low px-3 py-2 text-[12.5px] text-on-surface-variant">
+                    {prop?.reason || c.scaleReason}
+                  </p>
+                )}
+
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <button type="button" onClick={() => void proposer(c)} className={btnGhost}>
                     Proposer d’après le format
                   </button>
-                  <button type="button" onClick={() => void proposerIA(c)} className={btnGhost}>
+                  <button
+                    type="button"
+                    onClick={() => void proposerIA(c)}
+                    disabled={iaEpuise}
+                    title={
+                      iaEpuise
+                        ? `Quota d’ajustements par IA atteint ce mois-ci (${iaLimite ?? '?'}/${iaLimite ?? '?'}). Le crédit se renouvelle à la prochaine période.`
+                        : undefined
+                    }
+                    className={`${btnGhost} disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
                     Ajuster avec l’IA
                   </button>
+                  {iaRestants != null && (
+                    <span
+                      className={`text-[12px] ${iaEpuise ? 'text-error' : 'text-on-surface-variant'}`}
+                      title="Ajustements par IA du mois (« Ajuster avec l’IA » des quantités). Les propositions de préparations du mode projet ont leur propre quota."
+                    >
+                      Utilisation quota IA : {(iaLimite ?? 0) - iaRestants}/{iaLimite} par mois
+                    </span>
+                  )}
+                </div>
+
+                {/* Perte et coefficient sur une seconde rangée : libellés de
+                    même largeur, champs de même taille, donc alignés. */}
+                <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-2">
                   <span
                     className="flex items-center gap-2"
-                    title="Ce qui reste sur le fouet, dans les bols, sur les cuillères : appliquée aux propositions ci-dessus, jamais à un coefficient saisi à la main."
+                    title="Ce qui reste sur le fouet, dans les bols, sur les cuillères : s’ajoute au coefficient de départ (proposition, ou dernier coefficient saisi) et le recalcule à chaque modification."
+
                   >
-                    <label className="font-label-md text-[12px] text-outline">PERTE (%)</label>
+                    <label className="w-24 font-label-md text-[12px] text-outline">PERTE (%)</label>
                     <input
-                      value={pertes[c.id] ?? '10'}
-                      onChange={(e) => setPertes((p) => ({ ...p, [c.id]: e.target.value }))}
+                      value={pertes[c.id] ?? (basesSansPerte[c.id] ? '10' : '0')}
+                      onChange={(e) => changerPerte(c, e.target.value)}
                       inputMode="decimal"
-                      className={`${champ} w-16`}
+                      className={`${champ} w-24`}
                     />
                   </span>
                   <span className="flex items-center gap-2">
-                    <label className="font-label-md text-[12px] text-outline">COEFFICIENT</label>
+                    <label className="w-24 font-label-md text-[12px] text-outline">COEFFICIENT</label>
                     <input
                       value={saisie[c.id] ?? fr(facteur)}
-                      onChange={(e) => setSaisie((p) => ({ ...p, [c.id]: e.target.value }))}
+                      onChange={(e) => saisirCoefficient(c, e.target.value)}
                       inputMode="decimal"
                       className={`${champ} w-24`}
                     />
@@ -494,7 +649,10 @@ export function QuantitiesStep({
                         l.baseQuantity != null && (!isFinite(actuelle) || Math.abs(l.baseQuantity - actuelle) > 1e-9);
                       return (
                         <li key={l.id} className="flex flex-wrap items-center gap-2 text-[13.5px]">
-                          <span className="min-w-0 flex-1 truncate text-on-surface">{l.name}</span>
+                          <span className="min-w-0 flex-1 text-on-surface">
+                            {l.name}
+                            {l.comment && <span className="italic text-on-surface-variant"> — {l.comment}</span>}
+                          </span>
                           {montrerOrigine && (
                             <span
                               className="w-20 shrink-0 text-right text-[12px] italic text-on-surface-variant"
@@ -526,6 +684,7 @@ export function QuantitiesStep({
                 <p className="mt-2 text-[11.5px] text-outline">
                   Une quantité modifiée à la main n’est plus recalculée par un changement de coefficient.
                 </p>
+                {pied}
               </>
             )}
           </div>

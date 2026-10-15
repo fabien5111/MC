@@ -218,6 +218,19 @@ export function effectiveTimes(
   };
 }
 
+// Somme des temps des étapes (préparation, cuisson, repos) et total — ce que
+// `effectiveTimes` retient quand rien n'est saisi à la main. Pure : sert aussi
+// à l'éditeur du mode projet, qui l'affiche à côté des champs corrigeables.
+export function stepTimeSums(
+  steps: { prep_time?: number | null; cook_time?: number | null; wait_time?: number | null }[],
+): { prep: number; cook: number; wait: number; total: number } {
+  const sum = (k: 'prep_time' | 'cook_time' | 'wait_time') => steps.reduce((n, s) => n + (s[k] || 0), 0);
+  const prep = sum('prep_time');
+  const cook = sum('cook_time');
+  const wait = sum('wait_time');
+  return { prep, cook, wait, total: prep + cook + wait };
+}
+
 // Étape « Jour J − n » (hors contexte de planification).
 export function dayLabel(offset: number | null | undefined): string {
   const o = offset || 0;

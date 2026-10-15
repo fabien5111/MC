@@ -15,6 +15,8 @@
 // existe depuis toujours et s'affiche dans le carnet sous « Brouillons ») n'a
 // rien à voir avec `project_stage = 'wizard'`.
 
+import { ingredientKey } from '@/lib/ingredient-name';
+
 export type RecipeKind = 'simple' | 'project';
 export type ProjectStage = 'wizard' | 'ready' | 'dissolved';
 
@@ -249,6 +251,46 @@ export function projectFormatPayload(input: {
   };
 }
 
+// Empreinte du format ENREGISTRÉ d'un projet : tout ce qui change ce que
+// « pour ce format » veut dire pour les quantités (type, moule, dimensions,
+// nombre de pièces, parts). Posée sur chaque préparation à l'« Appliquer » de
+// son ajustement (`recipe_project_components.scale_format_key`) et comparée au
+// format courant : une différence = les quantités ont été calculées pour un
+// AUTRE format. Pure et stable (clés triées, nombres normalisés).
+export function projectFormatKey(p: {
+  measure_type?: string | null;
+  mold_type_id?: number | null;
+  mold_dims?: unknown;
+  yield_qty?: string | null;
+  servings?: number | null;
+}): string {
+  const dims =
+    p.mold_dims && typeof p.mold_dims === 'object' && !Array.isArray(p.mold_dims)
+      ? Object.entries(p.mold_dims as Record<string, unknown>)
+          .map(([k, v]) => [k, Number(v)] as [string, number])
+          .filter(([, v]) => isFinite(v) && v > 0)
+          .sort(([a], [b]) => a.localeCompare(b))
+      : [];
+  return JSON.stringify([
+    p.measure_type ?? '',
+    p.mold_type_id ?? '',
+    dims,
+    String(p.yield_qty ?? '').trim(),
+    p.servings ?? '',
+  ]);
+}
+
+// Une préparation dont les quantités ont été calculées pour un autre format
+// que le format courant. Prudent : sans empreinte (ajustement antérieur à la
+// colonne, ou colonne absente), on ne dit rien — mieux vaut se taire qu'alerter
+// à tort ; et une préparation non résolue ou sans contenu n'a pas de quantités.
+export function quantitiesStale(
+  c: { resolved: boolean; stepCount: number; scaleFormatKey?: string | null },
+  currentKey: string,
+): boolean {
+  return c.resolved && c.stepCount > 0 && !!c.scaleFormatKey && c.scaleFormatKey !== currentKey;
+}
+
 // Description lisible du format, écrite dans `recipes.yield_desc` — la même
 // que celle composée par l'éditeur classique (`composeMoldDesc`), pour qu'une
 // recette de projet et une recette saisie à la main affichent leur rendement
@@ -287,8 +329,8 @@ export const COMPONENT_ROLES = [
 // de `ingredient_groups.scaling_mode`, avec les libellés de l'éditeur
 // classique (CreerForm) pour qu'un même choix se lise pareil partout.
 // La valeur vide laisse le mode de la recette d'origine.
-export const COMPONENT_SCALING_MODES: { value: string; label: string }[] = [
-  { value: '', label: 'Selon la recette' },
+export const COMPONENT_SCALING_MODES: { value: string; label: string; title?: string }[] = [
+  { value: '', label: 'Selon la recette d’origine', title: 'Information récupérée de la recette d’origine' },
   { value: 'simple', label: 'Volume (appareil, crème, mousse…)' },
   { value: 'foncage', label: 'Recouvre une surface (pâte, glaçage…)' },
   { value: 'aucun', label: 'Pas d’ajustement' },
@@ -300,15 +342,43 @@ export const COMPONENT_SCALING_MODES: { value: string; label: string }[] = [
 // préparations dépassent déjà largement l'entremets le plus construit.
 export const MAX_COMPONENTS = 12;
 
-export const COMPONENT_SOURCE_KINDS = ['own', 'favorite', 'followed', 'ai_generated', 'manual'] as const;
+export const COMPONENT_SOURCE_KINDS = ['own', 'favorite', 'followed', 'community', 'ai_generated', 'manual'] as const;
 export type ComponentSourceKind = (typeof COMPONENT_SOURCE_KINDS)[number];
 
 export const COMPONENT_SOURCE_LABELS: Record<ComponentSourceKind, string> = {
   own: 'Mon carnet',
   favorite: 'Mes favoris',
-  followed: 'Pâtissiers suivis',
+  followed: 'Mes abonnements',
+  community: 'Communauté',
   ai_generated: 'Proposée par l’IA',
   manual: 'Saisie à la main',
+};
+
+// Portées du sélecteur de recettes, partagées par « Remplacer un ingrédient
+// par une recette » et la résolution d'une préparation du mode projet. Même
+// cases, même libellés, mêmes valeurs côté `/api/recipes/picker`.
+//   mine     — mes recettes qui ne sont pas des brouillons
+//   draft    — mes brouillons (un projet en cours n'en fait jamais partie)
+//   fav      — mes favoris
+//   followed — recettes publiées des pâtissiers que je suis (« abonnements »)
+//   all      — toutes les recettes publiées
+export const PICKER_SCOPES = ['mine', 'draft', 'fav', 'followed', 'all'] as const;
+export type PickerScope = (typeof PICKER_SCOPES)[number];
+export const PICKER_SCOPE_LABELS: Record<PickerScope, string> = {
+  mine: 'Mes recettes',
+  draft: 'Mes brouillons',
+  fav: 'Mes favoris',
+  followed: 'Mes abonnements',
+  all: 'Toutes les recettes',
+};
+// Crédit d'auteur enregistré sur un composant selon la portée qui a trouvé la
+// recette — mes recettes ET mes brouillons sont « Mon carnet ».
+export const PICKER_SCOPE_KIND: Record<PickerScope, ComponentSourceKind> = {
+  mine: 'own',
+  draft: 'own',
+  fav: 'favorite',
+  followed: 'followed',
+  all: 'community',
 };
 
 // Position d'un composant : `numeric` en base, pour intercaler sans
@@ -333,7 +403,53 @@ export type ComponentIngredientDraft = {
   comment: string | null;
   allergen: string | null;
   ref_id: number | null;
+  // Quantité d'origine (`ingredients.base_quantity`) quand la ligne est relue
+  // depuis la base : la réécriture d'un composant la conserve, sans quoi
+  // modifier une préparation déjà ajustée ferait de la quantité ajustée la
+  // nouvelle référence (un second ajustement multiplierait deux fois).
+  // `undefined` = ligne neuve (copie, IA, saisie) : base = quantité saisie.
+  // `null` = ligne modifiée à la main : elle sort du recalcul global.
+  base_quantity?: number | null;
 };
+
+// Photo d'une étape, telle que la porte le brouillon. `url` est l'URL du
+// stockage, ou une data-URL fraîche tant que l'écran ne l'a pas déposée
+// (le dépôt se fait côté navigateur, avant l'écriture — cf. ComponentResolver).
+export type ComponentStepPhoto = { url: string; original_url: string | null; ai_retouched: boolean };
+
+// Ustensile d'une préparation, recopié de la recette source à la copie
+// (`recipe_project_components.utensils`). La source ne dit pas quelle étape
+// utilise quel ustensile : ils sont donc portés par la préparation, jamais
+// par une étape.
+export type ComponentUtensil = { name: string; ref_id: number | null; comment: string | null };
+
+// Clé de rapprochement de deux ustensiles : le référentiel quand il est
+// connu, sinon le nom normalisé (même règle que les ingrédients : casse,
+// accents, pluriel).
+function utensilKeys(u: { name: string; ref_id: number | null }): string[] {
+  const nom = `nom:${ingredientKey(u.name)}`;
+  return u.ref_id != null ? [`ref:${u.ref_id}`, nom] : [nom];
+}
+
+// Ustensiles à AJOUTER à la liste globale de la recette : ceux de `incoming`
+// absents de `existing` (même référentiel ou même nom normalisé), sans
+// doublon entre eux. Rien n'est jamais retiré — les ajouts faits à la main
+// restent intacts.
+export function utensilsToAdd<T extends { name: string; ref_id: number | null }>(
+  existing: { name: string; ref_id: number | null }[],
+  incoming: T[],
+): T[] {
+  const vus = new Set<string>(existing.flatMap(utensilKeys));
+  const out: T[] = [];
+  for (const u of incoming) {
+    if (!u.name?.trim()) continue;
+    const cles = utensilKeys(u);
+    if (cles.some((k) => vus.has(k))) continue;
+    cles.forEach((k) => vus.add(k));
+    out.push(u);
+  }
+  return out;
+}
 
 export type ComponentStepDraft = {
   title: string | null;
@@ -352,6 +468,10 @@ export type ComponentStepDraft = {
   tips: string | null;
   day_offset: number | null;
   ingredients: ComponentIngredientDraft[];
+  // Photos de l'étape. Absentes des copies et des propositions de l'IA ;
+  // relues par `readComponentDraft` pour qu'une modification du composant
+  // ne les efface pas (ses étapes sont supprimées puis réécrites).
+  photos?: ComponentStepPhoto[];
 };
 
 // Recette source telle que la lit le sélecteur, réduite à ce que la copie
@@ -456,6 +576,35 @@ function dimsTexte(forme: string | null, dims: Record<string, number>): string {
   return parts.length ? `${parts.join(' × ')} cm` : '';
 }
 
+// Une quantité exprimée en poids ou en volume ne se compare pas à un nombre de
+// parts ou de pièces : « 630 g » contre « 8 parts » donnait ×0,01, un
+// coefficient absurde écrit ensuite dans les quantités. Seules les unités
+// CONNUES de masse / volume sont refusées ; une unité vide ou inattendue garde
+// l'ancien comportement (rapport direct), faute de pouvoir trancher.
+const UNITES_MASSE_VOLUME = new Set(['mg', 'g', 'gr', 'gramme', 'kg', 'kilo', 'kilogramme', 'ml', 'cl', 'dl', 'l', 'litre']);
+
+export function uniteMasseVolume(unit: string | null | undefined): boolean {
+  const u = (unit ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[.\s]/g, '')
+    .replace(/s$/, '');
+  return UNITES_MASSE_VOLUME.has(u);
+}
+
+// Motif pour lequel la recette d'origine et le format visé ne se comparent pas,
+// ou `null`. Affiché tel quel à l'utilisateur, qui est renvoyé vers
+// l'ajustement par IA ou la saisie du coefficient.
+export function scaleIncompatibility(source: ScalableFormat, target: ScalableFormat): string | null {
+  if (source.measure_type === 'mold' && target.measure_type === 'mold') return null;
+  if (uniteMasseVolume(source.yieldUnit) && !uniteMasseVolume(target.yieldUnit)) {
+    const qte = source.yieldQty ? `${fr1(source.yieldQty)} ${source.yieldUnit ?? ''}`.trim() : (source.yieldUnit ?? '');
+    return `La recette d’origine est donnée en poids ou en volume (${qte}) : elle ne se convertit pas en parts ou en moule. Utilisez « Ajuster avec l’IA » ou saisissez le coefficient.`;
+  }
+  return null;
+}
+
 // Coefficient proposé pour un composant, ou `null` quand la géométrie ne
 // permet pas de trancher (recette source sans moule renseigné, composant
 // proposé par l'IA ou saisi à la main). Dans ce cas l'écran bascule sur
@@ -469,6 +618,7 @@ export function componentScaleProposal(
   target: ScalableFormat,
   metrics: (forme: string | null, dims: Record<string, number>) => { volume: number | null; surface: number | null },
 ): ScaleProposal | null {
+  if (scaleIncompatibility(source, target)) return null;
   // Deux recettes exprimées en moule : rapport des volumes et des surfaces,
   // multiplié par le rapport des nombres de pièces. C'est le calcul de
   // `BatchWidget`, à l'identique.
@@ -544,4 +694,294 @@ export function projectValidationBlockers(project: {
     );
   }
   return blockers;
+}
+
+// ── Format visé : validation de la saisie ─────────────────────────────────
+//
+// Contrôle et mise en forme partagés par l'étape 2 du parcours actuel et par
+// le bloc « Format » de la v2 : les deux écrans doivent refuser et écrire
+// exactement la même chose, sans quoi un projet ouvert dans l'un se lirait
+// de travers dans l'autre. Rend soit un message à afficher, soit les colonnes
+// de `recipes` à écrire (`projectFormatPayload`).
+export function buildProjectFormatUpdate(input: {
+  format: ProjectFormat;
+  title: string;
+  servings: string;
+  count: string;
+  dims: Record<string, string>;
+  moldTypeId: string;
+}): { error: string } | { payload: Record<string, unknown> } {
+  const parts = parseInt(input.servings, 10);
+  if (!(parts > 0)) return { error: 'Indiquez le nombre de parts visé.' };
+  const nb = parseInt(input.count, 10);
+  const countLabel = PROJECT_FORMATS[input.format].countLabel;
+  if (countLabel && !(nb > 0)) return { error: `Indiquez le nombre à réaliser (${countLabel.toLowerCase()}).` };
+  const parsedDims: Record<string, number> = {};
+  for (const d of PROJECT_FORMATS[input.format].dims) {
+    const v = parseFloat((input.dims[d.key] ?? '').replace(',', '.'));
+    if (!isNaN(v) && v > 0) parsedDims[d.key] = v;
+  }
+  return {
+    payload: projectFormatPayload({
+      format: input.format,
+      title: input.title,
+      servings: parts,
+      dims: parsedDims,
+      count: nb > 0 ? nb : 1,
+      moldTypeId: input.format !== 'free' && input.moldTypeId ? Number(input.moldTypeId) : null,
+    }),
+  };
+}
+
+// ── Mode projet v2 : blocs de la page verticale ───────────────────────────
+//
+// La v2 (`/projets/[id]/v2`, admins seulement le temps de la comparaison)
+// présente le projet comme la recette qu'il deviendra : une seule colonne,
+// où les blocs propres au projet (« Atelier projet ») s'intercalent entre
+// ceux de la recette. Un bloc pas encore atteint reste VISIBLE mais grisé,
+// avec ce qui le débloque — on voit d'emblée toute la recette à venir.
+//
+// L'état se déduit de ce que porte la base, jamais de `wizard_step` : cette
+// colonne reste la propriété du parcours actuel, que la v2 n'écrit pas (un
+// projet ouvert dans la v2 ne doit pas changer d'étape dans l'autre vue).
+export const PROJECT_V2_BLOCKS = [
+  'intention',
+  'structure',
+  'identite',
+  'format',
+  'etapes',
+  'ingredients',
+  'organisation',
+  'conseils',
+  'validation',
+] as const;
+export type ProjectV2Block = (typeof PROJECT_V2_BLOCKS)[number];
+
+// Blocs « Atelier projet » : fond plus clair, et ils disparaissent une fois
+// le projet validé — il ne reste alors que la recette.
+export const PROJECT_V2_ATELIER: ReadonlySet<ProjectV2Block> = new Set(['intention', 'structure', 'validation']);
+
+export type ProjectV2BlockState = { unlocked: boolean; lockedReason: string | null };
+
+export function projectV2BlockStates(project: {
+  measure_type: string | null;
+  servings: number | null;
+  // Intention saisie : suffit, avec le format, à ouvrir la structure (qui
+  // remonte juste sous l'intention, avant que le format soit posé).
+  intent?: string | null;
+  components: { resolved: boolean }[];
+}): Record<ProjectV2Block, ProjectV2BlockState> {
+  const formatPose = !!project.measure_type && (project.servings ?? 0) > 0;
+  const unResolu = project.components.some((c) => c.resolved);
+  const tousResolus = project.components.length > 0 && project.components.every((c) => c.resolved);
+  const etat = (unlocked: boolean, reason: string): ProjectV2BlockState => ({
+    unlocked,
+    lockedReason: unlocked ? null : reason,
+  });
+  const apresRecette = 'Disponible dès qu’une préparation a sa recette.';
+  return {
+    intention: etat(true, ''),
+    identite: etat(true, ''),
+    format: etat(true, ''),
+    structure: etat(formatPose || !!project.intent?.trim(), 'Disponible dès qu’une intention ou un format est renseigné.'),
+    etapes: etat(unResolu, apresRecette),
+    ingredients: etat(unResolu, apresRecette),
+    organisation: etat(unResolu, apresRecette),
+    conseils: etat(unResolu, apresRecette),
+    validation: etat(tousResolus, 'Disponible quand toutes les préparations ont leur recette.'),
+  };
+}
+
+// Découpe le rendement d'une recette d'origine en lignes lisibles : une phrase
+// par ligne (point suivi d'une majuscule), et la « perte de réalisation » à
+// part, même quand la source l'a collée à la phrase précédente. Texte inchangé.
+export function lignesRendement(texte: string): string[] {
+  return texte
+    .split(/(?<=[.!?])\s+(?=[A-ZÀ-ÖØ-ÞŒ])|\s+(?=Perte de réalisation)/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+}
+
+// ── Reste à faire (v2) ────────────────────────────────────────────────────
+
+// Empreinte courte et stable d'un contenu (djb2, en base 36). Ce n'est pas de
+// la sécurité : juste de quoi reconnaître « ce que j'ai vérifié n'a pas bougé ».
+export function empreinteContenu(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+type EtapeContenu = {
+  title: string | null;
+  description: string | null;
+  sous_etapes: string[] | null;
+  prep_time: number | null;
+  cook_time: number | null;
+  wait_time: number | null;
+  cook_temp: number | null;
+  tips: string | null;
+  day_offset: number | null;
+};
+
+// Empreinte du contenu des étapes d'UNE préparation (texte, temps, jour,
+// astuces). « Étapes relues » est valable tant qu'elle ne change pas : toute
+// écriture sur les étapes la fait bouger, sans qu'aucun chemin d'écriture ait
+// à penser à décocher quoi que ce soit.
+export function empreinteEtapes(steps: EtapeContenu[]): string {
+  return empreinteContenu(
+    JSON.stringify(
+      steps.map((s) => [
+        s.title ?? '',
+        s.description ?? '',
+        s.sous_etapes ?? [],
+        s.prep_time ?? null,
+        s.cook_time ?? null,
+        s.wait_time ?? null,
+        s.cook_temp ?? null,
+        s.tips ?? '',
+        s.day_offset ?? null,
+      ]),
+    ),
+  );
+}
+
+// Empreinte des quantités d'UNE préparation : lignes (nom, quantité, unité,
+// commentaire) et coefficient appliqué.
+export function empreinteQuantites(
+  lines: { name: string; quantity: string | null; unit: string | null; comment: string | null }[],
+  scaleFactor: number | null,
+): string {
+  return empreinteContenu(
+    JSON.stringify([scaleFactor ?? null, lines.map((l) => [l.name, l.quantity ?? '', l.unit ?? '', l.comment ?? ''])]),
+  );
+}
+
+export type TodoEtat = 'fait' | 'afaire' | 'arefaire';
+export type TodoItem = {
+  id: string;
+  groupe: string;
+  libelle: string;
+  etat: TodoEtat;
+  // Bloc vers lequel mène le clic (`bloc-<clé>`).
+  ancre: string;
+  // Point à cocher à la main : la préparation et la vérification concernées.
+  verif?: { componentId: number; type: 'etapes' | 'quantites'; cle: string };
+  // Case non cochable pour l'instant (quantités calculées pour un autre
+  // format : il faut d'abord les recalculer).
+  bloque?: boolean;
+};
+
+// Ce qui reste à faire sur un projet. Deux sortes de points : ceux que la base
+// permet de constater seule (intention, format, recettes choisies,
+// quantités à jour) et ceux que seul le membre peut confirmer (« étapes
+// relues », « quantités vérifiées »), qui ne valent que tant que le contenu
+// vérifié n'a pas changé depuis (empreinte). Sans colonne (`verifsDispo`
+// faux), les points manuels ne sont pas proposés.
+export function projectTodo(input: {
+  intent: string | null;
+  titleSet: boolean;
+  measure_type: string | null;
+  formatKey: string;
+  verifsDispo: boolean;
+  components: {
+    id: number;
+    name: string;
+    resolved: boolean;
+    stepCount: number;
+    scaleFormatKey: string | null;
+    checkedStepsKey: string | null;
+    checkedQuantitiesKey: string | null;
+    cleEtapes: string;
+    cleQuantites: string;
+  }[];
+}): TodoItem[] {
+  const out: TodoItem[] = [];
+  out.push({
+    id: 'intention',
+    groupe: 'Le projet',
+    libelle: 'Intention décrite',
+    etat: input.intent?.trim() ? 'fait' : 'afaire',
+    ancre: 'bloc-intention',
+  });
+  out.push({
+    id: 'nom',
+    groupe: 'Le projet',
+    libelle: 'Dessert nommé',
+    etat: input.titleSet ? 'fait' : 'afaire',
+    ancre: 'bloc-identite',
+  });
+  out.push({
+    id: 'format',
+    groupe: 'Le projet',
+    libelle: 'Format défini',
+    etat: input.measure_type ? 'fait' : 'afaire',
+    ancre: 'bloc-format',
+  });
+  out.push({
+    id: 'preparations',
+    groupe: 'Le projet',
+    libelle: 'Préparations ajoutées',
+    etat: input.components.length > 0 ? 'fait' : 'afaire',
+    ancre: 'bloc-structure',
+  });
+  for (const c of input.components) {
+    out.push({
+      id: `recette-${c.id}`,
+      groupe: c.name,
+      libelle: 'Recette choisie',
+      etat: c.resolved ? 'fait' : 'afaire',
+      ancre: `prep-${c.id}-recette`,
+    });
+    if (!c.resolved || c.stepCount === 0) continue;
+    const perimee = quantitiesStale(c, input.formatKey);
+    if (input.verifsDispo) {
+      const quantites =
+        perimee || (c.checkedQuantitiesKey != null && c.checkedQuantitiesKey !== c.cleQuantites)
+          ? 'arefaire'
+          : c.checkedQuantitiesKey == null
+            ? 'afaire'
+            : 'fait';
+      out.push({
+        id: `quantites-${c.id}`,
+        groupe: c.name,
+        libelle: perimee
+          ? 'Quantités à recalculer (format modifié)'
+          : quantites === 'arefaire'
+            ? 'Quantités à revérifier (modifiées depuis)'
+            : 'Quantités vérifiées',
+        etat: quantites,
+        ancre: `prep-${c.id}-quantites`,
+        verif: { componentId: c.id, type: 'quantites', cle: c.cleQuantites },
+        bloque: perimee,
+      });
+      const etapes = c.checkedStepsKey == null ? 'afaire' : c.checkedStepsKey === c.cleEtapes ? 'fait' : 'arefaire';
+      out.push({
+        id: `etapes-${c.id}`,
+        groupe: c.name,
+        libelle: etapes === 'arefaire' ? 'Étapes à relire (modifiées depuis)' : 'Étapes relues',
+        etat: etapes,
+        ancre: `prep-${c.id}-etapes`,
+        verif: { componentId: c.id, type: 'etapes', cle: c.cleEtapes },
+      });
+    } else if (perimee) {
+      out.push({
+        id: `quantites-${c.id}`,
+        groupe: c.name,
+        libelle: 'Quantités à recalculer (format modifié)',
+        etat: 'arefaire',
+        ancre: `prep-${c.id}-quantites`,
+      });
+    }
+  }
+  return out;
+}
+
+// Libellés des points du « Reste à faire » pas encore faits — ce qu'on rappelle
+// avant de lancer une fournée d'essai. « Le projet » n'est pas répété devant les
+// points généraux ; une préparation précède le sien (« Ganache — Étapes relues »).
+export function pointsRestants(todo: TodoItem[]): string[] {
+  return todo
+    .filter((i) => i.etat !== 'fait')
+    .map((i) => (i.groupe === 'Le projet' ? i.libelle : `${i.groupe} — ${i.libelle}`));
 }
