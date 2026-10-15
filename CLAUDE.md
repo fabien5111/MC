@@ -70,6 +70,27 @@ le service managé.
   Corrigé en ne recalculant que si `hero`/`heroOriginal` est un dépôt frais
   (`estDataUrlImage`, `lib/storage.ts`) — sinon les colonnes sont omises de
   l'update, gardant les vignettes déjà en base.
+  **Cause réelle** (mesurée le 10/10/2026) : le CORS de `jp-photos` est
+  correct, mais Swift ne renvoie `Access-Control-Allow-Origin` qu'à une
+  requête portant `Origin`, sans `Vary: Origin`, en cache `immutable` d'un
+  an — la copie mise en cache par un `<img>` ordinaire était resservie à la
+  requête CORS du canvas.
+  **Solution définitive (12/10/2026) : les vignettes d'une photo DÉJÀ sur
+  Swift sont fabriquées par le SERVEUR**, jamais relues dans un canvas.
+  `POST /api/stockage/vignettes` (`lib/vignettes-data.ts`, `sharp`) lit
+  l'objet `jp-photos/recettes/…`, dépose `hero_thumb_url` (96 px) et
+  `hero_card_url` (480 px) et rend leurs URL ; l'appelant les écrit en base
+  sous sa session (`demanderVignettes`, `lib/storage-client.ts`). Entre le
+  serveur et Swift il n'y a ni CORS ni cache de navigateur. Utilisé par la
+  relecture d'import et par Admin → Photos du site, dont le message d'échec
+  nomme la vraie cause (lecture, décodage, dépôt) et qui reprend aussi les
+  vignettes marquées d'une chaîne vide par l'ancien rattrapage. La source est
+  restreinte aux objets `recettes/` de `jp-photos` (jamais d'URL libre : SSRF).
+  Reste côté navigateur : le dépôt **frais** de `CreerForm`, dont la photo est
+  déjà en mémoire (aucune relecture, donc aucun CORS). `chargerImageDepuisSrc`
+  garde `?cors=1` pour ce qui l'utilise encore. Une vignette qui manque
+  n'est **pas** compensée par la photo pleine sur la carte : ce serait masquer
+  l'échec en alourdissant la page.
 - **Scripts SQL** : ne pas créer de fichier `.sql` dans `db/`. Toute
   migration ou requête SQL doit être affichée directement dans la
   conversation (bloc de code SQL), pour être copiée-collée dans **pgweb**,
@@ -537,6 +558,37 @@ remontant** en dessous.
   **et** le curseur de temps. Même correctif que `CarnetToolbar`.
 - **Compatibilité** : `?category=` (liens de catégorie de l'accueil) est un
   alias de `cat`, fusionné à la lecture — aucune redirection.
+- **Terme libre : 3 caractères minimum** (`MIN_QUERY_LENGTH` /
+  `effectiveQuery`, `lib/search-params.ts`, même seuil dans la RPC). En deçà le
+  terme est ignoré partout — requête, résumé, option « Pertinence » — et le
+  champ l'annonce. Le champ garde ce qu'on tape (`criteria.q`).
+- **Morceau de mot** : le plein texte (`recipes.fts`, dictionnaire `french`)
+  compare des racines — « Canelés » → `canel` —, donc « cane » ne trouvait rien
+  alors que « canel » tombait juste. La RPC cherche aussi le terme normalisé en
+  sous-chaîne du titre (`mc_norm(title) like`), avec un bonus de pertinence pour
+  qu'une telle recette ne finisse pas en bas de liste.
+- **Portée : tout ce que le carnet du membre contient**, pas seulement le
+  publié — ses recettes à tout statut, les recettes partagées une à une
+  (`recipe_shares`) et celles d'un carnet partagé « brouillons compris »
+  (`book_shares.scope = 'all'`), via `auth.uid()`. Favoris et abonnements ne
+  portant que du publié, ils sont déjà couverts. Les projets en cours
+  (`kind = 'project'`, `project_stage = 'wizard'`) restent exclus
+  (`isProjectDraft`). Le compte de recettes d'un **pâtissier**, lui, ne compte
+  que le publié.
+- **Une recette de mon carnet se montre comme dans le carnet.** La RPC ne
+  renvoie que le contenu d'une carte publique ; `getCarnetMarks`
+  (`lib/search.ts`, sous la session du membre, RLS) relit statut, visibilité,
+  partage reçu et abonnement des recettes affichées. La page choisit alors :
+  `MineCard` si j'en suis l'auteur (statut, Privée/Publique, fournée, édition,
+  favori, suppression), `OtherCard` si elle me vient d'un favori, d'un
+  abonnement ou d'un partage (retrait du partage compris), `RecipeCard` sinon —
+  une recette publique hors carnet n'a pas à porter des gestes de carnet. Les
+  deux cartes vivent dans `components/carnet/CarnetCards.tsx`, **partagées**
+  avec `CarnetContent` (suppression et retrait de partage :
+  `supprimerRecette` / `retirerPartage`) ; `SearchCarnetCards.tsx` ne fait que
+  leur donner leur propre mutation et les masquer après suppression, la grille
+  restant rendue par le serveur. Modifier l'une des deux cartes, c'est modifier
+  le carnet ET la recherche.
 
 ## Recherche textuelle sans accents
 
@@ -2024,6 +2076,30 @@ insère la ligne `imports`, commente le ticket et le passe à « Revue en
 cours » (garde-fou `resoudreTransition` contre « Déployé »). Idempotent par la marque
 `Jira <CLÉ>` dans `imports.fichier_original`. `lib/import-jira.test.ts` valide
 chaque fichier du dossier à la CI.
+**Le ticket Jira est facultatif** : une recette sans ticket (un composant
+rédigé hors de Jira) porte une **clé locale** `local-<nom>` (`natureCle`), et
+s'importe par le même workflow — sans photo, sans aucun appel à Jira, marque
+`Import local-<nom>`. Le préfixe et la lettre qui le suit sont imposés pour
+qu'une clé locale ne puisse jamais avoir la forme d'un ticket, même en
+majuscules. Mode opératoire de bout en bout (JSON + compte destinataire →
+brouillon) : compétence `.claude/skills/import-recette/` ; chaîne complète
+depuis le seul nom d'un composant (fiche + revue du chef, validation, membre,
+import, lien de relecture) : `/nouveau-composant`. Destinataire donné par
+pseudo → l'import suit la simulation sans nouvelle question (arbitrage du
+09/10/2026) ; par e-mail → confirmation du pseudo trouvé d'abord. Une
+**fiche de composant** (entrées `astuces_recette` préfixées « Utilisation — »)
+arrive en relecture avec son rendement déjà réglé (`rendementComposant`) :
+« Par nombre d'unités / poids » avec la masse en grammes, format et
+utilisations dans « Complément d'informations sur les quantités »
+(`notes_quantites`), seules les variantes restant dans les notes. **La masse
+retenue est la masse UTILISABLE**, nette de la perte de réalisation (fouet,
+cul-de-poule, évaporation, estimée par composant) : le rendement s'écrit
+« … — environ 450 g de pâte utilisable (500 g d'ingrédients, perte ≈ 10 %) »
+et les utilisations se calculent sur 450 g, jamais sur la somme des
+ingrédients. Les conseils de réussite vont dans les conseils de l'étape, les
+variantes seules dans ceux de la recette. Rédaction, revue du chef et
+contrôle mécanique (`controle.py`) : compétence `.claude/skills/fiche-composant/`,
+versionnée dans le dépôt (elle remplace celle du compte de l'utilisateur).
 
 **L'import par photo se fait en deux passes**, dans deux requêtes distinctes :
 *lire*, puis *structurer*. Un appel unique devait déchiffrer la page et la

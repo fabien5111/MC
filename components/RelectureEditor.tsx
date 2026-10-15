@@ -28,7 +28,7 @@ import { useDialog } from '@/components/Dialog';
 import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { moveAt } from '@/lib/photo-reorder';
-import { televerserImage } from '@/lib/storage-client';
+import { demanderVignettes, televerserImage } from '@/lib/storage-client';
 import { connexionHref } from '@/lib/nav';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
@@ -95,6 +95,22 @@ const slugify = (name: string): string =>
 
 // Ligature « œuf » (« oeuf » → « œuf »), en respectant la casse.
 const ligatureOeuf = (s: string): string => (s || '').replace(/oe(?=ufs?\b)/gi, (m) => (m[0] === 'O' ? 'Œ' : 'œ'));
+
+// Vignettes (`hero_thumb_url` ~96 px, `hero_card_url` ~480 px) de la photo
+// principale, fabriquées par le SERVEUR à partir de l'objet déposé sur le
+// stockage (plus de relecture CORS dans un canvas, cf. lib/vignettes-data.ts).
+// Best-effort : un échec ne doit jamais bloquer la création de la recette ; les
+// colonnes restent à `null`, reprises par le rattrapage d'Admin → Photos du
+// site, qui affichera la cause.
+async function deriveVignettes(urlPhoto: string | null): Promise<{ thumb: string | null; card: string | null }> {
+  if (!urlPhoto) return { thumb: null, card: null };
+  try {
+    return await demanderVignettes(urlPhoto);
+  } catch (e) {
+    console.warn('[relecture] vignettes non calculées :', (e as Error).message);
+    return { thumb: null, card: null };
+  }
+}
 
 function rendementTxt(r: any): string {
   if (!r) return '';
@@ -960,6 +976,8 @@ export function RelectureEditor({
         televerserImage('recette', p.photo_principale || null),
         televerserImage('recette', p.photo_principale_original || p.photo_principale || null),
       ]);
+      // Les vignettes se fabriquent APRÈS le dépôt : le serveur lit l'objet.
+      const { thumb: heroThumb, card: heroCard } = await deriveVignettes(heroUrl);
 
       const payload = {
         author_id: user.id,
@@ -974,6 +992,11 @@ export function RelectureEditor({
         serving_advice: p.conseils_degustation || null,
         yield_notes: r.notes_quantites || null,
         hero_image_url: heroUrl,
+        // Vignettes des listes de fournées (~96 px) et des cartes recette
+        // (~480 px) : sans elles, la carte n'affiche que l'illustration par
+        // défaut (RecipeCardLayout ne lit que `hero_card_url`).
+        hero_thumb_url: heroThumb,
+        hero_card_url: heroCard,
         hero_image_original_url: heroOriginalUrl,
         hero_image_ai_retouched: !!p.photo_principale_ai_retouched,
         difficulty_id: diffRow?.id ?? null,

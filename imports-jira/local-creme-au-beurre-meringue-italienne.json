@@ -1,0 +1,74 @@
+{
+  "ticket": "local-creme-au-beurre-meringue-italienne",
+  "recette": {
+    "titre": "Crème au beurre à la meringue italienne",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème soyeuse, légère et très onctueuse, au goût franc de beurre, qui se tient bien à température ambiante fraîche (jusqu'à 20-22 °C). Elle garnit et masque layer cakes, bûches, entremets et cupcakes, et se parfume à volonté.",
+    "rendement": "1 layer cake Ø 20 cm, 8 cm de haut (2 couches de garnissage de 1 cm + masquage de 0,5 cm dessus et côtés) — environ 830 g de crème utilisable (920 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Casserole",
+      "Thermomètre de cuisson",
+      "Batteur sur socle avec fouet",
+      "Maryse"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Meringue italienne et crème au beurre",
+        "page": null,
+        "temps_preparation_minutes": 40,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 240,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 480,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Sortir le beurre du réfrigérateur 1 h à l'avance, puis le malaxer en pommade à 18-20 °C.",
+          "Porter le sucre semoule et l'eau à ébullition dans la casserole, puis cuire le sirop à 118 °C.",
+          "Dès que le sirop atteint 110 °C, monter les blancs en neige au batteur à vitesse moyenne jusqu'à une mousse ferme, bec d'oiseau.",
+          "Verser le sirop à 118 °C en filet sur les blancs, le long de la paroi du bol, fouet en marche à vitesse moyenne.",
+          "Fouetter à vitesse moyenne jusqu'à ce que la meringue soit refroidie à 25 °C environ et que le bol soit tiède au toucher.",
+          "Incorporer le beurre pommade en petits morceaux, fouet en marche à vitesse moyenne.",
+          "Fouetter jusqu'à obtenir une crème lisse, brillante et homogène, en raclant le bol à la maryse.",
+          "Utiliser la crème aussitôt, à 18-20 °C."
+        ],
+        "conseils_etape": "Cuire le sirop à 118 °C précisément et le verser en filet sur le bord du bol, jamais sur le fouet ; préférer des blancs pasteurisés, le sirop ne garantissant pas leur pasteurisation. Refroidir la meringue à 25 °C environ avant d'ajouter le beurre, qui doit être pommade. Crème trop souple : 15 min au froid puis la refouetter ; crème granuleuse : réchauffer légèrement le bol au chalumeau tout en fouettant."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, une couche de garnissage de 1 cm : ≈ 160 g de crème (masse volumique ≈ 0,8 g/cm³), soit ×0,19 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, une couche de garnissage de 1 cm : ≈ 250 g de crème, soit ×0,30 de la recette.",
+      "Utilisation — Layer cake Ø 20 cm de 8 cm de haut, 2 couches de garnissage de 1 cm et masquage de 0,5 cm sur le dessus et les côtés : ≈ 830 g de crème, soit ×1,00 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, une couche de garnissage de 1 cm : ≈ 360 g de crème, soit ×0,43 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, couche de 1 cm : ≈ 30 g par pièce, soit 26 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, enveloppe de 1 cm autour de l'insert et du biscuit : ≈ 150 g de crème, soit ×0,18 de la recette ; bûche 30 x 8 cm : ≈ 265 g, soit ×0,32.",
+      "Utilisation — Bûche roulée sur biscuit 40 x 30 cm, garnissage de 0,5 cm : ≈ 480 g de crème, soit ×0,58 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, une couche de 1 cm : ≈ 460 g de crème, soit ×0,55 de la recette.",
+      "Variante — Vanille : gratter 2 gousses de vanille dans le beurre pommade.",
+      "Variante — Praliné : incorporer 150 g de pâte de praliné à la crème terminée.",
+      "Variante — Chocolat : incorporer 200 g de chocolat noir 66 % fondu à 35 °C à la crème terminée."
+    ],
+    "conseils_conservation": "3 jours au réfrigérateur dans une boîte hermétique, filmée au contact ; 2 mois au congélateur. Décongeler 24 h au réfrigérateur, ramener à 18-20 °C puis refouetter avant emploi. À utiliser en fin de montage, pour garnir et masquer."
+  }
+}

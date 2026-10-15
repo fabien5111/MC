@@ -1,0 +1,73 @@
+{
+  "ticket": "local-chantilly-mascarpone",
+  "recette": {
+    "titre": "Chantilly mascarpone",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème fouettée ferme et onctueuse, plus riche et plus stable qu'une chantilly classique grâce au mascarpone, au goût lacté et vanillé. Elle sert de garniture, de couche de montage ou de décor poché pour les fraisiers, layer cakes, bûches roulées et tartelettes.",
+    "rendement": "1 cercle Ø 20 cm, 2,5 cm de hauteur — environ 500 g de chantilly",
+    "ustensiles": [
+      "Robot pâtissier avec fouet",
+      "Cul-de-poule",
+      "Maryse",
+      "Poche à douille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Chantilly mascarpone",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 35 %",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Mascarpone",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Extrait de vanille",
+            "quantite": 5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Placer la cuve et le fouet du robot pâtissier au congélateur 15 minutes.",
+          "Mettre dans la cuve froide le mascarpone sorti du réfrigérateur, le sucre glace et l'extrait de vanille.",
+          "Lisser quelques secondes au fouet à petite vitesse.",
+          "Verser la crème liquide très froide (4 °C) en 3 fois, en détendant le mélange entre chaque ajout pour éviter les grumeaux.",
+          "Fouetter à vitesse moyenne puis rapide pendant 2 à 4 minutes, jusqu'à une texture ferme et lisse qui forme un bec d'oiseau sur le fouet.",
+          "Arrêter dès que les stries du fouet se tiennent nettement : trop fouettée, la crème graine et devient granuleuse.",
+          "Rassembler la chantilly à la maryse.",
+          "Garnir une poche à douille avec la chantilly, ou l'utiliser aussitôt pour le montage."
+        ],
+        "conseils_etape": "Tout doit être très froid (crème, mascarpone, cuve et fouet) ; surveiller la fin du foisonnement, qui se joue en quelques secondes."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, couche de 2,5 cm : ≈ 320 g de chantilly, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, couche de 2,5 cm : ≈ 500 g de chantilly, soit ×1 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche de 2,5 cm : ≈ 720 g de chantilly, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 8 cm, 2 cm de hauteur : ≈ 65 g par pièce, soit 7 pièces avec la recette entière (×1).",
+      "Utilisation — Biscuit roulé 40 x 30 cm, garniture de 0,5 cm : ≈ 380 g de chantilly, soit ×0,76 de la recette.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, enveloppe (insert et fond occupant environ un tiers du volume) : ≈ 165 g de chantilly, soit ×0,33 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 2 cm : ≈ 415 g de chantilly, soit ×0,83 de la recette.",
+      "Utilisation — Tartelettes Ø 8 cm, dôme poché d'environ 0,8 cm de hauteur moyenne : ≈ 25 g par pièce, soit 20 tartelettes avec la recette entière (×1).",
+      "Astuce — Si la chantilly a grainé, incorporer à la maryse 30 à 50 g de crème liquide froide pour la lisser à nouveau.",
+      "Astuce — Variantes : remplacer la vanille par 4 g de café soluble dilué dans la crème, ou par le zeste d'un citron jaune."
+    ],
+    "conseils_conservation": "Se conserve 48 h au réfrigérateur, filmée au contact ou en poche fermée ; la refouetter quelques secondes avant usage si elle s'est un peu détendue. Ne se congèle pas seule, mais supporte la congélation une fois montée dans un entremets (1 mois, filmé) : décongeler 8 à 12 h au réfrigérateur. Idéale le jour du montage, juste avant l'assemblage."
+  }
+}

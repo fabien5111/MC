@@ -26,7 +26,13 @@ type FeaturedTable = {
 // aucune plage ne couvre aujourd'hui, ou si la recette programmée n'est plus
 // publique/publiée entre-temps — l'appelant se replie alors sur son propre
 // défaut (ex. recette la plus récente).
-export async function getActiveFeaturedRecipe(): Promise<RecipeCard | null> {
+// La photo en pleine définition (`hero_image_url`) s'ajoute aux colonnes de
+// carte : l'accueil l'affiche dans un bloc bien plus large qu'une carte, où
+// `hero_card_url` (~480 px) agrandie paraissait floue (JEP-255). Réservée à
+// cette seule recette — `CARD_SELECT` l'exclut volontairement des grilles.
+export type FeaturedRecipe = RecipeCard & { hero_image_url: string | null };
+
+export async function getActiveFeaturedRecipe(): Promise<FeaturedRecipe | null> {
   const supabase = await createClient();
   const table = supabase.from('featured_recipes' as never) as unknown as FeaturedTable;
   const today = new Date().toISOString().slice(0, 10);
@@ -42,12 +48,27 @@ export async function getActiveFeaturedRecipe(): Promise<RecipeCard | null> {
 
   const { data: recipe } = await supabase
     .from('recipes')
-    .select(CARD_SELECT)
+    .select(`${CARD_SELECT}, hero_image_url`)
     .eq('id', featured.recipe_id)
     .eq('status', 'published')
     .eq('is_public', true)
     .maybeSingle();
-  return (recipe as unknown as RecipeCard) ?? null;
+  return (recipe as unknown as FeaturedRecipe) ?? null;
+}
+
+// Photo en pleine définition d'une recette publiée — repli de l'accueil quand
+// aucune plage n'est programmée (recette la plus récente, lue en colonnes de
+// carte). Une seule colonne, une seule ligne.
+export async function getHeroImageUrl(recipeId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('recipes')
+    .select('hero_image_url')
+    .eq('id', recipeId)
+    .eq('status', 'published')
+    .eq('is_public', true)
+    .maybeSingle();
+  return data?.hero_image_url ?? null;
 }
 
 export type FeaturedRecipeRow = {
