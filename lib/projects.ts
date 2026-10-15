@@ -576,6 +576,35 @@ function dimsTexte(forme: string | null, dims: Record<string, number>): string {
   return parts.length ? `${parts.join(' × ')} cm` : '';
 }
 
+// Une quantité exprimée en poids ou en volume ne se compare pas à un nombre de
+// parts ou de pièces : « 630 g » contre « 8 parts » donnait ×0,01, un
+// coefficient absurde écrit ensuite dans les quantités. Seules les unités
+// CONNUES de masse / volume sont refusées ; une unité vide ou inattendue garde
+// l'ancien comportement (rapport direct), faute de pouvoir trancher.
+const UNITES_MASSE_VOLUME = new Set(['mg', 'g', 'gr', 'gramme', 'kg', 'kilo', 'kilogramme', 'ml', 'cl', 'dl', 'l', 'litre']);
+
+export function uniteMasseVolume(unit: string | null | undefined): boolean {
+  const u = (unit ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[.\s]/g, '')
+    .replace(/s$/, '');
+  return UNITES_MASSE_VOLUME.has(u);
+}
+
+// Motif pour lequel la recette d'origine et le format visé ne se comparent pas,
+// ou `null`. Affiché tel quel à l'utilisateur, qui est renvoyé vers
+// l'ajustement par IA ou la saisie du coefficient.
+export function scaleIncompatibility(source: ScalableFormat, target: ScalableFormat): string | null {
+  if (source.measure_type === 'mold' && target.measure_type === 'mold') return null;
+  if (uniteMasseVolume(source.yieldUnit) && !uniteMasseVolume(target.yieldUnit)) {
+    const qte = source.yieldQty ? `${fr1(source.yieldQty)} ${source.yieldUnit ?? ''}`.trim() : (source.yieldUnit ?? '');
+    return `La recette d’origine est donnée en poids ou en volume (${qte}) : elle ne se convertit pas en parts ou en moule. Utilisez « Ajuster avec l’IA » ou saisissez le coefficient.`;
+  }
+  return null;
+}
+
 // Coefficient proposé pour un composant, ou `null` quand la géométrie ne
 // permet pas de trancher (recette source sans moule renseigné, composant
 // proposé par l'IA ou saisi à la main). Dans ce cas l'écran bascule sur
@@ -589,6 +618,7 @@ export function componentScaleProposal(
   target: ScalableFormat,
   metrics: (forme: string | null, dims: Record<string, number>) => { volume: number | null; surface: number | null },
 ): ScaleProposal | null {
+  if (scaleIncompatibility(source, target)) return null;
   // Deux recettes exprimées en moule : rapport des volumes et des surfaces,
   // multiplié par le rapport des nombres de pièces. C'est le calcul de
   // `BatchWidget`, à l'identique.

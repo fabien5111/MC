@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { stepTimeSums } from '@/lib/recipe-view';
-import { pointsRestants, empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, utensilsToAdd } from '@/lib/projects';
+import { pointsRestants, empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, utensilsToAdd, componentScaleProposal, scaleIncompatibility } from '@/lib/projects';
 
 describe('projectV2BlockStates', () => {
   it('ne débloque que l’intention, l’identité et le format sur un projet vierge', () => {
@@ -226,5 +226,29 @@ describe('pointsRestants', () => {
   });
   it('est vide quand tout est fait', () => {
     expect(pointsRestants([{ id: 'a', groupe: 'Le projet', libelle: 'x', etat: 'fait', ancre: 'a' }])).toEqual([]);
+  });
+});
+
+describe('compatibilité poids / parts de l’ajustement par le format', () => {
+  const metrics = () => ({ volume: null, surface: null });
+  const cible = { measure_type: 'mold', forme: 'cylindre', dims: { diametre: 26, hauteur: 2 }, count: 1, yieldQty: 8, yieldUnit: 'parts' };
+  const src = (yieldQty: number, yieldUnit: string) => ({ measure_type: 'units', forme: null, dims: {}, count: 1, yieldQty, yieldUnit });
+
+  it('refuse une recette donnée en grammes face à un nombre de parts', () => {
+    expect(scaleIncompatibility(src(630, 'g'), cible)).toContain('630 g');
+    expect(componentScaleProposal(src(630, 'g'), cible, metrics)).toBeNull();
+  });
+  it('reconnaît kg, ml, litres au pluriel et avec accents', () => {
+    expect(scaleIncompatibility(src(1, 'kg'), cible)).not.toBeNull();
+    expect(scaleIncompatibility(src(500, 'ml'), cible)).not.toBeNull();
+    expect(scaleIncompatibility(src(2, 'Litres'), cible)).not.toBeNull();
+  });
+  it('calcule toujours le rapport pour des pièces', () => {
+    expect(scaleIncompatibility(src(12, 'pièces'), cible)).toBeNull();
+    expect(componentScaleProposal(src(12, 'pièces'), cible, metrics)?.factor).toBe(0.667);
+  });
+  it('ne touche pas moule contre moule', () => {
+    const m = { measure_type: 'mold', forme: 'cylindre', dims: { diametre: 20, hauteur: 2 }, count: 1, yieldQty: null, yieldUnit: null };
+    expect(scaleIncompatibility(m, cible)).toBeNull();
   });
 });

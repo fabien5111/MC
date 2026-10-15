@@ -25,6 +25,7 @@ import { applyComponentScale, setLineQuantity } from '@/lib/projects-write';
 import {
   COMPONENT_SOURCE_LABELS,
   componentScaleProposal,
+  scaleIncompatibility,
   projectFormatKey,
   lignesRendement,
   quantitiesStale,
@@ -225,6 +226,11 @@ export function QuantitiesStep({
         yieldQty: parseFloat(String(row.yield_qty ?? '').replace(',', '.')) || null,
         yieldUnit: row.yield_unit,
       };
+      const incompat = scaleIncompatibility(source, cible);
+      if (incompat) {
+        dialog.alert(incompat);
+        return;
+      }
       const prop = componentScaleProposal(source, cible, moldMetrics);
       if (!prop) {
         dialog.alert(
