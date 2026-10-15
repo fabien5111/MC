@@ -1206,9 +1206,7 @@ essais et la validation arrivent par lots successifs.
   session, aucune colonne dédiée) vient gonfler le coefficient — et les
   coefficients surface/volume associés (`ScaleProposal.moldCoefs`), sinon une
   préparation qui fonce un moule n'en tiendrait pas compte. S'applique aux
-  deux sources de proposition (format, IA) et **se recalcule en direct** : changer le pourcentage réécrit le coefficient à chaque frappe, depuis la proposition d'origine mémorisée avant perte (`basesSansPerte`, jamais depuis le coefficient affiché, qui dériverait) ; sans proposition le champ est grisé,
-  **jamais** à un coefficient saisi à la main : c'est déjà la décision finale
-  de l'utilisateur.
+  deux sources de proposition (format, IA) et **se recalcule en direct** : changer le pourcentage réécrit le coefficient à chaque frappe, depuis une base fixe mémorisée avant perte (`basesSansPerte`, jamais depuis le coefficient affiché, qui dériverait) : la dernière proposition, ou — **un coefficient saisi à la main devient la nouvelle base et remet la perte à 0 %** (c'est la décision de l'utilisateur), ou, page rechargée, le coefficient déjà appliqué. Le champ n'est donc jamais grisé.
 - **Quantité d'origine affichée en italique** (JEP-254) : à côté du champ
   éditable de chaque ligne d'ingrédient, la quantité d'avant ajustement
   (`ingredients.base_quantity`) reste visible en italique tant qu'un

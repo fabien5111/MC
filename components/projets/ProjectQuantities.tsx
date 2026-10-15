@@ -368,12 +368,32 @@ export function QuantitiesStep({
   // mobile). Champ vide ou en cours de frappe = 0 %.
   function changerPerte(c: ProjectComponent, texte: string) {
     setPertes((p) => ({ ...p, [c.id]: texte }));
-    const base = basesSansPerte[c.id];
-    if (!base) return;
+    // Sans proposition en mémoire (page rechargée), la base est le coefficient
+    // en vigueur : la perte ne se compose jamais sur elle-même, on la fige ici.
+    const base: ScaleProposal = basesSansPerte[c.id] ?? {
+      factor: c.scaleFactor ?? 1,
+      moldCoefs: null,
+      reason: `Coefficient ×${fr(c.scaleFactor ?? 1)}.`,
+    };
+    if (!basesSansPerte[c.id]) setBasesSansPerte((p) => ({ ...p, [c.id]: base }));
     const v = parseFloat(texte.replace(',', '.'));
     const avec = appliquerPerte(base, isFinite(v) && v >= 0 ? v : 0);
     setPropositions((p) => ({ ...p, [c.id]: avec }));
     setSaisie((p) => ({ ...p, [c.id]: fr(avec.factor) }));
+  }
+
+  // Un coefficient saisi à la main devient la nouvelle base et la perte repart
+  // à 0 % : c'est la décision de l'utilisateur, la perte peut ensuite s'y
+  // ajouter en direct.
+  function saisirCoefficient(c: ProjectComponent, texte: string) {
+    setSaisie((p) => ({ ...p, [c.id]: texte }));
+    const v = parseFloat(texte.replace(',', '.'));
+    if (!(v > 0)) return;
+    setBasesSansPerte((p) => ({
+      ...p,
+      [c.id]: { factor: v, moldCoefs: null, reason: `Coefficient ×${fr(v)} saisi à la main.` },
+    }));
+    setPertes((p) => ({ ...p, [c.id]: '0' }));
   }
 
   async function appliquer(c: ProjectComponent) {
@@ -592,26 +612,22 @@ export function QuantitiesStep({
                 <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-2">
                   <span
                     className="flex items-center gap-2"
-                    title={
-                      basesSansPerte[c.id]
-                        ? 'Ce qui reste sur le fouet, dans les bols, sur les cuillères : le coefficient se recalcule à chaque modification.'
-                        : 'Lancez d’abord une proposition (format ou IA) : la perte ne s’applique jamais à un coefficient saisi à la main.'
-                    }
+                    title="Ce qui reste sur le fouet, dans les bols, sur les cuillères : s’ajoute au coefficient de départ (proposition, ou dernier coefficient saisi) et le recalcule à chaque modification."
+
                   >
                     <label className="w-24 font-label-md text-[12px] text-outline">PERTE (%)</label>
                     <input
-                      value={pertes[c.id] ?? '10'}
+                      value={pertes[c.id] ?? (basesSansPerte[c.id] ? '10' : '0')}
                       onChange={(e) => changerPerte(c, e.target.value)}
-                      disabled={!basesSansPerte[c.id]}
                       inputMode="decimal"
-                      className={`${champ} w-24 disabled:cursor-not-allowed disabled:opacity-50`}
+                      className={`${champ} w-24`}
                     />
                   </span>
                   <span className="flex items-center gap-2">
                     <label className="w-24 font-label-md text-[12px] text-outline">COEFFICIENT</label>
                     <input
                       value={saisie[c.id] ?? fr(facteur)}
-                      onChange={(e) => setSaisie((p) => ({ ...p, [c.id]: e.target.value }))}
+                      onChange={(e) => saisirCoefficient(c, e.target.value)}
                       inputMode="decimal"
                       className={`${champ} w-24`}
                     />
