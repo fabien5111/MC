@@ -19,6 +19,7 @@ export function RecipeStep({
   ingredients,
   qty,
   last,
+  action,
 }: {
   step: RecipeStepView;
   index: number;
@@ -28,6 +29,9 @@ export function RecipeStep({
   ingredients: IngredientView[];
   qty: (it: IngredientView) => ReactNode;
   last: boolean;
+  // Action facultative à droite du titre (picto « modifier » du mode projet) ;
+  // absente, l'étape se rend comme sur la fiche recette.
+  action?: ReactNode;
 }) {
   const ings = [...ingredients].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -51,6 +55,7 @@ export function RecipeStep({
         <h4 className="font-headline-md text-headline-md text-primary">
           {i + 1}. {s.title || 'Étape ' + (i + 1)}
         </h4>
+        {action}
         <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
           {badges.map((b, k) => (
             <span key={k} className="bg-surface-variant px-3 py-1">

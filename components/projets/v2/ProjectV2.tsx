@@ -579,10 +579,28 @@ export function ProjectV2({
   // Même présentation que la fiche recette (`RecipeStep`, partagé). `dernier`
   // : pas de filet sous la dernière étape d'un groupe.
   function etape(s: RecipeStepView, i: number, dernier: boolean) {
+    // Picto « modifier » : ouvre le même panneau que « Modifier cette
+    // préparation » (toute la préparation, pas la seule étape). Pas pour
+    // l'assemblage, qui n'appartient à aucune préparation.
+    const comp = ordered.find((c) => c.id === componentOf(s));
     return (
       <RecipeStep
         key={s.id}
         step={s}
+        action={
+          comp ? (
+            <button
+              type="button"
+              onClick={() => void ouvrirComposant(comp, true)}
+              disabled={busy}
+              title={`Modifier cette préparation (« ${comp.name} », toutes ses étapes)`}
+              aria-label={`Modifier la préparation ${comp.name}`}
+              className="order-last ml-auto inline-flex h-9 w-9 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40"
+            >
+              <span className="material-symbols-outlined text-[20px]">edit</span>
+            </button>
+          ) : undefined
+        }
         index={i}
         anchorId={stepAnchorId(i)}
         ingredients={groupByOrder.get(s.order_index ?? -1)?.ingredients ?? []}
