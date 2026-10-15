@@ -192,6 +192,10 @@ export function QuantitiesStep({
   // à la main n'en tient PAS compte : il est déjà la décision finale de
   // l'utilisateur.
   const [pertes, setPertes] = useState<Record<number, string>>({});
+  // Dernière proposition AVANT perte, par composant : la perte se recalcule
+  // toujours depuis elle (jamais depuis le coefficient affiché, qui dériverait
+  // à force de retaper). Absente = coefficient saisi à la main, pas de perte.
+  const [basesSansPerte, setBasesSansPerte] = useState<Record<number, ScaleProposal>>({});
   const perteDe = (id: number) => {
     const v = parseFloat((pertes[id] ?? '10').replace(',', '.'));
     return isFinite(v) && v >= 0 ? v : 0;
@@ -256,6 +260,7 @@ export function QuantitiesStep({
         return;
       }
       const propAvecPerte = appliquerPerte(prop, perteDe(c.id));
+      setBasesSansPerte((p) => ({ ...p, [c.id]: prop }));
       setPropositions((p) => ({ ...p, [c.id]: propAvecPerte }));
       setSaisie((p) => ({ ...p, [c.id]: fr(propAvecPerte.factor) }));
     } finally {
@@ -341,10 +346,13 @@ export function QuantitiesStep({
         dialog.alert(data?.erreur || data?.explication || 'L’ajustement n’a pas abouti.');
         return;
       }
-      const propAvecPerte = appliquerPerte(
-        { factor: data.coefficient, moldCoefs: null, reason: data.explication || `Coefficient ×${fr(data.coefficient)}.` },
-        perteDe(c.id),
-      );
+      const baseIA: ScaleProposal = {
+        factor: data.coefficient,
+        moldCoefs: null,
+        reason: data.explication || `Coefficient ×${fr(data.coefficient)}.`,
+      };
+      const propAvecPerte = appliquerPerte(baseIA, perteDe(c.id));
+      setBasesSansPerte((p) => ({ ...p, [c.id]: baseIA }));
       setPropositions((p) => ({ ...p, [c.id]: propAvecPerte }));
       setSaisie((p) => ({ ...p, [c.id]: fr(propAvecPerte.factor) }));
       setIaConsommes((n) => n + 1);
@@ -353,6 +361,19 @@ export function QuantitiesStep({
     } finally {
       setTravail(false);
     }
+  }
+
+  // Changer la perte recalcule aussitôt le coefficient depuis la proposition
+  // d'origine (calcul pur, sans réseau : fluide à chaque frappe, y compris sur
+  // mobile). Champ vide ou en cours de frappe = 0 %.
+  function changerPerte(c: ProjectComponent, texte: string) {
+    setPertes((p) => ({ ...p, [c.id]: texte }));
+    const base = basesSansPerte[c.id];
+    if (!base) return;
+    const v = parseFloat(texte.replace(',', '.'));
+    const avec = appliquerPerte(base, isFinite(v) && v >= 0 ? v : 0);
+    setPropositions((p) => ({ ...p, [c.id]: avec }));
+    setSaisie((p) => ({ ...p, [c.id]: fr(avec.factor) }));
   }
 
   async function appliquer(c: ProjectComponent) {
@@ -561,7 +582,7 @@ export function QuantitiesStep({
                       className={`text-[12px] ${iaEpuise ? 'text-error' : 'text-on-surface-variant'}`}
                       title="Ajustements par IA du mois (« Ajuster avec l’IA » des quantités). Les propositions de préparations du mode projet ont leur propre quota."
                     >
-                      Utilisation quota IA : {(iaLimite ?? 0) - iaRestants}/{iaLimite}
+                      Utilisation quota IA : {(iaLimite ?? 0) - iaRestants}/{iaLimite} par mois
                     </span>
                   )}
                 </div>
@@ -571,14 +592,19 @@ export function QuantitiesStep({
                 <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-2">
                   <span
                     className="flex items-center gap-2"
-                    title="Ce qui reste sur le fouet, dans les bols, sur les cuillères : appliquée aux propositions ci-dessus, jamais à un coefficient saisi à la main."
+                    title={
+                      basesSansPerte[c.id]
+                        ? 'Ce qui reste sur le fouet, dans les bols, sur les cuillères : le coefficient se recalcule à chaque modification.'
+                        : 'Lancez d’abord une proposition (format ou IA) : la perte ne s’applique jamais à un coefficient saisi à la main.'
+                    }
                   >
                     <label className="w-24 font-label-md text-[12px] text-outline">PERTE (%)</label>
                     <input
                       value={pertes[c.id] ?? '10'}
-                      onChange={(e) => setPertes((p) => ({ ...p, [c.id]: e.target.value }))}
+                      onChange={(e) => changerPerte(c, e.target.value)}
+                      disabled={!basesSansPerte[c.id]}
                       inputMode="decimal"
-                      className={`${champ} w-24`}
+                      className={`${champ} w-24 disabled:cursor-not-allowed disabled:opacity-50`}
                     />
                   </span>
                   <span className="flex items-center gap-2">
