@@ -561,23 +561,28 @@ export function QuantitiesStep({
                       className={`text-[12px] ${iaEpuise ? 'text-error' : 'text-on-surface-variant'}`}
                       title="Ajustements par IA du mois (« Ajuster avec l’IA » des quantités). Les propositions de préparations du mode projet ont leur propre quota."
                     >
-                      {iaRestants} / {iaLimite} restant{iaRestants > 1 ? 's' : ''} ce mois-ci
+                      Utilisation quota IA : {(iaLimite ?? 0) - iaRestants}/{iaLimite}
                     </span>
                   )}
+                </div>
+
+                {/* Perte et coefficient sur une seconde rangée : libellés de
+                    même largeur, champs de même taille, donc alignés. */}
+                <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-2">
                   <span
                     className="flex items-center gap-2"
                     title="Ce qui reste sur le fouet, dans les bols, sur les cuillères : appliquée aux propositions ci-dessus, jamais à un coefficient saisi à la main."
                   >
-                    <label className="font-label-md text-[12px] text-outline">PERTE (%)</label>
+                    <label className="w-24 font-label-md text-[12px] text-outline">PERTE (%)</label>
                     <input
                       value={pertes[c.id] ?? '10'}
                       onChange={(e) => setPertes((p) => ({ ...p, [c.id]: e.target.value }))}
                       inputMode="decimal"
-                      className={`${champ} w-16`}
+                      className={`${champ} w-24`}
                     />
                   </span>
                   <span className="flex items-center gap-2">
-                    <label className="font-label-md text-[12px] text-outline">COEFFICIENT</label>
+                    <label className="w-24 font-label-md text-[12px] text-outline">COEFFICIENT</label>
                     <input
                       value={saisie[c.id] ?? fr(facteur)}
                       onChange={(e) => setSaisie((p) => ({ ...p, [c.id]: e.target.value }))}
