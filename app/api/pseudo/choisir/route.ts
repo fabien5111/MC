@@ -21,12 +21,17 @@ import { formatDate } from '@/lib/format';
 import { cguVersionValide } from '@/lib/cgu';
 import { attestationAgeVersionValide } from '@/lib/attestation-age';
 import { enregistrerAcceptationsInscription } from '@/lib/cgu-data';
+import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 20;
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ ok: false, message: 'Connexion requise.' }, { status: 401 });
+  // Compte suspendu ou désactivé (JEP-272) : la clé service_role et les appels
+  // IA échappent à la RLS, la garde est donc ici.
+  const compteBloque = await refusSiCompteBloque(user.id, 'message');
+  if (compteBloque) return compteBloque;
   // Une session « en tant que » en lecture seule ne choisit pas le pseudo du
   // membre à sa place (même garde que `/creer`, `/importer`, `/relecture`).
   if (await isReadOnlySession()) {

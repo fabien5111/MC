@@ -39,6 +39,9 @@ const AUTH_ERRORS: Record<string, string> = {
   'Invalid login credentials': 'Adresse e-mail ou mot de passe incorrect.',
   'Email not confirmed': "Confirmez votre adresse e-mail avant de vous connecter (lien envoyé à l'inscription).",
   'Password should be at least 6 characters': 'Le mot de passe doit contenir au moins 6 caractères.',
+  // Compte suspendu ou désactivé depuis le back-office (JEP-272, bannissement
+  // GoTrue). Le motif n'est lisible qu'une fois connecté : on renvoie au contact.
+  'User is banned': 'Ce compte est suspendu ou désactivé. Pour en savoir plus, écrivez-nous depuis la page Contact.',
 };
 
 function translateAuthError(message: string): string {

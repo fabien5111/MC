@@ -495,7 +495,7 @@ export function BatchStepDonePanel({
   const substepsBlock = (
     <>
       {sortedSubsteps.length > 0 && (
-        <ul className="flex flex-col gap-3 font-body-lg text-body-lg leading-relaxed text-on-surface">
+        <ul className="flex flex-col gap-3 font-body-lg text-body-md leading-relaxed text-on-surface">
           {sortedSubsteps.map((su, idx) => {
               const excluded = step.done && su.excluded_when_done;
               // Vert = ajoutée par l'utilisateur, comme un ingrédient ajouté

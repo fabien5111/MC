@@ -14,7 +14,14 @@
 // venait jamais l'éteindre. Entrée reste possible, simplement sans effet
 // visible, comme une frappe de plus.
 import { useSearch } from '@/components/search/SearchProvider';
-import { countActiveCriteria, SORT_KEYS, SORT_LABELS, type SortKey } from '@/lib/search-params';
+import {
+  countActiveCriteria,
+  effectiveQuery,
+  MIN_QUERY_LENGTH,
+  SORT_KEYS,
+  SORT_LABELS,
+  type SortKey,
+} from '@/lib/search-params';
 
 export function SearchHeaderBar() {
   const { criteria, update, setPanelOpen } = useSearch();
@@ -22,44 +29,54 @@ export function SearchHeaderBar() {
 
   // « Pertinence » n'a pas de sens sans terme de recherche : l'option
   // disparaît, et le tri par défaut devient « Plus récentes » côté SQL.
-  const sortOptions = SORT_KEYS.filter((k) => k !== 'relevance' || criteria.q);
+  const sortOptions = SORT_KEYS.filter((k) => k !== 'relevance' || effectiveQuery(criteria));
   // Sans terme de recherche l'option « Pertinence » disparaît, mais le critère
   // peut encore la porter : on affiche alors le tri réellement appliqué par le
   // SQL (les plus récentes), plutôt qu'une option choisie par défaut par le
   // navigateur faute de correspondance.
   const shownSort: SortKey = sortOptions.includes(criteria.sort) ? criteria.sort : 'recent';
+  // Terme trop court pour être cherché (cf. `MIN_QUERY_LENGTH`) : on le dit,
+  // sinon des résultats inchangés se liraient comme une recherche ratée.
+  const tropCourt = criteria.q.trim().length > 0 && !effectiveQuery(criteria);
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 lg:items-center border-b border-outline-variant/50 px-margin-mobile md:px-margin-desktop py-5 bg-surface-container-low/60">
-      <form
-        role="search"
-        data-nav-spinner-ignore
-        onSubmit={(e) => e.preventDefault()}
-        className="flex-1 flex items-center gap-2.5 bg-surface-container-lowest border border-outline-variant rounded-full pl-5 pr-2 py-2.5 shadow-sm"
-      >
-        <span className="material-symbols-outlined text-[21px] text-outline">search</span>
-        <input
-          type="search"
-          value={criteria.q}
-          onChange={(e) =>
-            update({ ...criteria, q: e.target.value }, { debounce: true, silent: true })
-          }
-          placeholder="Rechercher une recette, un ingrédient, un auteur…"
-          aria-label="Rechercher"
-          className="flex-1 bg-transparent text-[15px] text-on-surface placeholder:text-outline/70 focus:outline-none"
-        />
-        {criteria.q && (
-          <button
-            type="button"
-            onClick={() => update({ ...criteria, q: '' })}
-            title="Effacer"
-            aria-label="Effacer la recherche"
-            className="material-symbols-outlined text-[19px] p-1 text-outline hover:text-primary transition-colors"
-          >
-            close
-          </button>
+      <div className="flex-1 flex flex-col gap-1.5">
+        <form
+          role="search"
+          data-nav-spinner-ignore
+          onSubmit={(e) => e.preventDefault()}
+          className="flex items-center gap-2.5 bg-surface-container-lowest border border-outline-variant rounded-full pl-5 pr-2 py-2.5 shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[21px] text-outline">search</span>
+          <input
+            type="search"
+            value={criteria.q}
+            onChange={(e) =>
+              update({ ...criteria, q: e.target.value }, { debounce: true, silent: true })
+            }
+            placeholder="Rechercher une recette, un ingrédient, un auteur…"
+            aria-label="Rechercher"
+            className="flex-1 bg-transparent text-[15px] text-on-surface placeholder:text-outline/70 focus:outline-none"
+          />
+          {criteria.q && (
+            <button
+              type="button"
+              onClick={() => update({ ...criteria, q: '' })}
+              title="Effacer"
+              aria-label="Effacer la recherche"
+              className="material-symbols-outlined text-[19px] p-1 text-outline hover:text-primary transition-colors"
+            >
+              close
+            </button>
+          )}
+        </form>
+        {tropCourt && (
+          <p className="pl-5 text-[12px] text-outline" aria-live="polite">
+            Saisissez au moins {MIN_QUERY_LENGTH} caractères pour lancer la recherche.
+          </p>
         )}
-      </form>
+      </div>
 
       {/* Tri — desktop */}
       <div className="hidden lg:flex items-center gap-3 shrink-0">

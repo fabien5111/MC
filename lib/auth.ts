@@ -5,6 +5,8 @@ import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { MANAGER_LANDING } from '@/lib/admin-access';
+import { estBloque } from '@/lib/moderation';
+import { getEtatModeration } from '@/lib/moderation-data';
 import type { Database } from '@/lib/database.types';
 
 export type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -115,14 +117,23 @@ export function accountProvider(user: SessionUser): string | null {
 // passent par `requireUser`, et `getProfile` est mémoïsé par requête (React
 // cache), donc les pages qui lisent déjà le profil ne paient rien.
 //
-// `/choix-pseudo` n'appelle délibérément pas cette fonction : ce serait une
-// boucle de redirection.
+// Exige enfin un compte ni suspendu ni désactivé (JEP-272) — redirection vers
+// `/compte-suspendu`. Même raison d'être ici plutôt que dans le middleware.
+//
+// `/choix-pseudo` et `/compte-suspendu` n'appellent délibérément pas cette
+// fonction : ce serait une boucle de redirection.
 export async function requireUser(next?: string): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) {
     redirect(`/connexion${next ? `?next=${encodeURIComponent(next)}` : ''}`);
   }
   const profile = await getProfile(user.id);
+  // Compte suspendu ou désactivé (JEP-272) : avant le pseudo, pour qu'un
+  // compte bloqué sans pseudo ne puisse pas en choisir un. Gratuit pour un
+  // compte actif — `profiles.status` est déjà dans le profil lu ci-dessus.
+  if (estBloque(await getEtatModeration(user.id, profile?.status))) {
+    redirect('/compte-suspendu');
+  }
   if (!profile?.username) {
     redirect(`/choix-pseudo${next ? `?next=${encodeURIComponent(next)}` : ''}`);
   }

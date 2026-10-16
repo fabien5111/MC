@@ -67,6 +67,20 @@ export const EMPTY_CRITERIA: SearchCriteria = {
   includeAuthors: true,
 };
 
+// Longueur minimale du terme libre. En deçà, il est ignoré — par la recherche
+// comme par l'affichage (résumé, option « Pertinence ») : deux lettres
+// trouvent presque tout dès qu'on cherche par morceau de mot, et c'est ce que
+// fait la RPC sur le titre. Même seuil côté SQL (`search_advanced_recipes`),
+// pour qu'une URL forgée (`?q=ca`) ne contourne rien.
+export const MIN_QUERY_LENGTH = 3;
+
+// Terme réellement cherché : le champ tel que saisi, ou '' s'il est trop court.
+// Le champ, lui, garde toujours `criteria.q` — on n'efface pas ce qu'on tape.
+export function effectiveQuery(c: Pick<SearchCriteria, 'q'>): string {
+  const q = c.q.trim();
+  return q.length >= MIN_QUERY_LENGTH ? q : '';
+}
+
 // Normalisation souple (casse + accents + espaces), même règle que
 // `normAllergen` de lib/recipe-view.ts. Sert au dédoublonnage des ingrédients
 // et à l'exclusion mutuelle inclus/exclu — la base applique la même
@@ -214,7 +228,7 @@ export function countActiveCriteria(c: SearchCriteria): number {
 // Vrai dès qu'une recherche a été formulée (terme ou facette) : distingue
 // l'écran d'accueil de la recherche d'un résultat réellement vide.
 export function hasAnySearch(c: SearchCriteria): boolean {
-  return !!c.q || countActiveCriteria(c) > 0;
+  return !!effectiveQuery(c) || countActiveCriteria(c) > 0;
 }
 
 // « Réinitialiser » : on ne remet à zéro que les facettes. Le terme saisi, le

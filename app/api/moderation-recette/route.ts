@@ -52,6 +52,7 @@ import {
   parseReformulationResult,
   reformulationScore,
 } from '@/lib/ai/reformulation';
+import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 // Jusqu'à trois appels IA supplémentaires possibles (couche B) en plus de la
 // modération et de la recherche externe : aligné sur /api/import-url pour la
@@ -109,6 +110,10 @@ const MIN_BUDGET_EXTERNAL = 20_000;
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
+  // Compte suspendu ou désactivé (JEP-272) : la clé service_role et les appels
+  // IA échappent à la RLS, la garde est donc ici.
+  const compteBloque = await refusSiCompteBloque(user.id);
+  if (compteBloque) return compteBloque;
   if (await isReadOnlySession()) return NextResponse.json({ erreur: 'Session de consultation.' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));

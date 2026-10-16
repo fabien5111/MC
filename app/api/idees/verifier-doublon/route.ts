@@ -10,6 +10,7 @@ import { buildCheckContenu, normaliseCheckResultat } from '@/lib/ai/idea-duplica
 import { getIdeaCandidatesForCheck, getIdeaSummaries } from '@/lib/ideas-data';
 import { IDEA_DESCRIPTION_MAX, IDEA_TITLE_MAX } from '@/lib/ideas';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
+import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 30;
 
@@ -23,6 +24,10 @@ export async function POST(req: Request) {
 
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
+  // Compte suspendu ou désactivé (JEP-272) : la clé service_role et les appels
+  // IA échappent à la RLS, la garde est donc ici.
+  const compteBloque = await refusSiCompteBloque(user.id);
+  if (compteBloque) return compteBloque;
   if (await isReadOnlySession()) return NextResponse.json({ erreur: 'Session de consultation.' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));

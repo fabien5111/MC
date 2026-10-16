@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import type { Member, AiUsageOverview } from '@/lib/admin';
 import { formatUsd } from '@/lib/ai/cost';
+import { formatDate } from '@/lib/format';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import { useImpersonateLink, ImpersonationLinkPanel } from '@/components/admin/ImpersonateButton';
@@ -21,7 +22,7 @@ import { matchesSearch } from '@/lib/text-search';
 
 // 'trial' : essai en cours (§8.3, filtre par essai) — distinct de `demo`
 // (compte de démonstration), qui n'a rien à voir avec l'abonnement.
-type Filter = 'all' | 'active' | 'pending' | 'disabled' | 'demo' | 'trial';
+type Filter = 'all' | 'active' | 'pending' | 'suspended' | 'disabled' | 'demo' | 'trial';
 
 function inviteLinkFor(email: string): string {
   return `${window.location.origin}/connexion?invite=${encodeURIComponent(email)}`;
@@ -59,6 +60,7 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
       total: rows.length,
       active: rows.filter((m) => m.status === 'active').length,
       pending: rows.filter((m) => m.status === 'pending').length,
+      suspended: rows.filter((m) => m.status === 'suspended').length,
       disabled: rows.filter((m) => m.status === 'disabled').length,
     }),
     [rows],
@@ -155,7 +157,7 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
             ['Total', stats.total],
             ['Actifs', stats.active],
             ['Invités', stats.pending],
-            ['Désactivés', stats.disabled],
+            ['Suspendus · désactivés', `${stats.suspended} · ${stats.disabled}`],
           ] as const
         ).map(([label, v]) => (
           <div key={label} className="bg-surface-container-low border border-outline-variant rounded-xl p-5">
@@ -185,6 +187,7 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
           {chip('all', 'Tous')}
           {chip('active', 'Actifs')}
           {chip('pending', 'Invités')}
+          {chip('suspended', 'Suspendus')}
           {chip('disabled', 'Désactivés')}
           {chip('demo', 'Démo')}
           {chip('trial', 'Essai en cours')}
@@ -271,7 +274,14 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
                         ? badge('bg-green-100 text-green-800', 'Actif')
                         : m.status === 'pending'
                           ? badge('bg-surface-container text-on-surface-variant', 'Invité')
-                          : badge('bg-error-container text-on-error-container', 'Désactivé')}
+                          : m.status === 'suspended'
+                            ? badge(
+                                'bg-orange-100 text-orange-900',
+                                m.moderation.etat === 'suspendu' && m.moderation.jusquAu
+                                  ? `Suspendu → ${formatDate(m.moderation.jusquAu)}`
+                                  : 'Suspendu',
+                              )
+                            : badge('bg-error-container text-on-error-container', 'Désactivé')}
                       {m.is_demo && <span className="ml-1">{badge('bg-tertiary-fixed text-on-tertiary-fixed', 'Démo')}</span>}
                     </td>
                     <td className="px-6 py-4">{accessCell(m)}</td>

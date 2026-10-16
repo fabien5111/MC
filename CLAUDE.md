@@ -70,6 +70,27 @@ le service managé.
   Corrigé en ne recalculant que si `hero`/`heroOriginal` est un dépôt frais
   (`estDataUrlImage`, `lib/storage.ts`) — sinon les colonnes sont omises de
   l'update, gardant les vignettes déjà en base.
+  **Cause réelle** (mesurée le 10/10/2026) : le CORS de `jp-photos` est
+  correct, mais Swift ne renvoie `Access-Control-Allow-Origin` qu'à une
+  requête portant `Origin`, sans `Vary: Origin`, en cache `immutable` d'un
+  an — la copie mise en cache par un `<img>` ordinaire était resservie à la
+  requête CORS du canvas.
+  **Solution définitive (12/10/2026) : les vignettes d'une photo DÉJÀ sur
+  Swift sont fabriquées par le SERVEUR**, jamais relues dans un canvas.
+  `POST /api/stockage/vignettes` (`lib/vignettes-data.ts`, `sharp`) lit
+  l'objet `jp-photos/recettes/…`, dépose `hero_thumb_url` (96 px) et
+  `hero_card_url` (480 px) et rend leurs URL ; l'appelant les écrit en base
+  sous sa session (`demanderVignettes`, `lib/storage-client.ts`). Entre le
+  serveur et Swift il n'y a ni CORS ni cache de navigateur. Utilisé par la
+  relecture d'import et par Admin → Photos du site, dont le message d'échec
+  nomme la vraie cause (lecture, décodage, dépôt) et qui reprend aussi les
+  vignettes marquées d'une chaîne vide par l'ancien rattrapage. La source est
+  restreinte aux objets `recettes/` de `jp-photos` (jamais d'URL libre : SSRF).
+  Reste côté navigateur : le dépôt **frais** de `CreerForm`, dont la photo est
+  déjà en mémoire (aucune relecture, donc aucun CORS). `chargerImageDepuisSrc`
+  garde `?cors=1` pour ce qui l'utilise encore. Une vignette qui manque
+  n'est **pas** compensée par la photo pleine sur la carte : ce serait masquer
+  l'échec en alourdissant la page.
 - **Scripts SQL** : ne pas créer de fichier `.sql` dans `db/`. Toute
   migration ou requête SQL doit être affichée directement dans la
   conversation (bloc de code SQL), pour être copiée-collée dans **pgweb**,
@@ -122,9 +143,14 @@ le service managé.
   sans privilège (`SECURITY INVOKER`, calcul pur comme `mc_ingredient_key`)
   peut rester à `pgweb_admin`.
 - **Polices** : Playfair Display / Work Sans / Parisienne sont servies par
-  `next/font/google` (`app/fonts.ts`), auto-hébergées depuis
-  `/_next/static` — jamais un `<link>` vers `fonts.googleapis.com`, qui
-  bloquait le premier affichage (audit PageSpeed du 28/09/2026). Material
+  `next/font/local` (`app/fonts.ts`), fichiers `.woff2` versionnés dans
+  `app/fonts/` (sous-ensemble `latin` des polices variables de Google Fonts),
+  auto-hébergées depuis `/_next/static` — jamais un `<link>` vers
+  `fonts.googleapis.com`, qui bloquait le premier affichage (audit PageSpeed
+  du 28/09/2026). **Jamais `next/font/google`** (JEP-299) : il téléchargeait
+  les polices chez Google à chaque build, et Google renvoie parfois des
+  adresses sans extension que Next 15.5 ne sait pas lire — build en échec sur
+  le nœud (04/10) puis sur un runner GitHub (06/10). Material
   Symbols reste chargée depuis Google (police à ligatures, non gérable par
   `next/font`), mais réduite au poids (`wght@300`, seule valeur utilisée) et
   aux icônes réellement affichées par le code — sous-ensemble recalculé à
@@ -169,8 +195,8 @@ app/                    Pages et routes (App Router)
 ├── notifications/      Toutes les notifications (filtre Membre / Administrateur)
 ├── projets/nouveau/    Mode projet — étape 1 d'un projet pas encore créé
 │                       (choix IA / manuel ; aucune écriture)
-├── projets/[id]/       Mode projet — parcours guidé (intention → format →
-│                       structure → recettes des composants)
+├── projets/[id]/       Mode projet — page verticale « vue recette » (intention,
+│                       structure, étapes, quantités, essais, validation)
 ├── importer/           Import de recette par IA (texte collé)
 ├── relecture/[id]/     Relecture d'un brouillon importé
 ├── admin/              Back-office (layout partagé + 5 sous-écrans)
@@ -441,6 +467,54 @@ dé-doublonné par `suggestionPseudoLibre`), modifiable — c'est l'objet de l'�
 - Les routes `/api/admin/*` vérifient elles-mêmes `role === 'admin'` : elles
   restent fermées au gestionnaire.
 
+### Suspension et désactivation d'un membre (JEP-272, lot 1)
+
+Admin → Membres → fiche → bloc « Modération » (`MemberModerationPanel`) :
+suspendre (motif obligatoire, date de fin facultative), désactiver, lever.
+Toujours par `POST /api/admin/membres/[id]/moderation` (admin complet,
+`getVerifiedUser`), jamais par le navigateur.
+
+- **`profiles.status` fait foi** (arbitrage du 06/10/2026) : `suspended` ou
+  `disabled` bloquent, jamais `allowlist.status`, qui ne sert plus qu'aux
+  invitations en attente. La fiche n'écrit plus le statut d'un membre inscrit
+  (ni dans `profiles`, ni dans `allowlist`) : seul le bloc « Modération » le
+  change. Motif et date de fin : `suspended_until`, `suspension_reason`,
+  `disabled_reason`.
+- **Ces colonnes sont lues à part** (`lib/moderation-data.ts`), jamais via
+  `PROFILE_COLUMNS` — même doctrine que `pseudo_changed_at`. La garde ne coûte
+  rien à un compte actif : `status` est déjà dans le profil lu à chaque page,
+  seul un compte marqué paie la lecture de son motif.
+- **Levée automatique calculée à la lecture** (`etatModeration`,
+  `lib/moderation.ts`, et son jumeau SQL `public.is_blocked_user()`, à garder
+  alignés) : une suspension échue vaut « actif », aucun cron ne réécrit la
+  ligne. Le bannissement GoTrue (`ban_duration`, arrondi à l'heure au-dessus)
+  expire de lui-même.
+- **Quatre verrous** : bannissement GoTrue (plus de connexion, e-mail comme
+  Google, ni de renouvellement de jeton) ; `requireUser()` → `/compte-suspendu`
+  (motif, date de fin, lien vers `/contact`) ; RLS — policies `blocked_user_*`
+  (`RESTRICTIVE`, `authenticated`) posées sur **toutes** les tables RLS du
+  schéma `public`, motif des `impersonation_ro_*` ; garde des routes API
+  (`refusSiCompteBloque`, `lib/moderation-route.ts`), parce que la clé
+  service_role et les appels IA échappent à la RLS. **Toute nouvelle route qui
+  agit pour un membre doit l'appeler.** Restent ouverts : `/api/contact` (le
+  recours), la résiliation et le portail d'abonnement, l'alerte de mot de
+  passe. **Une nouvelle table RLS n'hérite pas des policies** : rejouer le bloc
+  `blocked_user_*` de la migration après l'avoir créée.
+- **Sessions non supprimées** : `auth.sessions` n'est pas exposé par
+  PostgREST, et le bannissement suffit (GoTrue refuse le `refresh_token` d'un
+  compte banni). Une session ouverte meurt à l'expiration de son jeton ; entre
+  les deux, pages privées et écritures sont déjà refusées.
+- **Garde-fous** (`validerDemandeModeration`) : ni soi-même, ni un admin (un
+  gestionnaire, oui). Un seul état bloquant, le plus fort l'emporte : pas de
+  suspension sur un compte désactivé ; désactiver remplace une suspension.
+- **Notifications coupées** pour un compte bloqué (`notifier`, récapitulatifs),
+  cloche comprise, sauf les événements verrouillés (obligations légales).
+- **Journal** : `member_moderation_events` (lecture admin par RLS, écriture
+  service_role seule), affiché dans la fiche. Écrit avant le bannissement,
+  pour qu'un échec GoTrue n'efface pas la trace d'une décision déjà effective.
+- Lots 2 (abonnement, e-mail au membre, masquage du contenu public) et 3
+  (restrictions partielles, RGPD) : à venir.
+
 ### Connexion « en tant que » (impersonation)
 
 - **Niveau d'accès hérité**, jamais choisi au clic : `profiles.impersonation_access`
@@ -534,6 +608,37 @@ remontant** en dessous.
   **et** le curseur de temps. Même correctif que `CarnetToolbar`.
 - **Compatibilité** : `?category=` (liens de catégorie de l'accueil) est un
   alias de `cat`, fusionné à la lecture — aucune redirection.
+- **Terme libre : 3 caractères minimum** (`MIN_QUERY_LENGTH` /
+  `effectiveQuery`, `lib/search-params.ts`, même seuil dans la RPC). En deçà le
+  terme est ignoré partout — requête, résumé, option « Pertinence » — et le
+  champ l'annonce. Le champ garde ce qu'on tape (`criteria.q`).
+- **Morceau de mot** : le plein texte (`recipes.fts`, dictionnaire `french`)
+  compare des racines — « Canelés » → `canel` —, donc « cane » ne trouvait rien
+  alors que « canel » tombait juste. La RPC cherche aussi le terme normalisé en
+  sous-chaîne du titre (`mc_norm(title) like`), avec un bonus de pertinence pour
+  qu'une telle recette ne finisse pas en bas de liste.
+- **Portée : tout ce que le carnet du membre contient**, pas seulement le
+  publié — ses recettes à tout statut, les recettes partagées une à une
+  (`recipe_shares`) et celles d'un carnet partagé « brouillons compris »
+  (`book_shares.scope = 'all'`), via `auth.uid()`. Favoris et abonnements ne
+  portant que du publié, ils sont déjà couverts. Les projets en cours
+  (`kind = 'project'`, `project_stage = 'wizard'`) restent exclus
+  (`isProjectDraft`). Le compte de recettes d'un **pâtissier**, lui, ne compte
+  que le publié.
+- **Une recette de mon carnet se montre comme dans le carnet.** La RPC ne
+  renvoie que le contenu d'une carte publique ; `getCarnetMarks`
+  (`lib/search.ts`, sous la session du membre, RLS) relit statut, visibilité,
+  partage reçu et abonnement des recettes affichées. La page choisit alors :
+  `MineCard` si j'en suis l'auteur (statut, Privée/Publique, fournée, édition,
+  favori, suppression), `OtherCard` si elle me vient d'un favori, d'un
+  abonnement ou d'un partage (retrait du partage compris), `RecipeCard` sinon —
+  une recette publique hors carnet n'a pas à porter des gestes de carnet. Les
+  deux cartes vivent dans `components/carnet/CarnetCards.tsx`, **partagées**
+  avec `CarnetContent` (suppression et retrait de partage :
+  `supprimerRecette` / `retirerPartage`) ; `SearchCarnetCards.tsx` ne fait que
+  leur donner leur propre mutation et les masquer après suppression, la grille
+  restant rendue par le serveur. Modifier l'une des deux cartes, c'est modifier
+  le carnet ET la recherche.
 
 ## Recherche textuelle sans accents
 
@@ -995,6 +1100,7 @@ d'en créer une nouvelle.
   Ces deux colonnes existaient déjà et étaient déjà affichées sous le titre
   de la fiche recette ; c'est l'absence d'écriture dans `comments` qui les
   laissait à zéro jusqu'ici.
+- **Pas d'avis sur une fournée d'essai d'un projet en cours** : quand la recette d'origine est un projet `wizard` (`isProjectDraft`), ni la carte d'avis, ni la question à la clôture (`BatchView` `essaiProjet`, `PlanningDayView`) ne sont proposées, et `submitOrUpdateReview` refuse l'écriture (`recetteEstProjetEnCours`, `lib/reviews-data.ts`) — la route reste appelable, la règle n'est donc pas qu'un masquage. Calculé à la lecture, sans colonne : une fois le projet validé (`ready`), une fournée lancée depuis la fiche redevient ordinaire et propose l'avis. Lecture en échec : on propose comme avant.
 - **Affichage** : note + nombre d'avis sous le titre (`app/recette/[id]`,
   déjà en place), avis publiés en bas de fiche (`RecipeComments`, section
   `#sec-commentaires`, uniquement les `approved` — filtré par la RLS, pas
@@ -1014,10 +1120,9 @@ essais et la validation arrivent par lots successifs.
   n'écrit rien : on y choisit entre l'aide de l'IA (intention → proposition
   de format et de composants) et la construction manuelle. `POST /api/projet`
   crée alors la recette-projet **avec** l'intention et la proposition
-  revalidée (titre, format, composants), `wizard_step = 2` — ouvrir le mode
-  projet puis renoncer ne laisse plus de projet vide dans le carnet. Aucune
-  donnée ne voyage d'une page à l'autre par le navigateur : l'étape 2 se
-  relit depuis la base.
+  revalidée (titre, format, composants) — ouvrir le mode projet puis renoncer
+  ne laisse plus de projet vide dans le carnet. Aucune donnée ne voyage d'une
+  page à l'autre par le navigateur : la page projet se relit depuis la base.
 - **Un projet est une recette dès sa création**, pas une entité séparée
   convertie à la fin : sans ça, le moteur de fournée devrait gérer deux types
   de source, et la validation impliquerait une migration d'identifiants qui
@@ -1045,7 +1150,7 @@ essais et la validation arrivent par lots successifs.
     points de départ ;
   - `lib/shares-data.ts` — un partage de carnet « brouillons compris » ne
     doit pas emporter les projets en cours de son propriétaire ;
-  - `/recette/[id]` et `/creer` — redirigés vers le parcours guidé.
+  - `/recette/[id]` et `/creer` — redirigés vers la page projet (`/projets/[id]`).
 - **`lib/projects.ts` (pur) / `lib/projects-data.ts` (base, server-only)** :
   même séparation que `ideas.ts` / `ideas-data.ts`, sans quoi le formulaire
   client tirerait `next/headers` et casserait le build.
@@ -1088,9 +1193,8 @@ essais et la validation arrivent par lots successifs.
   le crédit « pâte sucrée de X » serait invisible aux visiteurs de la fiche.
   Filtré par la RLS, jamais par le composant — même doctrine que
   `RecipeComments`.
-- **Le parcours guidé enregistre à chaque geste**, jamais à la fin
-  (`/projets/[id]`, `ProjectWizard`) : l'étape courante vit dans
-  `recipe_projects.wizard_step`, et la liste des composants n'est **jamais**
+- **La page projet enregistre à chaque geste**, jamais à la fin
+  (`/projets/[id]`, `ProjectV2`) : la liste des composants n'est **jamais**
   tenue en état local — elle vient du rendu serveur, chaque modification écrit
   puis resynchronise (`useMutation`). Un miroir local aurait divergé de la base
   au premier échec d'écriture, sur un objet qui se construit en plusieurs
@@ -1203,9 +1307,7 @@ essais et la validation arrivent par lots successifs.
   session, aucune colonne dédiée) vient gonfler le coefficient — et les
   coefficients surface/volume associés (`ScaleProposal.moldCoefs`), sinon une
   préparation qui fonce un moule n'en tiendrait pas compte. S'applique aux
-  deux sources de proposition (format, IA),
-  **jamais** à un coefficient saisi à la main : c'est déjà la décision finale
-  de l'utilisateur.
+  deux sources de proposition (format, IA) et **se recalcule en direct** : changer le pourcentage réécrit le coefficient à chaque frappe, depuis une base fixe mémorisée avant perte (`basesSansPerte`, jamais depuis le coefficient affiché, qui dériverait) : la dernière proposition, ou — **un coefficient saisi à la main devient la nouvelle base et remet la perte à 0 %** (c'est la décision de l'utilisateur), ou, page rechargée, le coefficient déjà appliqué. Le champ n'est donc jamais grisé.
 - **Quantité d'origine affichée en italique** (JEP-254) : à côté du champ
   éditable de chaque ligne d'ingrédient, la quantité d'avant ajustement
   (`ingredients.base_quantity`) reste visible en italique tant qu'un
@@ -1277,6 +1379,100 @@ essais et la validation arrivent par lots successifs.
 - **`duplicate_recipe` recopie les composants** et la correspondance ancien →
   nouveau composant sur les étapes : un duplicata est une vraie variante du
   projet. Sans ça, dupliquer puis publier effaçait les crédits.
+
+## Mode projet — page « vue recette »
+
+**Seule présentation du mode projet depuis le 15/10/2026** : `/projets/[id]`
+(`components/projets/v2/ProjectV2.tsx`), pour tous les membres qui ont le droit
+`mode_projet`. Elle a d'abord été une version d'essai réservée aux admins
+(`/projets/[id]/v2`), à côté d'un parcours guidé en onglets (`ProjectWizard`)
+désormais **supprimé** ; le dossier `v2/` garde son nom par commodité. Le projet s'y lit comme la recette
+qu'il deviendra — une seule colonne, les blocs de la recette dans l'ordre de
+l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
+(intention, structure, quantités, validation) sur un fond plus clair.
+
+- **Bascule sans migration** : l'ancien parcours lisait et écrivait les mêmes
+  colonnes. `/projets/[id]/v2` n'est plus qu'une redirection vers
+  `/projets/[id]` (liens déjà distribués). `/projets/nouveau` mène toujours à
+  `/projets/<id>` (plus de `?ia=1`, que seul l'ancien parcours lisait).
+- **Droit `mode_projet` perdu** (rétrogradation) : la page rend
+  `ProjectReadOnly`, lecture seule, jamais un renvoi vers la fiche recette.
+- **Redemander une proposition de l'IA** : dès que le projet a un format ou des préparations, le bouton du bloc « Intention » devient « Redemander une proposition (IA) » (secondaire) et demande confirmation (nombre de préparations remplacées et conservées). La nouvelle proposition remplace le format et les préparations **« À résoudre »** ; celles qui ont déjà leur recette sont conservées (travail réel), puis les blocs d'étapes sont redistribués (`resequenceProjectSteps`) avant l'insertion des nouvelles.
+- **« Structure » juste sous « Votre intention »** : le bloc s'ouvre dès qu'une intention OU un format est renseigné (`projectV2BlockStates`, paramètre `intent`), puisque le format est désormais plus bas.
+- **Ajustement des quantités dans chaque préparation** : plus de bloc « Ajustement des quantités » en v2. Le bloc « Étapes » ouvre sur `DessertVise` (rappel du dessert visé), puis chaque préparation résolue porte un volet replié « Ajustement des quantités · ×coef » qui rend `QuantitiesStep` avec `componentId` (une seule carte, sans intro ni nom ; le calcul connaît toujours les autres préparations). Un seul coefficient par préparation, comme en base (`recipe_project_components.scale_factor`) — jamais par étape.
+- **Recherche d'une recette de base : cinq portées cochables, les mêmes qu'au remplacement d'un ingrédient** (`PICKER_SCOPES`, `lib/projects.ts`) : Mes recettes (non brouillons), Mes brouillons, Mes favoris, Mes abonnements, Toutes les recettes. Défauts : remplacement d'ingrédient = recettes + brouillons + favoris ; mode projet = + abonnements (jamais « toutes » d'office). Le mode projet interroge **une portée à la fois**, dans l'ordre carnet → brouillons → favoris → abonnements → toutes : la première qui trouve la recette décide du crédit (`PICKER_SCOPE_KIND` : recettes et brouillons = `own`, « toutes » = `community`, libellé « Communauté »). `source_kind = 'community'` suppose qu'aucun CHECK de la base ne l'interdise.
+- **Aperçu d'une recette avant de la choisir** (`ComponentResolver`, mode `apercu`) : l'œil (`visibility`) de chaque résultat ouvre, dans la même fenêtre, ce que la copie écrirait (`planComponentCopy`, rendu par `RecipeStep`, sans photos — la copie ne les lit pas), sous un bandeau `sticky bottom-0` (jamais `fixed` : le conteneur défilant a un `backdrop-blur`, qui devient le repère du `fixed` et le fait défiler avec le contenu) « Annuler » (retour à la liste, recherche et cases conservées — la croix de l'en-tête fait la même chose pendant un aperçu, `fermerApercu`) / « Sélectionner » (même geste que « Ajouter », mêmes crédits). Remplace l'ancien lien vers un nouvel onglet. Le remplacement d'un ingrédient (`IngredientExpandDialog`) garde son lien d'origine.
+- **Recherche d'une recette : indicateur local, étiquettes statut + note** (`ComponentResolver` et `IngredientExpandDialog`). Pendant une recherche, la zone des résultats s'atténue sous le fouet (`components/SearchResultsBusy.tsx`, délai 120 ms) — jamais le plein écran, qui cacherait le champ en cours de frappe ; c'est la seule exception au « jamais d'indicateur local » du spinner. Chaque ligne porte la pastille de statut (Brouillon / Publiée / En attente / Refusée / Privée) et la note `4.5/5 (12)`, absente sans avis (`components/recipe/PickerStatusBadge.tsx`, partagé par les deux fenêtres).
+- **Filtre par tags dans la recherche d'une recette de base** (`ComponentResolver`, `components/projets/TagFilter.tsx`) : pastilles retirables + « + Ajouter un tag » (recherche sans accents), sans création de tag. **« Recette de base » est présélectionné** s'il existe au référentiel (retrouvé par son nom normalisé, jamais par un identifiant écrit en dur) ; absent, la recherche s'ouvre sans filtre. `/api/recipes/picker` accepte `tags=<ids numériques>` (5 au plus) : la recette doit les porter **tous**, filtré en SQL par un embed `recipe_tags!inner` aliasé par tag (`t0`, `t1`…) — jamais par une liste d'identifiants de recettes (414). Sans le paramètre, la route se comporte comme avant : le remplacement d'un ingrédient n'est pas concerné. Liste vide avec un tag actif : le message invite à le retirer.
+- **Barre latérale du projet : enregistrer le brouillon / quitter / valider** (`ProjectV2`, `components/projets/v2/sections.ts`). Un projet étant une recette dès sa création, « brouillon » n'est pas un statut à poser : c'est ce qui est **déjà écrit en base**. Les éditeurs de section (intention, nom et description, format, photo, catégories, ustensiles / difficulté / temps, conseils) écrivent chacun à leur bouton ; pour que le rail puisse agir sur l'ensemble, **chacun déclare au registre** (`useRegisterSection`) s'il a une modification en attente et sa fonction d'enregistrement (qui renvoie `true` si l'écriture a réussi, comme `mutate`). Le registre n'écrit rien lui-même : `saveAll` rappelle les fonctions existantes une à une et **s'arrête à la première qui échoue** (non atomique, assumé). Le rail porte, de haut en bas, « Quitter » (sans question si tout est écrit, sinon fenêtre « quitter sans enregistrer » / « enregistrer et quitter »), « Enregistrer le brouillon » (grisé s'il n'y a rien à écrire), « Valider le projet » (**enregistre d'abord** ce qui est en attente, puis valide : la validation lit la base, pas les champs), Une pastille en tête de page dit « Tout est enregistré » ou liste les sections modifiées. **Format : l'état « modifié » compare à l'empreinte du dernier enregistrement** (`formatEnregistre`), jamais aux props — le format affiché est déduit de la base (`deduceProjectFormat`) et pourrait différer de la saisie, d'où une modification fantôme permanente. **Limite connue** : un `beforeunload` protège la fermeture / le rechargement de l'onglet, mais les clics sur les liens de l'en-tête ne sont pas interceptables en App Router — seul « Quitter » protège la navigation interne. Ajouter un éditeur de section impose de l'enregistrer au registre, sinon il échappe au rail.
+- **Le rail se pose sous l'en-tête du site, il n'est pas centré** (`.recipe-toc`, `app/globals.css`) : `top` et `max-height` tiennent compte de `--site-header-h` (72 px par défaut, à ajuster si l'en-tête change de hauteur). Centré dans la fenêtre, un rail haut (beaucoup de préparations + « Reste à faire » + pied d'actions) passait son sommet sous l'en-tête `z-50` : « Intention » devenait invisible et inatteignable, la liste défilant à l'intérieur sans jamais le ramener. Vaut pour `/creer` et la relecture, qui partagent ce rail.
+- **Ustensiles triés, difficulté en maryses** (`OrganisationEditor`) : la liste des ustensiles s'affiche et s'enregistre **par ordre alphabétique** (`trierUstensiles`, sans accents ni casse — lignes vides en fin de liste, tri appliqué à la sortie du champ pour ne pas faire sauter la ligne en cours de saisie ; la référence « modifié » est triée elle aussi). La difficulté se choisit en cinq `MaryseIcon` comme dans `/creer` (niveau le plus proche au référentiel, second clic sur le niveau atteint = effacer).
+- **Changer le format ne recalcule jamais les quantités — il le signale.** Un recalcul automatique écraserait les lignes modifiées à la main, les coefficients fixés par l'IA et les modes d'ajustement par étape. Chaque « Appliquer » d'un ajustement pose donc sur sa préparation l'**empreinte du format** pour lequel il a été calculé (`recipe_project_components.scale_format_key`, `projectFormatKey`, `lib/projects.ts` : type, moule, dimensions, nombre, parts). `quantitiesStale` compare au format enregistré : différent = « à recalculer » (volet « Ajustement des quantités » et encadré de `QuantitiesStep`, liste dans « Essais et validation », confirmation à « Valider »). **Sans empreinte** (ajustement antérieur à la colonne, ou migration pas jouée) on ne marque rien — se taire plutôt qu'alerter à tort — mais le message qui suit l'enregistrement du format (`signalerQuantites`) compte quand même les préparations dont le coefficient diffère de ×1. L'empreinte s'écrit **à part** de l'ajustement, en ignorant l'échec : colonne absente, l'ajustement réussit quand même, et la lecture (`select('*')`) ne casse pas. Cas à connaître : sans ce garde-fou, la recette validée annonce « pour le format X » alors que ses quantités sont celles d'un autre — une fournée dans un autre moule se calcule alors à partir du format déclaré et se trompe sans le dire. **Un coefficient réappliqué sans refaire « Proposer » perd la distinction surface / volume** (`moldCoefs` n'est pas stocké) : toujours enchaîner « Proposer » puis « Appliquer ».
+- **« Proposer d'après le format » refuse de comparer du poids à des parts** (`scaleIncompatibility`, `uniteMasseVolume`, `lib/projects.ts`) : une recette dont le rendement est en g / kg / ml / l, face à un format en parts ou en moule, donnait un rapport absurde (630 g → 8 parts = ×0,01), écrit ensuite dans les quantités. Aucun coefficient n'est proposé, le champ n'est pas rempli, et l'alerte explique et renvoie vers « Ajuster avec l'IA » ou la saisie. Le bouton ne peut pas être grisé d'avance : la recette source n'est lue qu'au clic. **Seules les unités connues de masse ou de volume sont refusées** ; une unité vide ou inattendue garde le rapport direct, faute de pouvoir trancher. Moule contre moule inchangé.
+- **Crédits d'« Ajuster avec l'IA » restants, à côté du bouton** (`QuantitiesStep`, prop `quotaAjustementIA`) : « Utilisation quota IA : 3/10 par mois » (consommé/limite), lu par les deux pages du mode projet (`checkQuota(…, 'ajustement_ia_mensuel')`, affichage seulement, seulement si le droit existe) — le même compteur que l'ajustement par IA d'une fournée, **distinct** de `mode_projet_ia_mensuel` (propositions de format et de préparations). Le bouton se grise quand il est épuisé (même infobulle que `BatchWidget`) ; la garde réelle reste `reserverQuota` dans `/api/scale-recipe`. La page ne relit le quota qu'à son rendu : le décompte monte localement après chaque ajustement réussi (`iaConsommes`, remis à zéro quand le serveur rend un `usage` à jour). Lecture absente ou en échec : rien d'affiché, bouton actif. Mise en page : rangée 1 = les deux boutons + ce texte ; rangée 2 dessous = PERTE (%) et COEFFICIENT (libellés `w-24`, champs `w-24`, donc alignés) + « Appliquer ».
+- **Dessert visé et commentaires dans le volet d'ajustement** : `QuantitiesStep` rappelle, sur une ligne en tête du volet d'UNE préparation (`componentId` fourni), le dessert visé (nom, format, parts) — les coefficients en dépendent et la carte complète (`DessertVise`) est loin au-dessus. Les lignes d'ingrédients affichent leur commentaire (`ProjectLine.comment`, lu dans `ingredients.comment`) en italique après le nom : c'est ce qui distingue deux lignes du même ingrédient.
+- **Volet d'ajustement : justification au ras du coefficient, rendement d'origine en lignes.** Le cadre qui explique le calcul (`prop?.reason || c.scaleReason`) est posé juste au-dessus de la rangée PERTE / COEFFICIENT / « Appliquer » qu'il commente, non plus en tête du volet. Le rendement de la recette d'origine (`sourceYield`) est découpé par `lignesRendement` (`lib/projects.ts`) : une phrase par ligne, « Perte de réalisation » à part ; affichage seul, la valeur stockée n'est pas touchée.
+- **Planning : la même frise que la fiche recette** (`components/recipe/PlanningTimeline.tsx`, rendu pur partagé avec `app/recette/[id]`) : une colonne par jour, ronds numérotés reliés par un trait, titres d'étape en gras ; la v2 la montre dès qu'il y a plus d'un jour, avec la note « Le jour de chaque étape se règle dans « Modifier cette préparation » ». Ne pas recoder une seconde présentation.
+- **« Reste à faire » : ce que la base constate, ce que seul le membre confirme** (`projectTodo`, `lib/projects.ts` ; panneau `components/projets/v2/ProjectTodo.tsx`, sous l'en-tête). Jauge « n / total », « prochain geste » et liste regroupée par préparation, chaque ligne menant au bloc concerné. Deux sortes de points : ceux **constatés** (intention, nom, format, préparations ajoutées, recette choisie, quantités à recalculer après un changement de format) se cochent d'eux-mêmes ; ceux que **seul le membre peut confirmer** — « étapes relues » et « quantités vérifiées », par préparation — sont des cases. **La case range une empreinte du contenu vérifié** (`recipe_project_components.checked_steps_key` / `checked_quantities_key`, `empreinteEtapes` / `empreinteQuantites`), jamais un simple booléen ni une date : la vérification vaut tant que l'empreinte courante est la même, et passe à « à refaire » dès que les étapes (texte, temps, jour, astuces) ou les quantités (lignes, coefficient) changent — **sans qu'aucun chemin d'écriture ait à décocher quoi que ce soit**, donc sans oubli possible. Une case de quantités ne se coche pas tant que les quantités sont calculées pour un autre format. Sans les deux colonnes (migration pas jouée, `checksAvailable` faux), les cases sont masquées et le reste fonctionne ; la lecture passe par `select('*')`, comme `scale_format_key`. Migration par `psql` sur le nœud 216075 (DDL sur une table existante, hors de portée de pgweb).
+  **Le panneau est monté deux fois** : en haut de page (porteur de l'ancre `reste-a-faire`, cible du sommaire) et juste avant « Essais et validation » (sans `id`, pas de second lien au sommaire). Mêmes `todo`, même `basculerVerif` : un seul calcul, donc synchronisés d'office ; seul l'état ouvert / replié est propre à chaque exemplaire.
+  **Volets « quantités » et « étapes » : ouverts tant que non vérifiés, repliés s'ils le sont — fixé au chargement seulement** (`ouvertAuChargement`, `ProjectV2`) : l'état « vérifié » est lu une fois au premier rendu (chargement ou réouverture de la page) puis gardé dans un `useRef`. Cocher la case ne replie donc rien sous le doigt, et comme la valeur de `open` ne change plus d'un rendu à l'autre, React ne referme pas un volet ouvert ou fermé à la main. Les étapes de chaque préparation sont dans un `<details>` porteur de l'ancre `prep-<id>-etapes` (le lien du « Reste à faire » l'ouvre, `allerA`) ; sans étape, l'ancre reste sur le bloc de la préparation. Sans les colonnes de vérification : étapes ouvertes, quantités repliées.
+  **Les cases se posent aussi au bas du contenu qu'elles valident** (`components/projets/v2/VerifCase.tsx`) : « Quantités vérifiées » sous la note du volet « Ajustement des quantités » (`QuantitiesStep`, prop `pied`), « Étapes relues » sous les étapes de la préparation — même point, même empreinte que dans le panneau : cocher ici ou là revient au même. Dans le panneau, « quantités » vient avant « étapes ». Le sommaire de gauche porte une entrée « Reste à faire (n/total) » en tête (ancre `reste-a-faire`). **Chaque point mène à l'ancre de SA préparation** (`prep-<id>-recette` dans « Structure », `prep-<id>-etapes` et `prep-<id>-quantites` dans « Étapes ») — jamais à l'ancre du bloc, qui ramenait toujours à la première préparation ; un volet replié qui porte l'ancre (« Ajustement des quantités ») est ouvert au clic.
+- **Temps : la somme des étapes affichée, la correction à la main reste possible** (`OrganisationEditor`, `stepTimeSums`, `lib/recipe-view.ts`). Une ligne « Somme des temps des étapes » (préparation, cuisson, repos, total) en lecture seule, comme dans `/creer` ; les champs saisis portent cette somme en placeholder. **Vide = suit les étapes, saisi = la valeur prime** — jamais de pré-remplissage, qui figerait le total au premier enregistrement. Une valeur différente de la somme porte « corrigé à la main · revenir à N min » (un clic vide le champ). Même règle que `effectiveTimes` sur la fiche.
+- **Lancer un essai avec des points ouverts : avertir, ne jamais bloquer** (`ProjectTrials`, prop `pointsRestants`, `pointsRestants(todo)` dans `lib/projects.ts`). À CHAQUE lancement d'une fournée d'essai, s'il reste des points du « Reste à faire » (constatés ou à cocher), une confirmation les liste (6 au plus, puis « et N autre(s) ») avant de lancer — « Lancer quand même » / annuler. Pas de bouton grisé : l'essai sert précisément à vérifier ce qui n'est pas validé. La confirmation n'est **jamais mémorisée** pour la session (un oubli ne doit pas passer au deuxième essai). Elle remplace, sans la doubler, l'ancienne alerte « composants non résolus » (ces préparations figurent déjà parmi les points, leur conséquence est ajoutée au texte) ; la fiche recette passe sans `pointsRestants` et garde l'alerte d'origine. Ne concerne ni la fournée d'une recette validée (`BatchWidget`), ni « Valider le projet ». **La fenêtre est large et le focus d'ouverture est sur « Annuler »** : options facultatives de `useDialog().confirm` (`largeur: 'large'` → `max-w-xl` au lieu de `max-w-sm`, `focus: 'annuler'` → Entrée annule). Par défaut rien ne change pour les autres confirmations du site (étroites, focus sur la confirmation) ; ne les activer que pour une action qu'un Entrée distrait ne doit pas lancer, ou un message à lignes longues.
+- **« Retirer la recette »** (`retirerRecette`, `useProjectComponents`) : à côté de « Modifier cette préparation » (blocs Structure et Étapes), confirme puis `resetComponent` (`lib/projects-write.ts`) — contenu effacé, source oubliée, préparation « À résoudre » ; même geste que « Réinitialiser » de la fenêtre de résolution.
+- **Ustensiles d'une préparation copiée** : la copie d'une recette existante (`ComponentResolver.attacher`) lit ses `recipe_utensils` et `attachComponentUtensils` (`lib/projects-write.ts`) les mémorise sur la préparation (`recipe_project_components.utensils`, jsonb — la source ne les rattache à aucune étape, ils ne sont donc jamais portés par une étape), puis ajoute à la liste globale `recipe_utensils` ceux qui manquent (`utensilsToAdd`, `lib/projects.ts` : même `ref_id` ou même nom normalisé par `ingredientKey`). **Rien n'est jamais retiré** de la liste globale (retirer ou remplacer une préparation laisse ses ustensiles, à nettoyer dans le bloc « Ustensiles »). Colonne absente (migration pas jouée) : la liste globale est complétée quand même. L'éditeur « Ustensiles » de la v2 est remonté (`key`) quand la liste en base change et garde le `ref_id` des lignes inchangées.
+- **`recipe_projects.wizard_step` n'est plus ni écrit ni lu** (colonne de l'ancien
+  parcours en onglets, morte comme `followers_count`). L'état d'un bloc (ouvert / grisé avec
+  ce qui le débloque) se déduit de la base par `projectV2BlockStates`
+  (`lib/projects.ts`), jamais de cette colonne.
+- **Un bloc pas encore atteint reste visible, grisé** — arbitrage produit : on
+  voit d'emblée toute la recette à venir.
+- **Format** — `ProjectFormatFields` (champs) et `buildProjectFormatUpdate`
+  (contrôle + colonnes à écrire). Le bloc « Format » ne réécrit pas le titre
+  (il se modifie dans « Le dessert »). La description se saisit pour tous les
+  formats.
+- **Tout le parcours tient sur la page** (lots 1 à 5) : intention et
+  proposition de l'IA (`/api/projet/structure` — le format proposé est
+  enregistré s'il est complet, les préparations seulement si le projet n'en a
+  aucune), dessert (photo, nom, description, type, catégories), format,
+  structure et résolution, étapes par préparation avec leur ajustement de
+  quantités (`QuantitiesStep`, une carte par préparation), liste complète des ingrédients,
+  ustensiles / difficulté / temps, conseils et source, essais
+  (`ProjectTrials`) et validation (`validateProject`, `lib/projects-write.ts`).
+- **Une icône déclarée dans une table se range sous un champ `icon:`** (`ICONE` de `VerifCase` / `ProjectTodo`) : `scripts/material-symbols.mjs` ne recense que les noms écrits dans l'élément `.material-symbols-outlined` ou sous `icon:`. Sous `nom:`, `history` (état « à refaire ») manquait à la police et s'affichait en toutes lettres, « HISTORY », à la place de la case ; `check_circle` et `radio_button_unchecked` n'étaient sauvées que par un autre fichier.
+- **Picto « modifier » sur chaque étape d'une préparation** (`RecipeStep`, prop facultative `action` ; `etape()` de `ProjectV2`) : il appelle `ouvrirComposant(c, true)`, le même panneau que « Modifier cette préparation » — qui édite **toute la préparation**, pas l'étape cliquée, d'où l'infobulle qui le dit. Valable pour une préparation copiée comme pour une préparation IA ou saisie. Pas de picto sur l'étape d'assemblage (aucune préparation). Sans la prop, la fiche recette rend l'étape comme avant.
+- **Étapes : la présentation de la fiche recette, pas une variante.** Le bloc « Étapes » rend chaque étape par `components/recipe/RecipeStep.tsx`, le même composant que `app/recette/[id]` (titre numéroté, pastilles de temps, ingrédients de l'étape, photos, sous-étapes, conseils) ; ne pas recoder une seconde présentation. L'édition d'une préparation (`ComponentResolver`) utilise `StepEditorCard`, calquée sur l'éditeur `/creer`.
+- **Texte des étapes en 16 px** (`text-body-md`) : sous-étapes et description, dans `RecipeStep` (fiche recette, mode projet v2) dans les sous-étapes de `BatchStepDonePanel` (fournée, Préparer) et, en mode Pâtisser, dans `StepCookCard` (ingrédients, sous-étapes, description, « Ma note », conseils — 14 px auparavant ; les étiquettes de 11-12 px et le « prévu » restent petits). `font-body-lg` n'est qu'une famille de police, sans effet sur la taille.
+- **Composants : un seul code pour les deux versions** —
+  `useProjectComponents` (ajout, renommage, rôle, ajustement, suppression,
+  réordonnancement, ouverture de la résolution) et `ProjectStructureList`.
+  « Modifier cette préparation » (v2) rouvre `ComponentResolver` en édition
+  **quelle que soit la source**, avec `initialSource` : le crédit d'une copie
+  est conservé à l'enregistrement (§9), au lieu d'être effacé.
+- **Le brouillon d'un composant transporte tout ce qu'une étape porte** :
+  jour, temps, température, astuce (`StepEditorCard`, calquée sur l’éditeur `/creer`), allergènes en texte libre,
+  photos d'étape (`ComponentStepDraft.photos`, déposées sur Swift par
+  `ComponentResolver` avant l'écriture — `projects-write` ne téléverse rien,
+  il sert aussi côté serveur). `readComponentDraft` relit désormais aussi le
+  `scaling_mode` du groupe et la `base_quantity` de chaque ligne : avant,
+  modifier une préparation effaçait son mode d'ajustement et faisait de la
+  quantité ajustée la nouvelle référence. Une quantité retouchée dans la
+  fenêtre efface la base (la ligne sort du recalcul, comme à l'étape
+  « Quantités »).
+- **L'édition d'une préparation reproduit la carte d'étape de `/creer`** (`StepEditorCard`, JEP-254) : poignée de déplacement, « insérer avant », replier / déplier (+ « Tout replier / Tout déplier »), suppression seulement s'il reste plus d'une étape, sélecteur « Ajustement des quantités de cette étape » (mode du groupe d'ingrédients), colonnes INGRÉDIENTS / UNITÉ / ALLERGÈNES, allergènes en pastilles du référentiel (max 3, fenêtre portée dans `document.body` : le conteneur flouté piégerait un `fixed`) pré-remplis au choix d'un ingrédient du référentiel (`referenceAllergenes`, repli : texte libre), Tab sur la dernière ligne pour en ouvrir une, sous-étapes réordonnables, description sur 8 lignes. **Deux copies à garder alignées** : une évolution de la carte de `CreerForm` se reporte ici. La fenêtre passe à 1 200 px en mode édition (960 px ailleurs) et la ligne d'ingrédient bascule sur une seule ligne à `min-[1232px]` (largeur d'écran à laquelle la fenêtre atteint 1 200 px) au lieu de `xl` : pas de plugin `@container` installé, d'où ce seuil en largeur d'écran. En grand écran, colonnes alignées sur l'en-tête : nom (reste), quantité, unité, allergènes (largeur fixe `w-56`), commentaire (**champ d'une seule ligne**, `<input>` et non la zone extensible de `/creer`, 12 rem au moins), corbeille. Le panneau « Ce qu'il faut corriger dans la proposition » (IA) est **en haut** de l'éditeur, au-dessus de la première étape. Absents volontairement : lien vidéo, glisser-déposer de photos entre emplacements, repères d'ingrédient inconnu et ajout au référentiel (réservés à l'admin de `/creer`). Le mode d'ajustement de la préparation (étape 3) est appliqué aux étapes à la création du brouillon (copie, IA, saisie) ; à l'enregistrement, celui de l'étape prime, celui de la préparation sert de repli.
+- **Éléments de recette écrits section par section**
+  (`components/projets/v2/RecipeDetailEditors.tsx`), mêmes colonnes et tables
+  que `CreerForm`, jamais par son enregistrement global (qui effacerait les
+  `component_id`). Photo d'en-tête : vignettes recalculées seulement pour un
+  dépôt frais. **Catégories** : même principe que `/creer` (pastilles pleines
+  retirables, « + Ajouter un tag » avec recherche sans accents, création d'un
+  tag à la volée **réservée aux admins** — `peutCreerTag`, lu par la page,
+  comme dans `/creer` : un membre choisit parmi les tags existants), mais la liaison `recipe_tags` ne s'écrit qu'au bouton
+  « Enregistrer ». **Pas de « type de recette »** : `recipes.type_id` n'est
+  saisi dans aucun écran du site (78 recettes sur 78 sans type au relevé du
+  06/10/2026) ; son filtre de recherche et son affichage sur les cartes
+  restent donc vides. En donner un à toutes les recettes suppose de l'ajouter
+  d'abord à `/creer` et à la relecture d'import.
 
 ## Boîte à idées
 
@@ -1977,6 +2173,30 @@ insère la ligne `imports`, commente le ticket et le passe à « Revue en
 cours » (garde-fou `resoudreTransition` contre « Déployé »). Idempotent par la marque
 `Jira <CLÉ>` dans `imports.fichier_original`. `lib/import-jira.test.ts` valide
 chaque fichier du dossier à la CI.
+**Le ticket Jira est facultatif** : une recette sans ticket (un composant
+rédigé hors de Jira) porte une **clé locale** `local-<nom>` (`natureCle`), et
+s'importe par le même workflow — sans photo, sans aucun appel à Jira, marque
+`Import local-<nom>`. Le préfixe et la lettre qui le suit sont imposés pour
+qu'une clé locale ne puisse jamais avoir la forme d'un ticket, même en
+majuscules. Mode opératoire de bout en bout (JSON + compte destinataire →
+brouillon) : compétence `.claude/skills/import-recette/` ; chaîne complète
+depuis le seul nom d'un composant (fiche + revue du chef, validation, membre,
+import, lien de relecture) : `/nouveau-composant`. Destinataire donné par
+pseudo → l'import suit la simulation sans nouvelle question (arbitrage du
+09/10/2026) ; par e-mail → confirmation du pseudo trouvé d'abord. Une
+**fiche de composant** (entrées `astuces_recette` préfixées « Utilisation — »)
+arrive en relecture avec son rendement déjà réglé (`rendementComposant`) :
+« Par nombre d'unités / poids » avec la masse en grammes, format et
+utilisations dans « Complément d'informations sur les quantités »
+(`notes_quantites`), seules les variantes restant dans les notes. **La masse
+retenue est la masse UTILISABLE**, nette de la perte de réalisation (fouet,
+cul-de-poule, évaporation, estimée par composant) : le rendement s'écrit
+« … — environ 450 g de pâte utilisable (500 g d'ingrédients, perte ≈ 10 %) »
+et les utilisations se calculent sur 450 g, jamais sur la somme des
+ingrédients. Les conseils de réussite vont dans les conseils de l'étape, les
+variantes seules dans ceux de la recette. Rédaction, revue du chef et
+contrôle mécanique (`controle.py`) : compétence `.claude/skills/fiche-composant/`,
+versionnée dans le dépôt (elle remplace celle du compte de l'utilisateur).
 
 **L'import par photo se fait en deux passes**, dans deux requêtes distinctes :
 *lire*, puis *structurer*. Un appel unique devait déchiffrer la page et la

@@ -25,6 +25,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmailBestEffort } from '@/lib/email';
 import { envoyerPush } from '@/lib/push-data';
 import { composerMessagePush } from '@/lib/push';
+import { membreBloque } from '@/lib/moderation-lecture';
 import { siteUrl } from '@/lib/site-url';
 import {
   CHEMIN_PREFERENCES,
@@ -61,7 +62,7 @@ export type ResultatNotifier = {
   /** Nombre d'appareils atteints par la notification push (0 si aucun ou canal coupé). */
   push?: number;
   /** Pourquoi rien n'est parti, le cas échéant. */
-  raison?: 'inconnu' | 'auto' | 'doublon';
+  raison?: 'inconnu' | 'auto' | 'doublon' | 'bloque';
 };
 
 export type ParamsNotifier = {
@@ -194,6 +195,15 @@ async function notifierInterne(db: Db, p: ParamsNotifier): Promise<ResultatNotif
     return { cloche: 'aucune', email: 'aucun', raison: 'inconnu' };
   }
   if (p.acteurId && p.acteurId === p.userId) return { cloche: 'aucune', email: 'aucun', raison: 'auto' };
+
+  // Compte suspendu ou désactivé (JEP-272, arbitrage du 06/10/2026) : plus
+  // rien, cloche comprise, sauf les événements verrouillés (obligations
+  // légales : souscription, résiliation, support…). Vérifié avant la
+  // réservation de dédoublonnage, pour qu'un rappel écarté ici puisse encore
+  // partir une fois le compte rétabli.
+  if (!def.verrouille && (await membreBloque(db, p.userId))) {
+    return { cloche: 'aucune', email: 'aucun', raison: 'bloque' };
+  }
 
   // Unicité par membre, INDÉPENDANTE des canaux : un rappel quotidien ne doit
   // pas repartir à chaque passe du cron, que la cloche soit coupée ou non.

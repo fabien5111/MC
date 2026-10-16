@@ -120,13 +120,17 @@ body {
   position: fixed;
   z-index: 40; /* sous l'en-tête sticky du site, qui est à 50 */
   left: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  /* Posé sous l'en-tête sticky du site (~70 px : py-4 + logo 36 px + filet),
+     et non centré dans la fenêtre : centré, un rail haut passait son sommet
+     SOUS l'en-tête (z-index 50), et sa liste, qui défile à l'intérieur,
+     ne ramenait jamais les premières entrées à l'écran. */
+  top: calc(var(--site-header-h, 72px) + 12px);
   width: 58px;
   overflow: hidden; /* c'est ce qui masque les libellés à l'état replié */
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 24px);
+  max-height: calc(100vh - var(--site-header-h, 72px) - 24px);
+  max-height: calc(100dvh - var(--site-header-h, 72px) - 24px);
   background: #fff8f7; /* surface */
   border: 1px solid #d6c2c3; /* outline-variant */
   border-left: none;

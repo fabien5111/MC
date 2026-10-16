@@ -24,6 +24,7 @@ import {
   nouvelleCleObjet,
 } from '@/lib/storage';
 import { urlCanonique, urlDeTeleversement } from '@/lib/storage-data';
+import { compteBloque } from '@/lib/moderation-route';
 
 function refus(message: string, code: number) {
   return NextResponse.json({ error: message }, { status: code });
@@ -81,6 +82,9 @@ export async function POST(req: Request) {
     // Sans ce garde, l'impersonation pourrait déposer des objets — l'écriture
     // en base serait refusée ensuite, mais l'objet, lui, resterait.
     if (await isReadOnlySession()) return refus('Session en lecture seule.', 403);
+    // Compte suspendu ou désactivé (JEP-272). La branche `public` ci-dessus
+    // (photos de contact) reste ouverte : c'est le recours d'un compte bloqué.
+    if (await compteBloque(user.id)) return refus('Compte suspendu ou désactivé.', 403);
 
     if (decl.acces === 'admin' && !(await isAdmin(user.id))) {
       return refus('Réservé à l’administration.', 403);

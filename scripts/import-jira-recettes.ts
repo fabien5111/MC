@@ -17,6 +17,10 @@
 //   7. commente le ticket Jira et le passe à « Revue en cours » (best-effort :
 //      le brouillon existe déjà, un échec Jira est signalé sans l'annuler).
 //
+// Une clé LOCALE (`local-<nom>`, cf. `natureCle`) désigne une recette sans
+// ticket : les étapes 5 et 7 sont sautées — aucun appel à Jira, brouillon sans
+// photo (à ajouter en relecture).
+//
 // En mode `simulation`, les étapes 1 à 5 sont jouées jusqu'au téléchargement
 // et à la conversion de la photo compris, sans RIEN écrire (ni stockage, ni
 // base, ni Jira).
@@ -37,7 +41,9 @@ import {
   critereDestinataire,
   lireFichierImportJira,
   marqueImportJira,
+  natureCle,
   preparerBrouillonJira,
+  type NatureCle,
   type PieceJointeJira,
 } from '@/lib/import-jira';
 import { TAILLE_MAX_OCTETS } from '@/lib/storage';
@@ -183,7 +189,7 @@ async function passerEnRevue(cle: string): Promise<string> {
 }
 
 async function importerTicket(
-  cle: string,
+  { cle, nature }: NatureCle,
   membre: Membre,
   units: { name: string; abbreviation: string | null }[],
 ): Promise<Issue> {
@@ -211,9 +217,13 @@ async function importerTicket(
   const essai = preparerBrouillonJira(fichier, units, null, new Date());
   if (essai.erreurs.length) return { statut: 'echec', detail: `recette refusée — ${essai.erreurs.join(' ')}` };
 
-  // 5. Photo.
-  const issue = await appelJira(lireConfig(), `/rest/api/3/issue/${encodeURIComponent(cle)}?fields=attachment`);
-  const { piece, alerte: alertePhoto } = choisirPhotoJira(issue?.fields?.attachment ?? []);
+  // 5. Photo — seulement sur un ticket Jira : une clé locale n'en a pas.
+  let piece: PieceJointeJira | null = null;
+  let alertePhoto: string | null = 'Clé locale, sans ticket Jira : photo principale à ajouter en relecture.';
+  if (nature === 'jira') {
+    const issue = await appelJira(lireConfig(), `/rest/api/3/issue/${encodeURIComponent(cle)}?fields=attachment`);
+    ({ piece, alerte: alertePhoto } = choisirPhotoJira(issue?.fields?.attachment ?? []));
+  }
   let photoLocale: string | null = null;
   if (piece) {
     const dossier = mkdtempSync(path.join(tmpdir(), `import-${cle}-`));
@@ -251,6 +261,8 @@ async function importerTicket(
     throw new Error(`${e.message}${photoUrl ? ` (photo orpheline : ${photoUrl})` : ''}`);
   });
   const id = lignes?.[0]?.id;
+  const resumeImport = `brouillon n° ${id} — ${resume}`;
+  if (nature === 'locale') return { statut: 'importe', detail: resumeImport };
 
   // 7. Trace sur le ticket, puis « Revue en cours » — best-effort : le
   // brouillon existe, un échec Jira ne doit pas faire passer l'import pour
@@ -273,16 +285,25 @@ async function importerTicket(
     avertissements.push(`⚠️ ticket NON passé en revue (${(e as Error).message}) — à faire à la main`);
   }
 
-  return { statut: 'importe', detail: `brouillon n° ${id} — ${resume} — ${avertissements.join(' ; ')}` };
+  return { statut: 'importe', detail: `${resumeImport} — ${avertissements.join(' ; ')}` };
 }
 
 // ── Lot ──────────────────────────────────────────────────────
 
 async function main() {
-  const tickets = [...new Set((process.env.TICKETS || '').split(/[\s,;]+/).map((t) => t.trim().toUpperCase()).filter(Boolean))];
-  if (!tickets.length) throw new Error('Aucun ticket demandé (TICKETS vide).');
+  const saisies = (process.env.TICKETS || '').split(/[\s,;]+/).map((t) => t.trim()).filter(Boolean);
+  if (!saisies.length) throw new Error('Aucune clé demandée (TICKETS vide).');
+  // Clés validées AVANT tout accès à la base : une faute de frappe arrête le
+  // lot plutôt que d'en importer une partie.
+  const cles = new Map<string, NatureCle>();
+  for (const saisie of saisies) {
+    const n = natureCle(saisie);
+    if ('erreur' in n) throw new Error(n.erreur);
+    cles.set(n.cle, n);
+  }
+  const tickets = [...cles.values()];
 
-  console.log(`Mode : ${SIMULATION ? 'SIMULATION (aucune écriture)' : 'IMPORT'} — ${tickets.length} ticket(s).`);
+  console.log(`Mode : ${SIMULATION ? 'SIMULATION (aucune écriture)' : 'IMPORT'} — ${tickets.length} clé(s).`);
 
   const membre = await resoudreDestinataire(process.env.DESTINATAIRE || '');
   console.log(`Destinataire : ${nomMembre(membre)}.`);
@@ -293,10 +314,11 @@ async function main() {
   if (!Array.isArray(units) || units.length === 0) throw new Error('Référentiel `units` vide : clé service_role à vérifier.');
 
   const bilan: Record<Issue['statut'], number> = { importe: 0, simule: 0, deja: 0, echec: 0 };
-  for (const cle of tickets) {
+  for (const ticket of tickets) {
+    const { cle } = ticket;
     let r: Issue;
     try {
-      r = await importerTicket(cle, membre, units);
+      r = await importerTicket(ticket, membre, units);
     } catch (e) {
       r = { statut: 'echec', detail: (e as Error).message };
     }

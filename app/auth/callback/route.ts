@@ -87,6 +87,11 @@ export async function GET(request: Request) {
   const type = commeTypeOtp(searchParams.get('type'));
   const next = safeNext(searchParams.get('next'));
 
+  // Connexion Google d'un compte banni (JEP-272) : GoTrue revient ici sans
+  // code, avec `error_code=user_banned` — un message dédié plutôt que
+  // l'échec générique.
+  if (searchParams.get('error_code') === 'user_banned') return redirigerVers('/connexion?error=compte_bloque');
+
   const supabase = await createClient();
 
   if (code) {

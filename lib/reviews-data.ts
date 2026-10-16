@@ -23,6 +23,28 @@ import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import { validateReview, normalizeReviewPhotos } from '@/lib/reviews';
 import type { ReviewPhoto } from '@/lib/reviews';
 import type { BatchFull } from '@/lib/recipe-plan';
+import { isProjectDraft, type ProjectMarks } from '@/lib/projects';
+
+// La recette d'origine est-elle un projet encore en construction ? Une fournée
+// d'essai de ce projet ne propose ni note ni commentaire : la recette n'est ni
+// publiée ni aboutie. Calculé à la lecture (aucune colonne) ; lecture en échec
+// → faux, on se tait plutôt que de bloquer à tort. Lue avec le client de
+// session (la RLS laisse le propriétaire lire sa recette) ou, pour la route
+// serveur, avec celui qu'on lui passe.
+export async function recetteEstProjetEnCours(
+  recipeId: string | null,
+  client?: { from: (t: string) => any },
+): Promise<boolean> {
+  if (!recipeId) return false;
+  const supabase = client ?? (await createClient());
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('kind, project_stage')
+    .eq('id', recipeId)
+    .maybeSingle();
+  if (error || !data) return false;
+  return isProjectDraft(data as ProjectMarks);
+}
 
 export type MyRecipeReview = {
   id: number;
@@ -102,6 +124,11 @@ export async function submitOrUpdateReview(
   if (batch.user_id !== userId) return { ok: false, message: 'Cette fournée ne vous appartient pas.' };
   if (batch.status !== 'terminee') return { ok: false, message: 'Cette fournée n’est pas encore terminée.' };
   if (!batch.recipe_id) return { ok: false, message: 'Recette d’origine introuvable.' };
+  // Garde réelle de la règle « pas d'avis sur un essai de projet en cours » :
+  // le masquage de l'écran ne suffirait pas, la route reste appelable.
+  if (await recetteEstProjetEnCours(batch.recipe_id, createAdminClient() as never)) {
+    return { ok: false, message: 'Une fournée d’essai d’un projet en cours ne peut pas recevoir d’avis.' };
+  }
 
   const validation = validateReview(rating, comment, photos);
   if (!validation.ok) return validation;
