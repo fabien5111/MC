@@ -560,6 +560,14 @@ Toujours par `POST /api/admin/membres/[id]/moderation` (admin complet,
   `/api/abonnement/resilier` — **volontairement sans `refusSiCompteBloque`** :
   les fermer empêcherait un membre bloqué d'arrêter ses prélèvements. Limite :
   la page n'est atteignable que tant que la session vit (bannissement GoTrue).
+  **Après déconnexion, le lien de connexion au portail Stripe** (Dashboard →
+  Paramètres → Facturation → Portail client, `NEXT_PUBLIC_STRIPE_PORTAIL_CONNEXION_URL`,
+  `urlConnexionPortail()`) : le membre y saisit son e-mail, reçoit un code, et
+  gère son moyen de paiement hors du site. Posé sur le message de connexion
+  (`LoginForm`, `/connexion?error=compte_bloque`), sur `/compte-suspendu` et dans
+  l'e-mail de suspension / désactivation (seulement si le membre a un abonnement
+  Stripe). Absent : rien d'affiché. Le portail ne résilie pas (§14) : pour cela,
+  le formulaire de contact.
 - Lot 3 (restrictions partielles, déconnexion forcée, RGPD) : à venir.
 
 ### Connexion « en tant que » (impersonation)
@@ -2242,6 +2250,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `SWIFT_TEMPURL_KEY_PHOTOS` | Clé de signature TempURL du conteneur `jp-photos` (public). **Doit différer de la suivante** : c'est ce qui cloisonne réellement les deux conteneurs | Serveur uniquement |
 | `SWIFT_TEMPURL_KEY_CONTACT` | Clé de signature TempURL du conteneur `jp-contact` (privé, photos de contact — données personnelles) | Serveur uniquement |
 | `CARNET_PARTAGE_SECRET` | Signe les liens de partage de carnet (`lib/book-link.ts`, JEP-21) — optionnelle : absente, dérivée de `SUPABASE_SERVICE_ROLE_KEY`. La changer invalide tous les liens déjà distribués | Serveur uniquement |
+| `NEXT_PUBLIC_STRIPE_PORTAIL_CONNEXION_URL` | Page de connexion au portail client Stripe, proposée aux comptes suspendus ou désactivés (JEP-272). Optionnelle ; URL `test_` en test, à remplacer en production | Publique (inlinée au build) |
 | `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Variable lue côté serveur à l'exécution, pas au build : un changement prend effet au redémarrage du nœud, sans reconstruction. | Serveur uniquement |
 
 Modèle local : `.env.local.example` → `.env.local`.

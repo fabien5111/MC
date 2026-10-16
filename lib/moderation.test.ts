@@ -217,6 +217,14 @@ describe('gestes sur l’abonnement', () => {
 describe('composerEmailModeration', () => {
   const base = { motif: 'Propos injurieux', jusquAu: null, abonnement: 'aucune' as const, finPeriode: null, urlSite: 'https://dev.jepatisse.com' };
 
+  it('lien du portail Stripe : seulement sur un blocage, quand il est fourni', () => {
+    const url = 'https://billing.stripe.com/p/login/xyz';
+    expect(composerEmailModeration({ ...base, action: 'suspendre', urlPortail: url }).texte).toContain(url);
+    expect(composerEmailModeration({ ...base, action: 'desactiver', urlPortail: url }).texte).toContain(url);
+    expect(composerEmailModeration({ ...base, action: 'lever', urlPortail: url }).texte).not.toContain(url);
+    expect(composerEmailModeration({ ...base, action: 'suspendre' }).texte).not.toContain('billing.stripe.com');
+  });
+
   it('suspension : motif, durée et recours', () => {
     const m = composerEmailModeration({ ...base, action: 'suspendre' });
     expect(m.evenement).toBe('compte_suspendu');

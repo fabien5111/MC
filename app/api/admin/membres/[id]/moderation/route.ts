@@ -41,6 +41,7 @@ import {
   ACTION_JOURNAL,
   colonnesProfil,
   composerEmailModeration,
+  urlConnexionPortail,
   dureeBannissement,
   emailObligatoire,
   etatModeration,
@@ -171,6 +172,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // annoncé comme fait.
   let email: 'envoye' | 'echec' | 'file' | 'non_demande' = 'non_demande';
   if (prevenir) {
+    // Lien du portail Stripe : seulement pour un membre qui a un abonnement
+    // Stripe, et si l'URL est configurée (sinon pas de lecture inutile).
+    const urlPortail = urlConnexionPortail();
+    const etatAbo = demande.action !== 'lever' && urlPortail ? (abonnementLu.etat ?? (await lireAbonnementModere(admin, cibleId)).etat) : null;
     const mail = composerEmailModeration({
       action: demande.action,
       motif: demande.motif,
@@ -178,6 +183,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       abonnement: abonnement.ok ? abonnement.action : 'aucune',
       finPeriode,
       urlSite: siteUrl(),
+      urlPortail: etatAbo?.stripe ? urlPortail : null,
     });
     const r = await notifier(admin, {
       userId: cibleId,

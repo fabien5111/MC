@@ -17,9 +17,11 @@ type Props = {
   finPeriode: string | null;
   /** Résiliation déjà programmée chez Stripe : on n'offre plus de la demander. */
   resiliationProgrammee: boolean;
+  /** Page de connexion au portail Stripe, pour y revenir après déconnexion (le compte ne peut plus se connecter au site). */
+  urlConnexionPortail?: string | null;
 };
 
-export function AbonnementCompteBloque({ libelle, finPeriode, resiliationProgrammee }: Props) {
+export function AbonnementCompteBloque({ libelle, finPeriode, resiliationProgrammee, urlConnexionPortail }: Props) {
   const router = useRouter();
   const dialog = useDialog();
   const [busy, setBusy] = useState(false);
@@ -92,6 +94,15 @@ export function AbonnementCompteBloque({ libelle, finPeriode, resiliationProgram
           </button>
         )}
       </div>
+      {urlConnexionPortail && (
+        <p className="text-xs text-on-surface-variant">
+          Une fois déconnecté, vous ne pourrez plus accéder à cette page : gérez votre abonnement depuis{' '}
+          <a href={urlConnexionPortail} target="_blank" rel="noopener noreferrer" className="underline">
+            ce lien Stripe
+          </a>{' '}
+          (adresse e-mail de votre compte, code reçu par e-mail).
+        </p>
+      )}
     </div>
   );
 }

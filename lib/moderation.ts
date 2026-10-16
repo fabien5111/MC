@@ -212,6 +212,18 @@ export function colonnesProfil(demande: DemandeModeration): {
 // ── Refus d'écriture d'un compte bloqué ─────────────────────────────────
 
 /** Message montré à un compte bloqué dont une action est refusée (routes API et écrans). */
+/**
+ * Page de connexion au portail client Stripe (Dashboard → Paramètres →
+ * Facturation → Portail client → lien de connexion) : le membre y saisit son
+ * e-mail, reçoit un code, et gère son abonnement SANS passer par le site, donc
+ * sans être arrêté par le bannissement. Variable publique (inlinée au build)
+ * car lue par le formulaire de connexion ; l'URL n'est pas un secret. Absente :
+ * aucun lien n'est affiché.
+ */
+export function urlConnexionPortail(): string | null {
+  return process.env.NEXT_PUBLIC_STRIPE_PORTAIL_CONNEXION_URL || null;
+}
+
 export const MESSAGE_COMPTE_BLOQUE = 'Votre compte est suspendu ou désactivé : cette action est impossible.';
 
 /**
@@ -337,6 +349,8 @@ export function composerEmailModeration(p: {
   abonnement: ActionAbonnement;
   finPeriode: string | null;
   urlSite: string;
+  /** Lien de connexion au portail Stripe, à fournir seulement si le membre a un abonnement Stripe. */
+  urlPortail?: string | null;
 }): EmailModeration {
   const contact = `${p.urlSite}/contact`;
   const abonnement = ligneAbonnement(p.abonnement, p.finPeriode);
@@ -376,6 +390,11 @@ export function composerEmailModeration(p: {
   }
 
   if (abonnement) blocs.push(abonnement);
+  if (p.action !== 'lever' && p.urlPortail) {
+    blocs.push(
+      `Vous avez un abonnement : vous pouvez le gérer (moyen de paiement, factures) sans vous connecter au site, depuis ce lien. Saisissez l’adresse e-mail de votre compte, un code vous sera envoyé : ${p.urlPortail}`,
+    );
+  }
   if (p.action !== 'lever') {
     blocs.push(`Pour contester cette décision ou poser une question, écrivez-nous depuis la page Contact : ${contact}`);
   }

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentUser, getProfile } from '@/lib/auth';
 import { getEtatModeration } from '@/lib/moderation-data';
+import { urlConnexionPortail } from '@/lib/moderation';
 import { formatDateHeure } from '@/lib/format';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { lireAbonnementModere } from '@/lib/moderation-actions';
@@ -59,6 +60,7 @@ export default async function CompteSuspenduPage() {
             libelle={abonnement.libelle}
             finPeriode={abonnement.finPeriode}
             resiliationProgrammee={abonnement.resiliationProgrammee}
+            urlConnexionPortail={urlConnexionPortail()}
           />
         )}
         <p className="text-sm text-on-surface-variant">
