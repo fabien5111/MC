@@ -553,6 +553,13 @@ Toujours par `POST /api/admin/membres/[id]/moderation` (admin complet,
   l'appelle, et la route le rejoue sur les recettes notées par le membre à la
   désactivation et à sa levée (`recalculerNotesDuMembre`). Fonction absente :
   ignoré sans erreur.
+- **Abonnement accessible depuis `/compte-suspendu`** : pour un abonnement
+  Stripe actif (`lireAbonnementModere`, best-effort), un bloc
+  (`AbonnementCompteBloque`) offre le portail Stripe (moyen de paiement,
+  factures) et la résiliation à l'échéance, par `/api/abonnement/portail` et
+  `/api/abonnement/resilier` — **volontairement sans `refusSiCompteBloque`** :
+  les fermer empêcherait un membre bloqué d'arrêter ses prélèvements. Limite :
+  la page n'est atteignable que tant que la session vit (bannissement GoTrue).
 - Lot 3 (restrictions partielles, déconnexion forcée, RGPD) : à venir.
 
 ### Connexion « en tant que » (impersonation)

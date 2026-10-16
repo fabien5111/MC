@@ -4,6 +4,9 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser, getProfile } from '@/lib/auth';
 import { getEtatModeration } from '@/lib/moderation-data';
 import { formatDateHeure } from '@/lib/format';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { lireAbonnementModere } from '@/lib/moderation-actions';
+import { AbonnementCompteBloque } from '@/components/compte/AbonnementCompteBloque';
 import { AuthShell } from '@/components/AuthShell';
 import { SignOutButton } from '@/components/SignOutButton';
 
@@ -28,6 +31,11 @@ export default async function CompteSuspenduPage() {
 
   const suspendu = etat.etat === 'suspendu';
 
+  // Abonnement payant par Stripe : le membre doit pouvoir y accéder (moyen de
+  // paiement, résiliation) même bloqué. Lecture best-effort : en échec, rien
+  // n'est affiché, le formulaire de contact reste le recours.
+  const { etat: abonnement } = await lireAbonnementModere(createAdminClient(), user.id).catch(() => ({ etat: null }));
+
   return (
     <AuthShell>
       <div className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest p-6 space-y-4 text-center">
@@ -45,6 +53,13 @@ export default async function CompteSuspenduPage() {
             <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Motif</p>
             <p className="text-sm whitespace-pre-line">{etat.motif}</p>
           </div>
+        )}
+        {abonnement?.stripe && (
+          <AbonnementCompteBloque
+            libelle={abonnement.libelle}
+            finPeriode={abonnement.finPeriode}
+            resiliationProgrammee={abonnement.resiliationProgrammee}
+          />
         )}
         <p className="text-sm text-on-surface-variant">
           Pour contester cette décision ou en savoir plus, écrivez-nous depuis le{' '}
