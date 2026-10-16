@@ -176,15 +176,17 @@ export function validerDemandeModeration(
 
 /**
  * Durée du bannissement GoTrue (`ban_duration`) correspondant à la demande.
- * Arrondie à l'heure supérieure : la garde applicative et la RLS, elles,
- * lèvent la suspension à la minute près — l'heure de bannissement en trop
- * ne retarde que la reconnexion, d'au plus une heure.
+ * Arrondie à la **minute** supérieure — pas à l'heure : un bannissement plus
+ * long que la suspension retarderait d'autant la reconnexion, alors que le
+ * ticket exige que le membre puisse se reconnecter à la date de fin sans
+ * action manuelle. La garde applicative et la RLS lèvent la suspension à la
+ * seconde près ; GoTrue (durée Go) accepte les minutes.
  */
 export function dureeBannissement(demande: DemandeModeration, maintenant: Date = new Date()): string {
   if (demande.action === 'lever') return 'none';
   if (demande.action === 'suspendre' && demande.jusquAu) {
-    const heures = Math.ceil((new Date(demande.jusquAu).getTime() - maintenant.getTime()) / 3_600_000);
-    return `${Math.max(1, heures)}h`;
+    const minutes = Math.ceil((new Date(demande.jusquAu).getTime() - maintenant.getTime()) / 60_000);
+    return `${Math.max(1, minutes)}m`;
   }
   return BAN_SANS_LIMITE;
 }

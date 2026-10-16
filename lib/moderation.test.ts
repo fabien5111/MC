@@ -107,9 +107,11 @@ describe('validerDemandeModeration', () => {
 });
 
 describe('dureeBannissement / colonnesProfil', () => {
-  it('suspension datée : heures arrondies au-dessus', () => {
+  it('suspension datée : minutes arrondies au-dessus, jamais plus long que la suspension', () => {
     const fin = new Date(MAINTENANT.getTime() + 90 * 60_000).toISOString();
-    expect(dureeBannissement({ action: 'suspendre', motif: 'x', jusquAu: fin }, MAINTENANT)).toBe('2h');
+    expect(dureeBannissement({ action: 'suspendre', motif: 'x', jusquAu: fin }, MAINTENANT)).toBe('90m');
+    const finCourte = new Date(MAINTENANT.getTime() + 10 * 60_000 + 1_000).toISOString();
+    expect(dureeBannissement({ action: 'suspendre', motif: 'x', jusquAu: finCourte }, MAINTENANT)).toBe('11m');
   });
 
   it('sans limite et désactivation : cent ans ; levée : none', () => {

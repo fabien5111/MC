@@ -485,7 +485,7 @@ Toujours par `POST /api/admin/membres/[id]/moderation` (admin complet,
 - **Levée automatique calculée à la lecture** (`etatModeration`,
   `lib/moderation.ts`, et son jumeau SQL `public.is_blocked_user()`, à garder
   alignés) : une suspension échue vaut « actif », aucun cron ne réécrit la
-  ligne. Le bannissement GoTrue (`ban_duration`, arrondi à l'heure au-dessus)
+  ligne. Le bannissement GoTrue (`ban_duration`, arrondi à la minute au-dessus : à l'heure, il aurait retardé la reconnexion après la date de fin)
   expire de lui-même.
 - **Quatre verrous** : bannissement GoTrue (plus de connexion, e-mail comme
   Google, ni de renouvellement de jeton) ; `requireUser()` → `/compte-suspendu`
