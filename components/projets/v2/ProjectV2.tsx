@@ -1,22 +1,20 @@
 'use client';
 
-// Mode projet v2 — la page verticale (admins seulement, à côté du parcours
-// en onglets pour comparer). Le projet s'y lit comme la recette qu'il
+// Mode projet — la page verticale de `/projets/[id]` (l'ancien parcours en
+// onglets a été retiré). Le projet s'y lit comme la recette qu'il
 // deviendra : les blocs de la recette dans l'ordre de l'éditeur, entre
 // lesquels s'intercalent les blocs « Atelier projet » (fond plus clair). Les
 // blocs pas encore atteints restent visibles, grisés (`projectV2BlockStates`).
 //
-// Même doctrine que la v1 : chaque geste écrit en base puis resynchronise
-// (`useMutation`), aucun miroir local de la liste des composants. Écarts
-// voulus :
-// - la v2 n'écrit JAMAIS `recipe_projects.wizard_step` — l'étape du parcours
-//   en onglets lui appartient, ouvrir un projet ici ne doit pas l'y déplacer ;
+// Chaque geste écrit en base puis resynchronise (`useMutation`), aucun miroir
+// local de la liste des composants. À connaître :
+// - `recipe_projects.wizard_step` n'est plus écrit (colonne de l'ancien
+//   parcours en onglets, désormais inutilisée) ;
 // - la description du dessert se saisit pour tous les formats ;
 // - les éléments de recette (photo, catégories, ustensiles…) s'écrivent
 //   section par section, jamais par l'enregistrement global de `CreerForm`
 //   (cf. RecipeDetailEditors).
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -129,6 +127,7 @@ export function ProjectV2({
   difficulties,
   utensilNames,
   difficultyId,
+  peutCreerTag = false,
 }: {
   project: ProjectFull;
   // `null` si la recette du projet n'a pas pu être lue : les blocs de recette
@@ -149,6 +148,8 @@ export function ProjectV2({
   difficulties: DifficultyOption[];
   utensilNames: string[];
   difficultyId: number | null;
+  // Création d'un tag à la volée : réservée aux admins, comme dans /creer.
+  peutCreerTag?: boolean;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -159,7 +160,6 @@ export function ProjectV2({
   const anyDirty = dirtyLabels.length > 0;
   const [leaving, setLeaving] = useState(false);
   const states = projectV2BlockStates({ ...project, intent: project.intent });
-  const v1 = `/projets/${project.id}`;
 
   const composants = useProjectComponents(project, mutate, dialog);
   const { ordered, resolving, resolvingInit, setResolvingInit, consultBusy, ouvrirComposant, retirerRecette, fermerResolution } =
@@ -264,8 +264,8 @@ export function ProjectV2({
     );
   }
 
-  // Une seule proposition pour le format ET les préparations (même route que
-  // le parcours en onglets). Ici tout est visible sur la même page : le
+  // Une seule proposition pour le format ET les préparations
+  // (`/api/projet/structure`). Tout est visible sur la même page : le
   // format proposé est enregistré d'emblée s'il est complet, et les
   // préparations ne sont écrites que si le projet n'en a encore aucune —
   // jamais par-dessus une structure déjà composée.
@@ -674,7 +674,6 @@ export function ProjectV2({
       onClick: () => void valider(),
       disabled: busy || leaving || blockers.length > 0,
     },
-    { id: 'v1', icon: 'arrow_back', label: 'Revenir à la version actuelle', variant: 'outline', onClick: () => router.push(v1) },
   ];
 
   const sansRecette = <p className="text-sm text-on-surface-variant">La recette du projet n’a pas pu être lue.</p>;
@@ -690,7 +689,7 @@ export function ProjectV2({
 
       <header className="mb-8">
         <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
-          Mode projet · nouvelle version (essai)
+          Mode projet
         </p>
         <h1 className="mb-3 font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[34px]">
           {project.title === 'Nouveau projet' ? 'Nouveau projet' : project.title}
@@ -706,9 +705,6 @@ export function ProjectV2({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <Link href={v1} className="text-sm text-secondary underline underline-offset-2 hover:text-primary">
-            Revenir à la version actuelle
-          </Link>
           <span className="flex items-center gap-2 text-[12px] text-on-surface-variant">
             <span className="inline-block h-3 w-3 rounded border border-outline-variant bg-surface-container-low" />
             Recette
@@ -823,7 +819,7 @@ export function ProjectV2({
               )}
             </div>
             {recipe && (
-              <TagsEditor recipe={recipe} tags={tags} mutate={mutate} busy={busy} sections={sectionRegistry} />
+              <TagsEditor recipe={recipe} tags={tags} mutate={mutate} busy={busy} sections={sectionRegistry} peutCreer={peutCreerTag} />
             )}
           </div>,
         )}

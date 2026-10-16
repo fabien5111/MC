@@ -156,8 +156,8 @@ export function HeroEditor({
 // Même principe que l'éditeur de recette (`CreerForm`) : les tags choisis
 // sont des pastilles pleines qu'un clic retire, « + Ajouter un tag » ouvre une
 // liste avec recherche (sans accents ni casse) et cases à cocher, et un tag
-// absent du référentiel se crée à la volée — la v2 étant réservée aux admins,
-// ce champ est toujours proposé (dans l'éditeur, il l'est aux seuls admins).
+// absent du référentiel se crée à la volée — par un admin seulement (`peutCreer`),
+// comme dans l'éditeur : un membre choisit parmi les tags existants.
 // Différence voulue : la liaison recette ↔ tags ne s'écrit qu'au bouton
 // « Enregistrer », section par section ; le tag créé, lui, entre au
 // référentiel tout de suite, comme dans l'éditeur.
@@ -170,12 +170,14 @@ export function TagsEditor({
   mutate,
   busy,
   sections,
+  peutCreer = false,
 }: {
   recipe: RecipeFull;
   tags: RefOption[];
   mutate: Mutate;
   busy: boolean;
   sections?: SectionRegistry;
+  peutCreer?: boolean;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -319,6 +321,7 @@ export function TagsEditor({
           )}
         </div>
       </div>
+      {peutCreer && (
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="text"
@@ -343,6 +346,7 @@ export function TagsEditor({
           Créer le tag
         </button>
       </div>
+      )}
       {modifie && (
         <button type="button" onClick={enregistrer} disabled={busy} className={btnPrimary}>
           Enregistrer les catégories

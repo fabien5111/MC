@@ -100,7 +100,7 @@ export async function POST(req: Request) {
 
   const { error: projErr } = await supabase
     .from('recipe_projects')
-    .insert({ recipe_id: data.id, intent: intent || null, wizard_step: 2 } as never);
+    .insert({ recipe_id: data.id, intent: intent || null } as never);
 
   if (projErr) {
     console.error('projet (satellite):', projErr.message);

@@ -12,19 +12,14 @@ import { useRouter } from 'next/navigation';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ProjectIntentStep, type ProjectStartMode } from '@/components/projets/ProjectIntentStep';
-import { WIZARD_LABELS, WIZARD_STEPS } from '@/lib/projects';
 import type { ProposedStructure } from '@/lib/ai/project-structure';
 
 export function NewProjectStart({
   peutGenererIA,
   quotaProjetIA,
-  versionEssai = false,
 }: {
   peutGenererIA: boolean;
   quotaProjetIA: { allowed: boolean; limit?: number; usage?: number } | null;
-  // Admin : le projet s'ouvre sur la v2 (page verticale), lisible depuis la v1
-  // par le lien « Revenir à la version actuelle ». Décidé par le serveur.
-  versionEssai?: boolean;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -69,7 +64,7 @@ export function NewProjectStart({
       // `replace` : revenir en arrière depuis le projet ne doit pas rouvrir
       // un écran de création, qui en créerait un second. Le voile reste
       // affiché jusqu'au démontage par la navigation.
-      router.replace(`/projets/${data.id}${versionEssai ? '/v2' : ''}${proposal?.format || proposal?.components.length ? '?ia=1' : ''}`);
+      router.replace(`/projets/${data.id}`);
     } catch {
       dialog.alert('La création du projet a échoué.');
       setBusy(false);
@@ -79,21 +74,6 @@ export function NewProjectStart({
   return (
     <>
       <LoadingOverlay visible={busy} label={label} />
-      {/* Fil des étapes, figé : rien d'autre n'est atteignable tant que le
-          projet n'existe pas. */}
-      <ol className="mb-10 flex flex-wrap items-center gap-2">
-        {WIZARD_STEPS.map((s) => (
-          <li key={s}>
-            <span
-              className={`inline-block rounded-pill px-4 py-1.5 font-label-md text-[12.5px] ${
-                s === 1 ? 'bg-primary text-on-primary' : 'border border-outline-variant text-outline'
-              }`}
-            >
-              {s}. {WIZARD_LABELS[s]}
-            </span>
-          </li>
-        ))}
-      </ol>
       <ProjectIntentStep
         peutGenererIA={peutGenererIA}
         quotaProjetIA={quotaProjetIA}

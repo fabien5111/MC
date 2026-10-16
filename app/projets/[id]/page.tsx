@@ -1,54 +1,50 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import Link from 'next/link';
 import { isAdmin, requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
 import { getProjectFull, getProjectTrials } from '@/lib/projects-data';
 import { canAccess } from '@/lib/entitlements';
-import { getCurrentPlan, getEntitlements, checkQuota } from '@/lib/entitlements-data';
+import { checkQuota, getCurrentPlan, getEntitlements } from '@/lib/entitlements-data';
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getRecipeFull } from '@/lib/recipes';
-import { getAllergenRefs, getIngredientRefAllergens, getIngredientRefsList, getTags } from '@/lib/data/reference';
+import { getAllergenRefs, getDifficulties, getIngredientRefAllergens, getIngredientRefsList, getTags, getUtensilRefNames } from '@/lib/data/reference';
+import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
-import { ProjectWizard } from '@/components/projets/ProjectWizard';
+import { ProjectV2 } from '@/components/projets/v2/ProjectV2';
 import { ProjectReadOnly } from '@/components/projets/ProjectReadOnly';
 
 export const metadata: Metadata = { title: 'Projet | Je pâtisse !' };
-// Jamais de cache : le dialogue est enregistré au fil de l'eau et relu à
-// chaque rendu serveur (cf. ProjectWizard — la liste des composants vient
-// des props, jamais d'un miroir local).
+// Tout s'enregistre au fil de l'eau et se relit à chaque rendu serveur,
+// jamais de cache.
 export const dynamic = 'force-dynamic';
 
-type Params = { params: Promise<{ id: string }>; searchParams: Promise<{ ia?: string }> };
+type Params = { params: Promise<{ id: string }> };
 
-export default async function ProjetPage({ params, searchParams }: Params) {
+// Mode projet — page verticale qui présente le projet comme la recette qu'il
+// deviendra (cf. CLAUDE.md « Mode projet »). Ancien parcours en onglets
+// retiré : cette page est désormais celle de tous les membres.
+export default async function ProjetPage({ params }: Params) {
   const { id } = await params;
-  const { ia } = await searchParams;
   const user = await requireUser(`/projets/${id}`);
   // Même garde que /creer, /importer et /relecture : un projet s'écrit à
   // chaque geste, une session « en tant que » en lecture seule n'y entre pas.
   await requireWritableSession();
 
   // `getProjectFull` ne rend que ce que la RLS laisse voir, et seulement si
-  // la recette est bien un projet. La propriété est donc déjà tenue ; ce
-  // `notFound()` couvre l'identifiant inconnu comme la recette d'un autre.
+  // la recette est bien un projet : l'identifiant inconnu comme la recette
+  // d'un autre tombent sur `notFound()`.
   const project = await getProjectFull(id);
   if (!project) notFound();
-
-  // Projet déjà validé ou dissous : ce n'est plus un chantier, c'est une
-  // recette ordinaire — le parcours guidé n'a rien à en faire, sa fiche si.
+  // Projet déjà validé ou dissous : c'est une recette ordinaire.
   if (project.stage !== 'wizard') redirect(`/recette/${id}`);
 
-  // Mode projet perdu (rétrogradation) : le projet reste entièrement lisible,
-  // rien ne s'écrit plus. On ne redirige jamais vers la fiche recette — un
-  // projet en cours n'est pas une recette utilisable en l'état, c'est un
-  // chantier interrompu (cf. docs/abonnements.md §6, point tranché). Vérifié
-  // avant les lectures propres au parcours interactif (moules, unités,
-  // conversions, fournée d'essai) : elles ne servent à rien dans ce cas.
-  const [droits, plan] = await Promise.all([getEntitlements(user.id), getCurrentPlan(user.id)]);
+  // Mode projet perdu (rétrogradation) : le projet reste lisible, rien ne
+  // s'écrit plus — jamais de renvoi vers la fiche recette, un projet en
+  // cours est un chantier interrompu (docs/abonnements.md §6).
+  const [droits, plan, admin] = await Promise.all([getEntitlements(user.id), getCurrentPlan(user.id), isAdmin(user.id)]);
   if (!canAccess(droits, 'mode_projet')) {
     return (
       <>
@@ -66,33 +62,26 @@ export default async function ProjetPage({ params, searchParams }: Params) {
     );
   }
 
-  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, admin, allergenRefs, refAllergens, tagsRef] = await Promise.all([
-    getMoldTypes(),
-    getUnits(),
-    // Table de conversions : sert au récapitulatif (étape 6), qui consolide
-    // les ingrédients des composants avec la fonction de la fiche recette.
-    getIngredientConversions(),
-    // Recette du projet telle que le moteur de fournée la lit : une fournée
-    // d'essai passe exactement par le même chemin que celle d'une recette
-    // ordinaire (cf. lib/batch-write.ts).
-    getRecipeFull(id, 'lecture'),
-    getProjectTrials(id),
-    // Aide à la saisie des ingrédients d'un composant saisi à la main
-    // (JEP-254, point 9) — le même référentiel que l'éditeur de recette.
-    getIngredientRefsList(),
-    // Mode projet v2 (page verticale) : en essai, réservé aux admins — seuls
-    // eux voient le lien pour comparer les deux versions sur le même projet.
-    isAdmin(user.id),
-    getAllergenRefs(),
-    getIngredientRefAllergens(),
-    getTags(),
-  ]);
-  // Droit + quota des générations IA du mode projet (`mode_projet_ia_mensuel`,
-  // §/api/projet/structure, /api/projet/composant) — lecture d'affichage
-  // seule (`mc_check_quota`, §1.3 docs/abonnements.md, JEP-77) pour griser
-  // « Demander une proposition à l'IA » (ComponentResolver) une fois le
-  // quota mensuel atteint, plutôt que de laisser découvrir le refus après un
-  // clic.
+  const supabase = await createClient();
+  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, tags, difficulties, utensilNames, ids, allergenRefs, refAllergens] =
+    await Promise.all([
+      getMoldTypes(),
+      getUnits(),
+      getIngredientConversions(),
+      // Portée `edition` : la v2 modifie la photo d'en-tête, dont l'original
+      // n'est lu que dans cette portée (comme /creer).
+      getRecipeFull(id, 'edition'),
+      getProjectTrials(id),
+      getIngredientRefsList(),
+      getTags(),
+      getDifficulties(),
+      getUtensilRefNames(),
+      // `difficulty_id` n'est pas porté par `RecipeFull` (seule la jointure
+      // l'est) : lu à part pour pré-remplir.
+      supabase.from('recipes').select('difficulty_id').eq('id', id).maybeSingle(),
+      getAllergenRefs(),
+      getIngredientRefAllergens(),
+    ]);
   const peutGenererIA = canAccess(droits, 'mode_projet_ia_mensuel');
   const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, 'mode_projet_ia_mensuel') : null;
   // Quota des ajustements par IA des quantités (`ajustement_ia_mensuel`),
@@ -100,40 +89,30 @@ export default async function ProjetPage({ params, searchParams }: Params) {
   const quotaAjustementIA = canAccess(droits, 'ajustement_ia_mensuel')
     ? await checkQuota(user.id, 'ajustement_ia_mensuel')
     : null;
+  const ligne = (ids.data ?? null) as { difficulty_id: number | null } | null;
 
   return (
     <>
       <Header />
       <main className="mx-auto mb-24 max-w-[900px] px-margin-mobile py-12 md:px-margin-desktop">
-        <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">Mode projet</p>
-        <h1 className="mb-8 font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[34px]">
-          {project.title === 'Nouveau projet' ? 'Nouveau projet' : project.title}
-        </h1>
-        {admin && (
-          <p className="-mt-5 mb-6">
-            <Link
-              href={`/projets/${id}/v2`}
-              className="text-sm text-secondary underline underline-offset-2 hover:text-primary"
-            >
-              Essayer la nouvelle version (vue recette)
-            </Link>
-          </p>
-        )}
-        <ProjectWizard
+        <ProjectV2
           project={project}
+          recipe={recipe}
           moldTypes={moldTypes}
           units={units.map((u) => u.name)}
-          conversions={conversions}
           unitRefs={units.map((u) => ({ id: u.id, name: u.name }))}
+          conversions={conversions}
           ingredientRefs={ingredientRefs}
           referenceAllergenes={{ names: allergenRefs.map((a) => a.name), byIngredient: refAllergens }}
-          tagsReference={tagsRef.map((t) => ({ id: t.id, name: t.name }))}
-          fromAI={ia === '1'}
-          recipe={recipe}
           trials={trials}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
           quotaAjustementIA={quotaAjustementIA}
+          tags={tags.map((t) => ({ id: t.id, name: t.name }))}
+          difficulties={difficulties.map((d) => ({ id: d.id, name: d.name, level: d.level }))}
+          utensilNames={utensilNames}
+          difficultyId={ligne?.difficulty_id ?? null}
+          peutCreerTag={admin}
         />
       </main>
       <Footer />

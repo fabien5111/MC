@@ -1,9 +1,9 @@
 'use client';
 
 // Liste des composants d'un projet, éditable : glisser-déposer, rôle, mode
-// d'ajustement, renommer, retirer, ajouter. Partagée par l'étape 3 du
-// parcours en onglets et par le bloc « Structure » de la v2, qui y branche en
-// plus le statut de résolution et le bouton d'ouverture (`extra`).
+// d'ajustement, renommer, retirer, ajouter. Rendue par le bloc « Structure »
+// de la page projet, qui y branche le statut de résolution et le bouton
+// d'ouverture (`extra`).
 import { useState, type ReactNode } from 'react';
 import { COMPONENT_ROLES, COMPONENT_SCALING_MODES } from '@/lib/projects';
 import type { ProjectComponent } from '@/lib/projects-data';
