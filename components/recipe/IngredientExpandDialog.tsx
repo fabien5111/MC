@@ -17,6 +17,9 @@
 // contenu inséré est une copie, comme le reste de la fournée — la
 // sous-recette peut évoluer ou disparaître ensuite sans rien changer ici
 // (cf. CLAUDE.md « Fournées »).
+import { PickerStatusBadge, pickerRatingText } from '@/components/recipe/PickerStatusBadge';
+import { SearchResultsBusy } from '@/components/SearchResultsBusy';
+import { PICKER_SCOPES, PICKER_SCOPE_LABELS, type PickerScope } from '@/lib/projects';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -60,8 +63,9 @@ type PickerItem = {
   recipe_steps: { prep_time: number | null; cook_time: number | null; wait_time: number | null }[];
 };
 
-type Scope = 'mine' | 'fav' | 'all';
-const SCOPE_LABELS: Record<Scope, string> = { mine: 'Mes recettes', fav: 'Mes favoris', all: 'Toutes les recettes' };
+// Mêmes portées que la résolution d'une préparation du mode projet (lib/projects.ts).
+type Scope = PickerScope;
+const SCOPE_LABELS = PICKER_SCOPE_LABELS;
 
 // Position d'insertion choisie pour une étape de la sous-recette : `anchor` =
 // `order_index` de l'étape du plan après laquelle elle se pose (null = en
@@ -123,7 +127,7 @@ export function IngredientExpandDialog({
 
   // ── Étape 1 : recherche ────────────────────────────────────────────────
   const [term, setTerm] = useState('');
-  const [scopes, setScopes] = useState<Set<Scope>>(new Set<Scope>(['mine', 'fav']));
+  const [scopes, setScopes] = useState<Set<Scope>>(new Set<Scope>(['mine', 'draft', 'fav']));
   const [items, setItems] = useState<PickerItem[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   // État distinct de `loading` : la frappe déclenche une requête à chaque
@@ -468,7 +472,6 @@ export function IngredientExpandDialog({
       aria-modal="true"
       aria-label="Remplacer un ingrédient par une recette"
       className="fixed inset-0 z-[95] flex items-start justify-center bg-background/60 backdrop-blur-[2px] p-4 overflow-y-auto"
-      onClick={onClose}
     >
       {/* Le spinner « Le Fouet » est monté au-dessus (z-100) : il couvre le
           chargement initial de la liste (avant la première recherche
@@ -476,7 +479,6 @@ export function IngredientExpandDialog({
           les recherches suivantes, déclenchées à chaque frappe. */}
       <LoadingOverlay visible={(searching && !hasSearchedOnce) || loading || busy} label={busy ? 'Insertion des étapes…' : 'Chargement…'} />
       <div
-        onClick={(e) => e.stopPropagation()}
         className="w-full max-w-3xl my-8 bg-surface-container-low border border-outline-variant rounded-xl shadow-lg flex flex-col"
       >
         <div className="flex items-start justify-between gap-4 p-6 border-b border-outline-variant">
@@ -524,7 +526,7 @@ export function IngredientExpandDialog({
                 className={INPUT}
               />
               <div className="flex flex-wrap gap-4">
-                {(Object.keys(SCOPE_LABELS) as Scope[]).map((s) => (
+                {PICKER_SCOPES.map((s) => (
                   <label key={s} className="flex items-center gap-2 cursor-pointer font-body-md text-sm">
                     <input
                       type="checkbox"
@@ -549,13 +551,14 @@ export function IngredientExpandDialog({
               <p className="font-body-md text-sm text-on-surface-variant italic">Aucune recette ne correspond.</p>
             )}
 
-            <ul className="flex flex-col divide-y divide-outline-variant/40 max-h-[45vh] overflow-y-auto">
+            <SearchResultsBusy busy={searching && hasSearchedOnce}>
+            <ul className="flex flex-col divide-y divide-outline-variant/40 max-h-[45vh] min-h-[6rem] overflow-y-auto">
               {items.map((it) => (
                 <li key={it.id}>
                   <button type="button" onClick={() => selectRecipe(it)} className="w-full text-left py-3 px-2 hover:bg-surface-container transition-colors flex flex-col gap-1">
                     <span className="flex items-center gap-3 flex-wrap">
                       <span className="font-body-lg text-body-lg text-primary">{it.title}</span>
-                      <StatusBadge item={it} />
+                      <PickerStatusBadge status={it.status} isPublic={it.is_public} />
                     </span>
                     <span className="font-body-md text-[12px] text-on-surface-variant flex items-center gap-3 flex-wrap">
                       <span>Par {it.profiles?.full_name || 'Auteur'}</span>
@@ -563,16 +566,15 @@ export function IngredientExpandDialog({
                       {it.difficulties?.name && <span>· {it.difficulties.name}</span>}
                       <span>· {formatTime(totalTime(it))}</span>
                       {yieldText(it) && <span>· {yieldText(it)}</span>}
-                      {(it.rating_count || 0) > 0 && (
-                        <span>
-                          · {Number(it.rating_avg || 0).toFixed(1)}/5 ({it.rating_count})
-                        </span>
+                      {pickerRatingText(it.rating_avg, it.rating_count) && (
+                        <span>· {pickerRatingText(it.rating_avg, it.rating_count)}</span>
                       )}
                     </span>
                   </button>
                 </li>
               ))}
             </ul>
+            </SearchResultsBusy>
           </div>
         ) : source ? (
           <div className="p-6 flex flex-col gap-6">
@@ -734,15 +736,6 @@ async function rollback(supabase: ReturnType<typeof createClient>, stepIds: numb
     // Le message d'erreur d'origine reste le plus utile : un échec du
     // nettoyage ne doit pas le masquer.
   }
-}
-
-function StatusBadge({ item }: { item: PickerItem }) {
-  const cls = 'px-2 py-0.5 font-label-md text-[10px] uppercase tracking-widest';
-  if (item.status === 'draft') return <span className={`${cls} bg-secondary text-white`}>Brouillon</span>;
-  if (item.status === 'pending') return <span className={`${cls} bg-secondary text-white`}>En attente</span>;
-  if (item.status === 'rejected') return <span className={`${cls} bg-error text-white`}>Refusée</span>;
-  if (item.is_public === false) return <span className={`${cls} bg-surface-container-highest text-primary`}>Privée</span>;
-  return <span className={`${cls} bg-green-700 text-white`}>Publiée</span>;
 }
 
 // Même règle que partout ailleurs : le temps saisi prime, sinon la somme des

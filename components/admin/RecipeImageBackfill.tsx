@@ -9,30 +9,29 @@
 // accueil, recherche, carnet, profils, suggestions). Les recettes créées ou
 // modifiées depuis en obtiennent déjà un à l'enregistrement (CreerForm).
 //
-// Traité par lots dans ce navigateur, pas par un job serveur : le projet ne
-// dépend d'aucune lib d'image côté serveur (doctrine « compression côté
-// client », lib/images.ts) et n'en gagne pas une pour ce seul usage. Chaque
-// lot requête les recettes qui ont une photo mais pas encore ce dérivé —
-// reprenable si interrompu, sans état à suivre entre deux passages.
+// Traité par lots depuis ce navigateur, mais les vignettes sont FABRIQUÉES PAR
+// LE SERVEUR (`/api/stockage/vignettes`, lib/vignettes-data.ts) : relire la
+// photo dans un canvas échouait faute d'en-tête CORS sur Swift. Chaque lot
+// requête les recettes qui ont une photo mais pas ce dérivé (absent ou marqué
+// vide par l'ancien rattrapage) — reprenable si interrompu, sans état à suivre
+// entre deux passages. Un appel produit les DEUX vignettes : celle qui manque
+// encore est écrite, l'autre n'est jamais remplacée.
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { resizeDataUrlToThumb } from '@/lib/images';
-import { televerserImage } from '@/lib/storage-client';
+import { demanderVignettes } from '@/lib/storage-client';
 
-const BATCH_SIZE = 20;
+type Ligne = { id: string; hero_image_url: string; hero_thumb_url: string | null; hero_card_url: string | null };
+
+const PAGE = 200;
 
 export function RecipeImageBackfill({
   column,
-  maxWidth,
-  quality,
   title,
   description,
 }: {
   // Absente de lib/database.types.ts tant que sa migration n'a pas été
   // régénérée (npm run gen:types) — même contournement que dans CreerForm.
   column: 'hero_thumb_url' | 'hero_card_url';
-  maxWidth: number;
-  quality?: number;
   title: string;
   description: string;
 }) {
@@ -40,51 +39,59 @@ export function RecipeImageBackfill({
   const [finished, setFinished] = useState(false);
   const [done, setDone] = useState(0);
   const [failed, setFailed] = useState(0);
+  // Nombre de recettes trouvées à traiter : « 0 » doit se lire comme tel, pas
+  // comme une panne silencieuse.
+  const [total, setTotal] = useState<number | null>(null);
+  // Cause de chaque échec (titre → message du serveur) : « illisible » ne
+  // disait pas si la lecture, le décodage ou le dépôt avait échoué.
+  const [causes, setCauses] = useState<string[]>([]);
 
   async function run() {
     setRunning(true);
     setFinished(false);
     setDone(0);
     setFailed(0);
+    setTotal(null);
+    setCauses([]);
     const supabase = createClient();
     try {
-      for (;;) {
+      // Les recettes à traiter sont triées ICI, pas dans la requête : un filtre
+      // `colonne.is.null,colonne.eq.` ne retrouvait pas les lignes marquées d'une
+      // chaîne vide (« 0 image générée » alors que la base en comptait). Lecture
+      // par pages de l'ensemble des recettes illustrées — des URL, pas des
+      // images —, puis `!r[column]` couvre null ET chaîne vide sans ambiguïté.
+      const aTraiter: Ligne[] = [];
+      for (let from = 0; ; from += PAGE) {
         const { data, error } = await supabase
           .from('recipes')
-          .select('id, hero_image_url')
+          .select('id, hero_image_url, hero_thumb_url, hero_card_url')
           .not('hero_image_url', 'is', null)
-          .is(column, null)
-          .limit(BATCH_SIZE);
+          .order('id')
+          .range(from, from + PAGE - 1);
         if (error) throw error;
-        if (!data || data.length === 0) break;
+        const lignes = (data ?? []) as Ligne[];
+        aTraiter.push(...lignes.filter((r) => r.hero_image_url && !r[column]));
+        if (lignes.length < PAGE) break;
+      }
+      setTotal(aTraiter.length);
 
-        for (const r of data as { id: string; hero_image_url: string | null }[]) {
-          try {
-            const derived = await resizeDataUrlToThumb(r.hero_image_url as string, maxWidth, 'image/jpeg', quality);
-            // `derived` est toujours une data-URL fraîche (resizeDataUrlToThumb
-            // en produit une systématiquement) : televerserImage() la dépose
-            // sur le stockage objet plutôt que de l'écrire telle quelle
-            // (§ 7.5, lot B2) — même chemin que CreerForm pour ces deux
-            // dérivés, une seule implémentation de dépôt.
-            const derivedUrl = await televerserImage('recette', derived);
-            const { error: updErr } = await supabase
-              .from('recipes')
-              .update({ [column]: derivedUrl } as never)
-              .eq('id', r.id);
-            if (updErr) throw updErr;
-            setDone((n) => n + 1);
-          } catch {
-            // Image illisible (format non décodable, data corrompue…) :
-            // marquée avec une chaîne vide plutôt que laissée à `null`, sinon
-            // le lot suivant la reproposerait indéfiniment. Chaîne vide,
-            // jamais retenue par `hero_card_url || hero_image_url || …`
-            // (RecipeCardLayout) — se comporte comme un dérivé absent.
-            await supabase
-              .from('recipes')
-              .update({ [column]: '' } as never)
-              .eq('id', r.id);
-            setFailed((n) => n + 1);
-          }
+      for (const r of aTraiter) {
+        try {
+          const v = await demanderVignettes(r.hero_image_url);
+          const maj: Record<string, string> = {};
+          if (!r.hero_thumb_url) maj.hero_thumb_url = v.thumb;
+          if (!r.hero_card_url) maj.hero_card_url = v.card;
+          const { error: updErr } = await supabase
+            .from('recipes')
+            .update(maj as never)
+            .eq('id', r.id);
+          if (updErr) throw updErr;
+          setDone((n) => n + 1);
+        } catch (e) {
+          // Échec : la colonne n'est pas touchée (jamais marquée d'une chaîne
+          // vide, qui condamnait la ligne). Un nouveau clic la retente.
+          setCauses((c) => [...c, (e as Error).message]);
+          setFailed((n) => n + 1);
         }
       }
       setFinished(true);
@@ -109,10 +116,18 @@ export function RecipeImageBackfill({
       </button>
       {(running || finished) && (
         <p className="mt-4 text-sm text-on-surface-variant">
+          {total === null ? 'Recherche des recettes à traiter…' : `${total} recette${total > 1 ? 's' : ''} à traiter · `}
           {done} image{done > 1 ? 's' : ''} générée{done > 1 ? 's' : ''}
-          {failed > 0 ? ` · ${failed} illisible${failed > 1 ? 's' : ''}` : ''}
+          {failed > 0 ? ` · ${failed} échec${failed > 1 ? 's' : ''}` : ''}
           {finished ? ' · terminé' : ''}
         </p>
+      )}
+      {causes.length > 0 && (
+        <ul className="mt-2 list-disc pl-5 text-sm text-error">
+          {[...new Set(causes)].map((c) => (
+            <li key={c}>{c}</li>
+          ))}
+        </ul>
       )}
     </div>
   );

@@ -1,0 +1,94 @@
+{
+  "ticket": "local-biscuit-cuillere",
+  "recette": {
+    "titre": "Biscuit cuillère",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Biscuit léger et aéré, à la croûte fine et perlée de sucre glace et au cœur moelleux, au goût d'œuf délicat. Il sert d'enveloppe aux charlottes, de fond ou d'insert pour les entremets et les bûches, et s'imbibe très bien de sirop.",
+    "rendement": "1 plaque 40 x 30 cm, dressé sur 1 cm d'épaisseur — environ 470 g de pâte",
+    "ustensiles": [
+      "Plaque à pâtisserie 40 x 30 cm",
+      "Papier cuisson",
+      "Tamis",
+      "Cul-de-poule",
+      "Fouet",
+      "Batteur électrique",
+      "Maryse",
+      "Poche à douille",
+      "Douille unie Ø 10 mm",
+      "Grille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Biscuit cuillère",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": 200,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (jaunes)",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (meringue)",
+            "quantite": 85,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T45",
+            "quantite": 65,
+            "unite": "g"
+          },
+          {
+            "nom": "Fécule de maïs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 200 °C et chemiser la plaque de papier cuisson.",
+          "Tamiser ensemble la farine et la fécule de maïs.",
+          "Blanchir les jaunes avec le sucre semoule (jaunes) au fouet jusqu'à ce que le mélange double de volume et forme un ruban.",
+          "Monter les blancs au batteur en ajoutant le sucre semoule (meringue) en trois fois, jusqu'à une meringue ferme et brillante en bec d'oiseau.",
+          "Incorporer un tiers de la meringue aux jaunes à la maryse pour les détendre, puis le reste délicatement.",
+          "Verser les poudres tamisées en pluie et mélanger à la maryse sans insister, juste jusqu'à disparition de la farine.",
+          "Dresser à la poche munie de la douille unie en bâtonnets accolés en biais sur 1 cm d'épaisseur, puis saupoudrer deux fois de sucre glace à 5 minutes d'intervalle.",
+          "Cuire 9 à 10 minutes jusqu'à une coloration blonde, faire glisser le papier sur une grille et laisser refroidir."
+        ],
+        "conseils_etape": "La pâte doit rester gonflée et tenir à la poche : un mélange trop travaillé après l'ajout des poudres fait retomber la meringue et donne un biscuit plat."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 1 cm : ≈ 80 g de pâte, soit ×0,17 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 1 cm : ≈ 125 g de pâte, soit ×0,26 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 1 cm : ≈ 175 g de pâte, soit ×0,38 de la recette.",
+      "Utilisation — Individuels en cercles Ø 8 cm, disques de 1 cm : ≈ 20 g de pâte par disque, soit ×0,04 ; la recette entière donne ≈ 23 disques, dressés sur 2 plaques.",
+      "Utilisation — Charlotte Ø 20 cm, hauteur 7 cm (bande de bâtonnets 63 x 7 cm + fond Ø 18 cm) : ≈ 270 g de pâte, soit ×0,58 de la recette.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, semelle (fond) de 1 cm : ≈ 55 g de pâte, soit ×0,12 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, enveloppe (bande 30 x 18 cm) : ≈ 210 g de pâte, soit ×0,45 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, fond de 1 cm : ≈ 225 g de pâte, soit ×0,48 de la recette.",
+      "Astuce — Le double saupoudrage de sucre glace forme la croûte perlée caractéristique du biscuit cuillère.",
+      "Astuce — Variante parfumée : ajouter aux jaunes le zeste d'un citron ou les graines d'une gousse de vanille."
+    ],
+    "conseils_conservation": "2 jours à température ambiante dans une boîte hermétique. Congélation jusqu'à 1 mois, à plat, bien filmé ; décongeler 30 minutes à température ambiante, sans retirer le film. Idéal la veille du montage : bien sec, il absorbe mieux le sirop d'imbibage."
+  }
+}

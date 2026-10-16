@@ -26,6 +26,7 @@ import { groupPlanningStepsByDate, type PlanningDayGroup } from '@/lib/recipe-pl
 import { LockedAction } from '@/components/LockedAction';
 import type { BatchListRow } from '@/lib/profile';
 import { trackEvent } from '@/lib/analytics';
+import { isProjectDraft, type ProjectMarks } from '@/lib/projects';
 
 const dateLabel = (iso: string): string =>
   new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -126,6 +127,13 @@ export function PlanningDayView({
     return !!data && data.batch_id !== batchId;
   }
 
+  // Essai d'un projet en cours : pas d'avis à proposer. Best-effort (lecture
+  // en échec → faux, on propose comme avant).
+  async function essaiProjetEnCours(recipeId: string): Promise<boolean> {
+    const { data } = await createClient().from('recipes').select('kind, project_stage').eq('id', recipeId).maybeSingle();
+    return isProjectDraft(data as ProjectMarks | null);
+  }
+
   // Propose de terminer la fournée dès que toutes SES étapes sont cochées
   // (toutes fournées confondues sur cet écran, pas seulement celles du jour
   // affiché) puis, si un avis est encore possible sur la recette d'origine,
@@ -157,7 +165,7 @@ export function PlanningDayView({
     }
     trackEvent('terminer_fournee');
     setList((prev) => prev.filter((p) => p.id !== batchRow.id));
-    if (!batchRow.recipe_id || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
+    if (!batchRow.recipe_id || (await essaiProjetEnCours(batchRow.recipe_id)) || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
     const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?');
     if (wantsReview) {
       setNavigating(true);

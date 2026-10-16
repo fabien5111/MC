@@ -30,7 +30,8 @@
     "nodemailer": "^9.0.6",
     "pdfjs-dist": "^6.1.200",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",

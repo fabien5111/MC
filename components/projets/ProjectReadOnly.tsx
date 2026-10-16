@@ -8,8 +8,8 @@
 // même la reprise du dialogue à l'étape où il a été laissé, qui exigerait
 // d'écrire dans `recipe_projects.wizard_step`.
 //
-// Volontairement un composant à part plutôt qu'un mode de `ProjectWizard` :
-// celui-ci suppose partout qu'il peut écrire (chaque étape enregistre au fil
+// Volontairement un composant à part plutôt qu'un mode de la page projet
+// (`ProjectV2`) : celle-ci suppose partout qu'il peut écrire (chaque étape enregistre au fil
 // de l'eau), et le transformer en lecture seule aurait exigé de désarmer une
 // douzaine de mutations une par une, pour un rendu qui n'a de toute façon
 // rien d'interactif à montrer.

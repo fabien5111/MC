@@ -1,0 +1,82 @@
+{
+  "ticket": "local-pain-de-genes",
+  "recette": {
+    "titre": "Pain de Gênes",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Biscuit moelleux et serré à la pâte d'amande, au goût d'amande prononcé et à la mie fondante. Il sert de fond d'entremets ou de base de petits gâteaux, et supporte bien un léger imbibage.",
+    "rendement": "1 cadre 24 x 24 cm, 1 cm d'épaisseur — environ 510 g d'appareil utilisable (567 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Batteur électrique",
+      "Cul-de-poule",
+      "Tamis",
+      "Maryse",
+      "Casserole",
+      "Cadre 24 x 24 cm",
+      "Plaque de cuisson",
+      "Papier cuisson",
+      "Spatule coudée",
+      "Petit couteau"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Appareil et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 16,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Pâte d'amande 50 %",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 75,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 170 °C et poser le cadre 24 x 24 cm sur une plaque garnie de papier cuisson.",
+          "Faire fondre le beurre dans une casserole et le laisser tiédir vers 45 °C.",
+          "Détendre la pâte d'amande, à température ambiante, au batteur avec un premier œuf jusqu'à obtenir une pâte lisse et sans grumeaux.",
+          "Incorporer les œufs restants un à un, puis fouetter à vitesse moyenne 8 à 10 minutes jusqu'à un appareil pâle et foisonné, qui fait le ruban.",
+          "Tamiser la farine avec la levure chimique et l'incorporer délicatement à la maryse.",
+          "Prélever une petite partie de l'appareil, la mélanger au beurre fondu tiède, puis reverser ce mélange dans le reste en soulevant la masse.",
+          "Couler dans le cadre, lisser à la spatule coudée et cuire 15 à 18 minutes, jusqu'à ce que le dessus soit blond et revienne sous le doigt.",
+          "Laisser refroidir 30 minutes dans le cadre, puis passer la lame d'un petit couteau le long des bords et décadrer."
+        ],
+        "conseils_etape": "Détendre la pâte d'amande avec un seul œuf d'abord : versés d'un coup, les œufs laissent des grumeaux qu'aucun fouettage ne rattrape. Le beurre doit être tiède, jamais chaud, et passer par un premier mélange avec un peu d'appareil pour ne pas faire retomber le foisonnement."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 1 cm : ≈ 180 g d'appareil, soit ×0,35 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 1 cm : ≈ 280 g d'appareil, soit ×0,55 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 1 cm : ≈ 400 g d'appareil, soit ×0,78 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 1 cm : ≈ 35 g d'appareil par pièce, soit 14 pièces avec la recette entière cuite directement dans les cercles (détaillés à l'emporte-pièce dans le cadre 24 x 24 cm, on n'en obtient que 9).",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, semelle de 1 cm : ≈ 125 g d'appareil, soit ×0,25 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 1 cm : ≈ 285 g d'appareil, soit ×0,56 de la recette.",
+      "Variante — Ajouter 10 g de rhum brun ou d'amaretto à l'appareil avec le beurre fondu.",
+      "Variante — Remplacer 10 g de farine par 10 g de cacao en poudre pour une version chocolat."
+    ],
+    "conseils_conservation": "Se garde 3 jours au réfrigérateur, filmé au contact, et 2 mois au congélateur. Décongeler une nuit au réfrigérateur dans son film. Il se détaille plus net la veille du montage, bien froid."
+  }
+}

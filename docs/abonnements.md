@@ -206,7 +206,7 @@ défaut, mêmes correctifs, sur les deux autres quotas de flux IA.
 l'écran est déjà accessible ; les trois boutons « Importer » (texte, PDF,
 photos) de `ImporterForm` sont désactivés avec infobulle une fois le quota
 atteint. `app/projets/[id]/page.tsx` lit `mode_projet_ia_mensuel` de la même
-façon et transmet le résultat à `ProjectWizard` puis `ComponentResolver` :
+façon et transmet le résultat à `ProjectV2` puis `ComponentResolver` :
 « Demander une proposition à l'IA » (§5.4, `/api/projet/composant`) est
 désactivé une fois le droit absent ou le quota atteint. Non touché : l'appel
 à `/api/projet/structure` (étape 1 → 2), best-effort par construction et
