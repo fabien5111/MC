@@ -1,5 +1,8 @@
 // Route Handler — suspension, désactivation et levée d'un membre (JEP-272,
-// lot 1). Réservée à l'admin complet, comme toute la fiche membre.
+// lots 1 et 2). Réservée à l'admin complet, comme toute la fiche membre.
+//
+// GET : ce que la fenêtre de confirmation doit montrer avant l'action
+// (abonnement en cours et son état chez Stripe).
 //
 // Trois gestes, dans cet ordre :
 // 1. `profiles` (statut, motif, date de fin) — c'est ce que lisent la garde
@@ -19,6 +22,14 @@
 // l'effet recherché (aucun renouvellement possible). La déconnexion forcée
 // sans sanction, prévue au lot 3, en aura besoin.
 //
+// Puis, lot 2, sans bloquer l'action si l'un d'eux échoue (chaque résultat
+// est rendu à l'admin, et tracé dans le journal) :
+// 4. le geste sur l'abonnement Stripe choisi par l'admin (`moderation-actions`) ;
+// 5. le recalcul des notes des recettes que le membre a notées, quand ses
+//    avis disparaissent (désactivation) ou réapparaissent (levée) ;
+// 6. l'e-mail au membre, sauf si l'admin a décoché « Prévenir le membre »
+//    — impossible pour une résiliation, qui se notifie toujours.
+//
 // Échec partiel (statut écrit, bannissement refusé par GoTrue) : réponse 502
 // explicite. Le compte est alors bloqué par l'application mais peut encore se
 // connecter — relancer l'action suffit, elle est idempotente.
@@ -29,13 +40,24 @@ import { createAdminClient, MissingServiceKeyError } from '@/lib/supabase/admin'
 import {
   ACTION_JOURNAL,
   colonnesProfil,
+  composerEmailModeration,
   dureeBannissement,
+  emailObligatoire,
   etatModeration,
+  validerActionAbonnement,
   validerDemandeModeration,
+  type ActionAbonnement,
 } from '@/lib/moderation';
 import { lireLigneModeration } from '@/lib/moderation-data';
+import { appliquerActionAbonnement, lireAbonnementModere, recalculerNotesDuMembre } from '@/lib/moderation-actions';
+import { notifier } from '@/lib/notifier';
+import { texteVersHtml } from '@/lib/billing';
+import { siteUrl } from '@/lib/site-url';
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+type Contexte = { userId: string; admin: ReturnType<typeof createAdminClient> };
+
+/** Admin complet, vérifié auprès du serveur d'authentification, et client service_role. */
+async function contexteAdmin(): Promise<Contexte | NextResponse> {
   // Vérification forte (serveur d'authentification), comme le reste du
   // back-office : un droit d'admin retiré ne doit pas survivre à son jeton.
   const user = await getVerifiedUser();
@@ -43,34 +65,52 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!(await isAdmin(user.id))) {
     return NextResponse.json({ erreur: 'Réservé aux administrateurs.' }, { status: 403 });
   }
-
-  const { id: cibleId } = await params;
-  const body = await req.json().catch(() => ({}));
-
-  let admin;
   try {
-    admin = createAdminClient();
+    return { userId: user.id, admin: createAdminClient() };
   } catch (e) {
     if (e instanceof MissingServiceKeyError) return NextResponse.json({ erreur: e.message }, { status: 503 });
     throw e;
   }
+}
+
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const ctx = await contexteAdmin();
+  if (ctx instanceof NextResponse) return ctx;
+  const { id: cibleId } = await params;
+  const { etat } = await lireAbonnementModere(ctx.admin, cibleId);
+  return NextResponse.json({ abonnement: etat });
+}
+
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const ctx = await contexteAdmin();
+  if (ctx instanceof NextResponse) return ctx;
+  const { userId, admin } = ctx;
+
+  const { id: cibleId } = await params;
+  const body = await req.json().catch(() => ({}));
 
   const { data: cible } = await admin.from('profiles').select('id, role').eq('id', cibleId).maybeSingle();
   if (!cible) return NextResponse.json({ erreur: 'Membre introuvable.' }, { status: 404 });
 
   const maintenant = new Date();
+  const etatAvant = etatModeration(await lireLigneModeration(admin, cibleId), maintenant);
   const verdict = validerDemandeModeration(
     body ?? {},
-    {
-      acteurId: user.id,
-      cibleId,
-      cibleRole: cible.role ?? null,
-      etatActuel: etatModeration(await lireLigneModeration(admin, cibleId), maintenant),
-    },
+    { acteurId: userId, cibleId, cibleRole: cible.role ?? null, etatActuel: etatAvant },
     maintenant,
   );
   if (!verdict.ok) return NextResponse.json({ erreur: verdict.erreur }, { status: 400 });
   const demande = verdict.demande;
+
+  // Geste sur l'abonnement : relu chez Stripe avant d'agir, jamais cru sur la
+  // parole du navigateur (la fenêtre a pu rester ouverte longtemps).
+  const brutAbonnement = body?.abonnement;
+  const avecAbonnement = brutAbonnement != null && brutAbonnement !== '' && brutAbonnement !== 'aucune';
+  const abonnementLu = avecAbonnement ? await lireAbonnementModere(admin, cibleId) : { etat: null, subscriptionId: null };
+  const choix = validerActionAbonnement(avecAbonnement ? brutAbonnement : 'aucune', demande.action, abonnementLu.etat);
+  if (!choix.ok) return NextResponse.json({ erreur: choix.erreur }, { status: 400 });
+  const actionAbonnement: ActionAbonnement = choix.valeur;
+  const prevenir = body?.prevenir !== false || emailObligatoire(actionAbonnement);
 
   // 1. Statut — non typé : colonnes absentes de `database.types.ts` jusqu'à
   // la régénération.
@@ -80,14 +120,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ erreur: `Enregistrement du statut impossible : ${ecriture.message}` }, { status: 500 });
   }
 
-  // 2. Journal.
-  const { error: journal } = await db.from('member_moderation_events').insert({
-    member_id: cibleId,
-    admin_id: user.id,
-    action: ACTION_JOURNAL[demande.action],
-    reason: demande.motif,
-    suspended_until: demande.action === 'suspendre' ? demande.jusquAu : null,
-  });
+  // 2. Journal — complété à la fin (membre prévenu, geste sur l'abonnement).
+  const { data: ligneJournal, error: journal } = await db
+    .from('member_moderation_events')
+    .insert({
+      member_id: cibleId,
+      admin_id: userId,
+      action: ACTION_JOURNAL[demande.action],
+      reason: demande.motif,
+      suspended_until: demande.action === 'suspendre' ? demande.jusquAu : null,
+    })
+    .select('id')
+    .single();
   if (journal) console.error('moderation: journal non écrit :', journal.message);
 
   // 3. Bannissement GoTrue.
@@ -105,5 +149,62 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  return NextResponse.json({ ok: true, journal: !journal });
+  // 4. Abonnement.
+  let abonnement: { action: ActionAbonnement; ok: boolean; message?: string } = { action: 'aucune', ok: true };
+  let finPeriode = abonnementLu.etat?.finPeriode ?? null;
+  if (actionAbonnement !== 'aucune' && abonnementLu.subscriptionId) {
+    const r = await appliquerActionAbonnement(abonnementLu.subscriptionId, actionAbonnement, cibleId);
+    if (r.ok) {
+      abonnement = { action: actionAbonnement, ok: true };
+      finPeriode = r.finPeriode ?? finPeriode;
+    } else {
+      console.error('moderation (abonnement):', r.message);
+      abonnement = { action: actionAbonnement, ok: false, message: r.message };
+    }
+  }
+
+  // 5. Notes moyennes : les avis d'un compte désactivé sont masqués.
+  const avisMasquesOuRendus = demande.action === 'desactiver' || (demande.action === 'lever' && etatAvant.etat === 'desactive');
+  const notesRecalculees = avisMasquesOuRendus ? await recalculerNotesDuMembre(admin, cibleId) : 0;
+
+  // 6. E-mail au membre. Un geste sur l'abonnement qui a échoué n'est pas
+  // annoncé comme fait.
+  let email: 'envoye' | 'echec' | 'file' | 'non_demande' = 'non_demande';
+  if (prevenir) {
+    const mail = composerEmailModeration({
+      action: demande.action,
+      motif: demande.motif,
+      jusquAu: demande.jusquAu,
+      abonnement: abonnement.ok ? abonnement.action : 'aucune',
+      finPeriode,
+      urlSite: siteUrl(),
+    });
+    const r = await notifier(admin, {
+      userId: cibleId,
+      acteurId: userId,
+      evenement: mail.evenement,
+      donnees: { titre: mail.sujet, detail: mail.detail, lien: mail.lien },
+      emailPrecompose: {
+        sujet: mail.sujet,
+        texte: mail.texte,
+        html: texteVersHtml(mail.texte),
+        replyTo: process.env.EMAIL_REPLY_TO || undefined,
+      },
+    });
+    email = r.email === 'envoye' ? 'envoye' : r.email === 'file' ? 'file' : 'echec';
+  }
+
+  // Journal complété. Colonnes absentes (migration non jouée) : on s'en passe.
+  if (ligneJournal?.id != null) {
+    const { error: complement } = await db
+      .from('member_moderation_events')
+      .update({
+        member_notified: email === 'envoye' || email === 'file',
+        subscription_action: abonnement.action === 'aucune' ? null : `${abonnement.action}${abonnement.ok ? '' : ':echec'}`,
+      })
+      .eq('id', ligneJournal.id);
+    if (complement) console.error('moderation: journal non complété :', complement.message);
+  }
+
+  return NextResponse.json({ ok: true, journal: !journal, email, abonnement, notesRecalculees });
 }

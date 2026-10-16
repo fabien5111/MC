@@ -15,7 +15,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { proprietaireDuJeton } from '@/lib/book-link';
-import { deverrouillerCarnet } from '@/lib/book-link-data';
+import { deverrouillerCarnet, proprietaireDesactive } from '@/lib/book-link-data';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 
@@ -25,6 +25,7 @@ export default async function DeverrouillerCarnetPage({ params }: { params: Prom
   const { jeton } = await params;
   const ownerId = proprietaireDuJeton(jeton);
   if (!ownerId) notFound();
+  if (await proprietaireDesactive(ownerId)) notFound();
 
   const apercu = `/carnet/partage/${jeton}`;
   const user = await getCurrentUser();

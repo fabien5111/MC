@@ -465,7 +465,7 @@ dé-doublonné par `suggestionPseudoLibre`), modifiable — c'est l'objet de l'�
 - Les routes `/api/admin/*` vérifient elles-mêmes `role === 'admin'` : elles
   restent fermées au gestionnaire.
 
-### Suspension et désactivation d'un membre (JEP-272, lot 1)
+### Suspension et désactivation d'un membre (JEP-272, lots 1 et 2)
 
 Admin → Membres → fiche → bloc « Modération » (`MemberModerationPanel`) :
 suspendre (motif obligatoire, date de fin facultative), désactiver, lever.
@@ -510,8 +510,50 @@ Toujours par `POST /api/admin/membres/[id]/moderation` (admin complet,
 - **Journal** : `member_moderation_events` (lecture admin par RLS, écriture
   service_role seule), affiché dans la fiche. Écrit avant le bannissement,
   pour qu'un échec GoTrue n'efface pas la trace d'une décision déjà effective.
-- Lots 2 (abonnement, e-mail au membre, masquage du contenu public) et 3
-  (restrictions partielles, RGPD) : à venir.
+- **Fenêtre de confirmation (lot 2)** : chaque action ouvre une fenêtre
+  (`MemberModerationPanel`, `FenetreConfirmation`) qui lit l'abonnement en
+  cours (`GET …/moderation`, `lireAbonnementModere`, `lib/moderation-actions.ts`)
+  et porte la case « Prévenir le membre par e-mail » (cochée). Gestes sur un
+  abonnement **Stripe** seulement (`actionsAbonnementPossibles`) : ne rien faire
+  (par défaut), mettre en pause les prélèvements (`pause_collection[behavior]=void`),
+  résilier à l'échéance (`cancel_at_period_end`, après libération d'un
+  échéancier) ; à la levée, reprendre une pause (proposé coché, jamais
+  automatique). Un essai, un don ou un abonnement manuel est seulement
+  mentionné. **Aucun remboursement automatique** (geste manuel du Dashboard).
+  La route relit l'état chez Stripe avant d'agir (`validerActionAbonnement`) ;
+  `subscriptions` est aligné par le webhook, jamais réécrit ici. Lecture Stripe
+  impossible : aucun geste proposé, renvoi au Dashboard.
+- **E-mail au membre** : trois événements **verrouillés** du catalogue
+  (`compte_suspendu`, `compte_desactive`, `compte_retabli`, catégorie
+  `support`), texte composé par `composerEmailModeration` (motif, date de fin,
+  recours `/contact`, conséquence sur l'abonnement), envoyé par `notifier`
+  (`emailPrecompose`). **Une résiliation impose l'e-mail** (`emailObligatoire`) :
+  c'est la fin du contrat du membre. Le journal garde `member_notified` et
+  `subscription_action` (suffixe `:echec` si Stripe a refusé), complétés après
+  coup et lus à part (colonnes absentes : le journal fonctionne sans).
+- **Contenu d'un compte désactivé masqué, jamais supprimé** (une suspension ne
+  masque rien, arbitrage du 06/10/2026). **RLS** : policies `disabled_author_hidden`
+  (`RESTRICTIVE`, `SELECT`, `anon` + `authenticated`) sur `recipes`
+  (`author_id`), `comments` (`user_id`) et `ideas` (`author_id`), appuyées sur
+  `public.mc_contenu_masque(uuid)` (SECURITY DEFINER, `postgres`) : vrai si
+  l'auteur est `disabled` et que le lecteur n'est ni lui, ni admin, ni
+  gestionnaire. Tout ce qui lit sous la session ou en `anon` en hérite
+  (accueil, recherche, fiche, carnet, favoris, partages, avis, idées).
+  **`profiles` n'est pas masqué par la RLS** (trop de jointures en dépendent) :
+  le profil public `/u/[handle]` rend 404 (sauf à l'équipe), la recherche de
+  membres (partage) et les pâtissiers de `/recherche` (`sansAuteursDesactives`,
+  `lib/search.ts` — le compte seul du tiroir peut en compter un de trop) les
+  écartent. **Les lectures service_role contournent la RLS** : le partage de
+  carnet par lien (`getApercuCarnet`, `proprietaireDesactive`) teste le statut
+  lui-même. Les crédits du mode projet gardent le nom de l'auteur en texte,
+  sans lien (`getProjectCredits` ne lie qu'une recette lisible par le visiteur).
+- **Notes moyennes recalculées** : `public.mc_recalculer_note(uuid)` (SECURITY
+  DEFINER, `postgres`) recalcule `rating_avg` / `rating_count` en **excluant les
+  avis des auteurs désactivés**. Le trigger des avis (`comments_recompute_recipe_rating`)
+  l'appelle, et la route le rejoue sur les recettes notées par le membre à la
+  désactivation et à sa levée (`recalculerNotesDuMembre`). Fonction absente :
+  ignoré sans erreur.
+- Lot 3 (restrictions partielles, déconnexion forcée, RGPD) : à venir.
 
 ### Connexion « en tant que » (impersonation)
 

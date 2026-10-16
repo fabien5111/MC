@@ -1,4 +1,4 @@
-// Modération des membres (JEP-272, lot 1) — logique pure, sans accès base.
+// Modération des membres (JEP-272, lots 1 et 2) — logique pure, sans accès base.
 //
 // Importable par les Client Components (fiche membre du back-office) comme
 // par le serveur : la lecture en base vit dans `lib/moderation-data.ts`, même
@@ -23,6 +23,8 @@
 // fait à la lecture, ici et dans la fonction SQL `public.is_blocked_user()`,
 // qui doit rester alignée. Le bannissement GoTrue, posé pour la même durée,
 // expire de lui-même.
+
+import { formatDate, formatDateHeure } from '@/lib/format';
 
 export const STATUT_SUSPENDU = 'suspended';
 export const STATUT_DESACTIVE = 'disabled';
@@ -225,4 +227,159 @@ export const MESSAGE_COMPTE_BLOQUE = 'Votre compte est suspendu ou désactivé :
  */
 export function estRefusCompteBloque(messageBrut: string | null | undefined): boolean {
   return /row-level security policy "blocked_user_(ins|upd|del)"/.test(messageBrut ?? '');
+}
+
+// ── Abonnement du membre modéré (lot 2) ─────────────────────────────────
+//
+// Rien n'est automatique : l'admin choisit dans la fenêtre de confirmation,
+// et la route revalide ce choix contre l'état réel de l'abonnement. Seul un
+// abonnement Stripe (prélèvement réel) offre des gestes ; un essai, un don ou
+// un abonnement manuel est seulement mentionné.
+
+export type ActionAbonnement = 'aucune' | 'pause' | 'resilier' | 'reprendre';
+
+export type EtatAbonnement = {
+  libelle: string;
+  /** `subscriptions.type` (TRIAL, GIFT, PAID…). */
+  type: string;
+  /** Abonnement prélevé par Stripe (provider `stripe` et identifiant connu). */
+  stripe: boolean;
+  /** Fin de la période en cours (ISO), si connue. */
+  finPeriode: string | null;
+  enPause: boolean;
+  resiliationProgrammee: boolean;
+  /** `echec` : Stripe n'a pas pu être lu, aucun geste n'est alors proposé. */
+  lectureStripe: 'ok' | 'echec' | 'sans_objet';
+};
+
+export const LIBELLE_ACTION_ABONNEMENT: Record<ActionAbonnement, string> = {
+  aucune: 'Ne rien faire',
+  pause: 'Mettre en pause les prélèvements',
+  resilier: 'Résilier à l’échéance',
+  reprendre: 'Reprendre les prélèvements',
+};
+
+/** Gestes proposés à l'admin pour cette action et cet abonnement. */
+export function actionsAbonnementPossibles(action: ActionModeration, ab: EtatAbonnement | null): ActionAbonnement[] {
+  if (!ab || !ab.stripe || ab.lectureStripe !== 'ok') return ['aucune'];
+  if (action === 'lever') return ab.enPause ? ['aucune', 'reprendre'] : ['aucune'];
+  if (ab.resiliationProgrammee) return ['aucune'];
+  return ab.enPause ? ['aucune', 'resilier'] : ['aucune', 'pause', 'resilier'];
+}
+
+/**
+ * Choix présélectionné. « Ne rien faire » partout, sauf à la levée d'un compte
+ * dont les prélèvements sont en pause : la reprise est proposée cochée, mais
+ * l'admin la confirme (ou la décoche) dans la fenêtre.
+ */
+export function actionAbonnementParDefaut(action: ActionModeration, ab: EtatAbonnement | null): ActionAbonnement {
+  return actionsAbonnementPossibles(action, ab).includes('reprendre') ? 'reprendre' : 'aucune';
+}
+
+export function validerActionAbonnement(
+  brut: unknown,
+  action: ActionModeration,
+  ab: EtatAbonnement | null,
+): { ok: true; valeur: ActionAbonnement } | { ok: false; erreur: string } {
+  const valeur = brut == null || brut === '' ? 'aucune' : brut;
+  if (valeur !== 'aucune' && valeur !== 'pause' && valeur !== 'resilier' && valeur !== 'reprendre') {
+    return { ok: false, erreur: 'Action sur l’abonnement inconnue.' };
+  }
+  if (!actionsAbonnementPossibles(action, ab).includes(valeur)) {
+    return { ok: false, erreur: 'Ce geste sur l’abonnement n’est plus possible : rouvrez la fenêtre pour voir son état actuel.' };
+  }
+  return { ok: true, valeur };
+}
+
+/**
+ * Une résiliation se notifie toujours au membre : c'est la fin de son
+ * contrat, pas une simple information. La case « Prévenir le membre » est
+ * alors imposée.
+ */
+export function emailObligatoire(abonnement: ActionAbonnement): boolean {
+  return abonnement === 'resilier';
+}
+
+// ── E-mail au membre (lot 2) ────────────────────────────────────────────
+
+export type EmailModeration = {
+  evenement: 'compte_suspendu' | 'compte_desactive' | 'compte_retabli';
+  sujet: string;
+  texte: string;
+  /** Résumé d'une ligne pour la cloche. */
+  detail: string;
+  /** Où mène la cloche. */
+  lien: string;
+};
+
+function ligneAbonnement(abonnement: ActionAbonnement, finPeriode: string | null): string | null {
+  if (abonnement === 'pause') {
+    return 'Les prélèvements de votre abonnement sont arrêtés pendant cette période : rien ne vous sera facturé.';
+  }
+  if (abonnement === 'resilier') {
+    return finPeriode
+      ? `Votre abonnement est résilié. Il prend fin le ${formatDate(finPeriode)}, sans nouveau prélèvement.`
+      : 'Votre abonnement est résilié. Il prend fin à l’échéance de la période en cours, sans nouveau prélèvement.';
+  }
+  if (abonnement === 'reprendre') return 'Les prélèvements de votre abonnement reprennent normalement.';
+  return null;
+}
+
+/**
+ * Texte de l'e-mail envoyé au membre après une action de modération. Le motif
+ * lui est montré tel quel, comme sur l'écran « Compte suspendu » : c'est la
+ * décision d'un modérateur, pas une règle de détection à cacher.
+ */
+export function composerEmailModeration(p: {
+  action: ActionModeration;
+  motif: string | null;
+  jusquAu: string | null;
+  abonnement: ActionAbonnement;
+  finPeriode: string | null;
+  urlSite: string;
+}): EmailModeration {
+  const contact = `${p.urlSite}/contact`;
+  const abonnement = ligneAbonnement(p.abonnement, p.finPeriode);
+  const blocs: string[] = ['Bonjour,'];
+  let evenement: EmailModeration['evenement'];
+  let sujet: string;
+  let detail: string;
+  let lien: string;
+
+  if (p.action === 'suspendre') {
+    evenement = 'compte_suspendu';
+    sujet = 'Votre compte Je pâtisse ! est suspendu';
+    detail = p.jusquAu
+      ? `Votre compte est suspendu jusqu’au ${formatDateHeure(p.jusquAu)}.`
+      : 'Votre compte est suspendu jusqu’à nouvel ordre.';
+    lien = '/contact';
+    blocs.push(detail.replace('Votre compte', 'Votre compte Je pâtisse !'));
+    if (p.motif) blocs.push(`Motif : ${p.motif}`);
+    blocs.push('Pendant la suspension, vous ne pouvez plus vous connecter. Vos recettes et vos données sont conservées.');
+  } else if (p.action === 'desactiver') {
+    evenement = 'compte_desactive';
+    sujet = 'Votre compte Je pâtisse ! est désactivé';
+    detail = 'Votre compte a été désactivé.';
+    lien = '/contact';
+    blocs.push('Votre compte Je pâtisse ! a été désactivé.');
+    if (p.motif) blocs.push(`Motif : ${p.motif}`);
+    blocs.push(
+      'Vous ne pouvez plus vous connecter, et vos contenus publiés (recettes, avis, idées, profil) ne sont plus visibles. ' +
+        'Ils sont conservés et réapparaîtront si votre compte est rétabli.',
+    );
+  } else {
+    evenement = 'compte_retabli';
+    sujet = 'Votre compte Je pâtisse ! est rétabli';
+    detail = 'Votre compte est rétabli : vous pouvez de nouveau vous connecter.';
+    lien = '/';
+    blocs.push(`Votre compte Je pâtisse ! est rétabli. Vous pouvez de nouveau vous connecter : ${p.urlSite}/connexion`);
+  }
+
+  if (abonnement) blocs.push(abonnement);
+  if (p.action !== 'lever') {
+    blocs.push(`Pour contester cette décision ou poser une question, écrivez-nous depuis la page Contact : ${contact}`);
+  }
+  blocs.push('L’équipe Je pâtisse !');
+
+  return { evenement, sujet, texte: blocs.join('\n\n'), detail, lien };
 }

@@ -22,6 +22,7 @@ export type PublicProfile = Pick<
   | 'youtube_url'
   | 'tiktok_url'
   | 'pinterest_url'
+  | 'status'
 >;
 
 // Un identifiant de profil public peut être un nom d'utilisateur choisi
@@ -31,7 +32,7 @@ export type PublicProfile = Pick<
 export const getPublicProfile = cache(async (handle: string): Promise<PublicProfile | null> => {
   const supabase = await createClient();
   const cols =
-    'id, username, full_name, avatar_url, banner_url, bio, created_at, website_url, instagram_url, facebook_url, youtube_url, tiktok_url, pinterest_url';
+    'id, username, full_name, avatar_url, banner_url, bio, created_at, website_url, instagram_url, facebook_url, youtube_url, tiktok_url, pinterest_url, status';
   const byUsername = await supabase.from('profiles').select(cols).eq('username', handle).maybeSingle();
   if (byUsername.data) return byUsername.data as PublicProfile;
   // Un nom d'utilisateur ne ressemble jamais à un UUID : évite une requête

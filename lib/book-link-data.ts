@@ -38,7 +38,7 @@ export type ApercuCarnet = {
 export const getApercuCarnet = cache(async (ownerId: string): Promise<ApercuCarnet | null> => {
   const admin = createAdminClient();
   const [profil, compte, photos] = await Promise.all([
-    admin.from('profiles').select('full_name, username, avatar_url').eq('id', ownerId).maybeSingle(),
+    admin.from('profiles').select('full_name, username, avatar_url, status').eq('id', ownerId).maybeSingle(),
     // Même périmètre que ce que le lien ouvre (`PORTEE_LIEN`, cf. la policy
     // RLS `recipes_partagees`) : le nombre annoncé est celui qu'on obtient.
     admin
@@ -58,6 +58,9 @@ export const getApercuCarnet = cache(async (ownerId: string): Promise<ApercuCarn
   ]);
   if (profil.error) console.error('getApercuCarnet (profil):', profil.error.message);
   if (!profil.data) return null;
+  // Propriétaire désactivé (JEP-272, lot 2) : le lien ne mène plus nulle part,
+  // comme un lien invalide. La clé service_role contourne la RLS, d'où ce test.
+  if ((profil.data as { status?: string | null }).status === 'disabled') return null;
 
   return {
     ownerId,
@@ -97,4 +100,13 @@ export async function deverrouillerCarnet(ownerId: string, userId: string): Prom
     .upsert({ owner_id: ownerId, shared_with_id: userId, scope: PORTEE_LIEN }, { onConflict: 'owner_id,shared_with_id', ignoreDuplicates: true });
   if (error) console.error('deverrouillerCarnet:', error.message);
   return { ok: !error };
+}
+
+/**
+ * Le propriétaire du carnet est-il désactivé (JEP-272, lot 2) ? Un lien de
+ * partage n'ouvre alors plus rien, ni aperçu ni déverrouillage.
+ */
+export async function proprietaireDesactive(ownerId: string): Promise<boolean> {
+  const { data } = await createAdminClient().from('profiles').select('status').eq('id', ownerId).maybeSingle();
+  return (data as { status?: string | null } | null)?.status === 'disabled';
 }
