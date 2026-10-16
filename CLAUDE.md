@@ -1070,10 +1070,9 @@ essais et la validation arrivent par lots successifs.
   n'écrit rien : on y choisit entre l'aide de l'IA (intention → proposition
   de format et de composants) et la construction manuelle. `POST /api/projet`
   crée alors la recette-projet **avec** l'intention et la proposition
-  revalidée (titre, format, composants), `wizard_step = 2` — ouvrir le mode
-  projet puis renoncer ne laisse plus de projet vide dans le carnet. Aucune
-  donnée ne voyage d'une page à l'autre par le navigateur : l'étape 2 se
-  relit depuis la base.
+  revalidée (titre, format, composants) — ouvrir le mode projet puis renoncer
+  ne laisse plus de projet vide dans le carnet. Aucune donnée ne voyage d'une
+  page à l'autre par le navigateur : la page projet se relit depuis la base.
 - **Un projet est une recette dès sa création**, pas une entité séparée
   convertie à la fin : sans ça, le moteur de fournée devrait gérer deux types
   de source, et la validation impliquerait une migration d'identifiants qui
@@ -1372,7 +1371,7 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
 - **Lancer un essai avec des points ouverts : avertir, ne jamais bloquer** (`ProjectTrials`, prop `pointsRestants`, `pointsRestants(todo)` dans `lib/projects.ts`). À CHAQUE lancement d'une fournée d'essai, s'il reste des points du « Reste à faire » (constatés ou à cocher), une confirmation les liste (6 au plus, puis « et N autre(s) ») avant de lancer — « Lancer quand même » / annuler. Pas de bouton grisé : l'essai sert précisément à vérifier ce qui n'est pas validé. La confirmation n'est **jamais mémorisée** pour la session (un oubli ne doit pas passer au deuxième essai). Elle remplace, sans la doubler, l'ancienne alerte « composants non résolus » (ces préparations figurent déjà parmi les points, leur conséquence est ajoutée au texte) ; la fiche recette passe sans `pointsRestants` et garde l'alerte d'origine. Ne concerne ni la fournée d'une recette validée (`BatchWidget`), ni « Valider le projet ». **La fenêtre est large et le focus d'ouverture est sur « Annuler »** : options facultatives de `useDialog().confirm` (`largeur: 'large'` → `max-w-xl` au lieu de `max-w-sm`, `focus: 'annuler'` → Entrée annule). Par défaut rien ne change pour les autres confirmations du site (étroites, focus sur la confirmation) ; ne les activer que pour une action qu'un Entrée distrait ne doit pas lancer, ou un message à lignes longues.
 - **« Retirer la recette »** (`retirerRecette`, `useProjectComponents`) : à côté de « Modifier cette préparation » (blocs Structure et Étapes), confirme puis `resetComponent` (`lib/projects-write.ts`) — contenu effacé, source oubliée, préparation « À résoudre » ; même geste que « Réinitialiser » de la fenêtre de résolution.
 - **Ustensiles d'une préparation copiée** : la copie d'une recette existante (`ComponentResolver.attacher`) lit ses `recipe_utensils` et `attachComponentUtensils` (`lib/projects-write.ts`) les mémorise sur la préparation (`recipe_project_components.utensils`, jsonb — la source ne les rattache à aucune étape, ils ne sont donc jamais portés par une étape), puis ajoute à la liste globale `recipe_utensils` ceux qui manquent (`utensilsToAdd`, `lib/projects.ts` : même `ref_id` ou même nom normalisé par `ingredientKey`). **Rien n'est jamais retiré** de la liste globale (retirer ou remplacer une préparation laisse ses ustensiles, à nettoyer dans le bloc « Ustensiles »). Colonne absente (migration pas jouée) : la liste globale est complétée quand même. L'éditeur « Ustensiles » de la v2 est remonté (`key`) quand la liste en base change et garde le `ref_id` des lignes inchangées.
-- **`recipe_projects.wizard_step` n'est plus écrit** (colonne de l'ancien
+- **`recipe_projects.wizard_step` n'est plus ni écrit ni lu** (colonne de l'ancien
   parcours en onglets, morte comme `followers_count`). L'état d'un bloc (ouvert / grisé avec
   ce qui le débloque) se déduit de la base par `projectV2BlockStates`
   (`lib/projects.ts`), jamais de cette colonne.

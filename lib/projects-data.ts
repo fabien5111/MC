@@ -3,11 +3,11 @@
 // client, qui n'y tirerait que le build cassé. Le pendant pur —
 // constantes, types et prédicats — est dans lib/projects.ts.
 import { createClient } from '@/lib/supabase/server';
-import { parseWizardStep, type ComponentUtensil, type WizardStep } from '@/lib/projects';
+import type { ComponentUtensil } from '@/lib/projects';
 import type { Json } from '@/lib/database.types';
 
 // Un composant tel que l'écran de dialogue en a besoin. `steps` n'est pas la
-// liste des étapes mais leur nombre : le parcours guidé n'affiche pas le
+// liste des étapes mais leur nombre : la liste des composants n'affiche pas le
 // contenu d'un composant, seulement s'il est résolu et ce qu'il pèse.
 // Une ligne d'ingrédient d'un composant, telle que l'étape « Quantités » la
 // manipule. `baseQuantity` est la valeur figée à la copie : c'est elle que
@@ -67,11 +67,9 @@ export type ProjectComponent = {
 export type ProjectFull = {
   id: string;
   title: string;
-  // Avancement du mode projet (`wizard` / `ready` / `dissolved`) — à ne pas
-  // confondre avec `wizardStep`, qui est l'étape du dialogue.
+  // Avancement du mode projet (`wizard` / `ready` / `dissolved`).
   stage: string | null;
   intent: string | null;
-  wizardStep: WizardStep;
   measure_type: string | null;
   mold_type_id: number | null;
   mold_dims: Json | null;
@@ -101,7 +99,7 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
       )
       .eq('id', recipeId)
       .maybeSingle(),
-    supabase.from('recipe_projects').select('intent, wizard_step').eq('recipe_id', recipeId).maybeSingle(),
+    supabase.from('recipe_projects').select('intent').eq('recipe_id', recipeId).maybeSingle(),
     supabase
       .from('recipe_project_components')
       // `*` et non une liste : `scaling_mode` (JEP-254) arrive par une
@@ -247,7 +245,6 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     title: recipe.title,
     stage: recipe.project_stage,
     intent: projectRes.data?.intent ?? null,
-    wizardStep: parseWizardStep(projectRes.data?.wizard_step),
     measure_type: recipe.measure_type,
     mold_type_id: recipe.mold_type_id,
     mold_dims: recipe.mold_dims,

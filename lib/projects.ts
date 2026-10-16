@@ -63,31 +63,6 @@ export function isProjectDissolved(r: ProjectMarks | null | undefined): boolean 
   return r?.kind === 'project' && r?.project_stage === 'dissolved';
 }
 
-// ── Parcours guidé ────────────────────────────────────────────────────────
-//
-// Quatre étapes (spec §4), séquentielles mais librement réversibles. L'étape
-// courante est mémorisée en base (`recipe_projects.wizard_step`) et non dans
-// l'URL : quitter l'application au milieu du dialogue et y revenir doit
-// restituer le brouillon là où il a été laissé, y compris depuis un autre
-// appareil — ce qu'un état d'URL ne garantit pas.
-
-export const WIZARD_STEPS = [1, 2, 3, 4, 5, 6] as const;
-export type WizardStep = (typeof WIZARD_STEPS)[number];
-
-export const WIZARD_LABELS: Record<WizardStep, string> = {
-  1: 'Intention',
-  2: 'Format',
-  3: 'Structure',
-  4: 'Recettes',
-  5: 'Quantités',
-  6: 'Récapitulatif',
-};
-
-export function parseWizardStep(v: unknown): WizardStep {
-  const n = Number(v);
-  return (WIZARD_STEPS as readonly number[]).includes(n) ? (n as WizardStep) : 1;
-}
-
 // ── Format visé (étape 2) ─────────────────────────────────────────────────
 //
 // Les quatre formats de la spec, exprimés dans le modèle DÉJÀ en place plutôt
