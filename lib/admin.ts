@@ -10,6 +10,8 @@ import type { Database } from '@/lib/database.types';
 import { getMembersSubscriptionSummaries } from '@/lib/subscriptions-admin';
 import { normalizeReviewPhotos, type ReviewPhoto } from '@/lib/reviews';
 import { joindreIdeeFusionnee } from '@/lib/ideas';
+import { etatModeration, statutAffiche, statutPeutBloquer, type EtatModeration } from '@/lib/moderation';
+import { lireLigneModeration, lireModerationMembres } from '@/lib/moderation-data';
 
 export type MoldType = Database['public']['Tables']['mold_types']['Row'];
 export type Mold = Database['public']['Tables']['molds']['Row'] & {
@@ -495,7 +497,14 @@ export async function getAdminIdeas(): Promise<AdminIdeaRow[]> {
 export type Member = {
   id: string;
   email: string;
+  // Pour un membre inscrit : `profiles.status` seul, qui fait foi
+  // (JEP-272) — `active`, `suspended` (suspension en cours, une suspension
+  // échue redevient `active`) ou `disabled`. `allowlist.status` ne vaut que
+  // pour une invitation en attente.
   status: string;
+  // État de modération effectif (motif, date de fin) — toujours `actif` pour
+  // une invitation en attente.
+  moderation: EtatModeration;
   role: string;
   // Abonnement réel (table `subscriptions`), null pour une invitation en
   // attente (pas encore de profil). `profiles.plan` / `allowlist.plan`
@@ -529,7 +538,7 @@ export type Member = {
 
 export async function getAllowlistMembers(): Promise<Member[]> {
   const supabase = withImpersonationSchema(await createClient());
-  const [{ data: profiles }, { data: allowlist }, { data: recipes }, coutsIa, subscriptions] = await Promise.all([
+  const [{ data: profiles }, { data: allowlist }, { data: recipes }, coutsIa, subscriptions, moderations] = await Promise.all([
     supabase
       .from('profiles')
       .select(
@@ -540,6 +549,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
     supabase.from('recipes').select('author_id'),
     getAiUsageParMembre(),
     getMembersSubscriptionSummaries(),
+    lireModerationMembres(supabase),
   ]);
 
   const recipeMap: Record<string, number> = {};
@@ -556,10 +566,12 @@ export async function getAllowlistMembers(): Promise<Member[]> {
     const emailKey = (p.email || '').toLowerCase();
     const al = emailKey ? allowlistByEmail[emailKey] : null;
     if (emailKey) usedEmails.add(emailKey);
+    const ligneModeration = moderations.get(p.id) ?? { status: p.status };
     return {
       id: `p-${p.id}`,
       email: p.email || '',
-      status: al?.status || p.status || 'active',
+      status: statutAffiche(ligneModeration),
+      moderation: etatModeration(ligneModeration),
       role: al?.role || p.role || 'member',
       subscription: subscriptions.get(p.id) ?? null,
       is_demo: al?.is_demo ?? p.is_demo ?? false,
@@ -586,6 +598,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       id: `a-${a.id}`,
       email: a.email,
       status: a.status,
+      moderation: { etat: 'actif' },
       role: a.role,
       subscription: null,
       is_demo: a.is_demo,
@@ -655,10 +668,16 @@ export async function getMemberById(id: string): Promise<Member | null> {
       supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('author_id', profileId),
       getAiUsageForMember(profileId),
     ]);
+    // Motif et date de fin lus à part, seulement pour un compte marqué
+    // (colonnes absentes avant la migration, cf. `lib/moderation-data.ts`).
+    const ligneModeration = statutPeutBloquer(p.status)
+      ? ((await lireLigneModeration(supabase, profileId)) ?? { status: p.status })
+      : { status: p.status };
     return {
       id,
       email: p.email || '',
-      status: al?.status || p.status || 'active',
+      status: statutAffiche(ligneModeration),
+      moderation: etatModeration(ligneModeration),
       role: al?.role || p.role || 'member',
       // Chargé séparément (`MemberSubscriptionPanel`, `GET
       // /api/admin/membres/[id]/abonnement`) : la fiche n'a pas besoin du
@@ -690,6 +709,7 @@ export async function getMemberById(id: string): Promise<Member | null> {
       id,
       email: a.email,
       status: a.status,
+      moderation: { etat: 'actif' },
       role: a.role,
       subscription: null,
       is_demo: a.is_demo,

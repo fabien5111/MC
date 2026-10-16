@@ -15,6 +15,7 @@ import { getRecipeFull, getPublishedRecipeIds } from '@/lib/recipes';
 import type { RecipeFull } from '@/lib/recipes';
 import { buildEditorialText, buildStructuralSignature } from '@/lib/recipe-analysis';
 import { buildShingles } from '@/lib/ai/similarity';
+import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 60;
 
@@ -51,6 +52,10 @@ async function indexOne(admin: ReturnType<typeof createAdminClient>, recipeId: s
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ erreur: 'Connexion requise.' }, { status: 401 });
+  // Compte suspendu ou désactivé (JEP-272) : la clé service_role et les appels
+  // IA échappent à la RLS, la garde est donc ici.
+  const compteBloque = await refusSiCompteBloque(user.id);
+  if (compteBloque) return compteBloque;
 
   const body = await req.json().catch(() => ({}));
   const admin = createAdminClient();
