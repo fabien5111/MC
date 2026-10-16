@@ -1,0 +1,382 @@
+{
+  "ticket": "JEP-63",
+  "recette": {
+    "titre": "La bûche noisette façon Cédric Grolet",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une bûche de Noël inspirée des créations de Cédric Grolet autour de la noisette, composée d'un insert mêlant praliné, caramel au lait de noisette, gel noisette et biscuit hybride, le tout enveloppé d'une ganache montée, d'un enrobage croquant et d'un flocage velours.",
+    "rendement": "1 bûche pour 6 personnes",
+    "ustensiles": [
+      "Casseroles",
+      "Tapis de cuisson (silicone ou papier sulfurisé)",
+      "Robot mixeur (robot coupe)",
+      "Robot pâtissier (avec fouet)",
+      "Mixeur plongeant",
+      "Récipients (culs-de-poule, bols à fond large, pichet haut et étroit)",
+      "Film alimentaire",
+      "Moule à cake en silicone (type Moule à Cake Silicone Hermé 190 x 70 x h57 mm Silikomart Professional)",
+      "Tube pour insert (10 cm de long, 2 cm de diamètre)",
+      "Baguettes de 2 cm de hauteur",
+      "Maryse ou corne",
+      "Grille de pâtisserie",
+      "Pistolet à peinture"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Praliné noisette",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Noisettes",
+            "quantite": 350,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 4,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Torréfier les noisettes au four à 150 °C pendant 30 minutes, puis les laisser refroidir.",
+          "Dans une casserole à fond large, verser le sucre et le faire caraméliser à feu moyen sans remuer au début, puis mélanger une fois le sucre partiellement fondu pour obtenir un caramel ambré.",
+          "Verser le caramel chaud sur un tapis de cuisson ou une feuille de papier sulfurisé en fine couche pour accélérer le refroidissement.",
+          "Placer le caramel refroidi et les noisettes torréfiées dans le bol d'un robot mixeur et mixer jusqu'à l'obtention d'une pâte de praliné bien lisse.",
+          "Ajouter la fleur de sel, mélanger pour homogénéiser et réserver."
+        ],
+        "conseils_etape": "Peut être réalisé plusieurs jours avant (se conserve très bien)."
+      },
+      {
+        "nom_etape": "Pâte sucrée noisette",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (bien froid, coupé en petits cubes)",
+            "quantite": 37,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 23,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisette",
+            "quantite": 8,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 0.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf entier",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 62,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans le bol du robot, placer le beurre froid en cubes, le sucre glace, la farine, la fleur de sel et la poudre de noisette jusqu'à obtenir une texture sableuse.",
+          "Ajouter l'œuf entier et mélanger brièvement pour former une pâte homogène, en raclant les bords si nécessaire.",
+          "Émietter la pâte sur un tapis de cuisson ou une feuille de papier sulfurisé sous forme de petits morceaux façon streusel.",
+          "Cuire à 160 °C pendant 30 minutes.",
+          "Laisser refroidir, puis mixer les petits morceaux de pâte cuite au robot mixeur pour obtenir une fine poudre et réserver."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Croustillant",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Noisettes",
+            "quantite": 83,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 8,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Torréfier les noisettes à 150 °C pendant 30 minutes, les laisser refroidir puis les réduire en fine poudre au robot mixeur.",
+          "Mélanger la poudre de noisettes obtenue avec la fine poudre de pâte sucrée noisette, le praliné noisette et le beurre de cacao préalablement fondu.",
+          "Mélanger le tout jusqu'à obtenir une consistance homogène et réserver à température ambiante jusqu'au montage."
+        ],
+        "conseils_etape": "Utiliser également la totalité de la pâte sucrée noisette (étape 2) et du praliné (étape 1)."
+      },
+      {
+        "nom_etape": "Biscuit noisette",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Farine",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisette",
+            "quantite": 165,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 130,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 190,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 40,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Monter les blancs d'œufs en incorporant la totalité du sucre pendant environ 10 minutes pour obtenir une texture mousseuse avec un bec d'oiseau tombant.",
+          "Ajouter les jaunes d'œufs et mélanger délicatement.",
+          "Incorporer délicatement la farine tamisée et la poudre de noisette à l'aide d'une maryse en réalisant un mouvement de la base vers le haut.",
+          "Verser la préparation sur une épaisseur de 1,5 à 2 cm dans un moule à cake légèrement plus grand que celui de la bûche, préalablement bien beurré et fariné.",
+          "Cuire à 150 °C pendant environ 30 minutes.",
+          "Démouler après refroidissement à l'aide de baguettes de 2 cm de hauteur pour assurer une découpe nette, puis découper un rectangle de biscuit aux dimensions légèrement inférieures à celles du moule à insert."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Caramel noisette",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Sucre",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux (à température ambiante)",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait de noisette (bien chaud)",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1.5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans une casserole à fond large, faire chauffer le sucre à feu moyen pour le transformer en caramel.",
+          "Dès l'obtention d'une belle couleur caramel, stopper la cuisson en ajoutant le beurre à température ambiante tout en mélangeant.",
+          "Verser le lait de noisette bien chaud et fumant en plusieurs fois pour éviter les projections et les blocs de caramel.",
+          "Cuire l'ensemble à ébullition pendant au moins 3 minutes pour épaissir la préparation et évaporer l'humidité.",
+          "Verser dans un pichet haut et étroit, mixer au mixeur plongeant pour l'onctuosité, puis reverser dans un bol large et ajouter la fleur de sel.",
+          "Filmer au contact et placer au congélateur pendant une demi-heure avant le montage."
+        ],
+        "conseils_etape": "À réaliser 30 minutes avant le montage de l'insert."
+      },
+      {
+        "nom_etape": "Gel noisette",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 83,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Lait de noisette",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 21,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 54,
+            "unite": "g"
+          },
+          {
+            "nom": "Gomme de xanthane",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de noisette (un peu)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Dans un cul-de-poule, fouetter énergiquement les jaunes d'œufs avec le sucre.",
+          "Porter le lait de noisette à ébullition dans une casserole, puis le verser sur le mélange œufs-sucre en fouettant.",
+          "Remettre le tout dans la casserole et cuire à la texture d'une crème anglaise en atteignant 83 °C.",
+          "Verser la crème anglaise dans un récipient à fond large, filmer au contact et placer au réfrigérateur pendant au moins 1 heure.",
+          "Après ce repos, placer la crème anglaise refroidie, la pâte de noisette et la gomme de xanthane dans le robot mixeur, puis mixer pendant 5 minutes pour obtenir un gel onctueux.",
+          "Mettre en poche à douille sans douille et réserver au réfrigérateur jusqu'à l'utilisation."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Ganache montée noisette",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Lait de noisette",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes torréfiées",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 24,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de noisette",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30 %",
+            "quantite": 430,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné noisette (de l'étape 1)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans l'eau froide pendant 10 minutes au réfrigérateur.",
+          "Dans une casserole, porter le lait de noisette et les noisettes torréfiées à ébullition, puis couper le feu, couvrir et laisser infuser 10 minutes.",
+          "Mixer le lait infusé avec les noisettes, reporter à ébullition, puis verser en trois fois sur le chocolat blanc préalablement fondu en réalisant une émulsion au centre du récipient.",
+          "Incorporer la gélatine hydratée (essorée si en feuilles), la purée de noisette, le praliné noisette et la crème liquide bien froide.",
+          "Mixer le tout au mixeur plongeant (passer éventuellement la ganache au tamis pour éliminer les petits morceaux si souhaité).",
+          "Filmer au contact et placer au réfrigérateur pendant au moins 4 heures, idéalement une nuit."
+        ],
+        "conseils_etape": "À réaliser la veille du montage de la bûche."
+      },
+      {
+        "nom_etape": "Montage de l'insert et de la bûche",
+        "page": null,
+        "temps_preparation_minutes": 45,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Dans le moule à insert, déposer une belle couche de praliné noisette au fond.",
+          "Ajouter une couche de caramel noisette, puis une belle couche de gel noisette.",
+          "Disposer le rectangle de biscuit noisette sur le dessus et tartiner sa surface avec la couche de croustillant.",
+          "Placer l'insert au congélateur jusqu'à congélation complète.",
+          "Détendre légèrement la ganache montée reposée à la main pour obtenir une texture crémeuse et souple.",
+          "Napper l'intérieur du moule à bûche ou glacer la bûche avec une couche de ganache montée (environ 0,5 à 1 cm), puis placer au congélateur pendant 1 heure pour figer la mousse.",
+          "Démouler l'insert congelé et l'insérer au cœur de la bûche, puis surgeler l'ensemble."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Enrobage, flocage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 45,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 300,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre ensemble le chocolat au lait et le beurre de cacao au bain-marie pour l'enrobage et le flocage, puis maintenir à environ 40-45 °C.",
+          "Démouler la bûche surgelée, la piquer et la plonger aux deux tiers dans le mélange d'enrobage pour créer une enveloppe craquante, puis replacer au congélateur.",
+          "Monter le reste de ganache au robot jusqu'à l'obtention d'un léger bec d'oiseau.",
+          "Pocher des vagues de ganache sur le dessus de la bûche surélevée, puis remettre l'ensemble au congélateur jusqu'à durcissement total.",
+          "Remplir un pistolet à peinture avec l'enrobage à 45 °C et floquer entièrement la bûche à environ 20 cm de distance pour obtenir l'effet velours."
+        ],
+        "conseils_etape": "À réaliser le jour précédant la dégustation, pour laisser le temps de décongélation."
+      }
+    ],
+    "astuces_recette": [
+      "Privilégier la qualité des ingrédients, notamment la sélection des noisettes et du praliné, qui constituent l'essence aromatique de la bûche.",
+      "Respecter scrupuleusement les temps de repos au réfrigérateur et les phases de congélation entre chaque étape pour garantir la tenue des structures (insert, mousses, flocage).",
+      "Le beurre de cacao est indispensable pour réussir l'enrobage craquant et le flocage velours homogène."
+    ],
+    "conseils_conservation": "Laisser décongeler la bûche pendant au moins 6 heures au réfrigérateur. Sortir la bûche du réfrigérateur 20 minutes avant la découpe et la dégustation pour profiter pleinement de la texture des différentes crèmes et du croustillant. Conserver impérativement au réfrigérateur après décongélation et consommer dans les 48 heures."
+  }
+}
