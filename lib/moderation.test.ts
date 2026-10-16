@@ -3,6 +3,8 @@ import {
   BAN_SANS_LIMITE,
   colonnesProfil,
   dureeBannissement,
+  estRefusCompteBloque,
+  MESSAGE_COMPTE_BLOQUE,
   estBloque,
   etatModeration,
   statutAffiche,
@@ -138,5 +140,25 @@ describe('dureeBannissement / colonnesProfil', () => {
       suspension_reason: null,
       disabled_reason: null,
     });
+  });
+});
+
+describe('estRefusCompteBloque', () => {
+  it('reconnaît le refus d\'une policy blocked_user_*', () => {
+    expect(estRefusCompteBloque('new row violates row-level security policy "blocked_user_ins" for table "profiles"')).toBe(true);
+    expect(estRefusCompteBloque('new row violates row-level security policy "blocked_user_upd" for table "recipes"')).toBe(true);
+    expect(estRefusCompteBloque('new row violates row-level security policy "blocked_user_del" for table "favorites"')).toBe(true);
+  });
+
+  it('ne confond pas avec un autre refus ou une autre erreur', () => {
+    expect(estRefusCompteBloque('new row violates row-level security policy "impersonation_ro_ins" for table "profiles"')).toBe(false);
+    expect(estRefusCompteBloque('new row violates row-level security policy for table "recipes"')).toBe(false);
+    expect(estRefusCompteBloque('duplicate key value violates unique constraint')).toBe(false);
+    expect(estRefusCompteBloque(null)).toBe(false);
+    expect(estRefusCompteBloque(undefined)).toBe(false);
+  });
+
+  it('le message montré ne nomme aucune policy', () => {
+    expect(MESSAGE_COMPTE_BLOQUE).not.toMatch(/policy|row-level|blocked_user/i);
   });
 });

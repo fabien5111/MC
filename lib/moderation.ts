@@ -206,3 +206,23 @@ export function colonnesProfil(demande: DemandeModeration): {
   }
   return { status: 'active', suspended_until: null, suspension_reason: null, disabled_reason: null };
 }
+
+// ── Refus d'écriture d'un compte bloqué ─────────────────────────────────
+
+/** Message montré à un compte bloqué dont une action est refusée (routes API et écrans). */
+export const MESSAGE_COMPTE_BLOQUE = 'Votre compte est suspendu ou désactivé : cette action est impossible.';
+
+/**
+ * Le message brut d'une erreur d'écriture est-il le refus d'une policy
+ * `blocked_user_*` (RLS, `RESTRICTIVE`) ? PostgreSQL nomme la policy dans son
+ * message (`new row violates row-level security policy "blocked_user_ins" for
+ * table "profiles"`), ce que l'écran ne doit jamais montrer tel quel.
+ *
+ * Ne voit que les écritures qui échouent avec une erreur (insertion,
+ * upsert, `WITH CHECK`). Une modification ou une suppression filtrée par la
+ * clause `USING` ne lève rien : la ligne est simplement invisible, zéro ligne
+ * touchée.
+ */
+export function estRefusCompteBloque(messageBrut: string | null | undefined): boolean {
+  return /row-level security policy "blocked_user_(ins|upd|del)"/.test(messageBrut ?? '');
+}

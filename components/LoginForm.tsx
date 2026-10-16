@@ -34,14 +34,19 @@ import { useDialog } from '@/components/Dialog';
 
 // Traduction des messages d'erreur Supabase Auth les plus courants ; les
 // autres remontent tels quels (anglais) plutôt que d'être masqués.
+// Début du message d'un compte bloqué : l'erreur reste une chaîne dans l'état, la
+// suite et le lien vers /contact se rendent à l'affichage.
+const COMPTE_BLOQUE = 'Ce compte est suspendu ou désactivé.';
+
 const AUTH_ERRORS: Record<string, string> = {
   'User already registered': 'Un compte existe déjà avec cette adresse e-mail.',
   'Invalid login credentials': 'Adresse e-mail ou mot de passe incorrect.',
   'Email not confirmed': "Confirmez votre adresse e-mail avant de vous connecter (lien envoyé à l'inscription).",
   'Password should be at least 6 characters': 'Le mot de passe doit contenir au moins 6 caractères.',
   // Compte suspendu ou désactivé depuis le back-office (JEP-272, bannissement
-  // GoTrue). Le motif n'est lisible qu'une fois connecté : on renvoie au contact.
-  'User is banned': 'Ce compte est suspendu ou désactivé. Pour en savoir plus, écrivez-nous depuis la page Contact.',
+  // GoTrue). Le motif n'est lisible qu'une fois connecté : on renvoie au contact
+  // (le lien est ajouté à l'affichage, cf. `COMPTE_BLOQUE`).
+  'User is banned': COMPTE_BLOQUE,
 };
 
 function translateAuthError(message: string): string {
@@ -466,7 +471,17 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
 
           {error && (
             <p className="text-sm text-error text-center">
-              {error}
+              {error === COMPTE_BLOQUE ? (
+                <>
+                  {COMPTE_BLOQUE} Pour en savoir plus, écrivez-nous depuis la page{' '}
+                  <Link href="/contact" className="underline">
+                    Contact
+                  </Link>
+                  .
+                </>
+              ) : (
+                error
+              )}
               {error === 'Un compte existe déjà avec cette adresse e-mail.' && (
                 <>
                   {' '}

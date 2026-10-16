@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { LoginForm } from '@/components/LoginForm';
@@ -26,7 +27,15 @@ export default async function ConnexionPage({
         : error === 'auth'
           ? 'La connexion a échoué. Merci de réessayer.'
           : error === 'compte_bloque'
-            ? 'Ce compte est suspendu ou désactivé. Pour en savoir plus, écrivez-nous depuis la page Contact.'
+            ? (
+                <>
+                  Ce compte est suspendu ou désactivé. Pour en savoir plus, écrivez-nous depuis la page{' '}
+                  <Link href="/contact" className="underline">
+                    Contact
+                  </Link>
+                  .
+                </>
+              )
             : null;
 
   // Déjà connecté : inutile de rester sur la page de connexion.
