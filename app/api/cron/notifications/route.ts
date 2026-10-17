@@ -12,8 +12,8 @@
 // Autorisation par `CRON_SECRET`, comme les autres crons.
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { envoyerRecapitulatifs, libererQuotidien, reserverQuotidien, viderOutbox } from '@/lib/notification-jobs-data';
-import { genererRappels } from '@/lib/notification-rappels-data';
+import { reserverQuotidien, viderOutbox } from '@/lib/notification-jobs-data';
+import { jouerPasseQuotidienne } from '@/lib/notification-quotidien-data';
 import { dateZurich, quotidienARattraper } from '@/lib/notification-rappels';
 
 export const maxDuration = 60;
@@ -47,16 +47,8 @@ export async function GET(req: Request) {
     rattrapage = true;
   }
 
-  try {
-    // Les rappels d'abord : ils peuvent eux-mêmes alimenter la file des
-    // récapitulatifs, qui part juste après.
-    const rappels = await genererRappels(admin, maintenant);
-    // Lundi (UTC) : la file hebdomadaire part avec la quotidienne.
-    const recap = await envoyerRecapitulatifs(admin, { hebdo: maintenant.getUTCDay() === 1 });
-    return NextResponse.json({ ok: true, passe, rattrapage, outbox, rappels, recap });
-  } catch (e) {
-    // Un échec avant tout envoi ne doit pas condamner le reste de la journée.
-    if (rattrapage) await libererQuotidien(admin);
-    throw e;
-  }
+  // Un échec avant tout envoi ne doit pas condamner le reste de la journée :
+  // la réservation d'un rattrapage est rendue (jamais celle d'un rejeu explicite).
+  const { rappels, recap } = await jouerPasseQuotidienne(admin, maintenant, { libererSiEchec: rattrapage });
+  return NextResponse.json({ ok: true, passe, rattrapage, outbox, rappels, recap });
 }
