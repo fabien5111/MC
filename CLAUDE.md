@@ -713,6 +713,23 @@ remontant** en dessous.
   restant rendue par le serveur. Modifier l'une des deux cartes, c'est modifier
   le carnet ET la recherche.
 
+## Carnet : réglages sous 1024 px
+
+`/carnet` : au-dessus de 1024 px, pastilles de portée et de statut en liens,
+recherche et tri à droite de la ligne des statuts (affichée aussi sur les
+portées sans statut, pour que la recherche garde sa place). **En dessous**
+(mobile et tablette, là où la barre basse est visible), tout passe par
+`components/carnet/CarnetFiltersSheet.tsx` : un rappel des réglages actifs sous
+le titre, un bouton flottant (`.recipe-toc-fab`, pastille = nombre de réglages
+actifs) et une feuille remontante qui porte partage, recherche, tri, portée et
+statut. **Brouillon local, appliqué par « Afficher les résultats »** (une
+navigation, un voile) ; fermer par le voile ou Échap annule. Pas de compteur de
+résultats sur ce bouton : les compteurs de portée et de statut ignorent la
+recherche libre. **Le partage ne s'ouvre pas dans la feuille** (sa fenêtre
+`fixed` serait piégée dans le repère de la feuille translatée) : la ligne
+ferme la feuille et déclenche le `ShareBookButton` monté hors d'elle dans
+`CarnetToolbar`. Le bouton « Créer » (`CreateMenuButton`) reste en tête de page.
+
 ## Recherche textuelle sans accents
 
 **Toute zone de recherche du site ignore la casse ET les accents** (JEP-254) :
@@ -1189,7 +1206,8 @@ socle de données est en place** — le parcours guidé, les quantités, les
 essais et la validation arrivent par lots successifs.
 
 - **Le projet n'est créé qu'au passage à l'étape 2** (JEP-254). Le bouton
-  « Projet » du carnet est un simple lien vers `/projets/nouveau`, qui
+  « Créer un projet » du menu « Créer » du carnet (`CreateMenuButton` : menu
+  déroulant dès 768 px, feuille remontante en dessous) est un simple lien vers `/projets/nouveau`, qui
   n'écrit rien : on y choisit entre l'aide de l'IA (intention → proposition
   de format et de composants) et la construction manuelle. `POST /api/projet`
   crée alors la recette-projet **avec** l'intention et la proposition

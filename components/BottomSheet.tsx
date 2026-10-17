@@ -29,6 +29,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 // l'état) sont écrites côte à côte : c'est le seul endroit où elles doivent
 // rester d'accord.
 const BREAKPOINTS = {
+  // Menu « Créer » du carnet : au-dessus, c'est un menu déroulant.
+  md: { hide: 'md:hidden', query: '(min-width: 768px)' },
   // Recherche avancée : au-dessus, les critères sont une colonne persistante.
   lg: { hide: 'lg:hidden', query: '(min-width: 1024px)' },
   // Sommaire de recette : au-dessus, c'est le rail latéral (`.recipe-toc`).
