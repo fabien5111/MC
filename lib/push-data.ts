@@ -81,11 +81,26 @@ export async function supprimerAbonnementPush(admin: unknown, userId: string, en
 type LigneAbonnement = { id: string; endpoint: string; p256dh: string; auth: string };
 
 /**
+ * `high` = priorité haute chez le service de push : le message traverse
+ * l'économie d'énergie du téléphone (Doze) au lieu d'attendre une fenêtre de
+ * maintenance. Réservé à ce qu'un humain attend les yeux sur l'écran — la
+ * notification d'essai. Les vraies notifications restent en `normal` (le
+ * défaut) : une priorité haute coûte de la batterie et n'a de sens que pour
+ * une action déclenchée à l'instant par le membre.
+ */
+export type UrgencePush = 'normal' | 'high';
+
+/**
  * Envoie un message à TOUS les appareils du membre. Renvoie le nombre
  * d'appareils atteints. Un abonnement expiré (404/410 du service de push) est
  * supprimé : le navigateur l'a abandonné, il ne reviendra pas.
  */
-export async function envoyerPush(admin: unknown, userId: string, message: MessagePush): Promise<number> {
+export async function envoyerPush(
+  admin: unknown,
+  userId: string,
+  message: MessagePush,
+  options: { urgence?: UrgencePush } = {},
+): Promise<number> {
   const config = configVapid();
   if (!config) return 0;
   const db = vers(admin);
@@ -108,6 +123,7 @@ export async function envoyerPush(admin: unknown, userId: string, message: Messa
         await webpush.sendNotification({ endpoint: l.endpoint, keys: { p256dh: l.p256dh, auth: l.auth } }, charge, {
           vapidDetails: { subject: config.sujet, publicKey: config.publique, privateKey: config.privee },
           TTL: 24 * 60 * 60, // un rappel de la veille n'a plus de sens le surlendemain
+          urgency: options.urgence ?? 'normal',
           timeout: 10_000,
         });
         return l.id;

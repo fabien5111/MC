@@ -71,6 +71,9 @@ async function envoyerAuServeur(methode: 'POST' | 'DELETE', corps: unknown): Pro
 export function PushDeviceSection({ clePublique, appareils }: { clePublique: string | null; appareils: number | null }) {
   const [etat, setEtat] = useState<Etat>('chargement');
   const [preparation, setPreparation] = useState(false);
+  // Retour d'un essai réussi : le téléphone qui reçoit n'est souvent pas
+  // l'écran où l'on clique, rien d'autre ne confirmerait que l'envoi est parti.
+  const [retourEssai, setRetourEssai] = useState<string | null>(null);
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
   const impersonation = useImpersonation();
@@ -158,12 +161,18 @@ export function PushDeviceSection({ clePublique, appareils }: { clePublique: str
   }
 
   async function essayer() {
+    setRetourEssai(null);
     setPreparation(true);
     try {
       const r = await fetch('/api/push/test', { method: 'POST' });
       const j = (await r.json().catch(() => ({}))) as { atteints?: number; message?: string };
       if (!r.ok) await dialog.alert(j.message ?? `Essai impossible (erreur ${r.status}).`);
       else if (!j.atteints) await dialog.alert('Aucun appareil n’a pu être joint. Désactivez puis réactivez les notifications.');
+      else {
+        setRetourEssai(
+          `Essai transmis à ${j.atteints} appareil${j.atteints > 1 ? 's' : ''}. Il s’affiche en général en quelques secondes.`,
+        );
+      }
     } finally {
       setPreparation(false);
     }
@@ -173,6 +182,10 @@ export function PushDeviceSection({ clePublique, appareils }: { clePublique: str
 
   const bouton =
     'rounded-full bg-primary px-6 py-2 text-[13px] font-semibold text-on-primary hover:opacity-90 transition-all';
+  // Ce navigateur n'est pas abonné, mais le compte l'est ailleurs : l'essai part
+  // quand même, c'est le seul moyen de tester un téléphone depuis un autre écran
+  // (le bouton n'existait que sur un navigateur déjà activé).
+  const essaiVersAutres = etat !== 'actif' && appareils != null && appareils > 0;
 
   return (
     <div className="mb-6 rounded-lg border border-outline-variant bg-surface-container-low px-4 py-4">
@@ -228,6 +241,22 @@ export function PushDeviceSection({ clePublique, appareils }: { clePublique: str
         <p className="mt-1 text-sm text-on-surface-variant">
           Ce navigateur ne permet pas de recevoir les notifications. Vous les retrouvez dans la cloche et, selon vos
           réglages, par e-mail.
+        </p>
+      )}
+      {essaiVersAutres && (
+        <div className="mt-4 border-t border-outline-variant pt-3">
+          <p className="text-sm text-on-surface-variant">
+            {appareils === 1 ? 'Un appareil de votre compte reçoit' : `${appareils} appareils de votre compte reçoivent`}{' '}
+            déjà les notifications. Vous pouvez leur envoyer un essai depuis cet écran.
+          </p>
+          <button type="button" onClick={essayer} className={`${bouton} mt-3`}>
+            Envoyer un essai à mes appareils
+          </button>
+        </div>
+      )}
+      {retourEssai && (
+        <p role="status" className="mt-3 text-sm text-on-surface-variant">
+          {retourEssai}
         </p>
       )}
     </div>
