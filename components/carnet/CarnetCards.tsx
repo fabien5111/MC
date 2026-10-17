@@ -233,9 +233,8 @@ export function OtherCard({
           reçoivent. */}
       <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-wrap gap-1.5">
-          {item.favorite && (
-            <span className="rounded bg-white/90 px-1.5 py-0.5 font-label-md text-[9px] text-primary">Favori</span>
-          )}
+          {/* Pas d'étiquette « Favori » (JEP-366) : le cœur rempli, à droite, porte
+              déjà l'information. */}
           {/* Statut connu seulement pour ce qui est partagé (favoris/abonnements
               ne portent que du déjà-publié) — même badge que MineCard, pour
               qu'un brouillon partagé se distingue au premier coup d'œil. Pas
