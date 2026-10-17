@@ -1189,7 +1189,8 @@ socle de données est en place** — le parcours guidé, les quantités, les
 essais et la validation arrivent par lots successifs.
 
 - **Le projet n'est créé qu'au passage à l'étape 2** (JEP-254). Le bouton
-  « Projet » du carnet est un simple lien vers `/projets/nouveau`, qui
+  « Créer un projet » du menu « Créer » du carnet (`CreateMenuButton` : menu
+  déroulant dès 768 px, feuille remontante en dessous) est un simple lien vers `/projets/nouveau`, qui
   n'écrit rien : on y choisit entre l'aide de l'IA (intention → proposition
   de format et de composants) et la construction manuelle. `POST /api/projet`
   crée alors la recette-projet **avec** l'intention et la proposition

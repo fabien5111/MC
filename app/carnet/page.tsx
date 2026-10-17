@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { getCarnetData, applyCarnetFilters } from '@/lib/carnet';
@@ -20,7 +19,7 @@ import { CarnetToolbar } from '@/components/carnet/CarnetToolbar';
 import { CarnetContent } from '@/components/carnet/CarnetContent';
 import { ShareBookButton } from '@/components/carnet/ShareBookButton';
 import { InvitationScreen } from '@/components/invitation/InvitationScreen';
-import { NewProjectButton } from '@/components/projets/NewProjectButton';
+import { CreateMenuButton } from '@/components/carnet/CreateMenuButton';
 
 export const metadata: Metadata = { title: 'Mon carnet | Je pâtisse !' };
 // Jamais de cache (edge/CDN inclus) : le carnet doit toujours refléter les
@@ -86,11 +85,8 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
           <h1 className="font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[38px]">
             Mon carnet de recettes
           </h1>
-          {/* Masqués en session « en tant que » lecture seule — même garde que
-              l'ancien bouton Créer de l'en-tête, dont c'est maintenant la
-              seule maison (README « en-tête » : « les entrées de création
-              sont masquées »). Importer avant Créer : l'import est le geste
-              d'entrée dominant pour un carnet neuf. */}
+          {/* Masqué en session « en tant que » lecture seule. Un seul menu
+              « Créer » (recette, import, projet) : cf. CreateMenuButton. */}
           {!readOnly && (
             <div className="flex w-full items-center justify-center gap-3 md:w-auto md:justify-start">
               {/* Masqué ici en mobile : sur cette largeur, le bouton rejoint
@@ -99,21 +95,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               <div className="hidden md:flex">
                 <ShareBookButton ownerId={user.id} given={bookSharesGiven} lienPartage={lienPartage} />
               </div>
-              <NewProjectButton peutProjet={canAccess(droits, 'mode_projet')} />
-              <Link
-                href="/importer"
-                prefetch={false}
-                className="flex items-center gap-1.5 rounded-pill border border-outline-variant px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-surface-container"
-              >
-                <span className="material-symbols-outlined text-[18px]">upload_file</span> Importer
-              </Link>
-              <Link
-                href="/creer"
-                prefetch={false}
-                className="flex items-center gap-1.5 rounded-pill bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[18px]">add</span> Créer
-              </Link>
+              <CreateMenuButton peutProjet={canAccess(droits, 'mode_projet')} />
             </div>
           )}
         </div>
