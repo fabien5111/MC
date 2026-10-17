@@ -13,10 +13,9 @@
 // mot de passe.
 import { NextResponse } from 'next/server';
 import { getProfile } from '@/lib/auth';
-import { estBloque } from '@/lib/moderation';
+import { estBloque, MESSAGE_COMPTE_BLOQUE } from '@/lib/moderation';
 import { getEtatModeration } from '@/lib/moderation-data';
 
-export const MESSAGE_COMPTE_BLOQUE = 'Votre compte est suspendu ou désactivé : cette action est impossible.';
 
 export async function compteBloque(userId: string): Promise<boolean> {
   const profil = await getProfile(userId);

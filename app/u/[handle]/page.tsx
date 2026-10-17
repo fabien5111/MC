@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { getCurrentUser, isAdmin, isManager } from '@/lib/auth';
 import { getFavoriteIds } from '@/lib/favorites';
 import {
   getPublicProfile,
@@ -29,7 +29,9 @@ type Params = {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { handle } = await params;
   const profile = await getPublicProfile(handle);
-  return { title: profile ? `${profile.full_name || profile.username} | Je pâtisse !` : 'Profil introuvable' };
+  // Compte désactivé (JEP-272) : même titre qu'un profil inexistant.
+  const visible = profile && profile.status !== 'disabled';
+  return { title: visible ? `${profile.full_name || profile.username} | Je pâtisse !` : 'Profil introuvable' };
 }
 
 // La vitrine publique d'un pâtissier — pendant du carnet privé, mais un métier
@@ -41,6 +43,12 @@ export default async function PublicProfilePage({ params, searchParams }: Params
 
   const profile = await getPublicProfile(handle);
   if (!profile) notFound();
+  // Compte désactivé (JEP-272, lot 2) : la vitrine disparaît comme si le
+  // profil n'existait pas — sauf pour l'équipe, qui doit pouvoir constater.
+  if (profile.status === 'disabled') {
+    const viewer = await getCurrentUser();
+    if (!viewer || !(await isManager(viewer.id))) notFound();
+  }
 
   const [user, stats, categories, recipes, favIds, followCounts, defaultPhoto] = await Promise.all([
     getCurrentUser(),

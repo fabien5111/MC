@@ -1,6 +1,8 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '../database.types';
+import { cheminOuvertAuCompteBloque } from '../moderation';
+import { membreBloqueEnCache } from '../moderation-garde';
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
@@ -110,6 +112,7 @@ export async function updateSession(request: NextRequest) {
     // Seule la présence d'une session compte ici : le middleware aiguille, il
     // n'a besoin d'aucun attribut de l'utilisateur.
     const estConnecte = !!data?.claims;
+    const idMembre = typeof data?.claims?.sub === 'string' ? data.claims.sub : null;
 
     const { pathname } = request.nextUrl;
     const isProtected = PROTECTED_PREFIXES.some(
@@ -128,6 +131,21 @@ export async function updateSession(request: NextRequest) {
       url.pathname = '/connexion';
       url.searchParams.set('next', pathname);
       return NextResponse.redirect(url);
+    }
+
+    // Compte suspendu ou désactivé (JEP-272) : il se connecte, mais seul
+    // l'écran de blocage lui est ouvert (liste blanche : contact, pages
+    // légales, authentification). Statut lu au plus une fois par minute et par
+    // membre (`lib/moderation-garde.ts`) ; la RLS, `requireUser()` et les
+    // routes API restent les vraies protections. Un prefetch n'est pas
+    // redirigé, comme plus haut.
+    if (estConnecte && idMembre && !isPrefetch && !cheminOuvertAuCompteBloque(pathname)) {
+      if (await membreBloqueEnCache(idMembre)) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/compte-suspendu';
+        url.search = '';
+        return NextResponse.redirect(url);
+      }
     }
   } catch (err) {
     // Erreur transitoire (réseau, Supabase indisponible) : on ne casse pas tout

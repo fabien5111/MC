@@ -213,7 +213,8 @@ export async function searchMembers(term: string, excludeId: string, limit = 8):
   const t = term.trim();
   if (t.length < 2) return [];
   const supabase = await createClient();
-  const cols = 'id, full_name, avatar_url, username';
+  // `status` : un compte désactivé n'est plus proposé (JEP-272, lot 2).
+  const cols = 'id, full_name, avatar_url, username, status';
   // Nom affiché cherché sur sa forme normalisée (JEP-254, casse et accents
   // ignorés : « elise » trouve « Élise ») ; l'identifiant est déjà un slug sans
   // accent, le terme normalisé lui suffit.
@@ -230,6 +231,10 @@ export async function searchMembers(term: string, excludeId: string, limit = 8):
   if (byName.error) console.error('searchMembers (nom):', byName.error.message);
   if (byUsername.error) console.error('searchMembers (identifiant):', byUsername.error.message);
   const seen = new Map<string, Member>();
-  for (const m of [...(byName.data ?? []), ...(byUsername.data ?? [])] as Member[]) seen.set(m.id, m);
+  for (const m of [...(byName.data ?? []), ...(byUsername.data ?? [])] as (Member & { status?: string | null })[]) {
+    if (m.status === 'disabled') continue;
+    const { status: _status, ...membre } = m;
+    seen.set(m.id, membre);
+  }
   return [...seen.values()].slice(0, limit);
 }

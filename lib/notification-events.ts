@@ -346,6 +346,11 @@ export const EVENEMENTS = {
   contact_deploye: precompose('support', { verrouille: true }),
   contact_reponse: precompose('support', { verrouille: true }),
   mot_de_passe_change: precompose('support', { verrouille: true }),
+  // Modération d'un compte (JEP-272, lot 2) : verrouillés, le membre doit
+  // apprendre la décision même s'il a coupé ses notifications.
+  compte_suspendu: precompose('support', { verrouille: true }),
+  compte_desactive: precompose('support', { verrouille: true }),
+  compte_retabli: precompose('support', { verrouille: true }),
 
   // ── Mes recettes (auteur) ──────────────────────────────────────────────
   recette_publiee: {
