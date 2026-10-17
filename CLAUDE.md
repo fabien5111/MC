@@ -229,6 +229,7 @@ lib/                    Accès données typés + logique métier pure
 └── *.ts                recipes, profile, executions, admin, recipe-plan…
                         (ideas.ts / ideas-data.ts : logique pure vs RPC serveur)
 middleware.ts           Auth : protège les routes privées (runtime Node)
+instrumentation.ts      Démarrage du serveur : boucle de vidange de la file de notifications
 ```
 
 ### Principes
@@ -1750,6 +1751,35 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
   `List-Unsubscribe`. Pas de désinscription en un clic sans connexion.
 - **Tables du moteur absentes de `lib/database.types.ts`** jusqu'à la
   régénération : accès non typé, comme `notifications` avant elles.
+- **Vidange de la file : une boucle interne, pas seulement GitHub**
+  (17/10/2026). La tâche planifiée GitHub, censée passer toutes les 15 min, a
+  tourné **8 fois en 22 heures** (trous de 2 à 4 h) : favoris, avis et abonnés
+  arrivaient avec des heures de retard, sur la cloche comme sur le téléphone.
+  `instrumentation.ts` lance donc, au démarrage du processus, une boucle
+  (`lib/outbox-boucle.ts`) qui appelle `viderOutbox` **chaque minute** — un seul
+  SELECT quand la file est vide. La tâche GitHub reste en place comme filet de
+  sécurité.
+  - **Opt-in : `OUTBOX_BOUCLE=true`**, posée sur le **seul nœud applicatif de
+    production**. L'aperçu de PR tourne avec de vrais secrets et la même base :
+    une boucle active là-bas viderait la file **en concurrence** avec la
+    production, et la sérialisation ci-dessous ne vaut que dans un processus —
+    chaque événement serait notifié deux fois.
+  - **Une vidange à la fois par processus** (`enFile`, `lib/en-file.ts`, file
+    tenue sur `globalThis` parce que instrumentation et routes sont empaquetées
+    séparément) : la boucle et `GET /api/cron/notifications` ne lisent jamais les
+    mêmes lignes en même temps. Cela repose sur `instances: 1` (déjà exigé par
+    les caches) : passer à plusieurs instances impose d'abord de réserver chaque
+    ligne de la file en base, comme `reserverQuotidien`.
+  - Un tour lent n'empile pas les suivants, un échec n'arrête pas la boucle (même
+    message d'erreur journalisé une seule fois). Absente de `next build`.
+  - **Ne couvre que la file des événements nés du navigateur.** La passe
+    quotidienne (rappels de fournée, récapitulatifs) reste portée par le cron
+    GitHub et son rattrapage — elle hérite donc de ses retards (le rappel de
+    7 h 30 peut partir à 9 h). L'étendre à la boucle est possible : le jour est
+    déjà réservé en base (`reserverQuotidien`).
+  - **Vérifier le démarrage** (Web SSH du nœud 216658) :
+    `pm2 logs 0 --lines 200 --nostream | grep boucle` doit montrer
+    « notifications/boucle : démarrée ».
 - **Troisième canal : « Sur le téléphone » (Web Push standard, 05/10/2026).**
   Pas de Firebase ni d'application native : le serveur signe (clés VAPID,
   bibliothèque `web-push`) et dépose chez le service de push du navigateur, qui
@@ -2324,6 +2354,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `CARNET_PARTAGE_SECRET` | Signe les liens de partage de carnet (`lib/book-link.ts`, JEP-21) — optionnelle : absente, dérivée de `SUPABASE_SERVICE_ROLE_KEY`. La changer invalide tous les liens déjà distribués | Serveur uniquement |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Clés de signature Web Push (notifications sur le téléphone). La publique est transmise au navigateur par le rendu serveur — pas de `NEXT_PUBLIC_`, donc un redémarrage suffit, sans reconstruction. Absentes : canal masqué, rien ne casse. **Les changer coupe tous les appareils abonnés** | Serveur uniquement |
 | `VAPID_SUBJECT` | Contact déclaré aux services de push (`mailto:…`, optionnel, défaut `mailto:noreply@jepatisse.com`) | Serveur uniquement |
+| `OUTBOX_BOUCLE` | `true` démarre, au lancement du processus, la boucle interne qui vide la file de notifications chaque minute (`instrumentation.ts`, `lib/outbox-boucle.ts`). **Opt-in strict, à poser sur le seul nœud de production** : sur l'aperçu de PR (même base), la file serait vidée en double. Lue à l'exécution : un redémarrage du nœud suffit, sans reconstruction. Absente : seul le cron GitHub vide la file, avec ses retards | Serveur uniquement |
 | `NEXT_PUBLIC_STRIPE_PORTAIL_CONNEXION_URL` | Page de connexion au portail client Stripe, proposée aux comptes suspendus ou désactivés (JEP-272). Optionnelle ; URL `test_` en test, à remplacer en production | Publique (inlinée au build) |
 | `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Variable lue côté serveur à l'exécution, pas au build : un changement prend effet au redémarrage du nœud, sans reconstruction. | Serveur uniquement |
 

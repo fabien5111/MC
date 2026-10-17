@@ -11,6 +11,7 @@
 //     rassemble ce que `notifier` a mis en file.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmailBestEffort } from '@/lib/email';
+import { enFile } from '@/lib/en-file';
 import { membreBloque } from '@/lib/moderation-lecture';
 import { siteUrl } from '@/lib/site-url';
 import { CHEMIN_PREFERENCES, composerRecapitulatif, enTetesDesinscription, type LigneRecap } from '@/lib/notification-email';
@@ -38,7 +39,18 @@ async function equipeBackOffice(db: Db): Promise<string[]> {
   return (data ?? []).map((r) => r.id as string);
 }
 
-export async function viderOutbox(admin: unknown): Promise<{ traites: number; echecs: number }> {
+/**
+ * Vide la file. **Une vidange à la fois par processus** (`enFile`) : la boucle
+ * interne (`lib/outbox-boucle.ts`) et la route de la tâche planifiée l'appellent
+ * toutes deux, et deux vidanges simultanées liraient les mêmes lignes non
+ * traitées — chaque événement serait notifié deux fois. La seconde attend la
+ * fin de la première, qui n'a alors plus rien à lire.
+ */
+export function viderOutbox(admin: unknown): Promise<{ traites: number; echecs: number }> {
+  return enFile('vidange-outbox', () => viderOutboxSansFile(admin));
+}
+
+async function viderOutboxSansFile(admin: unknown): Promise<{ traites: number; echecs: number }> {
   const db = vers(admin);
   const { data: lot, error } = await db
     .from('notification_outbox')
