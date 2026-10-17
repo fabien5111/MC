@@ -20,7 +20,8 @@ export const dynamic = 'force-dynamic';
 //
 // Le motif est montré au membre : c'est la décision d'un modérateur, pas une
 // règle de détection à ne pas dévoiler (contrairement au refus d'un pseudo).
-// Le seul recours indiqué est le formulaire de contact, qui reste ouvert à un
+// Le membre peut se connecter mais n'a accès qu'à cet écran (middleware,
+// `lib/moderation-garde.ts`). Le seul recours indiqué est le formulaire de contact, qui reste ouvert à un
 // compte bloqué.
 export default async function CompteSuspenduPage() {
   const user = await getCurrentUser();
@@ -45,7 +46,7 @@ export default async function CompteSuspenduPage() {
         <p className="text-sm text-on-surface-variant">
           {suspendu
             ? etat.jusquAu
-              ? <>Votre compte est suspendu jusqu&apos;au <strong>{formatDateHeure(etat.jusquAu)}</strong>. Vous pourrez de nouveau vous connecter à cette date.</>
+              ? <>Votre compte est suspendu jusqu&apos;au <strong>{formatDateHeure(etat.jusquAu)}</strong>. Votre accès au site sera rétabli à cette date.</>
               : <>Votre compte est suspendu jusqu&apos;à nouvel ordre.</>
             : <>Votre compte a été désactivé par l&apos;équipe de Je pâtisse !.</>}
         </p>

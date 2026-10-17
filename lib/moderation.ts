@@ -29,9 +29,6 @@ import { formatDate, formatDateHeure } from '@/lib/format';
 export const STATUT_SUSPENDU = 'suspended';
 export const STATUT_DESACTIVE = 'disabled';
 
-/** Durée d'un bannissement GoTrue « sans limite » : cent ans. */
-export const BAN_SANS_LIMITE = '876000h';
-
 export const MOTIF_MAX_LENGTH = 1000;
 
 export type EtatModeration =
@@ -176,21 +173,19 @@ export function validerDemandeModeration(
   return { ok: true, demande: { action, motif: motif || null, jusquAu: null } };
 }
 
+// ── Accès d'un compte bloqué ────────────────────────────────────────────
+
 /**
- * Durée du bannissement GoTrue (`ban_duration`) correspondant à la demande.
- * Arrondie à la **minute** supérieure — pas à l'heure : un bannissement plus
- * long que la suspension retarderait d'autant la reconnexion, alors que le
- * ticket exige que le membre puisse se reconnecter à la date de fin sans
- * action manuelle. La garde applicative et la RLS lèvent la suspension à la
- * seconde près ; GoTrue (durée Go) accepte les minutes.
+ * Pages et chemins qu'un membre suspendu ou désactivé peut encore ouvrir
+ * (garde du middleware). Il se connecte — plus de bannissement GoTrue — mais
+ * n'a accès qu'à son écran de blocage, au formulaire de contact (le recours),
+ * aux pages légales et au flux d'authentification (rappel de session,
+ * déconnexion). Tout le reste est renvoyé vers `/compte-suspendu`.
  */
-export function dureeBannissement(demande: DemandeModeration, maintenant: Date = new Date()): string {
-  if (demande.action === 'lever') return 'none';
-  if (demande.action === 'suspendre' && demande.jusquAu) {
-    const minutes = Math.ceil((new Date(demande.jusquAu).getTime() - maintenant.getTime()) / 60_000);
-    return `${Math.max(1, minutes)}m`;
-  }
-  return BAN_SANS_LIMITE;
+const CHEMINS_BLOQUE = ['/compte-suspendu', '/contact', '/auth', '/hors-ligne', '/mentions-legales', '/confidentialite', '/cgu', '/cgv', '/cookies'];
+
+export function cheminOuvertAuCompteBloque(pathname: string): boolean {
+  return CHEMINS_BLOQUE.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 /** Colonnes de `profiles` écrites par une action de modération. */
@@ -369,7 +364,7 @@ export function composerEmailModeration(p: {
     lien = '/contact';
     blocs.push(detail.replace('Votre compte', 'Votre compte Je pâtisse !'));
     if (p.motif) blocs.push(`Motif : ${p.motif}`);
-    blocs.push('Pendant la suspension, vous ne pouvez plus vous connecter. Vos recettes et vos données sont conservées.');
+    blocs.push('Pendant la suspension, seule la page de votre compte reste accessible (contact, abonnement). Vos recettes et vos données sont conservées.');
   } else if (p.action === 'desactiver') {
     evenement = 'compte_desactive';
     sujet = 'Votre compte Je pâtisse ! est désactivé';
@@ -378,7 +373,7 @@ export function composerEmailModeration(p: {
     blocs.push('Votre compte Je pâtisse ! a été désactivé.');
     if (p.motif) blocs.push(`Motif : ${p.motif}`);
     blocs.push(
-      'Vous ne pouvez plus vous connecter, et vos contenus publiés (recettes, avis, idées, profil) ne sont plus visibles. ' +
+      'Seule la page de votre compte reste accessible (contact, abonnement), et vos contenus publiés (recettes, avis, idées, profil) ne sont plus visibles. ' +
         'Ils sont conservés et réapparaîtront si votre compte est rétabli.',
     );
   } else {
@@ -392,7 +387,7 @@ export function composerEmailModeration(p: {
   if (abonnement) blocs.push(abonnement);
   if (p.action !== 'lever' && p.urlPortail) {
     blocs.push(
-      `Vous avez un abonnement : vous pouvez le gérer (moyen de paiement, factures) sans vous connecter au site, depuis ce lien. Saisissez l’adresse e-mail de votre compte, un code vous sera envoyé : ${p.urlPortail}`,
+      `Vous avez un abonnement : vous pouvez gérer votre moyen de paiement et vos factures depuis ce lien Stripe (adresse e-mail de votre compte, code reçu par e-mail) : ${p.urlPortail}`,
     );
   }
   if (p.action !== 'lever') {

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BAN_SANS_LIMITE,
   colonnesProfil,
-  dureeBannissement,
+  cheminOuvertAuCompteBloque,
   estRefusCompteBloque,
   actionAbonnementParDefaut,
   actionsAbonnementPossibles,
@@ -114,20 +113,21 @@ describe('validerDemandeModeration', () => {
   });
 });
 
-describe('dureeBannissement / colonnesProfil', () => {
-  it('suspension datée : minutes arrondies au-dessus, jamais plus long que la suspension', () => {
-    const fin = new Date(MAINTENANT.getTime() + 90 * 60_000).toISOString();
-    expect(dureeBannissement({ action: 'suspendre', motif: 'x', jusquAu: fin }, MAINTENANT)).toBe('90m');
-    const finCourte = new Date(MAINTENANT.getTime() + 10 * 60_000 + 1_000).toISOString();
-    expect(dureeBannissement({ action: 'suspendre', motif: 'x', jusquAu: finCourte }, MAINTENANT)).toBe('11m');
+describe('cheminOuvertAuCompteBloque', () => {
+  it('laisse passer l’écran de blocage, le contact, l’authentification et les pages légales', () => {
+    for (const c of ['/compte-suspendu', '/contact', '/auth/callback', '/cgu', '/confidentialite', '/hors-ligne']) {
+      expect(cheminOuvertAuCompteBloque(c)).toBe(true);
+    }
   });
 
-  it('sans limite et désactivation : cent ans ; levée : none', () => {
-    expect(dureeBannissement({ action: 'suspendre', motif: 'x', jusquAu: null }, MAINTENANT)).toBe(BAN_SANS_LIMITE);
-    expect(dureeBannissement({ action: 'desactiver', motif: null, jusquAu: null }, MAINTENANT)).toBe(BAN_SANS_LIMITE);
-    expect(dureeBannissement({ action: 'lever', motif: null, jusquAu: null }, MAINTENANT)).toBe('none');
+  it('renvoie tout le reste vers l’écran de blocage', () => {
+    for (const c of ['/', '/blog', '/recette/abc', '/carnet', '/recherche', '/reglages', '/admin', '/contact-fake', '/compte-suspendu-x']) {
+      expect(cheminOuvertAuCompteBloque(c)).toBe(false);
+    }
   });
+});
 
+describe('colonnesProfil', () => {
   it('colonnes écrites : une désactivation efface la suspension, une levée efface tout', () => {
     expect(colonnesProfil({ action: 'suspendre', motif: 'm', jusquAu: DEMAIN })).toEqual({
       status: 'suspended',

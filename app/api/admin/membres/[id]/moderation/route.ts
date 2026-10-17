@@ -9,18 +9,17 @@
 //    de `requireUser()`, celle des routes API et la RLS
 //    (`public.is_blocked_user()`) : le blocage est effectif dès cette
 //    écriture, sessions déjà ouvertes comprises ;
-// 2. le journal (`member_moderation_events`) — avant le bannissement, pour
-//    qu'un échec GoTrue ne fasse pas disparaître la trace d'une décision déjà
-//    effective ;
-// 3. le bannissement GoTrue (`ban_duration`) — empêche de se reconnecter, par
-//    e-mail comme par Google, et de renouveler un jeton (GoTrue refuse le
-//    `refresh_token` d'un compte banni) : une session ouverte meurt donc au
-//    plus tard à l'expiration de son jeton d'accès.
+// 2. le journal (`member_moderation_events`) — écrit tout de suite, pour que la
+//    trace d'une décision déjà effective ne dépende d'aucun geste suivant ;
+// 3. plus de bannissement GoTrue : le membre se connecte, et le middleware ne
+//    lui ouvre que `/compte-suspendu` (liste blanche, `lib/moderation-garde.ts`).
+//    La route lève au passage un bannissement hérité de la première version et
+//    vide le cache du middleware pour que l'effet soit immédiat.
 //
-// Les sessions (`auth.sessions`) ne sont pas supprimées une à une : le schéma
-// `auth` n'est pas exposé par PostgREST, et le bannissement produit déjà
-// l'effet recherché (aucun renouvellement possible). La déconnexion forcée
-// sans sanction, prévue au lot 3, en aura besoin.
+// Les sessions (`auth.sessions`) ne sont pas supprimées : le membre en garde
+// une, la RLS lui refuse toute écriture, les routes API le refusent, et le
+// middleware ne lui montre que l'écran de blocage. La déconnexion forcée sans
+// sanction, prévue au lot 3, en aura besoin.
 //
 // Puis, lot 2, sans bloquer l'action si l'un d'eux échoue (chaque résultat
 // est rendu à l'admin, et tracé dans le journal) :
@@ -30,9 +29,6 @@
 // 6. l'e-mail au membre, sauf si l'admin a décoché « Prévenir le membre »
 //    — impossible pour une résiliation, qui se notifie toujours.
 //
-// Échec partiel (statut écrit, bannissement refusé par GoTrue) : réponse 502
-// explicite. Le compte est alors bloqué par l'application mais peut encore se
-// connecter — relancer l'action suffit, elle est idempotente.
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getVerifiedUser, isAdmin } from '@/lib/auth';
@@ -42,7 +38,6 @@ import {
   colonnesProfil,
   composerEmailModeration,
   urlConnexionPortail,
-  dureeBannissement,
   emailObligatoire,
   etatModeration,
   validerActionAbonnement,
@@ -50,6 +45,7 @@ import {
   type ActionAbonnement,
 } from '@/lib/moderation';
 import { lireLigneModeration } from '@/lib/moderation-data';
+import { invaliderBlocage } from '@/lib/moderation-garde';
 import { appliquerActionAbonnement, lireAbonnementModere, recalculerNotesDuMembre } from '@/lib/moderation-actions';
 import { notifier } from '@/lib/notifier';
 import { texteVersHtml } from '@/lib/billing';
@@ -135,20 +131,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .single();
   if (journal) console.error('moderation: journal non écrit :', journal.message);
 
-  // 3. Bannissement GoTrue.
-  const { error: ban } = await admin.auth.admin.updateUserById(cibleId, {
-    ban_duration: dureeBannissement(demande, maintenant),
-  });
-  if (ban) {
-    return NextResponse.json(
-      {
-        erreur:
-          `Statut enregistré, mais le serveur d'authentification a refusé le bannissement (${ban.message}). ` +
-          'Le compte est bloqué sur le site mais peut encore se connecter : relancez l’action.',
-      },
-      { status: 502 },
-    );
-  }
+  // 3. Plus de bannissement GoTrue : le membre se connecte et n'a accès qu'à
+  // l'écran de blocage (middleware). Un éventuel bannissement hérité de la
+  // première version est levé au passage, sans bloquer l'action s'il échoue.
+  const { error: debannissement } = await admin.auth.admin.updateUserById(cibleId, { ban_duration: 'none' });
+  if (debannissement) console.error('moderation: bannissement hérité non levé :', debannissement.message);
+  // Effet immédiat dans le middleware (cache de 60 s par membre).
+  invaliderBlocage(cibleId);
 
   // 4. Abonnement.
   let abonnement: { action: ActionAbonnement; ok: boolean; message?: string } = { action: 'aucune', ok: true };
