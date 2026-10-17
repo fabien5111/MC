@@ -97,7 +97,7 @@ export function BlogList({
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Chercher un article…"
-              className="w-52 md:w-64 bg-surface-container-low border-none rounded-full pl-4 pr-10 py-2 text-[13px] focus:ring-1 focus:ring-primary outline-none"
+              className="w-52 md:w-64 bg-white border border-outline-variant rounded-full pl-4 pr-10 py-2 text-[13px] focus:ring-1 focus:ring-primary outline-none"
             />
             <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">
               search

@@ -129,6 +129,7 @@ export function HeaderSearch({
               role="search"
               className="flex-1 flex items-center gap-3"
             >
+              <div className="flex flex-1 items-center gap-3 rounded-full border border-outline-variant bg-white px-4 py-2.5">
               <span className="material-symbols-outlined text-on-surface-variant">search</span>
               <input
                 ref={inputRef}
@@ -139,6 +140,7 @@ export function HeaderSearch({
                 aria-label="Rechercher"
                 className="flex-1 bg-transparent text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none"
               />
+              </div>
               <button
                 type="submit"
                 className="shrink-0 bg-primary text-on-primary px-5 py-2 rounded-full font-label-md text-label-md hover:shadow-lg transition-all active:scale-95"
