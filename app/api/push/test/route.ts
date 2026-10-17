@@ -4,7 +4,9 @@
 // Seul moyen pour un membre — et pour nous — de vérifier de bout en bout qu'un
 // téléphone reçoit bien les notifications, sans attendre un vrai événement.
 // Ne vise que les appareils du membre lui-même : aucune cible n'est lue dans
-// la requête. Un délai minimal entre deux essais évite d'en faire une sonnette.
+// la requête. Peut partir d'un navigateur qui n'est PAS abonné (le bloc de
+// /reglages propose l'essai dès que le compte a un appareil) : c'est ainsi
+// qu'on teste la réception d'un téléphone depuis un autre écran. Un délai minimal entre deux essais évite d'en faire une sonnette.
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { getImpersonationContext } from '@/lib/impersonation';
@@ -36,6 +38,9 @@ export async function POST() {
       createAdminClient(),
       user.id,
       composerMessagePush('Je pâtisse !', 'Les notifications arrivent bien sur cet appareil.', '/reglages#notifications'),
+      // Priorité haute : l'essai se fait le téléphone à la main, il ne doit pas
+      // attendre la fenêtre de maintenance de l'économie d'énergie.
+      { urgence: 'high' },
     );
     return NextResponse.json({ ok: true, atteints });
   } catch (e) {

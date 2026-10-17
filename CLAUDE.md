@@ -1791,7 +1791,15 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
     devra réactiver).
   - `POST /api/push/test` envoie une notification d'essai aux seuls appareils
     du membre (20 s entre deux essais) : le moyen de vérifier un téléphone de
-    bout en bout.
+    bout en bout. **Le bouton se montre dès que le compte a un appareil**, y
+    compris sur un navigateur qui n'est pas abonné (« Envoyer un essai à mes
+    appareils ») : c'est ainsi qu'on teste un téléphone depuis un autre écran —
+    il n'existait auparavant que sur un navigateur déjà activé, ce qui rendait
+    impossible un essai « téléphone fermé » depuis l'ordinateur. **L'essai part
+    en priorité haute** (`urgence: 'high'`, en-tête `Urgency`) pour traverser
+    l'économie d'énergie du téléphone ; les vraies notifications restent en
+    priorité normale (le défaut d'`envoyerPush`) : une priorité haute coûte de
+    la batterie et n'a de sens que pour un geste fait les yeux sur l'écran.
 
 ## Contact et suivi Jira
 
