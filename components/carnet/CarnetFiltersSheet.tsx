@@ -73,8 +73,10 @@ export function CarnetFiltersSheet({
   }, [open, params]);
 
   const actifs = reglagesActifs(params);
+  // Seuls les réglages qui s'écartent du défaut figurent au rappel : la portée
+  // « Tout » n'est pas un filtre.
   const resume = [
-    SCOPE_LABELS[params.scope],
+    params.scope !== EMPTY_CARNET_PARAMS.scope ? SCOPE_LABELS[params.scope] : null,
     params.statut !== 'all' ? STATUS_LABELS[params.statut] : null,
     params.q.trim() ? `« ${params.q.trim()} »` : null,
     params.tri !== 'recent' ? SORT_LABELS[params.tri] : null,
@@ -102,7 +104,7 @@ export function CarnetFiltersSheet({
         <span className="material-symbols-outlined text-[18px]" aria-hidden>
           tune
         </span>
-        <span className="truncate">{resume.join(' · ')}</span>
+        <span className="truncate">{resume.length > 0 ? resume.join(' · ') : 'Pas de filtre actif'}</span>
       </button>
 
       <button
