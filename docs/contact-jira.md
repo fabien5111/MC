@@ -792,7 +792,7 @@ l'identique, pour que la mise en route locale n'oublie aucune variable.
   `/confidentialite`. Un chantier séparé.
 - **Réception des réponses des membres dans le panneau** (§13 de la
   spécification d'origine, V2) : le membre qui répond à l'e-mail reçu
-  atterrit dans la boîte `EMAIL_REPLY_TO`, pas dans `/admin/contact`.
+  atterrit dans la boîte `EMAIL_REPLY_TO`, pas dans `/admin/contact` (JEP-360 : les e-mails du module ne l'invitent plus à répondre, il passe par son suivi ou `/contact`).
 - **Modèles de réponses pré-rédigés**, **suivi du statut visible par le
   membre sur son compte** (partiellement couvert par la notification
   in-app, §2.8, mais pas un historique complet) : hors périmètre V1 assumé

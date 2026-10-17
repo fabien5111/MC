@@ -266,9 +266,6 @@ async function notifierAbonnementConfirme(
           sujet,
           texte,
           html: texteVersHtml(texte),
-          // Le droit de rétractation s'exerce « en répondant à cet e-mail » : la
-          // réponse doit donc arriver à une boîte lue, pas à `noreply@`.
-          replyTo: process.env.EMAIL_REPLY_TO || undefined,
         }
       : undefined,
   });

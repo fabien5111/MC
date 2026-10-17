@@ -930,6 +930,8 @@ describe('composeReponseAdmin', () => {
     originalMessage: 'Les quantités ne se recalculent pas quand je change le nombre de parts.',
     originalDateIso: '2026-08-30T14:32:00.000Z',
     photoMemberUrl: null,
+    siteUrl: 'https://jepatisse.com',
+    membreConnecte: true,
   };
 
   it("porte la référence dans l'objet, préfixé « Re : »", () => {
@@ -975,13 +977,15 @@ describe('composeEmailDeploiement', () => {
       reference: 'REF-A7F3K2',
       authorFirstName: 'Fabien',
       subject: 'Les quantités ne se recalculent pas',
+      siteUrl: 'https://jepatisse.com',
+      membreConnecte: true,
     });
     expect(subject).toBe('Le problème que vous avez signalé est corrigé [REF-A7F3K2]');
     expect(text).toContain('« Les quantités ne se recalculent pas »');
   });
 
   it('salue par le prénom quand il est connu, génériquement sinon', () => {
-    const ctx = { reference: 'REF-A7F3K2', authorFirstName: null, subject: 'Bug' };
+    const ctx = { reference: 'REF-A7F3K2', authorFirstName: null, subject: 'Bug', siteUrl: 'https://jepatisse.com', membreConnecte: false };
     expect(composeEmailDeploiement({ ...ctx, authorFirstName: 'Fabien' }).text).toContain('Bonjour Fabien,');
     expect(composeEmailDeploiement(ctx).text).toContain('Bonjour,');
   });
@@ -991,9 +995,24 @@ describe('composeEmailDeploiement', () => {
       reference: 'REF-A7F3K2',
       authorFirstName: null,
       subject: '<script>alert(1)</script>',
+      siteUrl: 'https://jepatisse.com',
+      membreConnecte: false,
     }).html;
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
+  });
+});
+
+describe('consigne de réponse (expéditeur noreply)', () => {
+  const base = { reference: 'REF-A7F3K2', authorFirstName: null, subject: 'Bug', siteUrl: 'https://jepatisse.com' };
+
+  it('renvoie un membre vers son suivi, un visiteur vers le formulaire, sans inviter à répondre au message', () => {
+    const membre = composeEmailDeploiement({ ...base, membreConnecte: true }).text;
+    expect(membre).toContain('https://jepatisse.com/reglages/mes-demandes/REF-A7F3K2');
+    const visiteur = composeEmailDeploiement({ ...base, membreConnecte: false }).text;
+    expect(visiteur).toContain('https://jepatisse.com/contact');
+    expect(visiteur).toContain('REF-A7F3K2');
+    for (const t of [membre, visiteur]) expect(t).not.toMatch(/répondez à ce message|répondre directement/);
   });
 });
 

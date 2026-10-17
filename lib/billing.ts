@@ -372,7 +372,7 @@ export function emailConfirmationSouscription(p: {
     `- Conditions générales de vente acceptées : version du ${formatDate(version)}, consultables sur ${p.urlSite}${p.cgvChemin}`,
     '',
     'Accès immédiat et droit de rétractation',
-    `Vous avez demandé à accéder à votre formule dès la validation du paiement. Vous conservez néanmoins votre droit de rétractation pendant ${p.delaiRetractationJours} jours à compter de la souscription : il suffit de nous l’indiquer en répondant à cet e-mail, ou depuis ${p.urlSite}/contact. La part correspondant à la durée déjà écoulée restera due, le reste vous sera remboursé sous 14 jours.`,
+    `Vous avez demandé à accéder à votre formule dès la validation du paiement. Vous conservez néanmoins votre droit de rétractation pendant ${p.delaiRetractationJours} jours à compter de la souscription : il suffit de nous l’indiquer depuis le formulaire de contact : ${p.urlSite}/contact (cet e-mail est envoyé par une adresse qui ne reçoit pas de réponse). La part correspondant à la durée déjà écoulée restera due, le reste vous sera remboursé sous 14 jours.`,
     '',
     'Résiliation',
     'Vous pouvez résilier à tout moment depuis Réglages → Mon forfait → « Résilier mon abonnement ». La résiliation prend effet à la fin de la période en cours.',

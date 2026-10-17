@@ -762,11 +762,25 @@ export function emailDeploiementAutorise(c: ConditionsEmailDeploiement): Verdict
   return { envoyer: true };
 }
 
+/**
+ * Consigne de réponse des e-mails du module contact. L'expéditeur est une
+ * adresse `noreply@` : on ne propose jamais de répondre au message. Un membre
+ * connecté écrit dans le fil de son suivi, un visiteur repasse par le
+ * formulaire de contact en citant la référence.
+ */
+export function consigneReponse(p: { reference: string; siteUrl: string; membreConnecte: boolean }): string {
+  return p.membreConnecte
+    ? `Pour nous répondre, utilisez votre suivi : ${p.siteUrl}/reglages/mes-demandes/${p.reference}`
+    : `Pour nous répondre, utilisez le formulaire de contact ${p.siteUrl}/contact en indiquant la référence ${p.reference}.`;
+}
+
 export type ContexteEmailDeploiement = {
   reference: string;
   /** Prénom si connu (profil connecté), sinon salutation générique. */
   authorFirstName: string | null;
   subject: string;
+  siteUrl: string;
+  membreConnecte: boolean;
 };
 
 export type EmailDeploiementComposee = { subject: string; html: string; text: string };
@@ -780,6 +794,7 @@ export type EmailDeploiementComposee = { subject: string; html: string; text: st
 export function composeEmailDeploiement(ctx: ContexteEmailDeploiement): EmailDeploiementComposee {
   const salutation = ctx.authorFirstName ? `Bonjour ${ctx.authorFirstName},` : 'Bonjour,';
   const subject = `Le problème que vous avez signalé est corrigé [${ctx.reference}]`;
+  const consigne = consigneReponse(ctx);
 
   const text = [
     salutation,
@@ -791,7 +806,7 @@ export function composeEmailDeploiement(ctx: ContexteEmailDeploiement): EmailDep
     'Vous pouvez retourner sur le site pour en profiter. Pensez à rafraîchir la',
     'page si vous aviez le site déjà ouvert.',
     '',
-    'Si le problème persiste, répondez à ce message : nous rouvrirons le sujet.',
+    `Si le problème persiste, nous rouvrirons le sujet. ${consigne}`,
     '',
     'Merci de nous avoir aidés à améliorer Je pâtisse !',
     '',
@@ -804,7 +819,7 @@ export function composeEmailDeploiement(ctx: ContexteEmailDeploiement): EmailDep
     <p>La correction du problème que vous nous aviez signalé est maintenant en ligne :</p>
     <p>« ${echappe(ctx.subject)} »</p>
     <p>Vous pouvez retourner sur le site pour en profiter. Pensez à rafraîchir la page si vous aviez le site déjà ouvert.</p>
-    <p>Si le problème persiste, répondez à ce message : nous rouvrirons le sujet.</p>
+    <p>Si le problème persiste, nous rouvrirons le sujet. ${echappe(consigne)}</p>
     <p>Merci de nous avoir aidés à améliorer Je pâtisse !</p>
     <p>L’équipe Je pâtisse !</p>`;
 
@@ -932,6 +947,8 @@ export type ContexteReponseAdmin = {
    * objet (§18 de docs/contact-jira.md).
    */
   photoMemberUrl: string | null;
+  siteUrl: string;
+  membreConnecte: boolean;
 };
 
 export type ReponseAdminComposee = { subject: string; html: string; text: string };
@@ -959,7 +976,7 @@ export function composeReponseAdmin(ctx: ContexteReponseAdmin): ReponseAdminComp
     ...(ligneMedia ? ['', ligneMedia] : []),
     '',
     '---',
-    'Vous pouvez répondre directement à ce message.',
+    consigneReponse(ctx),
     '',
     `Votre message initial du ${date} :`,
     `> ${citation}`,
@@ -973,7 +990,7 @@ export function composeReponseAdmin(ctx: ContexteReponseAdmin): ReponseAdminComp
     <p>${echappe(ctx.replyBody.trim()).replace(/\n/g, '<br>')}</p>
     ${ligneMedia ? `<p>${echappe(ligneMedia)}</p>` : ''}
     <hr>
-    <p>Vous pouvez répondre directement à ce message.</p>
+    <p>${echappe(consigneReponse(ctx))}</p>
     <p>Votre message initial du ${date} :<br>
     <em>${echappe(citation).replace(/\n/g, '<br>')}</em></p>
     <p>L’équipe Je pâtisse !</p>`;

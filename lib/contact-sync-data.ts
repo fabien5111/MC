@@ -12,6 +12,7 @@
 // séquence à deux endroits qui finiraient par diverger.
 //
 // Décisions de conception : `docs/contact-jira.md`.
+import { siteUrl } from '@/lib/site-url';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { withContactSchema } from '@/lib/contact-types';
 import type { ContactMessageRow } from '@/lib/contact-types';
@@ -133,6 +134,8 @@ async function notifierDeploiement(
         reference: message.reference,
         authorFirstName: prenom,
         subject: message.subject,
+        siteUrl: siteUrl(),
+        membreConnecte: !!message.user_id,
       });
       const envoye = await sendEmailBestEffort({ to: message.email as string, subject, html, text });
       if (!envoye) {
