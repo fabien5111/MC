@@ -10,7 +10,9 @@
 // (`schedule` est « au mieux », fortement espacé sous charge).
 //
 // CE QUE FAIT LA BOUCLE. Chaque minute, le processus de l'application vide
-// lui-même la file : un seul SELECT quand elle est vide. La tâche GitHub reste
+// lui-même la file : un seul SELECT quand elle est vide. Elle joue aussi la
+// passe quotidienne (rappels de fournée, récapitulatifs) dès 05:30 UTC, une
+// fois par jour (`rattraperQuotidienne`). La tâche GitHub reste
 // en place comme filet de sécurité ; la vidange étant sérialisée par processus
 // (`enFile`), les deux ne se marchent pas dessus.
 //
@@ -25,6 +27,7 @@
 // l'assembler.
 import { createAdminClient } from '@/lib/supabase/admin';
 import { viderOutbox } from '@/lib/notification-jobs-data';
+import { rattraperQuotidienne } from '@/lib/notification-quotidien-data';
 
 /** Période de la vidange. Une minute : l'attente maximale d'un favori, d'un avis, d'un abonné. */
 export const INTERVALLE_VIDANGE_MS = 60_000;
@@ -96,9 +99,19 @@ export function demarrerVidangeOutbox(): void {
   let derniereErreur = '';
   g.__mcBoucleOutbox = creerBoucle(
     async () => {
-      const r = await viderOutbox(createAdminClient());
+      const admin = createAdminClient();
+      const r = await viderOutbox(admin);
       if (r.traites || r.echecs) {
         console.log(`notifications/boucle : ${r.traites} traité(s), ${r.echecs} échec(s)`);
+      }
+      // Puis la passe quotidienne (rappels de fournée, récapitulatifs), dès
+      // 05:30 UTC : une fois par jour de Zurich, réservée en base, donc sans
+      // doublon avec la tâche GitHub.
+      const q = await rattraperQuotidienne(admin);
+      if (q) {
+        console.log(
+          `notifications/boucle : passe quotidienne jouée — rappels ${JSON.stringify(q.rappels)}, récapitulatifs ${JSON.stringify(q.recap)}`,
+        );
       }
       derniereErreur = '';
     },

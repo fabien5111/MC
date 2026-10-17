@@ -1772,11 +1772,15 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
     ligne de la file en base, comme `reserverQuotidien`.
   - Un tour lent n'empile pas les suivants, un échec n'arrête pas la boucle (même
     message d'erreur journalisé une seule fois). Absente de `next build`.
-  - **Ne couvre que la file des événements nés du navigateur.** La passe
-    quotidienne (rappels de fournée, récapitulatifs) reste portée par le cron
-    GitHub et son rattrapage — elle hérite donc de ses retards (le rappel de
-    7 h 30 peut partir à 9 h). L'étendre à la boucle est possible : le jour est
-    déjà réservé en base (`reserverQuotidien`).
+  - **Elle joue aussi la passe quotidienne** (rappels de fournée,
+    récapitulatifs), dès 05:30 UTC et une fois par jour de Zurich
+    (`rattraperQuotidienne`, `lib/notification-quotidien-data.ts`, code partagé
+    avec la route cron). Le jour est réservé en base (`reserverQuotidien`) :
+    aucun doublon avec la tâche GitHub, qui reste le filet de sécurité. Mémoire
+    du processus : le jour joué n'est plus revérifié, une réservation refusée ou
+    une passe échouée ne sont retentées que 10 minutes plus tard — sans cela,
+    chaque minute de la journée coûterait deux requêtes. L'heure d'envoi devient
+    ~05:31 UTC (7 h 31 l'été) au lieu de celle du créneau GitHub.
   - **Vérifier le démarrage** (Web SSH du nœud 216658) :
     `pm2 logs 0 --lines 200 --nostream | grep boucle` doit montrer
     « notifications/boucle : démarrée ».
