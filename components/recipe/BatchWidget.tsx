@@ -688,7 +688,7 @@ export function BatchWidget({
             disabled={busy}
             className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md uppercase tracking-[0.15em] hover:shadow-xl active:scale-95 transition-all disabled:opacity-60"
           >
-            {busy ? 'Enregistrement…' : 'Valider'}
+            {editMode && existingBatch ? 'Enregistrer les modifications' : 'Lancer la fournée'}
           </button>
           <button
             type="button"
