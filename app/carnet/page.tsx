@@ -89,10 +89,10 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               « Créer » (recette, import, projet) : cf. CreateMenuButton. */}
           {!readOnly && (
             <div className="flex w-full items-center justify-center gap-3 md:w-auto md:justify-start">
-              {/* Masqué ici en mobile : sur cette largeur, le bouton rejoint
-                  la zone recherche dans CarnetToolbar (même instance de
-                  composant dupliquée, cf. CarnetToolbar.tsx). */}
-              <div className="hidden md:flex">
+              {/* Masqué ici sous 1024 px : le partage rejoint la feuille de
+                  réglages de CarnetToolbar (même instance de composant
+                  dupliquée, cf. CarnetFiltersSheet.tsx). */}
+              <div className="hidden lg:flex">
                 <ShareBookButton ownerId={user.id} given={bookSharesGiven} lienPartage={lienPartage} />
               </div>
               <CreateMenuButton peutProjet={canAccess(droits, 'mode_projet')} />

@@ -33,6 +33,7 @@ import {
   type CarnetParams,
 } from '@/lib/carnet-params';
 import { useCarnetTransition } from '@/components/carnet/CarnetProvider';
+import { CarnetFiltersSheet } from '@/components/carnet/CarnetFiltersSheet';
 
 const DEBOUNCE_MS = 300;
 
@@ -142,6 +143,18 @@ export function CarnetToolbar({
     timer.current = setTimeout(() => navigateSearch({ ...params, q: valeur }), DEBOUNCE_MS);
   }
 
+  // Validation de la feuille mobile : la saisie de la feuille remplace celle du
+  // champ du bureau, et le debounce éventuellement armé ne doit plus la
+  // réécrire.
+  const shareRef = useRef<HTMLDivElement>(null);
+  function appliquerDepuisFeuille(next: CarnetParams) {
+    if (timer.current) clearTimeout(timer.current);
+    derniereSaisie.current = next.q;
+    saisieEnVol.current = false;
+    setQ(next.q);
+    navigate(next);
+  }
+
   // La barre de statut disparaît sur Favoris et Mes abonnements. Sur Mes
   // abonnements, ces recettes des autres sont toujours déjà publiées et
   // publiques, leur statut ne varie jamais. Sur Favoris, une recette dont je
@@ -162,12 +175,9 @@ export function CarnetToolbar({
   // sélecteur mobile.
   const scopes = SCOPES.filter((s) => s !== 'proj' || params.scope === 'proj' || (counts.proj ?? 0) > 0);
 
-  const selectClassName =
-    'cursor-pointer rounded-pill border border-outline-variant bg-surface-container-low px-3 py-2 text-[13px] font-semibold text-on-surface-variant outline-none focus:ring-1 focus:ring-primary';
-
-  // Recherche + tri du bureau. Rendus deux fois (même procédé que le mobile) :
-  // sur la ligne des portées entre 768 et 1023 px, où la ligne du statut est
-  // trop courte, et sur la ligne du statut à partir de 1024 px.
+  // Recherche + tri du bureau, à droite de la ligne des statuts — qui reste
+  // affichée sur les portées sans statut (Favoris, Abonnements, Projets) pour
+  // que la recherche ne change pas de place d'une portée à l'autre.
   const rechercheTri = (
     <>
       <div className="relative">
@@ -198,8 +208,9 @@ export function CarnetToolbar({
 
   return (
     <div className="border-y border-outline-variant py-5">
-      {/* Desktop (>= md) : pastilles cliquables inchangées. */}
-      <div className="hidden md:block">
+      {/* Desktop (>= lg) : pastilles cliquables. En dessous, tout passe par la
+          feuille de CarnetFiltersSheet. */}
+      <div className="hidden lg:block">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
           <div className="flex flex-wrap gap-2">
             {scopes.map((s) => {
@@ -229,14 +240,9 @@ export function CarnetToolbar({
             })}
           </div>
 
-          <div className="ml-auto flex items-center gap-4 lg:hidden">{rechercheTri}</div>
         </div>
 
-        <div
-          className={`mt-4 flex-wrap items-center gap-2 border-t border-outline-variant/50 pt-4 ${
-            showStatusBar ? 'flex' : 'hidden lg:flex'
-          }`}
-        >
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-outline-variant/50 pt-4">
           {showStatusBar && (
             <>
               <span className="mr-1 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
@@ -261,76 +267,27 @@ export function CarnetToolbar({
               })}
             </>
           )}
-          <div className="ml-auto hidden items-center gap-4 lg:flex">{rechercheTri}</div>
+          <div className="ml-auto flex items-center gap-4">{rechercheTri}</div>
         </div>
       </div>
 
-      {/* Mobile (< md) : Partager + recherche sur une ligne, portée et statut
-          en listes déroulantes sur l'autre — tout centré (les pastilles
-          prennent trop de place sur cette largeur). */}
-      <div className="flex flex-col items-center gap-4 md:hidden">
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          {shareButton}
-          <div className="relative">
-            <input
-              type="text"
-              value={q}
-              onChange={(e) => saisir(e.target.value)}
-              placeholder="Chercher dans mon carnet…"
-              className="w-52 rounded-pill border border-outline-variant bg-white py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary"
-            />
-            <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-outline">
-              search
-            </span>
+      {/* Mobile et tablette (< lg) : rappel des réglages, bouton flottant et
+          feuille remontante. Le bouton de partage est monté ici, hors de la
+          feuille, et déclenché par sa ligne : cf. CarnetFiltersSheet. */}
+      <div className="lg:hidden">
+        <CarnetFiltersSheet
+          params={params}
+          scopes={scopes}
+          counts={counts}
+          statusCounts={statusCounts}
+          onApply={appliquerDepuisFeuille}
+          onShare={shareButton ? () => shareRef.current?.querySelector('button')?.click() : undefined}
+        />
+        {shareButton && (
+          <div ref={shareRef} className="[&>button]:hidden">
+            {shareButton}
           </div>
-          <select
-            value={params.tri}
-            onChange={(e) => navigate({ ...params, tri: e.target.value as CarnetParams['tri'] })}
-            className={selectClassName}
-          >
-            {SORT_KEYS.map((k) => (
-              <option key={k} value={k}>
-                {SORT_LABELS[k]}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <select
-            value={params.scope}
-            onChange={(e) => {
-              const scope = e.target.value as CarnetParams['scope'];
-              navigate({
-                ...params,
-                scope,
-                statut: scope === 'fav' || scope === 'sub' || scope === 'proj' ? 'all' : params.statut,
-              });
-            }}
-            className={selectClassName}
-          >
-            {scopes.map((s) => (
-              <option key={s} value={s}>
-                {SCOPE_LABELS[s]} ({counts[s] ?? 0})
-              </option>
-            ))}
-          </select>
-
-          {showStatusBar && (
-            <select
-              value={params.statut}
-              onChange={(e) => navigate({ ...params, statut: e.target.value as CarnetParams['statut'] })}
-              className={selectClassName}
-            >
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_LABELS[s]}
-                  {s !== 'all' ? ` (${statusCounts[s] ?? 0})` : ''}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
