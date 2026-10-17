@@ -395,6 +395,8 @@ async function composerEtEnvoyer(
     originalMessage: message.message,
     originalDateIso: message.created_at,
     photoMemberUrl,
+    siteUrl: siteUrl(),
+    membreConnecte: !!message.user_id,
   });
 
   const delivered = await sendEmailBestEffort({
@@ -402,7 +404,6 @@ async function composerEtEnvoyer(
     subject,
     html,
     text,
-    replyTo: process.env.EMAIL_REPLY_TO,
   });
 
   return { delivered, error: delivered ? null : `Envoi à ${message.email} échoué.` };

@@ -1476,8 +1476,9 @@ version.
   date d'effet rendue par Stripe (L.215-1-1). Un essai ou un don n'est pas un
   contrat payant, pas d'e-mail.
 - Les deux sont best-effort (un échec d'envoi ne fait échouer ni l'événement
-  ni la résiliation) et portent `replyTo: EMAIL_REPLY_TO` — la rétractation
-  s'exerce « en répondant à cet e-mail ».
+  ni la résiliation). La confirmation de souscription ne propose plus de
+  répondre à l'e-mail (JEP-360, expéditeur `noreply@`) : la rétractation
+  s'exerce par le formulaire `/contact` (ou par e-mail/courrier, cf. CGV §11.3).
 
 Le bouton de `UsageCard` s'appelle désormais « Résilier mon abonnement »
 (libellé de la résiliation en trois clics) ; « Annuler mon essai » reste.
