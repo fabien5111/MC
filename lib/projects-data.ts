@@ -436,10 +436,21 @@ export async function getProjectCredits(recipeId: string): Promise<ProjectCredit
     console.error('getProjectCredits:', error.message);
     return [];
   }
+  // Lien vers la recette source seulement si le visiteur peut l'ouvrir : une
+  // recette dépubliée, privée, ou d'un auteur désactivé (JEP-272, lot 2 —
+  // masquée par la RLS) mènerait à une page introuvable. Le nom de l'auteur,
+  // lui, reste affiché en texte : c'est l'engagement d'attribution (§9).
+  const sources = [...new Set((data ?? []).map((c) => c.source_recipe_id).filter((id): id is string => !!id))];
+  let visibles = new Set<string>();
+  if (sources.length > 0) {
+    const { data: lisibles, error: e } = await supabase.from('recipes').select('id').in('id', sources);
+    if (e) console.error('getProjectCredits (sources):', e.message);
+    visibles = new Set((lisibles ?? []).map((r) => r.id));
+  }
   return (data ?? []).map((c) => ({
     name: c.name,
     role: c.role,
-    sourceRecipeId: c.source_recipe_id,
+    sourceRecipeId: c.source_recipe_id && visibles.has(c.source_recipe_id) ? c.source_recipe_id : null,
     sourceTitle: c.source_title,
     sourceAuthorName: c.source_author_name,
   }));

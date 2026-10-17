@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BAN_SANS_LIMITE,
   colonnesProfil,
-  dureeBannissement,
+  cheminOuvertAuCompteBloque,
   estRefusCompteBloque,
+  actionAbonnementParDefaut,
+  actionsAbonnementPossibles,
+  composerEmailModeration,
+  emailObligatoire,
+  validerActionAbonnement,
+  type EtatAbonnement,
   MESSAGE_COMPTE_BLOQUE,
   estBloque,
   etatModeration,
@@ -108,20 +113,21 @@ describe('validerDemandeModeration', () => {
   });
 });
 
-describe('dureeBannissement / colonnesProfil', () => {
-  it('suspension datée : minutes arrondies au-dessus, jamais plus long que la suspension', () => {
-    const fin = new Date(MAINTENANT.getTime() + 90 * 60_000).toISOString();
-    expect(dureeBannissement({ action: 'suspendre', motif: 'x', jusquAu: fin }, MAINTENANT)).toBe('90m');
-    const finCourte = new Date(MAINTENANT.getTime() + 10 * 60_000 + 1_000).toISOString();
-    expect(dureeBannissement({ action: 'suspendre', motif: 'x', jusquAu: finCourte }, MAINTENANT)).toBe('11m');
+describe('cheminOuvertAuCompteBloque', () => {
+  it('laisse passer l’écran de blocage, le contact, l’authentification et les pages légales', () => {
+    for (const c of ['/compte-suspendu', '/contact', '/auth/callback', '/cgu', '/confidentialite', '/hors-ligne']) {
+      expect(cheminOuvertAuCompteBloque(c)).toBe(true);
+    }
   });
 
-  it('sans limite et désactivation : cent ans ; levée : none', () => {
-    expect(dureeBannissement({ action: 'suspendre', motif: 'x', jusquAu: null }, MAINTENANT)).toBe(BAN_SANS_LIMITE);
-    expect(dureeBannissement({ action: 'desactiver', motif: null, jusquAu: null }, MAINTENANT)).toBe(BAN_SANS_LIMITE);
-    expect(dureeBannissement({ action: 'lever', motif: null, jusquAu: null }, MAINTENANT)).toBe('none');
+  it('renvoie tout le reste vers l’écran de blocage', () => {
+    for (const c of ['/', '/blog', '/recette/abc', '/carnet', '/recherche', '/reglages', '/admin', '/contact-fake', '/compte-suspendu-x']) {
+      expect(cheminOuvertAuCompteBloque(c)).toBe(false);
+    }
   });
+});
 
+describe('colonnesProfil', () => {
   it('colonnes écrites : une désactivation efface la suspension, une levée efface tout', () => {
     expect(colonnesProfil({ action: 'suspendre', motif: 'm', jusquAu: DEMAIN })).toEqual({
       status: 'suspended',
@@ -160,5 +166,92 @@ describe('estRefusCompteBloque', () => {
 
   it('le message montré ne nomme aucune policy', () => {
     expect(MESSAGE_COMPTE_BLOQUE).not.toMatch(/policy|row-level|blocked_user/i);
+  });
+});
+
+const STRIPE: EtatAbonnement = {
+  libelle: 'Gourmand',
+  type: 'PAID',
+  stripe: true,
+  finPeriode: '2026-11-06T12:00:00.000Z',
+  enPause: false,
+  resiliationProgrammee: false,
+  lectureStripe: 'ok',
+};
+
+describe('gestes sur l’abonnement', () => {
+  it('rien à proposer sans abonnement Stripe lisible', () => {
+    expect(actionsAbonnementPossibles('suspendre', null)).toEqual(['aucune']);
+    expect(actionsAbonnementPossibles('suspendre', { ...STRIPE, stripe: false, lectureStripe: 'sans_objet' })).toEqual(['aucune']);
+    expect(actionsAbonnementPossibles('desactiver', { ...STRIPE, lectureStripe: 'echec' })).toEqual(['aucune']);
+  });
+
+  it('pause ou résiliation au blocage, reprise à la levée', () => {
+    expect(actionsAbonnementPossibles('suspendre', STRIPE)).toEqual(['aucune', 'pause', 'resilier']);
+    expect(actionsAbonnementPossibles('desactiver', { ...STRIPE, enPause: true })).toEqual(['aucune', 'resilier']);
+    expect(actionsAbonnementPossibles('suspendre', { ...STRIPE, resiliationProgrammee: true })).toEqual(['aucune']);
+    expect(actionsAbonnementPossibles('lever', { ...STRIPE, enPause: true })).toEqual(['aucune', 'reprendre']);
+    expect(actionsAbonnementPossibles('lever', STRIPE)).toEqual(['aucune']);
+  });
+
+  it('« ne rien faire » par défaut, sauf la reprise d’une pause à la levée', () => {
+    expect(actionAbonnementParDefaut('suspendre', STRIPE)).toBe('aucune');
+    expect(actionAbonnementParDefaut('lever', { ...STRIPE, enPause: true })).toBe('reprendre');
+  });
+
+  it('la route refuse un geste devenu impossible', () => {
+    expect(validerActionAbonnement(undefined, 'suspendre', null)).toEqual({ ok: true, valeur: 'aucune' });
+    expect(validerActionAbonnement('pause', 'suspendre', STRIPE)).toEqual({ ok: true, valeur: 'pause' });
+    expect(validerActionAbonnement('pause', 'suspendre', { ...STRIPE, enPause: true }).ok).toBe(false);
+    expect(validerActionAbonnement('reprendre', 'suspendre', STRIPE).ok).toBe(false);
+    expect(validerActionAbonnement('rembourser', 'suspendre', STRIPE).ok).toBe(false);
+  });
+
+  it('une résiliation impose l’e-mail', () => {
+    expect(emailObligatoire('resilier')).toBe(true);
+    expect(emailObligatoire('pause')).toBe(false);
+    expect(emailObligatoire('aucune')).toBe(false);
+  });
+});
+
+describe('composerEmailModeration', () => {
+  const base = { motif: 'Propos injurieux', jusquAu: null, abonnement: 'aucune' as const, finPeriode: null, urlSite: 'https://dev.jepatisse.com' };
+
+  it('lien du portail Stripe : seulement sur un blocage, quand il est fourni', () => {
+    const url = 'https://billing.stripe.com/p/login/xyz';
+    expect(composerEmailModeration({ ...base, action: 'suspendre', urlPortail: url }).texte).toContain(url);
+    expect(composerEmailModeration({ ...base, action: 'desactiver', urlPortail: url }).texte).toContain(url);
+    expect(composerEmailModeration({ ...base, action: 'lever', urlPortail: url }).texte).not.toContain(url);
+    expect(composerEmailModeration({ ...base, action: 'suspendre' }).texte).not.toContain('billing.stripe.com');
+  });
+
+  it('suspension : motif, durée et recours', () => {
+    const m = composerEmailModeration({ ...base, action: 'suspendre' });
+    expect(m.evenement).toBe('compte_suspendu');
+    expect(m.texte).toContain('jusqu’à nouvel ordre');
+    expect(m.texte).toContain('Motif : Propos injurieux');
+    expect(m.texte).toContain('https://dev.jepatisse.com/contact');
+  });
+
+  it('suspension datée et pause des prélèvements', () => {
+    const m = composerEmailModeration({ ...base, action: 'suspendre', jusquAu: DEMAIN, abonnement: 'pause' });
+    expect(m.texte).toContain('jusqu’au');
+    expect(m.texte).toContain('rien ne vous sera facturé');
+  });
+
+  it('désactivation et résiliation avec sa date de fin', () => {
+    const m = composerEmailModeration({ ...base, action: 'desactiver', abonnement: 'resilier', finPeriode: '2026-11-06T12:00:00.000Z' });
+    expect(m.evenement).toBe('compte_desactive');
+    expect(m.texte).toContain('ne sont plus visibles');
+    expect(m.texte).toContain('Votre abonnement est résilié');
+    expect(m.texte).toContain('2026');
+  });
+
+  it('levée : lien de connexion, pas de recours, reprise annoncée', () => {
+    const m = composerEmailModeration({ ...base, action: 'lever', motif: null, abonnement: 'reprendre' });
+    expect(m.evenement).toBe('compte_retabli');
+    expect(m.texte).toContain('https://dev.jepatisse.com/connexion');
+    expect(m.texte).not.toContain('/contact');
+    expect(m.texte).toContain('reprennent');
   });
 });

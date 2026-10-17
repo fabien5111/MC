@@ -31,6 +31,7 @@ import {
 import { PasswordStrengthGauge } from '@/components/PasswordStrengthGauge';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
+import { urlConnexionPortail } from '@/lib/moderation';
 
 // Traduction des messages d'erreur Supabase Auth les plus courants ; les
 // autres remontent tels quels (anglais) plutôt que d'être masqués.
@@ -478,6 +479,16 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
                     Contact
                   </Link>
                   .
+                  {urlConnexionPortail() && (
+                    <>
+                      {' '}
+                      Vous avez un abonnement ?{' '}
+                      <a href={urlConnexionPortail() ?? '#'} target="_blank" rel="noopener noreferrer" className="underline">
+                        Gérez-le sans vous connecter
+                      </a>
+                      .
+                    </>
+                  )}
                 </>
               ) : (
                 error

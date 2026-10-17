@@ -465,7 +465,7 @@ dé-doublonné par `suggestionPseudoLibre`), modifiable — c'est l'objet de l'�
 - Les routes `/api/admin/*` vérifient elles-mêmes `role === 'admin'` : elles
   restent fermées au gestionnaire.
 
-### Suspension et désactivation d'un membre (JEP-272, lot 1)
+### Suspension et désactivation d'un membre (JEP-272, lots 1 et 2)
 
 Admin → Membres → fiche → bloc « Modération » (`MemberModerationPanel`) :
 suspendre (motif obligatoire, date de fin facultative), désactiver, lever.
@@ -485,11 +485,24 @@ Toujours par `POST /api/admin/membres/[id]/moderation` (admin complet,
 - **Levée automatique calculée à la lecture** (`etatModeration`,
   `lib/moderation.ts`, et son jumeau SQL `public.is_blocked_user()`, à garder
   alignés) : une suspension échue vaut « actif », aucun cron ne réécrit la
-  ligne. Le bannissement GoTrue (`ban_duration`, arrondi à la minute au-dessus : à l'heure, il aurait retardé la reconnexion après la date de fin)
-  expire de lui-même.
-- **Quatre verrous** : bannissement GoTrue (plus de connexion, e-mail comme
-  Google, ni de renouvellement de jeton) ; `requireUser()` → `/compte-suspendu`
-  (motif, date de fin, lien vers `/contact`) ; RLS — policies `blocked_user_*`
+  ligne. (Le bannissement GoTrue, qui avait lui aussi une date de fin, a été
+  abandonné : cf. « Quatre verrous ».)
+- **Quatre verrous. Un membre bloqué SE CONNECTE, mais n'a accès qu'à
+  `/compte-suspendu`** (arbitrage du 17/10/2026 : plus de bannissement GoTrue,
+  qui l'empêchait de revoir son motif, de contacter l'équipe ou de gérer son
+  abonnement après déconnexion ; la route de modération lève au passage tout
+  bannissement hérité). **Garde du middleware** (`lib/supabase/middleware.ts`,
+  `lib/moderation-garde.ts`) : toute page hors liste blanche
+  (`cheminOuvertAuCompteBloque` : écran de blocage, `/contact`, `/auth`, pages
+  légales, `/hors-ligne`) renvoie vers `/compte-suspendu`. Le statut est lu au
+  plus **une fois par minute et par membre** (cache en mémoire du processus,
+  sur `globalThis` parce que middleware et routes sont empaquetés séparément ;
+  `invaliderBlocage()` après chaque action de modération = effet immédiat ; une
+  suspension échue est recalculée à chaque requête, la ligne étant mise en
+  cache plutôt qu'un booléen). Panne ou clé absente : non bloqué (le middleware
+  reste tolérant) ; les prefetch ne sont pas redirigés. `/api/*` n'est pas
+  couvert par le middleware : ses routes se gardent seules. Puis `requireUser()`
+  → `/compte-suspendu` (motif, date de fin, lien vers `/contact`) ; RLS — policies `blocked_user_*`
   (`RESTRICTIVE`, `authenticated`) posées sur **toutes** les tables RLS du
   schéma `public`, motif des `impersonation_ro_*` ; garde des routes API
   (`refusSiCompteBloque`, `lib/moderation-route.ts`), parce que la clé
@@ -498,20 +511,79 @@ Toujours par `POST /api/admin/membres/[id]/moderation` (admin complet,
   recours), la résiliation et le portail d'abonnement, l'alerte de mot de
   passe. **Une nouvelle table RLS n'hérite pas des policies** : rejouer le bloc
   `blocked_user_*` de la migration après l'avoir créée.
-- **Sessions non supprimées** : `auth.sessions` n'est pas exposé par
-  PostgREST, et le bannissement suffit (GoTrue refuse le `refresh_token` d'un
-  compte banni). Une session ouverte meurt à l'expiration de son jeton ; entre
-  les deux, pages privées et écritures sont déjà refusées.
+- **Sessions non supprimées** : le membre garde sa session. Contrepartie
+  assumée du choix ci-dessus : sans bannissement, il pourrait appeler l'API de
+  données hors du site et **lire** ce qui est lisible par tout membre
+  (recettes publiées) et ses propres données ; la RLS lui refuse toute écriture
+  et les routes API le refusent. `auth.sessions` n'est pas exposé par
+  PostgREST : la déconnexion forcée (lot 3) passera par l'API d'administration.
 - **Garde-fous** (`validerDemandeModeration`) : ni soi-même, ni un admin (un
   gestionnaire, oui). Un seul état bloquant, le plus fort l'emporte : pas de
   suspension sur un compte désactivé ; désactiver remplace une suspension.
 - **Notifications coupées** pour un compte bloqué (`notifier`, récapitulatifs),
   cloche comprise, sauf les événements verrouillés (obligations légales).
 - **Journal** : `member_moderation_events` (lecture admin par RLS, écriture
-  service_role seule), affiché dans la fiche. Écrit avant le bannissement,
-  pour qu'un échec GoTrue n'efface pas la trace d'une décision déjà effective.
-- Lots 2 (abonnement, e-mail au membre, masquage du contenu public) et 3
-  (restrictions partielles, RGPD) : à venir.
+  service_role seule), affiché dans la fiche. Écrit tout de suite après
+  le statut, pour que la trace d'une décision déjà effective ne dépende d'aucun geste suivant.
+- **Fenêtre de confirmation (lot 2)** : chaque action ouvre une fenêtre
+  (`MemberModerationPanel`, `FenetreConfirmation`) qui lit l'abonnement en
+  cours (`GET …/moderation`, `lireAbonnementModere`, `lib/moderation-actions.ts`)
+  et porte la case « Prévenir le membre par e-mail » (cochée). Gestes sur un
+  abonnement **Stripe** seulement (`actionsAbonnementPossibles`) : ne rien faire
+  (par défaut), mettre en pause les prélèvements (`pause_collection[behavior]=void`),
+  résilier à l'échéance (`cancel_at_period_end`, après libération d'un
+  échéancier) ; à la levée, reprendre une pause (proposé coché, jamais
+  automatique). Un essai, un don ou un abonnement manuel est seulement
+  mentionné. **Aucun remboursement automatique** (geste manuel du Dashboard).
+  La route relit l'état chez Stripe avant d'agir (`validerActionAbonnement`) ;
+  `subscriptions` est aligné par le webhook, jamais réécrit ici. Lecture Stripe
+  impossible : aucun geste proposé, renvoi au Dashboard.
+- **E-mail au membre** : trois événements **verrouillés** du catalogue
+  (`compte_suspendu`, `compte_desactive`, `compte_retabli`, catégorie
+  `support`), texte composé par `composerEmailModeration` (motif, date de fin,
+  recours `/contact`, conséquence sur l'abonnement), envoyé par `notifier`
+  (`emailPrecompose`). **Une résiliation impose l'e-mail** (`emailObligatoire`) :
+  c'est la fin du contrat du membre. Le journal garde `member_notified` et
+  `subscription_action` (suffixe `:echec` si Stripe a refusé), complétés après
+  coup et lus à part (colonnes absentes : le journal fonctionne sans).
+- **Contenu d'un compte désactivé masqué, jamais supprimé** (une suspension ne
+  masque rien, arbitrage du 06/10/2026). **RLS** : policies `disabled_author_hidden`
+  (`RESTRICTIVE`, `SELECT`, `anon` + `authenticated`) sur `recipes`
+  (`author_id`), `comments` (`user_id`) et `ideas` (`author_id`), appuyées sur
+  `public.mc_contenu_masque(uuid)` (SECURITY DEFINER, `postgres`) : vrai si
+  l'auteur est `disabled` et que le lecteur n'est ni lui, ni admin, ni
+  gestionnaire. Tout ce qui lit sous la session ou en `anon` en hérite
+  (accueil, recherche, fiche, carnet, favoris, partages, avis, idées).
+  **`profiles` n'est pas masqué par la RLS** (trop de jointures en dépendent) :
+  le profil public `/u/[handle]` rend 404 (sauf à l'équipe), la recherche de
+  membres (partage) et les pâtissiers de `/recherche` (`sansAuteursDesactives`,
+  `lib/search.ts` — le compte seul du tiroir peut en compter un de trop) les
+  écartent. **Les lectures service_role contournent la RLS** : le partage de
+  carnet par lien (`getApercuCarnet`, `proprietaireDesactive`) teste le statut
+  lui-même. Les crédits du mode projet gardent le nom de l'auteur en texte,
+  sans lien (`getProjectCredits` ne lie qu'une recette lisible par le visiteur).
+- **Notes moyennes recalculées** : `public.mc_recalculer_note(uuid)` (SECURITY
+  DEFINER, `postgres`) recalcule `rating_avg` / `rating_count` en **excluant les
+  avis des auteurs désactivés**. Le trigger des avis (`comments_recompute_recipe_rating`)
+  l'appelle, et la route le rejoue sur les recettes notées par le membre à la
+  désactivation et à sa levée (`recalculerNotesDuMembre`). Fonction absente :
+  ignoré sans erreur.
+- **Abonnement accessible depuis `/compte-suspendu`** : pour un abonnement
+  Stripe actif (`lireAbonnementModere`, best-effort), un bloc
+  (`AbonnementCompteBloque`) offre le portail Stripe (moyen de paiement,
+  factures) et la résiliation à l'échéance, par `/api/abonnement/portail` et
+  `/api/abonnement/resilier` — **volontairement sans `refusSiCompteBloque`** :
+  les fermer empêcherait un membre bloqué d'arrêter ses prélèvements. La page est
+  toujours atteignable (le membre se reconnecte, cf. « Quatre verrous »).
+  **Lien de connexion au portail Stripe** (Dashboard →
+  Paramètres → Facturation → Portail client, `NEXT_PUBLIC_STRIPE_PORTAIL_CONNEXION_URL`,
+  `urlConnexionPortail()`) : le membre y saisit son e-mail, reçoit un code, et
+  gère son moyen de paiement hors du site. Posé sur
+  `/compte-suspendu`, sur le message de connexion d'un compte encore banni
+  (héritage) et dans l'e-mail de suspension / désactivation (seulement si le membre a un abonnement
+  Stripe). Absent : rien d'affiché. Le portail ne résilie pas (§14) : pour cela,
+  le formulaire de contact.
+- Lot 3 (restrictions partielles, déconnexion forcée, RGPD) : à venir.
 
 ### Connexion « en tant que » (impersonation)
 
@@ -2193,6 +2265,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `SWIFT_TEMPURL_KEY_PHOTOS` | Clé de signature TempURL du conteneur `jp-photos` (public). **Doit différer de la suivante** : c'est ce qui cloisonne réellement les deux conteneurs | Serveur uniquement |
 | `SWIFT_TEMPURL_KEY_CONTACT` | Clé de signature TempURL du conteneur `jp-contact` (privé, photos de contact — données personnelles) | Serveur uniquement |
 | `CARNET_PARTAGE_SECRET` | Signe les liens de partage de carnet (`lib/book-link.ts`, JEP-21) — optionnelle : absente, dérivée de `SUPABASE_SERVICE_ROLE_KEY`. La changer invalide tous les liens déjà distribués | Serveur uniquement |
+| `NEXT_PUBLIC_STRIPE_PORTAIL_CONNEXION_URL` | Page de connexion au portail client Stripe, proposée aux comptes suspendus ou désactivés (JEP-272). Optionnelle ; URL `test_` en test, à remplacer en production | Publique (inlinée au build) |
 | `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Variable lue côté serveur à l'exécution, pas au build : un changement prend effet au redémarrage du nœud, sans reconstruction. | Serveur uniquement |
 
 Modèle local : `.env.local.example` → `.env.local`.

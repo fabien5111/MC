@@ -108,13 +108,34 @@ async function callRpc(args: RpcArgs): Promise<SearchResult> {
     author_total?: number;
     authors?: AuthorResult[];
   } | null;
+  const { authors, retires } = await sansAuteursDesactives(supabase, res?.authors ?? []);
   return {
     total: res?.total ?? 0,
     recipes: res?.recipes ?? [],
-    authorTotal: res?.author_total ?? 0,
-    authors: res?.authors ?? [],
+    authorTotal: Math.max(0, (res?.author_total ?? 0) - retires),
+    authors,
     error: null,
   };
+}
+
+// Pâtissiers désactivés (JEP-272, lot 2) : la RPC lit `profiles`, que la RLS
+// ne masque pas (trop de jointures en dépendent), d'où ce filtre au retour —
+// une requête de plus, seulement quand des pâtissiers sont rendus. Le compte
+// seul (`countOnly`) peut donc en compter un ou deux de trop : limite assumée.
+async function sansAuteursDesactives(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  authors: AuthorResult[],
+): Promise<{ authors: AuthorResult[]; retires: number }> {
+  if (authors.length === 0) return { authors, retires: 0 };
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .in('id', authors.map((a) => a.id))
+    .eq('status', 'disabled');
+  if (error || !data?.length) return { authors, retires: 0 };
+  const masques = new Set(data.map((p) => p.id));
+  const gardes = authors.filter((a) => !masques.has(a.id));
+  return { authors: gardes, retires: authors.length - gardes.length };
 }
 
 // Page de résultats + total. `shown` (paramètre `n` de l'URL) est le nombre

@@ -62,23 +62,39 @@ export type EvenementModeration = {
   jusquAu: string | null;
   createdAt: string;
   adminNom: string | null;
+  /** Membre prévenu par e-mail (lot 2) ; `null` : action antérieure ou colonne absente. */
+  notifie: boolean | null;
+  /** Geste sur l'abonnement (`pause`, `resilier`, `reprendre`, suffixe `:echec`), ou `null`. */
+  abonnement: string | null;
 };
+
+type LigneJournal = {
+  id: number;
+  action: string;
+  reason: string | null;
+  suspended_until: string | null;
+  created_at: string;
+  admin_id: string | null;
+  member_notified?: boolean | null;
+  subscription_action?: string | null;
+};
+
+const COLONNES_JOURNAL = 'id, action, reason, suspended_until, created_at, admin_id';
 
 /**
  * Journal des actions de modération d'un membre (fiche du back-office). Lu
  * avec la session de l'admin : la RLS de `member_moderation_events` réserve
- * la lecture aux administrateurs. Table absente : journal vide.
+ * la lecture aux administrateurs. Table absente : journal vide. Colonnes du
+ * lot 2 absentes : relu sans elles.
  */
 export async function getJournalModeration(memberId: string): Promise<EvenementModeration[]> {
   const db = vers(await createClient());
-  const { data, error } = await db
-    .from('member_moderation_events')
-    .select('id, action, reason, suspended_until, created_at, admin_id')
-    .eq('member_id', memberId)
-    .order('created_at', { ascending: false })
-    .limit(50);
+  const lire = (colonnes: string) =>
+    db.from('member_moderation_events').select(colonnes).eq('member_id', memberId).order('created_at', { ascending: false }).limit(50);
+  let { data, error } = await lire(`${COLONNES_JOURNAL}, member_notified, subscription_action`);
+  if (error) ({ data, error } = await lire(COLONNES_JOURNAL));
   if (error || !data) return [];
-  const lignes = data as { id: number; action: string; reason: string | null; suspended_until: string | null; created_at: string; admin_id: string | null }[];
+  const lignes = data as unknown as LigneJournal[];
 
   const adminIds = [...new Set(lignes.map((l) => l.admin_id).filter((x): x is string => !!x))];
   const noms = new Map<string, string>();
@@ -95,5 +111,7 @@ export async function getJournalModeration(memberId: string): Promise<EvenementM
     jusquAu: l.suspended_until,
     createdAt: l.created_at,
     adminNom: l.admin_id ? (noms.get(l.admin_id) ?? null) : null,
+    notifie: l.member_notified ?? null,
+    abonnement: l.subscription_action ?? null,
   }));
 }
