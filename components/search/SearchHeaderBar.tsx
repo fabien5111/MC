@@ -46,7 +46,7 @@ export function SearchHeaderBar() {
           role="search"
           data-nav-spinner-ignore
           onSubmit={(e) => e.preventDefault()}
-          className="flex items-center gap-2.5 bg-surface-container-lowest border border-outline-variant rounded-full pl-5 pr-2 py-2.5 shadow-sm"
+          className="flex items-center gap-2.5 bg-white border border-outline-variant rounded-full pl-5 pr-2 py-2.5 shadow-sm"
         >
           <span className="material-symbols-outlined text-[21px] text-outline">search</span>
           <input

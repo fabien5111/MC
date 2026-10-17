@@ -205,7 +205,7 @@ export function CarnetToolbar({
                 value={q}
                 onChange={(e) => saisir(e.target.value)}
                 placeholder="Chercher dans mon carnet…"
-                className="w-52 rounded-pill border-none bg-surface-container-low py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary md:w-64"
+                className="w-52 rounded-pill border border-outline-variant bg-white py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary md:w-64"
               />
               <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-outline">
                 search
@@ -263,7 +263,7 @@ export function CarnetToolbar({
               value={q}
               onChange={(e) => saisir(e.target.value)}
               placeholder="Chercher dans mon carnet…"
-              className="w-52 rounded-pill border-none bg-surface-container-low py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary"
+              className="w-52 rounded-pill border border-outline-variant bg-white py-2 pl-4 pr-10 text-[13px] outline-none focus:ring-1 focus:ring-primary"
             />
             <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-outline">
               search
