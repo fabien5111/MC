@@ -17,6 +17,11 @@
 // pas disponible hors ligne, tant pis, mais il n'est jamais servi périmé.
 // Seule exception : `/hors-ligne`, un repli statique pour les navigations qui
 // échouent faute de réseau.
+//
+// Il porte aussi les notifications sur l'appareil (Web Push) : gestionnaires
+// `push`, `notificationclick`, `pushsubscriptionchange`. Corollaire de
+// l'interrupteur d'arrêt : le worker auto-destructeur désinscrit le worker,
+// donc tous les abonnements push des navigateurs qui le reçoivent.
 export const dynamic = 'force-dynamic';
 
 const DISABLED = process.env.PWA_DISABLE_SERVICE_WORKER === 'true';
@@ -118,6 +123,80 @@ self.addEventListener('fetch', (event) => {
       if (cached) return cached;
       return Response.error();
     }),
+  );
+});
+
+// ── Notifications sur l'appareil (Web Push) ─────────────────────────────
+// Le serveur envoie { titre, corps, lien } (lib/push.ts, composerMessagePush).
+// Chaque push DOIT afficher une notification : Safari retire l'autorisation
+// d'un site qui reçoit des push silencieux. D'où un affichage même si la
+// charge est illisible.
+self.addEventListener('push', (event) => {
+  let message = {};
+  try {
+    message = event.data ? event.data.json() : {};
+  } catch (e) {
+    message = { corps: event.data ? event.data.text() : '' };
+  }
+  const titre = typeof message.titre === 'string' && message.titre ? message.titre : 'Je pâtisse !';
+  event.waitUntil(
+    self.registration.showNotification(titre, {
+      body: typeof message.corps === 'string' ? message.corps : '',
+      icon: '/icons/icon-192.png',
+      lang: 'fr',
+      data: { lien: message.lien },
+    }),
+  );
+});
+
+// Un chemin du site uniquement — jamais une adresse externe, même si la
+// charge en portait une (même règle que lienPushSur, lib/push.ts).
+function cheminSur(lien) {
+  return typeof lien === 'string' && lien.startsWith('/') && !lien.startsWith('//') && !lien.startsWith('/\\\\')
+    ? lien
+    : '/notifications';
+}
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const cible = new URL(cheminSur(event.notification.data && event.notification.data.lien), self.location.origin).href;
+  event.waitUntil(
+    (async () => {
+      // Un onglet du site déjà ouvert est réutilisé plutôt que d'en empiler un
+      // nouveau à chaque notification.
+      const fenetres = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const fenetre of fenetres) {
+        if (new URL(fenetre.url).origin !== self.location.origin) continue;
+        try {
+          await fenetre.focus();
+          await fenetre.navigate(cible);
+          return;
+        } catch (e) {
+          // Onglet non contrôlé par ce worker : navigate() échoue, on en ouvre un.
+          break;
+        }
+      }
+      await self.clients.openWindow(cible);
+    })(),
+  );
+});
+
+// Le navigateur renouvelle parfois l'abonnement de lui-même : on réabonne avec
+// les mêmes options et on prévient le serveur (cookies de session envoyés,
+// même origine). L'ancien abonnement sera purgé au prochain envoi (410).
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    (async () => {
+      const options = event.oldSubscription && event.oldSubscription.options;
+      if (!options) return;
+      const abonnement = await self.registration.pushManager.subscribe(options);
+      await fetch('/api/push/abonnement', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(abonnement.toJSON()),
+      });
+    })().catch(() => {}),
   );
 });
 `;

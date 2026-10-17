@@ -117,12 +117,20 @@ export async function listNotifications(
  */
 export const getNotificationPreferences = cache(async (userId: string): Promise<PreferencesMembre> => {
   const supabase = await createClient();
-  const { data } = await (supabase.from('notification_preferences' as never) as unknown as PrefsSelect)
-    .select('category, in_app, email, rhythm')
-    .eq('user_id', userId);
+  const table = () => supabase.from('notification_preferences' as never) as unknown as PrefsSelect;
+  // `push` (canal « sur l'appareil ») est lue si la colonne existe ; avant la
+  // migration, la lecture sans elle garde intactes les préférences site/e-mail
+  // — un e-mail refusé ne doit jamais redevenir reçu faute d'une colonne.
+  let { data, error } = await table().select('category, in_app, email, rhythm, push').eq('user_id', userId);
+  if (error) ({ data } = await table().select('category, in_app, email, rhythm').eq('user_id', userId));
   const prefs: PreferencesMembre = {};
   for (const l of data ?? []) {
-    prefs[l.category] = { site: l.in_app, email: l.email, rythme: RYTHME_DEPUIS_BASE[l.rhythm] ?? 'immediat' };
+    prefs[l.category] = {
+      site: l.in_app,
+      email: l.email,
+      rythme: RYTHME_DEPUIS_BASE[l.rhythm] ?? 'immediat',
+      push: l.push ?? null,
+    };
   }
   return prefs;
 });
@@ -130,10 +138,26 @@ export const getNotificationPreferences = cache(async (userId: string): Promise<
 type PrefsSelect = {
   select: (cols: string) => {
     eq: (col: string, value: string) => PromiseLike<{
-      data: { category: Categorie; in_app: boolean; email: boolean; rhythm: string }[] | null;
+      data: { category: Categorie; in_app: boolean; email: boolean; rhythm: string; push?: boolean | null }[] | null;
+      error: { message: string } | null;
     }>;
   };
 };
+
+/**
+ * Nombre d'appareils sur lesquels le membre courant reçoit les notifications
+ * (Web Push, `push_subscriptions`) — client de session, la RLS ne lui montre
+ * que les siens. `null` si la table n'existe pas encore : /reglages n'affiche
+ * alors aucun compte, rien ne casse.
+ */
+export async function countPushDevices(userId: string): Promise<number | null> {
+  const supabase = (await createClient()) as unknown as SupabaseClient;
+  const { count, error } = await supabase
+    .from('push_subscriptions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  return error ? null : (count ?? 0);
+}
 
 type NotificationsSentUpsert = {
   upsert: (

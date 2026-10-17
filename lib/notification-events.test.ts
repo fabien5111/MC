@@ -18,6 +18,7 @@ import {
   lienNotification,
   listeActeurs,
   preferenceEffective,
+  pushEffectif,
   type DefinitionEvenement,
 } from '@/lib/notification-events';
 
@@ -205,5 +206,33 @@ describe('sous-catégories', () => {
     for (const nom of ['recette_favori', 'recette_composant', 'nouvel_abonne', 'recette_suivi', 'idee_realisee'] as const) {
       expect(decisionCanaux(def(nom), {}), nom).toEqual({ site: true, email: 'aucun' });
     }
+  });
+});
+
+describe('pushEffectif (canal « sur le téléphone »)', () => {
+  it('actif par défaut pour ce qui se lit sur le moment, jamais pour le récapitulatif', () => {
+    expect(pushEffectif({}, 'mes_recettes.publication')).toBe(true);
+    expect(pushEffectif({}, 'fournees.veille')).toBe(true);
+    expect(pushEffectif({}, 'support')).toBe(true);
+    expect(pushEffectif({}, 'mes_recettes.favoris')).toBe(false);
+    expect(pushEffectif({}, 'communaute.abonnes')).toBe(false);
+    expect(pushEffectif({}, 'moderation')).toBe(false);
+  });
+  it('suit la ligne de la rubrique, une valeur nulle valant le défaut', () => {
+    const base = { site: true, email: true, rythme: 'immediat' as const };
+    expect(pushEffectif({ 'mes_recettes.publication': { ...base, push: false } }, 'mes_recettes.publication')).toBe(false);
+    expect(pushEffectif({ 'mes_recettes.favoris': { ...base, push: true } }, 'mes_recettes.favoris')).toBe(true);
+    expect(pushEffectif({ 'mes_recettes.publication': { ...base, push: null } }, 'mes_recettes.publication')).toBe(true);
+  });
+  it("n'hérite jamais d'une ligne de catégorie (toutes antérieures au canal)", () => {
+    const prefs = { mes_recettes: { site: false, email: false, rythme: 'immediat' as const } };
+    expect(pushEffectif(prefs, 'mes_recettes.publication')).toBe(true);
+  });
+  it('un événement verrouillé respecte le choix du membre', () => {
+    const prefs = { support: { site: true, email: true, rythme: 'immediat' as const, push: false } };
+    expect(pushEffectif(prefs, def('contact_deploye').rubrique)).toBe(false);
+  });
+  it('rubrique inconnue : rien', () => {
+    expect(pushEffectif({}, 'inconnue')).toBe(false);
   });
 });

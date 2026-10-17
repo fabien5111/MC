@@ -15,7 +15,8 @@ import { UsageCard } from '@/components/profile/UsageCard';
 import { MesDemandesCard } from '@/components/profile/MesDemandesCard';
 import { getFollowCounts, getFollowing } from '@/lib/follows';
 import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
-import { getNotificationPreferences } from '@/lib/notifications-data';
+import { countPushDevices, getNotificationPreferences } from '@/lib/notifications-data';
+import { clePubliquePush } from '@/lib/push-data';
 import { getCurrentPlan, getGrid, getUsageReport, hasConsumedTrial } from '@/lib/entitlements-data';
 import { getAbonnementStripeCourant, getChangementProgramme, getIdClientStripe } from '@/lib/billing-data';
 import { getMesDemandes } from '@/lib/contact-member-data';
@@ -80,7 +81,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   const identities = await getUserIdentities();
   const hasPassword = identities ? identities.some((i) => i.provider === 'email') : true;
 
-  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notificationPrefs, usage, grid, currentPlan, trialConsumed, mesDemandes, abonnementStripeCourant] =
+  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notificationPrefs, usage, grid, currentPlan, trialConsumed, mesDemandes, abonnementStripeCourant, appareilsPush] =
     await Promise.all([
       getFollowCounts(user.id),
       getFollowing(user.id),
@@ -93,6 +94,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
       hasConsumedTrial(user.id, user.email),
       getMesDemandes(user.id),
       getAbonnementStripeCourant(user.id),
+      countPushDevices(user.id),
     ]);
   // Second temps, dépendant du premier : `getChangementProgramme` a besoin de
   // l'identifiant Stripe résolu ci-dessus, pas de raison de le lancer pour un
@@ -154,7 +156,13 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
         <FollowingCard userId={user.id} following={following} />
         <BookSharesCard ownerId={user.id} given={bookSharesGiven} />
         <RecipeSharesCard ownerId={user.id} given={recipeSharesGiven} />
-        <NotificationPreferencesCard userId={user.id} preferences={notificationPrefs} backOffice={manager} />
+        <NotificationPreferencesCard
+          userId={user.id}
+          preferences={notificationPrefs}
+          backOffice={manager}
+          clePushPublique={clePubliquePush()}
+          appareilsPush={appareilsPush}
+        />
         <MesDemandesCard demandes={mesDemandes} />
       </main>
       <Footer />
