@@ -43,7 +43,6 @@ import { RecipeStep } from '@/components/recipe/RecipeStep';
 import type { IngredientView, RecipeStepView } from '@/lib/recipes';
 import { StepEditorCard } from '@/components/projets/StepEditorCard';
 import { TagFilter, type TagOption } from '@/components/projets/TagFilter';
-import { normSearch } from '@/lib/text-search';
 import { televerserImage } from '@/lib/storage-client';
 
 // Hauteur d'une zone de texte calée sur son contenu (JEP-254, point 7) : une
@@ -64,8 +63,8 @@ const DEBOUNCE_MS = 300;
 // une recette » (PICKER_SCOPES). Interrogées UNE À UNE, dans l'ordre imposé par
 // la spec (carnet → brouillons → favoris → abonnements → toutes) : c'est la
 // portée qui a répondu qui décide du `source_kind` enregistré, donc du crédit
-// d'auteur (§9). « Toutes les recettes » n'est pas cochée par défaut.
-const PORTEES_PAR_DEFAUT: PickerScope[] = ['mine', 'draft', 'fav', 'followed'];
+// d'auteur (§9). Toutes les cases sont cochées à l'ouverture (JEP-359).
+const PORTEES_PAR_DEFAUT: PickerScope[] = [...PICKER_SCOPES];
 
 type Trouvee = {
   id: string;
@@ -142,8 +141,7 @@ export function ComponentResolver({
   // champ texte libre.
   referenceAllergenes?: { names: string[]; byIngredient: Record<string, string> };
   // Tags du référentiel, pour filtrer la recherche d'une recette de base.
-  // « Recette de base » est présélectionné s'il existe (retirable) ; absent,
-  // la recherche s'ouvre sans filtre.
+  // Aucun tag n'est présélectionné (JEP-359) : la recherche s'ouvre sans filtre.
   tagsReference?: TagOption[];
   // Droit `mode_projet_ia_mensuel` (défaut `true` : le parent l'a déjà
   // vérifié avant de monter cette fenêtre).
@@ -179,10 +177,7 @@ export function ComponentResolver({
   const [mode, setMode] = useState<'sources' | 'edit' | 'contexte-ia' | 'apercu'>(initialMode ?? 'sources');
   const [terme, setTerme] = useState(component.name);
   const [portees, setPortees] = useState<Set<PickerScope>>(new Set(PORTEES_PAR_DEFAUT));
-  const [tagsChoisis, setTagsChoisis] = useState<number[]>(() => {
-    const t = tagsReference.find((x) => normSearch(x.name) === 'recette de base');
-    return t ? [t.id] : [];
-  });
+  const [tagsChoisis, setTagsChoisis] = useState<number[]>([]);
   const [resultats, setResultats] = useState<Trouvee[]>([]);
   const [chargement, setChargement] = useState(false);
   const [recherche, setRecherche] = useState(false);
