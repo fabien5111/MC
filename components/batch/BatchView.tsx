@@ -1904,8 +1904,10 @@ function StepCookCard({
         </div>
       )}
 
-      {open && (
-        <>
+      {/* Toujours monté : une étape repliée doit quand même sortir à l'impression
+          (le hook `usePrintDetailsExpansion` ne rouvre que les <details>, pas cet
+          état React). Masqué à l'écran seulement, `print:block` le rend au papier. */}
+        <div className={open ? '' : 'hidden print:block'}>
       {s.tips && (
         <div className="mx-4 mb-3 p-3 bg-primary/5 border-l-4 border-primary rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-primary mb-1">Conseils &amp; astuces</p>
@@ -2080,8 +2082,7 @@ function StepCookCard({
           }`}
         />
       </div>
-        </>
-      )}
+        </div>
     </div>
   );
 }
