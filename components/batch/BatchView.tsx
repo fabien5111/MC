@@ -1872,7 +1872,7 @@ function StepCookCard({
           ev.preventDefault();
           setOpen((o) => !o);
         }}
-        className="flex items-start gap-2 p-4 cursor-pointer select-none hover:bg-surface-container-low/60 transition-colors"
+        className="flex items-start gap-2 p-4 cursor-pointer select-none bg-primary/10 hover:bg-primary/15 print:border-b print:border-primary transition-colors"
       >
         <span onClick={(ev) => ev.stopPropagation()} className="shrink-0 mt-0.5 flex">
           <input
@@ -1885,7 +1885,7 @@ function StepCookCard({
           />
         </span>
         <span className="flex-1 min-w-0">
-          <span className={`font-headline-md text-[16px] text-primary block${s.done ? ' line-through' : ''}`}>{s.title}</span>
+          <span className={`font-headline-md text-[16px] font-bold uppercase tracking-wide text-primary block${s.done ? ' line-through' : ''}`}>{s.title}</span>
           <span className="text-[12px] font-label-md text-on-surface-variant">{badges.join(' · ')}</span>
           {!open && insideSummary.length > 0 && (
             <span className="text-[12px] font-body-md text-outline block mt-0.5">{insideSummary.join(' · ')}</span>
