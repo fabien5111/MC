@@ -850,7 +850,13 @@ ancre `#etape-<id>` du déroulé Préparer).
   `public.mc_ingredient_key` (rattrapage des `ref_id`) doit rester aligné.
 - **« oeuf » → « œuf » à l'écriture** (`fixOeufLigature`) sur tous les chemins
   qui écrivent un nom d'ingrédient : `CreerForm`, relecture d'import, courses,
-  composants de projet.
+  composants de projet — **et à la frappe** dans les champs nom d'ingrédient
+  (`saisieIngredient`, `lib/saisie-ingredient.ts`, JEP-282), sans quoi la
+  suggestion « Œuf » du `<datalist>` natif (filtré en sous-chaîne simple) ne
+  s'affichait jamais pour « oeuf ». **Liste fermée de mots** (`MOTS_LIGATURE`,
+  `lib/text.ts` : œuf, bœuf, cœur, œillet, œillette, singulier et pluriel),
+  jamais tout « oe » — « moelleux », « coefficient », « Noël » s'écrivent sans
+  ligature. Un mot à ajouter s'y range, avec son test (`lib/text.test.ts`).
 - **Un ingrédient, une seule entrée au référentiel** — préalable aux coûts et
   aux stocks, qui se rattacheront à `ingredient_refs.id`, jamais au texte.
   Admin → Éléments inconnus liste les **doublons du référentiel** (même clé)

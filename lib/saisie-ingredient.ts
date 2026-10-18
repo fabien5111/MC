@@ -1,11 +1,12 @@
-// Saisie d'un nom d'ingrédient : « oeuf » devient « œuf » dès la frappe (JEP-282).
+// Saisie d'un nom d'ingrédient : « oeuf » devient « œuf » dès la frappe (JEP-282),
+// ainsi que les autres mots de la liste de `fixOeufLigature` (bœuf, cœur…).
 //
 // La liste de suggestions des champs d'ingrédient est un `<datalist>` natif,
 // filtré par le navigateur en sous-chaîne simple : sans ligature, « oeuf » ne
 // propose jamais « Œuf » du référentiel. Le nom passait déjà par
 // `fixOeufLigature` à l'enregistrement — on applique la même règle pendant la
-// frappe, pour que la suggestion apparaisse. Seul le mot « oeuf(s) » est
-// touché (« moelleux », « boeuf » restent intacts). Dépannage limité à ce mot :
+// frappe, pour que la suggestion apparaisse. Seule la liste fermée de
+// `fixOeufLigature` est touchée (« moelleux » reste intact). Dépannage limité :
 // les accents (« creme » / « Crème ») demanderaient une liste de suggestions
 // maison, insensible aux accents.
 import { fixOeufLigature } from '@/lib/text';
