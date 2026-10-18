@@ -66,6 +66,7 @@ export function BatchStepDonePanel({
   canPersonalNotes = true,
   canSubsteps = true,
   readOnly = false,
+  ingredientsEditor,
 }: {
   step: StepFlags;
   ingredients: IngRow[];
@@ -102,6 +103,12 @@ export function BatchStepDonePanel({
   meta: ReactNode;
   // Contenu serveur (photos, vidéo, astuces…) affiché avec les listes.
   children?: ReactNode;
+  // Éditeur des ingrédients de l'étape (coefficient, quantités, remplacement,
+  // ajout — `BatchStepIngredients`), monté par la page quand la fournée n'est
+  // pas close. Il prend la place de la liste simple dans le bloc « Ingrédients
+  // de l'étape » : les deux montraient les mêmes lignes. Sans lui (fournée
+  // close, lecture seule), la liste simple d'origine.
+  ingredientsEditor?: ReactNode;
 }) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
@@ -415,77 +422,81 @@ export function BatchStepDonePanel({
   );
 
   const ingredientsBlock =
-    visible.length > 0 ? (
+    (ingredientsEditor ? ingredients.length > 0 : visible.length > 0) ? (
       <details className="group border border-outline-variant mb-2" open>
         <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
           <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
           <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
         </summary>
         <div className="p-4 bg-white">
-          {/* Nom en `minmax(0,1fr)` pour qu'il se replie : une grille tout en
-              `max-content` ne rétrécit pas et débordait du viewport mobile. */}
-          <ul
-            className={`grid gap-x-4 sm:gap-x-10 print:gap-x-10 ${
-              step.done ? 'grid-cols-[max-content_max-content_minmax(0,1fr)]' : 'grid-cols-[max-content_minmax(0,1fr)]'
-            }`}
-          >
-            {visible.map((it) => {
-              // Ingrédient remplacé par une sous-recette : il reste listé,
-              // barré, avec le renvoi — le faire disparaître laisserait
-              // croire à un oubli. Rien à cocher dessus : il ne rentre plus
-              // dans le parcours quel que soit l'état de l'étape.
-              const replaced = it.expanded_into_recipe_id != null;
-              const excluded = !replaced && step.done && it.excluded_when_done;
-              // Vert non barré : l'ingrédient reste bien utilisé dans
-              // l'étape, seule sa provenance change (fabriqué plutôt
-              // qu'acheté) — la mention verte en dessous dit où.
-              const tone = replaced ? 'text-green-700' : excluded ? 'text-on-surface-variant line-through opacity-60' : '';
-              return (
-                <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}>
-                  {step.done && (
-                    <span className="no-print">
-                      {replaced ? null : (
-                      <input
-                        type="checkbox"
-                        checked={it.excluded_when_done}
-                        disabled={readOnly}
-                        onChange={() => toggleIngredient(it)}
-                        title={
-                          readOnly
-                            ? 'Fournée close : reprenez-la pour modifier ce qui a été réalisé'
-                            : it.excluded_when_done
-                              ? 'Déjà pris en compte — décocher pour le conserver quand même (ex. un ingrédient utile plus tard dans la même étape)'
-                              : 'Conservé malgré l’étape déjà réalisée'
-                        }
-                        className={`w-5 h-5 rounded border-outline accent-primary focus:ring-primary ${readOnly ? 'opacity-60' : 'cursor-pointer'}`}
-                      />
+          {ingredientsEditor ?? (
+            <>
+              {/* Nom en `minmax(0,1fr)` pour qu'il se replie : une grille tout en
+                  `max-content` ne rétrécit pas et débordait du viewport mobile. */}
+              <ul
+                className={`grid gap-x-4 sm:gap-x-10 print:gap-x-10 ${
+                  step.done ? 'grid-cols-[max-content_max-content_minmax(0,1fr)]' : 'grid-cols-[max-content_minmax(0,1fr)]'
+                }`}
+              >
+                {visible.map((it) => {
+                  // Ingrédient remplacé par une sous-recette : il reste listé,
+                  // barré, avec le renvoi — le faire disparaître laisserait
+                  // croire à un oubli. Rien à cocher dessus : il ne rentre plus
+                  // dans le parcours quel que soit l'état de l'étape.
+                  const replaced = it.expanded_into_recipe_id != null;
+                  const excluded = !replaced && step.done && it.excluded_when_done;
+                  // Vert non barré : l'ingrédient reste bien utilisé dans
+                  // l'étape, seule sa provenance change (fabriqué plutôt
+                  // qu'acheté) — la mention verte en dessous dit où.
+                  const tone = replaced ? 'text-green-700' : excluded ? 'text-on-surface-variant line-through opacity-60' : '';
+                  return (
+                    <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1', alignItems: 'center' }}>
+                      {step.done && (
+                        <span className="no-print">
+                          {replaced ? null : (
+                          <input
+                            type="checkbox"
+                            checked={it.excluded_when_done}
+                            disabled={readOnly}
+                            onChange={() => toggleIngredient(it)}
+                            title={
+                              readOnly
+                                ? 'Fournée close : reprenez-la pour modifier ce qui a été réalisé'
+                                : it.excluded_when_done
+                                  ? 'Déjà pris en compte — décocher pour le conserver quand même (ex. un ingrédient utile plus tard dans la même étape)'
+                                  : 'Conservé malgré l’étape déjà réalisée'
+                            }
+                            className={`w-5 h-5 rounded border-outline accent-primary focus:ring-primary ${readOnly ? 'opacity-60' : 'cursor-pointer'}`}
+                          />
+                          )}
+                        </span>
                       )}
-                    </span>
-                  )}
-                  <span className={`font-label-md text-label-md whitespace-nowrap ${tone || 'text-primary'}`}>
-                    <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
-                    {qtyText(it)} {it.unit || ''}
-                  </span>
-                  <span className={`font-body-md text-body-md break-words ${tone}`}>
-                    {it.name}
-                    {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
-                  </span>
-                  {replaced && (
-                    <span className="font-body-md text-[12px] text-green-700" style={{ gridColumn: '1/-1' }}>
-                      Fabriqué à partir de{' '}
-                      {it.expanded_recipe ? (
-                        <Link href={`/recette/${it.expanded_recipe.id}`} className="underline underline-offset-2 hover:opacity-70">
-                          {it.expanded_recipe.title}
-                        </Link>
-                      ) : (
-                        <span className="italic">une recette qui n’est plus accessible</span>
+                      <span className={`font-label-md text-label-md whitespace-nowrap ${tone || 'text-primary'}`}>
+                        <span className="hidden print:inline-block align-text-bottom w-4 h-4 border-2 border-on-surface mr-2" />
+                        {qtyText(it)} {it.unit || ''}
+                      </span>
+                      <span className={`font-body-md text-body-md break-words ${tone}`}>
+                        {it.name}
+                        {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
+                      </span>
+                      {replaced && (
+                        <span className="font-body-md text-[12px] text-green-700" style={{ gridColumn: '1/-1' }}>
+                          Fabriqué à partir de{' '}
+                          {it.expanded_recipe ? (
+                            <Link href={`/recette/${it.expanded_recipe.id}`} className="underline underline-offset-2 hover:opacity-70">
+                              {it.expanded_recipe.title}
+                            </Link>
+                          ) : (
+                            <span className="italic">une recette qui n’est plus accessible</span>
+                          )}
+                        </span>
                       )}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
         </div>
       </details>
     ) : null;
@@ -499,7 +510,7 @@ export function BatchStepDonePanel({
           {sortedSubsteps.map((su, idx) => {
               const excluded = step.done && su.excluded_when_done;
               // Vert = ajoutée par l'utilisateur, comme un ingrédient ajouté
-              // dans BatchIngredientsEditor. L'exclusion « déjà fait » prime.
+              // dans BatchStepIngredients. L'exclusion « déjà fait » prime.
               const tone = excluded ? 'text-on-surface-variant line-through opacity-60' : su.added ? 'text-green-700' : '';
               return (
                 <li

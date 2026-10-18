@@ -233,7 +233,7 @@ export function StepEditorCard({
             <div className="w-56 shrink-0">
               <span className={label}>ALLERGÈNES</span>
             </div>
-            <div className="flex-1 min-w-[12rem]">
+            <div className="flex-[3] min-w-[12rem]">
               <span className={label}>COMMENTAIRE</span>
             </div>
             <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
@@ -246,7 +246,7 @@ export function StepEditorCard({
             const alle = parseAllergens(g.allergen);
             return (
               <div key={j} className="border-l-2 border-outline-variant/50 pl-4 min-[1232px]:border-l-0 min-[1232px]:pl-0">
-                <div className="flex flex-wrap min-[1232px]:flex-nowrap items-center gap-x-4 gap-y-1.5">
+                <div className="flex flex-wrap min-[1232px]:flex-nowrap items-center min-[1232px]:items-start gap-x-4 gap-y-1.5">
                   <div className="relative flex-[2] min-w-0">
                     <input
                       value={g.name}
@@ -291,7 +291,7 @@ export function StepEditorCard({
                   <select
                     value={g.unit ?? ''}
                     onChange={(e) => onIngredientChange(j, { unit: e.target.value || null })}
-                    className="editorial-input text-on-surface cursor-pointer"
+                    className="editorial-input text-on-surface cursor-pointer h-[42px] max-md:h-[38px]"
                     style={{ width: 'auto' }}
                   >
                     <option value=""></option>
@@ -303,7 +303,7 @@ export function StepEditorCard({
                     {g.unit && !units.includes(g.unit) && <option value={g.unit}>{g.unit}</option>}
                   </select>
                   <div className="basis-full min-[1232px]:hidden" />
-                  <div className="flex-1 min-w-0 min-[1232px]:min-w-[12rem] order-1 min-[1232px]:order-2">
+                  <div className="flex-[3] min-w-0 min-[1232px]:min-w-[12rem] order-1 min-[1232px]:order-2">
                     <input
                       type="text"
                       value={g.comment ?? ''}
@@ -327,13 +327,13 @@ export function StepEditorCard({
                     />
                   </div>
                   <div className="basis-full min-[1232px]:hidden order-2" />
-                  <div className="flex-1 min-w-0 order-3 min-[1232px]:order-1 min-[1232px]:flex-none min-[1232px]:w-56">
+                  <div className="flex-1 min-w-0 order-3 min-[1232px]:order-1 min-[1232px]:flex-none min-[1232px]:w-56 min-[1232px]:min-h-[42px] min-[1232px]:flex min-[1232px]:items-center">
                     {allergenNames ? (
                       <>
                         <span className="min-[1232px]:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">
                           Allergènes
                         </span>
-                        <div className="flex flex-wrap items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-1 min-[1232px]:w-full">
                           {alle.map((a) => (
                             <span
                               key={a}
@@ -357,8 +357,7 @@ export function StepEditorCard({
                                 const v = e.target.value;
                                 if (v) onIngredientChange(j, { allergen: v });
                               }}
-                              className="editorial-input text-on-surface cursor-pointer italic"
-                              style={{ width: 'auto' }}
+                              className="editorial-input text-on-surface cursor-pointer italic h-[42px] max-md:h-[38px] w-auto min-[1232px]:w-full"
                               title="Ajouter un allergène (table de référence)"
                             >
                               <option value="">Allergène (optionnel)</option>
@@ -397,7 +396,7 @@ export function StepEditorCard({
                     type="button"
                     title="Supprimer"
                     onClick={() => onIngredientDelete(j)}
-                    className="p-1 text-error hover:opacity-70 transition-opacity shrink-0 order-4 min-[1232px]:order-3"
+                    className="p-1 text-error hover:opacity-70 transition-opacity shrink-0 order-4 min-[1232px]:order-3 min-[1232px]:h-[42px] min-[1232px]:flex min-[1232px]:items-center"
                   >
                     <span className="material-symbols-outlined text-[18px]">delete</span>
                   </button>

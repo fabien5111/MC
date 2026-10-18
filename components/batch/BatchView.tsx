@@ -25,7 +25,7 @@ import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { BatchNotes } from '@/components/recipe/BatchNotes';
 import { BatchReview } from '@/components/batch/BatchReview';
 import type { MyRecipeReview } from '@/lib/reviews-data';
-import { BatchIngredientsEditor } from '@/components/recipe/BatchIngredientsEditor';
+import { BatchStepIngredients } from '@/components/recipe/BatchIngredientsEditor';
 import { BatchStepDonePanel } from '@/components/recipe/BatchStepDonePanel';
 import { StepExpandDialog } from '@/components/recipe/StepExpandDialog';
 import { IngredientExpandDialog } from '@/components/recipe/IngredientExpandDialog';
@@ -35,7 +35,7 @@ import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, matchAllergenPictos } from '@/lib/recipe-view';
-import { ingredientConversionText, shortUnitLbl, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
+import { ingredientConversionText, shortUnitLbl, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { IngredientTotalList } from '@/components/IngredientTotalList';
@@ -142,6 +142,8 @@ export function BatchView({
   ingredientDensities,
   shoppingLists,
   allergenRefs,
+  ingredientRefs,
+  refAllergens,
   lecture,
   initialMode,
   myReview,
@@ -159,6 +161,10 @@ export function BatchView({
   ingredientDensities: { name: string; density_g_per_ml: number }[];
   shoppingLists: { id: number; name: string }[];
   allergenRefs: AllergenRef[];
+  // Référentiel des ingrédients et leurs allergènes : saisie d'un ingrédient
+  // ajouté à la main (JEP-368, BatchStepIngredients).
+  ingredientRefs: IngredientRefOption[];
+  refAllergens: Record<string, string>;
   lecture: boolean;
   // Avis (note + commentaire) courant du membre pour la recette d'origine —
   // `null` si aucun avis n'a encore été déposé, quelle que soit la fournée.
@@ -402,7 +408,7 @@ export function BatchView({
 
   return (
     <>
-      <div className="recipe-print-content max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
+      <div className="recipe-print-content max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
         {/* Retour contextuel : vers l'écran de liste d'où l'on vient quand il
@@ -551,6 +557,8 @@ export function BatchView({
             ingredientDensities={ingredientDensities}
             shoppingLists={shoppingLists}
             allergenRefs={allergenRefs}
+            ingredientRefs={ingredientRefs}
+            refAllergens={refAllergens}
             readOnly={readOnly}
             onDelete={deleteBatch}
             onSwitchMode={switchMode}
@@ -586,6 +594,8 @@ function PreparerView({
   ingredientDensities,
   shoppingLists,
   allergenRefs,
+  ingredientRefs,
+  refAllergens,
   readOnly,
   onDelete,
   onSwitchMode,
@@ -600,6 +610,8 @@ function PreparerView({
   ingredientDensities: { name: string; density_g_per_ml: number }[];
   shoppingLists: { id: number; name: string }[];
   allergenRefs: AllergenRef[];
+  ingredientRefs: IngredientRefOption[];
+  refAllergens: Record<string, string>;
   readOnly: boolean;
   onDelete: () => void;
   onSwitchMode: (m: 'preparer' | 'patisser') => void;
@@ -608,12 +620,12 @@ function PreparerView({
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   // Étape en cours de remplacement par une recette (fenêtre ouverte) — même
-  // motif que `expanding` dans BatchIngredientsEditor.
+  // motif que `expanding` dans BatchStepIngredients.
   const [replacingStep, setReplacingStep] = useState<BatchStepRow | null>(null);
   const { mutate: mutateReplace, busy: busyReplace, refresh: refreshReplace } = useMutation();
   // Ligne d'ingrédient en cours de remplacement par une recette, ouverte
   // depuis la « Liste totale des ingrédients » (même fenêtre que celle de
-  // BatchIngredientsEditor, cf. `expanding` là-bas) — instance de mutation
+  // BatchStepIngredients, cf. `expanding` là-bas) — instance de mutation
   // séparée, les deux fenêtres pouvant en théorie être ouvertes l'une après
   // l'autre sans se marcher dessus.
   const [expandingIngredient, setExpandingIngredient] = useState<BatchIngredientRow[] | null>(null);
@@ -676,7 +688,7 @@ function PreparerView({
   // Défait le remplacement d'une étape par une recette : les étapes insérées
   // (et tout ce qu'elles portent) sont retirées, puis l'étape reprend sa
   // place — elle n'a jamais été modifiée entre-temps, seulement marquée.
-  // Même motif que `cancelExpansion` dans BatchIngredientsEditor (utensiles
+  // Même motif que `cancelExpansion` dans BatchStepIngredients (utensiles
   // conservés s'ils servent encore ailleurs, ou s'ils appartiennent à la
   // recette de base de la fournée elle-même).
   async function cancelStepReplacement(step: BatchStepRow) {
@@ -760,9 +772,6 @@ function PreparerView({
       ...(batch.batch_utensils.length > 0 ? [{ id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 as const }] : []),
       ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-ingredients-complets', label: 'Liste totale des ingrédients', icon: 'checklist', level: 1 as const }] : []),
       ...(batch.batch_ingredients.length > 0 ? [{ id: 'sec-courses', label: 'Liste de courses', icon: 'shopping_cart', level: 1 as const }] : []),
-      // Section masquée sur une fournée close (cf. plus bas) : l'entrée doit
-      // suivre, sous peine de lien mort dans le sommaire.
-      ...(batch.batch_ingredients.length > 0 && !readOnly ? [{ id: 'sec-ingredients', label: 'Ingrédients ajustés', icon: 'egg_alt', level: 1 as const }] : []),
       ...(sortedSteps.length > 0 ? [{ id: 'sec-etapes', label: 'Étapes', icon: 'format_list_numbered', level: 1 as const }] : []),
     ],
     after: [],
@@ -1005,8 +1014,8 @@ function PreparerView({
           contrairement à la liste de courses juste en dessous (`merged`),
           une étape déjà réalisée n'y retire pas ses ingrédients — seuls les
           retirés ou remplacés par une sous-recette disparaissent. Distincte
-          de la section « Ingrédients ajustés » plus bas, qui reste groupée
-          par étape pour porter l'édition (coefficient, remplacement, ajout).
+          du bloc « Ingrédients de l'étape » de chaque étape, plus bas, qui
+          porte l'édition (coefficient, remplacement, ajout).
           Affichée dès qu'il y a des ingrédients dans la fournée, même si
           tout est déjà réalisé. */}
       {batch.batch_ingredients.length > 0 && (
@@ -1110,29 +1119,6 @@ function PreparerView({
         </div>
       )}
 
-      {/* Ingrédients ajustés, groupés par étape : porte l'édition (coefficient,
-          remplacement par une recette, ajout par étape), déjà consultable en
-          lecture seule dans la liste totale ci-dessus et dans le déroulé des
-          étapes plus bas — repliée par défaut pour ne pas doubler ces deux
-          vues à l'écran. `no-print` : c'est une interface d'édition (boutons,
-          champs) sans intérêt sur papier, déjà couverte pour l'impression par
-          la liste totale ci-dessus, qui exclut déjà les lignes retirées ou
-          remplacées. Masquée entièrement sur une fournée close (`readOnly`)
-          plutôt que bridée champ par champ : n'étant QUE de l'édition, elle
-          n'a plus rien à montrer une fois la fournée fermée — la consultation
-          reste assurée par la liste totale juste au-dessus. */}
-      {batch.batch_ingredients.length > 0 && !readOnly && (
-        <div id="sec-ingredients" className="no-print scroll-mt-28">
-          <details className="group">
-            <summary className="flex items-center justify-between gap-3 mb-4 cursor-pointer list-none">
-              <h3 className="font-headline-md text-headline-md text-primary">Ingrédients ajustés</h3>
-              <span className="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
-            </summary>
-            <BatchIngredientsEditor batch={batch} units={units} unitTips={unitTips} conversions={conversions} canReplaceIngredient={droits.remplacementIngredient} />
-          </details>
-        </div>
-      )}
-
       {sortedSteps.length > 0 && (
         <div id="sec-etapes" className="scroll-mt-28 space-y-12">
           <h3 className="font-headline-md text-headline-md text-primary">Étapes</h3>
@@ -1171,10 +1157,10 @@ function PreparerView({
                       </button>
                     ) : (
                       // JEP-130 : même droit que le remplacement d'un
-                      // ingrédient (BatchIngredientsEditor), oublié ici lors
+                      // ingrédient (BatchStepIngredients), oublié ici lors
                       // du relevé initial — `droits.remplacementIngredient`
                       // était déjà dans la portée du composant (utilisé
-                      // juste au-dessus pour BatchIngredientsEditor) mais
+                      // juste au-dessus pour BatchStepIngredients) mais
                       // n'était vérifié nulle part sur ce second bouton, qui
                       // ouvre exactement la même fenêtre (StepExpandDialog)
                       // pour une étape entière plutôt qu'une ligne
@@ -1260,6 +1246,21 @@ function PreparerView({
                   canPersonalNotes={droits.notesPersonnelles}
                   canSubsteps={droits.sousEtapes}
                   readOnly={readOnly}
+                  ingredientsEditor={
+                    !readOnly && ingredientsOfStep.length > 0 ? (
+                      <BatchStepIngredients
+                        batch={batch}
+                        step={s}
+                        units={units}
+                        unitTips={unitTips}
+                        conversions={conversions}
+                        ingredientRefs={ingredientRefs}
+                        refAllergens={refAllergens}
+                        allergenNames={allergenRefs.map((a) => a.name)}
+                        canReplaceIngredient={droits.remplacementIngredient}
+                      />
+                    ) : undefined
+                  }
                 >
                   <StepPhotoGallery photos={photos} />
                   {s.video_url && <StepVideoPlayer url={s.video_url} />}

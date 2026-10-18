@@ -877,7 +877,7 @@ directes :
   ou déplacer une étape se reflète instantanément partout, il n'y a plus de
   copie séparée à désynchroniser. Les anciens avertissements (« une session
   en cours ne reflète pas cette modification ») ont disparu de
-  `BatchIngredientsEditor` et `BatchStepDonePanel`.
+  `BatchStepIngredients` et `BatchStepDonePanel`.
 - **Une fournée est toujours supprimable d'un geste** : l'ancienne
   contrainte `executions.planning_id ON DELETE RESTRICT` (qui forçait à
   archiver plutôt que supprimer un plan déjà cuisiné) n'a plus lieu d'être —
@@ -921,6 +921,35 @@ directes :
   aussitôt, et un `history.replaceState` réécrirait la barre d'adresse sans
   rien renvoyer au serveur. C'est la seule resynchronisation de cet écran qui
   ne soit pas un `router.refresh()`.
+- **Les ingrédients d'une étape s'éditent DANS le bloc « Ingrédients de
+  l'étape » du mode Préparer** (JEP-368), plus dans une section « Ingrédients
+  ajustés » à part, qui montrait les mêmes lignes en double.
+  `BatchStepIngredients` (`components/recipe/BatchIngredientsEditor.tsx`, un
+  composant **par étape**) porte colonnes Coef. / Quantité ajustée / Quantité
+  d'origine, modifier, remplacer par une recette, supprimer / rétablir, ajout,
+  et la case « déjà pris en compte » d'une étape réalisée (dans la cellule du
+  nom). `BatchView` le monte et le passe à `BatchStepDonePanel`
+  (`ingredientsEditor`) **seulement sur une fournée non close** : fournée close,
+  le bloc reste la liste simple en consultation (`readOnly`). Les lignes
+  retirées y sont donc visibles, barrées, avec leur picto « rétablir » — le
+  déroulé les masquait, le geste n'aurait plus eu de porte. Mode Pâtisser
+  inchangé ; colonnes et gestes `no-print`.
+- **Un ingrédient ajouté à la main se saisit comme dans `/creer`** (JEP-368,
+  `AddedIngredientForm` de `BatchIngredientsEditor`) : nom proposé depuis le
+  référentiel (datalist), quantité, unité, commentaire et allergènes (3 au plus,
+  pré-remplis au choix d'un ingrédient du référentiel). À l'ajout comme à la
+  modification d'un ajout, le nom passe par `fixOeufLigature` et la ligne est
+  rattachée (`ref_id`, `resolveIngredientRefId`) — sans quoi ni conversion ni
+  fusion des courses ne s'appliquaient.
+  **Trois copies de la même ligne, à garder alignées** : `CreerForm`,
+  `StepEditorCard` (mode projet) et ce formulaire. Dès `xl`, champs alignés par
+  le haut (`items-start`) et de même hauteur (42 px : `h-[42px]` sur les listes
+  déroulantes, `block` sur le `<textarea>` du commentaire, qui sinon laisse un
+  vide sous lui comme tout élément en ligne, et `autoGrow` qui ajoute la
+  bordure à `scrollHeight`) ; allergènes en colonne fixe (`w-56`) dont la liste
+  déroulante la remplit (`xl:w-full` sur elle ET sur son conteneur — plus
+  étroite, elle doublait l'espace avant le commentaire : 31 px au lieu de 16),
+  commentaire plus large que le nom (`flex-[3]` contre `flex-[2]`).
 - **`batches.user_note` et `batches.notes` ne sont pas la même chose** :
   la première est la note personnelle de la fournée (éditée en Préparer par
   `BatchNotes`), la seconde le commentaire saisi au lancement dans
@@ -1068,10 +1097,9 @@ directes :
   ailleurs). Un ingrédient déjà remplacé ne propose plus le picto : il faut
   d'abord annuler.
 - **Le picto de remplacement est aussi sur la « Liste totale des
-  ingrédients »** (JEP-254), pas seulement dans « Ingrédients ajustés »
-  (repliée par défaut, groupée par étape) : sans lui, remplacer un
-  ingrédient depuis la vue d'ensemble obligeait à déplier cette section pour
-  retrouver la même ligne. Même fenêtre (`IngredientExpandDialog`), même
+  ingrédients »** (JEP-254), pas seulement dans le bloc « Ingrédients de
+  l'étape » (groupé par étape) : sans lui, remplacer un ingrédient depuis la
+  vue d'ensemble obligeait à aller chercher la même ligne dans son étape. Même fenêtre (`IngredientExpandDialog`), même
   droit (`droits.remplacementIngredient`, avec `LockedAction` en repli),
   masqué sur une fournée fermée (`readOnly`) comme le reste des actions de
   cette vue.
@@ -1086,7 +1114,7 @@ directes :
   barrée et créditée « Fabriqué à partir de X » comme n'importe quelle ligne
   remplacée. `expandableGroup(batch, name, unit)` (`lib/recipe-plan.ts`)
   retrouve toutes les occurrences éligibles par nom + unité, depuis la
-  « Liste totale » comme depuis « Ingrédients ajustés » — un clic sur
+  « Liste totale » comme depuis le bloc de l'étape — un clic sur
   N'IMPORTE LAQUELLE ouvre la fenêtre pour le groupe entier. La quantité par
   défaut proposée à `IngredientExpandDialog` est la **somme** des
   occurrences ; les étapes insérées portent le `source_ingredient_id` de

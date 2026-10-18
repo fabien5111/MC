@@ -96,7 +96,7 @@ export function IngredientExpandDialog({
   // sous-recette ne s'insèrent qu'UNE fois, mais TOUTES les occurrences
   // sortent des courses et de la mise en place. Jamais vide, jamais une ligne
   // déjà remplacée (le déclencheur disparaît dans ce cas, cf.
-  // BatchIngredientsEditor).
+  // BatchStepIngredients).
   rows: BatchIngredientRow[];
   onClose: () => void;
   // Écriture aboutie — le parent resynchronise l'éditeur.
