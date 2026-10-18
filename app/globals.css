@@ -1180,3 +1180,16 @@ body[data-impersonation] {
     width: 380px;
   }
 }
+
+/* Bandeau du titre d'une étape (mode Pâtisser, JEP-300) : même teinte que le champ
+   « Ce qui s'est passé » (`surface-container-low`). Les règles
+   d'impression ci-dessus rendent ce fond transparent et les navigateurs
+   n'impriment pas les arrière-plans par défaut : `print-color-adjust: exact`
+   le force, sans quoi le bandeau disparaîtrait sur papier. */
+@media print {
+  .step-band {
+    background: #fff0f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

@@ -421,7 +421,7 @@ export function BatchView({
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
           <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{batch.recipe_title || 'Fournée'}</h1>
           <span className="flex items-center gap-3">
-            <span className={`font-label-md text-[12px] px-3 py-1 rounded-full text-white ${BATCH_STATUS_LBL[batch.status]?.cls || 'bg-secondary'}`}>
+            <span className={`no-print font-label-md text-[12px] px-3 py-1 rounded-full text-white ${BATCH_STATUS_LBL[batch.status]?.cls || 'bg-secondary'}`}>
               {BATCH_STATUS_LBL[batch.status]?.label || batch.status}
             </span>
             <span className="no-print">
@@ -535,7 +535,7 @@ export function BatchView({
             </button>
           </span>
           {all.length > 0 && (
-            <span className="ml-auto font-label-md text-[12px] text-on-surface-variant">
+            <span className="no-print ml-auto font-label-md text-[12px] text-on-surface-variant">
               {done} / {all.length} étapes
             </span>
           )}
@@ -1629,12 +1629,15 @@ function PatisserBody({
   let pendingMarked = false;
 
   function jalonDate(j: BatchJalon): Date | null {
-    if (!batch.degustation_at) return null;
-    const d = new Date(batch.degustation_at);
-    d.setDate(d.getDate() - (j.offset || 0));
-    return d;
+    // `planned_date` (jour de dégustation) en repli : sans heure de dégustation
+    // saisie, les jours J − n restaient sans date.
+    const base = batch.degustation_at ? new Date(batch.degustation_at) : batch.planned_date ? new Date(batch.planned_date + 'T00:00:00') : null;
+    if (!base) return null;
+    base.setDate(base.getDate() - (j.offset || 0));
+    return base;
   }
   function jalonTarget(j: BatchJalon): Date | null {
+    if (!batch.degustation_at) return null; // sans heure de dégustation, pas d'heure de départ
     const d = jalonDate(j);
     return d ? new Date(d.getTime() - jalonDur(j) * MIN) : null;
   }
@@ -1655,7 +1658,7 @@ function PatisserBody({
 
   return (
     <>
-      <div className="flex items-center gap-4 flex-wrap">
+      <div className="no-print flex items-center gap-4 flex-wrap">
         <div className="flex-1 min-w-[180px]">
           <div className="flex justify-between text-[12px] font-label-md text-on-surface-variant mb-1">
             <span>Progression</span>
@@ -1683,7 +1686,7 @@ function PatisserBody({
             id={jalonAnchorId(ji)}
             open={!collapsedJalons.has(ji)}
             onToggle={(e) => onJalonOpenChange(ji, (e.currentTarget as HTMLDetailsElement).open)}
-            className={`scroll-mt-28 rounded-xl border ${isCurrent ? 'border-primary shadow-md' : 'border-outline-variant'} bg-surface-container-lowest overflow-hidden`}
+            className={`scroll-mt-28 rounded-xl border ${isCurrent ? 'border-primary shadow-md' : 'border-outline-variant'} bg-surface-container-lowest overflow-hidden print:overflow-visible print:[break-inside:auto]`}
           >
             <summary className={`flex items-center gap-4 p-4 cursor-pointer list-none ${isCurrent ? 'bg-primary/5' : 'bg-surface-container-low'}`}>
               <span className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0 ${jDone ? 'bg-green-700 text-white' : isCurrent ? 'bg-primary text-white' : 'bg-surface-container-high text-on-surface-variant'}`}>
@@ -1852,7 +1855,7 @@ function StepCookCard({
   ].filter(Boolean);
 
   return (
-    <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
+    <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden print:overflow-visible print:[break-inside:auto]${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
       {/* Tout l'en-tête déplie/replie l'étape, pas seulement le chevron : une
           cible de la taille d'une icône était inutilement difficile à viser,
           au doigt comme à la souris. La case à cocher garde donc son propre
@@ -1869,7 +1872,7 @@ function StepCookCard({
           ev.preventDefault();
           setOpen((o) => !o);
         }}
-        className="flex items-start gap-2 p-4 cursor-pointer select-none hover:bg-surface-container-low/60 transition-colors"
+        className="flex items-start gap-2 p-4 cursor-pointer select-none step-band bg-surface-container-low hover:bg-surface-container-high transition-colors"
       >
         <span onClick={(ev) => ev.stopPropagation()} className="shrink-0 mt-0.5 flex">
           <input
@@ -1882,7 +1885,7 @@ function StepCookCard({
           />
         </span>
         <span className="flex-1 min-w-0">
-          <span className={`font-headline-md text-[16px] text-primary block${s.done ? ' line-through' : ''}`}>{s.title}</span>
+          <span className={`font-headline-md text-[16px] font-bold uppercase tracking-wide text-primary block${s.done ? ' line-through' : ''}`}>{s.title}</span>
           <span className="text-[12px] font-label-md text-on-surface-variant">{badges.join(' · ')}</span>
           {!open && insideSummary.length > 0 && (
             <span className="text-[12px] font-body-md text-outline block mt-0.5">{insideSummary.join(' · ')}</span>
@@ -1904,8 +1907,10 @@ function StepCookCard({
         </div>
       )}
 
-      {open && (
-        <>
+      {/* Toujours monté : une étape repliée doit quand même sortir à l'impression
+          (le hook `usePrintDetailsExpansion` ne rouvre que les <details>, pas cet
+          état React). Masqué à l'écran seulement, `print:block` le rend au papier. */}
+        <div className={open ? '' : 'hidden print:block'}>
       {s.tips && (
         <div className="mx-4 mb-3 p-3 bg-primary/5 border-l-4 border-primary rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-primary mb-1">Conseils &amp; astuces</p>
@@ -2080,8 +2085,7 @@ function StepCookCard({
           }`}
         />
       </div>
-        </>
-      )}
+        </div>
     </div>
   );
 }
