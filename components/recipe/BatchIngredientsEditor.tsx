@@ -1,8 +1,10 @@
 'use client';
 
-// Ingrédients d'une fournée (porté de recette.html) : colonnes Coef. /
-// Quantité ajustée / Quantité d'origine, lignes barrées (retirées) / ajoutées
-// (vert), édition en ligne (crayon), ajout d'un ingrédient par étape. Écrit
+// Ingrédients d'UNE étape de fournée (porté de recette.html), montés dans le
+// bloc « Ingrédients de l'étape » du mode Préparer (BatchStepDonePanel) :
+// colonnes Coef. / Quantité ajustée / Quantité d'origine, lignes barrées
+// (retirées) / ajoutées (vert), édition en ligne (crayon), ajout d'un
+// ingrédient, case « déjà pris en compte » d'une étape réalisée. Écrit
 // directement sur `batch_ingredients` (la fournée possède sa propre copie des
 // ingrédients — voir CLAUDE.md « Fournées ») : chaque action est une écriture
 // ciblée sur la ligne concernée, plus de blob JSON à réécrire.
@@ -20,8 +22,6 @@ import type { Unit } from '@/lib/profile';
 import {
   fmtNum,
   batchIngredientExpanded,
-  batchStepIsExpansion,
-  batchStepIsStepReplacement,
   batchStepReplaced,
   expandableGroup,
   expandedGroup,
@@ -33,7 +33,8 @@ import { fixOeufLigature } from '@/lib/text';
 import { IngredientExpandDialog } from '@/components/recipe/IngredientExpandDialog';
 import { LockedAction } from '@/components/LockedAction';
 
-type EditKey = string | null; // `${stepId}:${rowId}` ou `add-${stepId}`
+type EditKey = number | null; // id de la ligne en cours de modification
+type StepRow = BatchFull['batch_steps'][number];
 
 const numify = (v: string): number | null => {
   const n = parseFloat(v.replace(',', '.'));
@@ -41,8 +42,9 @@ const numify = (v: string): number | null => {
 };
 const round2 = (n: number): number => +n.toFixed(2);
 
-export function BatchIngredientsEditor({
+export function BatchStepIngredients({
   batch,
+  step,
   units,
   unitTips,
   conversions,
@@ -52,6 +54,7 @@ export function BatchIngredientsEditor({
   canReplaceIngredient = true,
 }: {
   batch: BatchFull;
+  step: StepRow;
   units: Unit[];
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
@@ -68,7 +71,7 @@ export function BatchIngredientsEditor({
   const { mutate, busy, refresh } = useMutation();
   const dialog = useDialog();
   const [editing, setEditing] = useState<EditKey>(null);
-  const [addingStep, setAddingStep] = useState<number | null>(null);
+  const [adding, setAdding] = useState(false);
   const datalistId = useId();
   // Groupe en cours de remplacement par une sous-recette (fenêtre ouverte) —
   // toutes les occurrences du même ingrédient (nom + unité), pas seulement
@@ -199,21 +202,29 @@ export function BatchIngredientsEditor({
     );
   }
 
-  async function addIng(stepId: number, v: AddedValues) {
+  // Case « déjà pris en compte » d'une étape réalisée : exception ligne par
+  // ligne (cf. CLAUDE.md « Étape déjà faite »), jamais en basculant `removed`.
+  async function toggleExcluded(row: BatchIngredientRow) {
+    await mutate(() => createClient().from('batch_ingredients').update({ excluded_when_done: !row.excluded_when_done } as never).eq('id', row.id), {
+      errorLabel: 'Modification non enregistrée',
+    });
+  }
+
+  async function addIng(v: AddedValues) {
     if (!v.name.trim()) {
       dialog.alert("Indiquez un nom d'ingrédient.");
       return;
     }
-    const stepRows = batch.batch_ingredients.filter((it) => it.batch_step_id === stepId);
+    const stepRows = batch.batch_ingredients.filter((it) => it.batch_step_id === step.id);
     const nextOrder = stepRows.length ? Math.max(...stepRows.map((r) => r.order_index)) + 1 : 0;
-    setAddingStep(null);
+    setAdding(false);
     await mutate(
       () =>
         createClient()
           .from('batch_ingredients')
           .insert({
             batch_id: batch.id,
-            batch_step_id: stepId,
+            batch_step_id: step.id,
             order_index: nextOrder,
             ...addedColumns(v),
             added: true,
@@ -270,12 +281,15 @@ export function BatchIngredientsEditor({
     );
   };
 
-  const sortedSteps = [...batch.batch_steps].sort((a, b) => a.order_index - b.order_index);
+  const rows = batch.batch_ingredients.filter((it) => it.batch_step_id === step.id).sort((a, b) => a.order_index - b.order_index);
 
   return (
-    <div className="space-y-10">
+    <div>
       <LoadingOverlay visible={busy} label="Modification en cours…" />
-      {ingredientRefs.length > 0 && (
+      {/* Suggestions du nom : montées seulement quand un formulaire est ouvert —
+          chaque étape porte un éditeur, la liste du référentiel serait sinon
+          recopiée dans le DOM autant de fois qu'il y a d'étapes. */}
+      {(adding || editing != null) && ingredientRefs.length > 0 && (
         <datalist id={datalistId}>
           {ingredientRefs.map((r) => (
             <option key={r.id} value={r.name} />
@@ -290,212 +304,209 @@ export function BatchIngredientsEditor({
           onDone={onExpansionDone}
         />
       )}
-      {sortedSteps.map((step) => {
-        const rows = batch.batch_ingredients.filter((it) => it.batch_step_id === step.id).sort((a, b) => a.order_index - b.order_index);
-        if (!rows.length && addingStep !== step.id) return null;
-        return (
-          <div key={step.id}>
-            {/* La case et l'exception par ingrédient vivent dans le déroulé
-                de la recette (BatchStepDonePanel), pas ici — cette section ne
-                fait plus qu'informer (titre barré, lignes grisées) de l'état
-                déjà réglé là-bas. */}
-            <h4
-              className={`font-label-md text-label-md border-b border-outline-variant pb-2 mb-4 ${
-                step.done
-                  ? 'text-on-surface-variant line-through'
-                  : batchStepReplaced(step)
-                    ? 'text-error line-through'
-                    : batchStepIsExpansion(step) || batchStepIsStepReplacement(step)
-                      ? 'text-green-700'
-                      : 'text-secondary'
-              }`}
-            >
-              {step.title || ''}
-            </h4>
-            {rows.length > 0 && (
-              <ul className={GRID_CLASS}>
-                <li className="hidden sm:grid sm:[grid-template-columns:subgrid] sm:col-span-full sm:items-center pb-1">
-                  <span />
-                  <span className={LBL}>Coef.</span>
-                  <span className={`${LBL} text-primary`}>Quantité ajustée</span>
-                  <span className={LBL}>Quantité d&apos;origine</span>
-                  <span />
-                </li>
-                {rows.map((row) => {
-                  const key = `${step.id}:${row.id}`;
-                  const coef = row.base_quantity && row.quantity != null ? round2(row.quantity / row.base_quantity) : null;
-                  // `removed` prime toujours sur l'exclusion « déjà fait ». Une
-                  // étape remplacée (cf. BatchView) exclut aussi toutes ses
-                  // lignes, quel que soit `excluded_when_done` — même rendu
-                  // grisé que « déjà fait », l'exclusion n'étant pas propre à
-                  // la ligne mais à l'étape entière.
-                  const excludedByStep = (step.done && row.excluded_when_done) || batchStepReplaced(step);
-                  // Ligne remplacée par une sous-recette : barrée en rouge,
-                  // comme une suppression — elle ne s'achète plus, la mention
-                  // verte en dessous dit où elle est fabriquée à la place.
-                  const expanded = batchIngredientExpanded(row);
-                  const tone = row.removed || expanded
-                    ? 'text-error line-through'
-                    : excludedByStep
-                        ? 'text-on-surface-variant line-through opacity-60'
-                        : row.added
-                          ? 'text-green-700'
-                          : '';
-                  const adjText = row.quantity != null ? fmtNum(row.quantity) : row.quantity_text || '';
-                  // Une ligne venue d'une sous-recette est `added` mais garde
-                  // une quantité d'origine (celle de sa propre recette) : la
-                  // montrer plutôt qu'un tiret, c'est ce qui rend son
-                  // coefficient lisible.
-                  const origText =
-                    row.base_quantity != null ? fmtNum(row.base_quantity) : row.added ? '—' : row.quantity_text || '—';
-                  return (
-                    <Fragment key={row.id}>
-                      <li className={ROW_CLASS}>
-                        <span className={`font-body-md text-body-md break-words${tone ? ' ' + tone : ''}`}>
-                          {row.url ? (
-                            <a href={row.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
-                              {row.name}
-                            </a>
-                          ) : (
-                            row.name
-                          )}
-                          {row.comment && <span className="text-on-surface-variant text-sm italic"> — {row.comment}</span>}
-                        </span>
-                        <div className={META_CLASS}>
-                          <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
-                            <span className={MOBILE_LBL}>Coef.</span>
-                            {coef != null ? `× ${fmtNum(coef)}` : '—'}
-                          </span>
-                          <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>{withUnit(adjText, row.unit, row.ref_id)}</span>
-                          <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
-                            <span className={MOBILE_LBL}>Orig.</span>
-                            {origText === '—' ? '—' : withUnit(origText, row.unit, row.ref_id)}
-                          </span>
-                          <span className="no-print flex items-center gap-1 ml-auto sm:ml-0 sm:justify-self-end">
-                            {expanded ? (
-                              // Une ligne remplacée ne se modifie plus : elle
-                              // n'entre nulle part tant que le remplacement
-                              // tient. Seul retour possible, l'annuler.
+      {rows.length > 0 && (
+        <ul className={GRID_CLASS}>
+          <li className="hidden sm:grid sm:[grid-template-columns:subgrid] sm:col-span-full sm:items-center pb-1">
+            <span />
+            <span className={LBL}>Coef.</span>
+            <span className={`${LBL} text-primary`}>Quantité ajustée</span>
+            <span className={LBL}>Quantité d&apos;origine</span>
+            <span />
+          </li>
+          {rows.map((row) => {
+            const coef = row.base_quantity && row.quantity != null ? round2(row.quantity / row.base_quantity) : null;
+            // `removed` prime toujours sur l'exclusion « déjà fait ». Une
+            // étape remplacée (cf. BatchView) exclut aussi toutes ses
+            // lignes, quel que soit `excluded_when_done` — même rendu
+            // grisé que « déjà fait », l'exclusion n'étant pas propre à
+            // la ligne mais à l'étape entière.
+            const excludedByStep = (step.done && row.excluded_when_done) || batchStepReplaced(step);
+            // Ligne remplacée par une sous-recette : barrée en rouge,
+            // comme une suppression — elle ne s'achète plus, la mention
+            // verte en dessous dit où elle est fabriquée à la place.
+            const expanded = batchIngredientExpanded(row);
+            const tone = row.removed || expanded
+              ? 'text-error line-through'
+              : excludedByStep
+                  ? 'text-on-surface-variant line-through opacity-60'
+                  : row.added
+                    ? 'text-green-700'
+                    : '';
+            const adjText = row.quantity != null ? fmtNum(row.quantity) : row.quantity_text || '';
+            // Une ligne venue d'une sous-recette est `added` mais garde
+            // une quantité d'origine (celle de sa propre recette) : la
+            // montrer plutôt qu'un tiret, c'est ce qui rend son
+            // coefficient lisible.
+            const origText =
+              row.base_quantity != null ? fmtNum(row.base_quantity) : row.added ? '—' : row.quantity_text || '—';
+            return (
+              <Fragment key={row.id}>
+                <li className={ROW_CLASS}>
+                  <span className="flex items-start gap-3 min-w-0">
+                    {/* Étape réalisée : la case « déjà pris en compte » vit ici,
+                        à la ligne de l'ingrédient (décochée = gardé quand même
+                        dans le parcours). Rien à cocher sur une ligne retirée ou
+                        remplacée par une sous-recette : elle n'y entre plus. */}
+                    {step.done && (
+                      <span className="no-print w-5 shrink-0 pt-0.5">
+                        {!expanded && !row.removed && (
+                          <input
+                            type="checkbox"
+                            checked={row.excluded_when_done}
+                            onChange={() => toggleExcluded(row)}
+                            title={
+                              row.excluded_when_done
+                                ? 'Déjà pris en compte — décocher pour le conserver quand même (ex. un ingrédient utile plus tard dans la même étape)'
+                                : 'Conservé malgré l’étape déjà réalisée'
+                            }
+                            className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
+                          />
+                        )}
+                      </span>
+                    )}
+                  <span className={`font-body-md text-body-md break-words${tone ? ' ' + tone : ''}`}>
+                    {row.url ? (
+                      <a href={row.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
+                        {row.name}
+                      </a>
+                    ) : (
+                      row.name
+                    )}
+                    {row.comment && <span className="text-on-surface-variant text-sm italic"> — {row.comment}</span>}
+                  </span>
+                  </span>
+                  <div className={META_CLASS}>
+                    <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
+                      <span className={MOBILE_LBL}>Coef.</span>
+                      {coef != null ? `× ${fmtNum(coef)}` : '—'}
+                    </span>
+                    <span className={`font-label-md text-label-md text-center ${tone || 'text-primary'}`}>{withUnit(adjText, row.unit, row.ref_id)}</span>
+                    <span className={`font-label-md text-label-md text-center ${tone || 'text-on-surface-variant'}`}>
+                      <span className={MOBILE_LBL}>Orig.</span>
+                      {origText === '—' ? '—' : withUnit(origText, row.unit, row.ref_id)}
+                    </span>
+                    <span className="no-print flex items-center gap-1 ml-auto sm:ml-0 sm:justify-self-end">
+                      {expanded ? (
+                        // Une ligne remplacée ne se modifie plus : elle
+                        // n'entre nulle part tant que le remplacement
+                        // tient. Seul retour possible, l'annuler.
+                        <button
+                          type="button"
+                          onClick={() => cancelExpansion(row)}
+                          title="Annuler le remplacement et retirer les étapes ajoutées"
+                          className="text-primary hover:opacity-70"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">undo</span>
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setEditing(editing === row.id ? null : row.id)}
+                            title={row.added ? 'Modifier cet ajout' : 'Modifier la quantité ou le coefficient'}
+                            className="text-primary hover:opacity-70"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                          </button>
+                          {/* Un remplacement déjà en place (cf. le bouton `undo`
+                              ci-dessus) reste géré même sans le droit — seul en
+                              DÉMARRER un nouveau est bridé (§7.4). */}
+                          {!row.removed &&
+                            !batchStepReplaced(step) &&
+                            (canReplaceIngredient ? (
                               <button
                                 type="button"
-                                onClick={() => cancelExpansion(row)}
-                                title="Annuler le remplacement et retirer les étapes ajoutées"
+                                onClick={() => setExpanding(expandableGroup(batch, row.name, row.unit))}
+                                title="Remplacer cet ingrédient par une recette (le fabriquer soi-même, y compris dans les autres étapes qui l’utilisent)"
                                 className="text-primary hover:opacity-70"
                               >
-                                <span className="material-symbols-outlined text-[18px]">undo</span>
+                                <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
                               </button>
                             ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditing(editing === key ? null : key)}
-                                  title={row.added ? 'Modifier cet ajout' : 'Modifier la quantité ou le coefficient'}
-                                  className="text-primary hover:opacity-70"
-                                >
-                                  <span className="material-symbols-outlined text-[18px]">edit</span>
-                                </button>
-                                {/* Un remplacement déjà en place (cf. le bouton `undo`
-                                    ci-dessus) reste géré même sans le droit — seul en
-                                    DÉMARRER un nouveau est bridé (§7.4). */}
-                                {!row.removed &&
-                                  !batchStepReplaced(step) &&
-                                  (canReplaceIngredient ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => setExpanding(expandableGroup(batch, row.name, row.unit))}
-                                      title="Remplacer cet ingrédient par une recette (le fabriquer soi-même, y compris dans les autres étapes qui l’utilisent)"
-                                      className="text-primary hover:opacity-70"
-                                    >
-                                      <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
-                                    </button>
-                                  ) : (
-                                    // JEP-130 : le picto n'apparaissait pas
-                                    // du tout — « je fabrique moi-même cet
-                                    // ingrédient » est pourtant l'une des
-                                    // fonctionnalités les plus
-                                    // distinctives du produit, et rien ne
-                                    // l'annonçait à qui n'y a pas droit.
-                                    <LockedAction
-                                      label="Remplacer cet ingrédient par une recette"
-                                      message="Remplacer un ingrédient par une recette (le fabriquer soi-même) n'est pas inclus dans votre formule."
-                                    />
-                                  ))}
-                                {row.added ? (
-                                  <button type="button" onClick={() => removeAdded(row)} title="Retirer cet ajout" className="text-error hover:opacity-70">
-                                    <span className="material-symbols-outlined text-[18px]">delete</span>
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleRemove(row)}
-                                    title={row.removed ? "Rétablir l'ingrédient" : "Supprimer (barrer) l'ingrédient"}
-                                    className={row.removed ? 'text-primary hover:opacity-70' : 'text-error hover:opacity-70'}
-                                  >
-                                    <span className="material-symbols-outlined text-[18px]">{row.removed ? 'undo' : 'delete'}</span>
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </span>
-                        </div>
-                      </li>
-                      {expanded && (
-                        <li className="pb-2 -mt-1" style={{ gridColumn: '1/-1' }}>
-                          <span className="font-body-md text-[12px] text-green-700 flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
-                            Fabriqué à partir de{' '}
-                            {row.expanded_recipe ? (
-                              <Link href={`/recette/${row.expanded_recipe.id}`} className="underline underline-offset-2 hover:opacity-70">
-                                {row.expanded_recipe.title}
-                              </Link>
-                            ) : (
-                              <span className="italic">une recette qui n’est plus accessible</span>
-                            )}
-                            {' — étapes ajoutées au déroulé.'}
-                          </span>
-                        </li>
+                              // JEP-130 : le picto n'apparaissait pas
+                              // du tout — « je fabrique moi-même cet
+                              // ingrédient » est pourtant l'une des
+                              // fonctionnalités les plus
+                              // distinctives du produit, et rien ne
+                              // l'annonçait à qui n'y a pas droit.
+                              <LockedAction
+                                label="Remplacer cet ingrédient par une recette"
+                                message="Remplacer un ingrédient par une recette (le fabriquer soi-même) n'est pas inclus dans votre formule."
+                              />
+                            ))}
+                          {row.added ? (
+                            <button type="button" onClick={() => removeAdded(row)} title="Retirer cet ajout" className="text-error hover:opacity-70">
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => toggleRemove(row)}
+                              title={row.removed ? "Rétablir l'ingrédient" : "Supprimer (barrer) l'ingrédient"}
+                              className={row.removed ? 'text-primary hover:opacity-70' : 'text-error hover:opacity-70'}
+                            >
+                              <span className="material-symbols-outlined text-[18px]">{row.removed ? 'undo' : 'delete'}</span>
+                            </button>
+                          )}
+                        </>
                       )}
-                      {editing === key &&
-                        (row.added ? (
-                          <li key={key + '-form'} style={{ gridColumn: '1/-1' }}>
-                            <AddedIngredientForm
-                              initial={row}
-                              units={units}
-                              datalistId={datalistId}
-                              allergenNames={allergenNames}
-                              refAllergens={refAllergens}
-                              submitLabel="OK"
-                              onSubmit={(v) => applyEditAdded(row, v)}
-                              onCancel={() => setEditing(null)}
-                            />
-                          </li>
-                        ) : (
-                          <LineEditForm key={key + '-form'} row={row} onApply={(q, c) => applyEdit(row, q, c)} onCancel={() => setEditing(null)} />
-                        ))}
-                    </Fragment>
-                  );
-                })}
-              </ul>
-            )}
-            {addingStep === step.id ? (
-              <AddedIngredientForm
-                units={units}
-                datalistId={datalistId}
-                allergenNames={allergenNames}
-                refAllergens={refAllergens}
-                submitLabel="Ajouter"
-                autoFocus
-                onSubmit={(v) => addIng(step.id, v)}
-                onCancel={() => setAddingStep(null)}
-              />
-            ) : (
-              <button type="button" onClick={() => setAddingStep(step.id)} className="no-print mt-3 flex items-center gap-1 text-primary font-label-md text-[12px] hover:underline">
-                <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter un ingrédient
-              </button>
-            )}
-          </div>
-        );
-      })}
+                    </span>
+                  </div>
+                </li>
+                {expanded && (
+                  <li className="pb-2 -mt-1" style={{ gridColumn: '1/-1' }}>
+                    <span className="font-body-md text-[12px] text-green-700 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+                      Fabriqué à partir de{' '}
+                      {row.expanded_recipe ? (
+                        <Link href={`/recette/${row.expanded_recipe.id}`} className="underline underline-offset-2 hover:opacity-70">
+                          {row.expanded_recipe.title}
+                        </Link>
+                      ) : (
+                        <span className="italic">une recette qui n’est plus accessible</span>
+                      )}
+                      {' — étapes ajoutées au déroulé.'}
+                    </span>
+                  </li>
+                )}
+                {editing === row.id &&
+                  (row.added ? (
+                    <li key={row.id + '-form'} style={{ gridColumn: '1/-1' }}>
+                      <AddedIngredientForm
+                        initial={row}
+                        units={units}
+                        datalistId={datalistId}
+                        allergenNames={allergenNames}
+                        refAllergens={refAllergens}
+                        submitLabel="OK"
+                        onSubmit={(v) => applyEditAdded(row, v)}
+                        onCancel={() => setEditing(null)}
+                      />
+                    </li>
+                  ) : (
+                    <LineEditForm key={row.id + '-form'} row={row} onApply={(q, c) => applyEdit(row, q, c)} onCancel={() => setEditing(null)} />
+                  ))}
+              </Fragment>
+            );
+          })}
+        </ul>
+      )}
+      {adding ? (
+        <AddedIngredientForm
+          units={units}
+          datalistId={datalistId}
+          allergenNames={allergenNames}
+          refAllergens={refAllergens}
+          submitLabel="Ajouter"
+          autoFocus
+          onSubmit={(v) => addIng(v)}
+          onCancel={() => setAdding(false)}
+        />
+      ) : (
+        <button type="button" onClick={() => setAdding(true)} className="no-print mt-3 flex items-center gap-1 text-primary font-label-md text-[12px] hover:underline">
+          <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter un ingrédient
+        </button>
+      )}
     </div>
   );
 }
