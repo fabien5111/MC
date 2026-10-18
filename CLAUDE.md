@@ -928,6 +928,13 @@ directes :
   modification d'un ajout, le nom passe par `fixOeufLigature` et la ligne est
   rattachée (`ref_id`, `resolveIngredientRefId`) — sans quoi ni conversion ni
   fusion des courses ne s'appliquaient.
+  **Trois copies de la même ligne, à garder alignées** : `CreerForm`,
+  `StepEditorCard` (mode projet) et ce formulaire. Dès `xl`, champs alignés par
+  le haut (`items-start`) et de même hauteur (42 px : `h-[42px]` sur les listes
+  déroulantes, `block` sur le `<textarea>` du commentaire, qui sinon laisse un
+  vide sous lui comme tout élément en ligne, et `autoGrow` qui ajoute la
+  bordure à `scrollHeight`) ; allergènes en colonne fixe (`w-56`), commentaire
+  plus large que le nom (`flex-[3]` contre `flex-[2]`).
 - **`batches.user_note` et `batches.notes` ne sont pas la même chose** :
   la première est la note personnelle de la fournée (éditée en Préparer par
   `BatchNotes`), la seconde le commentaire saisi au lancement dans

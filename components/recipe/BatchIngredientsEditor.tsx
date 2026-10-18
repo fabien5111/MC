@@ -547,7 +547,9 @@ const joinAllergens = (l: string[]): string | null => (l.length ? l.join(', ') :
 function autoGrow(el: HTMLTextAreaElement | null) {
   if (!el) return;
   el.style.height = 'auto';
-  el.style.height = `${el.scrollHeight}px`;
+  // `scrollHeight` ne compte pas la bordure : sans elle le champ restait 2 px
+  // trop court, donc désaligné de ses voisins.
+  el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
 }
 
 // Saisie d'un ingrédient ajouté à la main (JEP-368) : nom proposé depuis le
@@ -597,7 +599,7 @@ function AddedIngredientForm({
     <select
       value=""
       onChange={(e) => addAllergen(e.target.value)}
-      className="editorial-input text-on-surface cursor-pointer italic"
+      className="editorial-input text-on-surface cursor-pointer italic h-[42px] max-md:h-[38px]"
       style={{ width: 'auto' }}
       title="Ajouter un allergène (table de référence)"
     >
@@ -613,8 +615,8 @@ function AddedIngredientForm({
   // allergènes, commentaire — empilés sous `xl`, sur une ligne au-delà.
   return (
     <div className="flex flex-col gap-3 py-3">
-      <div className="flex flex-wrap xl:flex-nowrap items-center gap-x-4 gap-y-1.5">
-        <div className="relative flex-1 min-w-0">
+      <div className="flex flex-wrap xl:flex-nowrap items-center xl:items-start gap-x-4 gap-y-1.5">
+        <div className="relative flex-[2] min-w-0">
           <input
             value={name}
             onChange={(e) => onName(e.target.value)}
@@ -627,7 +629,7 @@ function AddedIngredientForm({
           />
         </div>
         <input value={qty} onChange={(e) => setQty(e.target.value)} className="w-16 xl:w-20 editorial-input text-on-surface" type="text" inputMode="decimal" placeholder="Qté" />
-        <select value={unit} onChange={(e) => setUnit(e.target.value)} className="editorial-input text-on-surface cursor-pointer" style={{ width: 'auto' }}>
+        <select value={unit} onChange={(e) => setUnit(e.target.value)} className="editorial-input text-on-surface cursor-pointer h-[42px] max-md:h-[38px]" style={{ width: 'auto' }}>
           <option value=""></option>
           {units.map((u) => (
             <option key={u.id} value={u.name}>
@@ -637,7 +639,7 @@ function AddedIngredientForm({
           {unit && !units.some((u) => u.name === unit) && <option value={unit}>{unit}</option>}
         </select>
         <div className="basis-full xl:hidden" />
-        <div className="flex-1 min-w-0 order-1 xl:order-2">
+        <div className="flex-[3] min-w-0 order-1 xl:order-2">
           <textarea
             value={comment}
             onChange={(e) => {
@@ -645,13 +647,13 @@ function AddedIngredientForm({
               autoGrow(e.target);
             }}
             ref={autoGrow}
-            className="editorial-input text-on-surface w-full resize-none overflow-hidden"
+            className="editorial-input text-on-surface w-full resize-none overflow-hidden block"
             rows={1}
             placeholder="Commentaire (optionnel)"
           />
         </div>
         <div className="basis-full xl:hidden order-2" />
-        <div className="flex-1 min-w-0 order-3 xl:order-1">
+        <div className="flex-1 min-w-0 order-3 xl:order-1 xl:flex-none xl:w-56 xl:min-h-[42px] xl:flex xl:items-center">
           <span className="xl:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">Allergènes</span>
           <div className="flex flex-wrap items-center gap-1">
             {allergens.map((a) => (

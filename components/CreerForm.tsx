@@ -110,7 +110,9 @@ const key = () => `k${uid++}`;
 function autoGrow(el: HTMLTextAreaElement | null) {
   if (!el) return;
   el.style.height = 'auto';
-  el.style.height = `${el.scrollHeight}px`;
+  // `scrollHeight` ne compte pas la bordure : sans elle, un champ en
+  // `border-box` restait 2 px trop court (donc désaligné de ses voisins).
+  el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
 }
 
 // Slug généré depuis un libellé (même règle que le back-office des listes) :
@@ -1909,7 +1911,7 @@ export function CreerForm({
                         au-dessus du bloc allergènes de chaque ligne à la
                         place (cf. plus bas). */}
                     <div className="border-l-2 border-transparent pl-4 xl:border-l-0 xl:pl-0 flex items-center gap-4 mb-2">
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-[2] min-w-0">
                         <span className="font-label-md text-label-md text-outline">INGRÉDIENTS</span>
                       </div>
                       <div className="w-20 shrink-0" />
@@ -1940,10 +1942,10 @@ export function CreerForm({
                         </div>
                       </div>
                       <div className="hidden xl:contents">
-                        <div className="flex-1 min-w-0">
+                        <div className="w-56 shrink-0">
                           <span className="font-label-md text-label-md text-outline">ALLERGÈNES</span>
                         </div>
-                        <div className="flex-1 min-w-0" />
+                        <div className="flex-[3] min-w-0" />
                         <button aria-hidden type="button" tabIndex={-1} className="p-1 invisible shrink-0">
                           <span className="material-symbols-outlined text-[18px]">delete</span>
                         </button>
@@ -1961,8 +1963,8 @@ export function CreerForm({
                         // ingrédient — sans toucher au `gap-x-4` horizontal
                         // entre les champs d'une même ligne.
                         <div key={g.key} className="border-l-2 border-outline-variant/50 pl-4 xl:border-l-0 xl:pl-0">
-                        <div className="flex flex-wrap xl:flex-nowrap items-center gap-x-4 gap-y-1.5">
-                          <div className="relative flex-1 min-w-0">
+                        <div className="flex flex-wrap xl:flex-nowrap items-center xl:items-start gap-x-4 gap-y-1.5">
+                          <div className="relative flex-[2] min-w-0">
                             <input
                               list="dl-ingredients"
                               value={g.name}
@@ -1995,7 +1997,7 @@ export function CreerForm({
                           <select
                             value={g.unit}
                             onChange={(e) => patchIng(si, ii, { unit: e.target.value })}
-                            className="editorial-input text-on-surface cursor-pointer"
+                            className="editorial-input text-on-surface cursor-pointer h-[42px] max-md:h-[38px]"
                             // Largeur automatique : le select s'ajuste à son option la plus
                             // large (ex. « pincée(s) »). `auto` prime sur le width:100% de
                             // .editorial-input ; toutes les lignes partagent les mêmes
@@ -2020,7 +2022,7 @@ export function CreerForm({
                               les deux blocs — un simple `xl:order-none` (qui
                               revient à 0 des deux côtés) les départagerait par
                               leur position DOM, dans le mauvais sens. */}
-                          <div className="flex-1 min-w-0 order-1 xl:order-2">
+                          <div className="flex-[3] min-w-0 order-1 xl:order-2">
                             <textarea
                               value={g.comment}
                               onChange={(e) => {
@@ -2041,13 +2043,13 @@ export function CreerForm({
                                   }, 0);
                                 }
                               }}
-                              className="editorial-input text-on-surface w-full resize-none overflow-hidden"
+                              className="editorial-input text-on-surface w-full resize-none overflow-hidden block"
                               rows={1}
                               placeholder="Commentaire (optionnel)"
                             />
                           </div>
                           <div className="basis-full xl:hidden order-2" />
-                          <div className="flex-1 min-w-0 order-3 xl:order-1">
+                          <div className="flex-1 min-w-0 order-3 xl:order-1 xl:flex-none xl:w-56 xl:min-h-[42px] xl:flex xl:items-center">
                             <span className="xl:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">
                               Allergènes
                             </span>
@@ -2076,7 +2078,7 @@ export function CreerForm({
                                     const v = e.target.value;
                                     if (v && !g.allergen.includes(v)) patchIng(si, ii, { allergen: [...g.allergen, v] });
                                   }}
-                                  className="editorial-input text-on-surface cursor-pointer italic"
+                                  className="editorial-input text-on-surface cursor-pointer italic h-[42px] max-md:h-[38px]"
                                   style={{ width: 'auto' }}
                                   title="Ajouter un allergène (table de référence)"
                                 >
@@ -2106,7 +2108,7 @@ export function CreerForm({
                             type="button"
                             title="Supprimer"
                             onClick={() => delIng(si, ii)}
-                            className="p-1 text-error hover:opacity-70 transition-opacity shrink-0 order-4 xl:order-3"
+                            className="p-1 text-error hover:opacity-70 transition-opacity shrink-0 order-4 xl:order-3 xl:h-[42px] xl:flex xl:items-center"
                           >
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
