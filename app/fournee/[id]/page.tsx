@@ -4,7 +4,8 @@ import { requireUser } from '@/lib/auth';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements } from '@/lib/entitlements-data';
 import { getBatch, getUnits, getShoppingLists } from '@/lib/profile';
-import { getIngredientConversions, getIngredientDensities, getAllergensWithPicto } from '@/lib/recipes';
+import { getIngredientConversions, getIngredientDensities, getAllergensWithPicto, getIngredientRefsList } from '@/lib/recipes';
+import { getIngredientRefAllergens } from '@/lib/imports';
 import { getMyRecipeReview, recetteEstProjetEnCours } from '@/lib/reviews-data';
 import { createClient } from '@/lib/supabase/server';
 import { Footer } from '@/components/Footer';
@@ -79,7 +80,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
   const batch = Number.isFinite(batchId) ? await getBatch(batchId) : null;
   if (!batch) notFound();
 
-  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements, essaiProjet] =
+  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements, essaiProjet, ingredientRefs, refAllergens] =
     await Promise.all([
       getUnits(),
       getIngredientConversions(),
@@ -90,6 +91,8 @@ export default async function FourneePage({ params, searchParams }: Params) {
       batch.recipe_id ? getMyRecipeReview(batch.recipe_id, batch.user_id!) : Promise.resolve(null),
       getEntitlements(user.id),
       recetteEstProjetEnCours(batch.recipe_id),
+      getIngredientRefsList(),
+      getIngredientRefAllergens(),
     ]);
   // Droits d'abonnement (§4 « Lancer une fournée ») : calculés une fois ici,
   // jamais recalculés plus bas dans l'arbre de composants.
@@ -130,6 +133,8 @@ export default async function FourneePage({ params, searchParams }: Params) {
           ingredientDensities={ingredientDensities}
           shoppingLists={shoppingLists}
           allergenRefs={allergenRefs}
+          ingredientRefs={ingredientRefs}
+          refAllergens={refAllergens}
           lecture={lecture === '1'}
           initialMode={mode === 'preparer' || mode === 'patisser' ? mode : undefined}
           myReview={myReview}

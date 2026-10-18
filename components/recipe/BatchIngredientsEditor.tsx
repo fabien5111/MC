@@ -10,7 +10,7 @@
 // Écriture immédiatement reflétée partout (fiche et mode Pâtisser lisent la
 // même ligne) : plus de session figée à proposer de supprimer après une
 // modification, contrairement à l'ancien modèle plan + session séparés.
-import { Fragment, useState } from 'react';
+import { Fragment, useId, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -28,7 +28,8 @@ import {
   type BatchFull,
   type BatchIngredientRow,
 } from '@/lib/recipe-plan';
-import { ingredientConversionText, type ConversionRef } from '@/lib/ingredient-conversions';
+import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { fixOeufLigature } from '@/lib/text';
 import { IngredientExpandDialog } from '@/components/recipe/IngredientExpandDialog';
 import { LockedAction } from '@/components/LockedAction';
 
@@ -45,12 +46,21 @@ export function BatchIngredientsEditor({
   units,
   unitTips,
   conversions,
+  ingredientRefs = [],
+  refAllergens = {},
+  allergenNames = [],
   canReplaceIngredient = true,
 }: {
   batch: BatchFull;
   units: Unit[];
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
+  // Référentiel des ingrédients (suggestions du nom + rattachement `ref_id`),
+  // allergènes par ingrédient (nom en minuscules → « a, b ») et libellés des
+  // allergènes — pour la saisie d'un ingrédient ajouté à la main (JEP-368).
+  ingredientRefs?: IngredientRefOption[];
+  refAllergens?: Record<string, string>;
+  allergenNames?: string[];
   // Droit d'abonnement (`remplacement_ingredient_par_recette`). Défaut à
   // `true` pour l'appelant qui ne le passe pas encore.
   canReplaceIngredient?: boolean;
@@ -59,6 +69,7 @@ export function BatchIngredientsEditor({
   const dialog = useDialog();
   const [editing, setEditing] = useState<EditKey>(null);
   const [addingStep, setAddingStep] = useState<number | null>(null);
+  const datalistId = useId();
   // Groupe en cours de remplacement par une sous-recette (fenêtre ouverte) —
   // toutes les occurrences du même ingrédient (nom + unité), pas seulement
   // celle cliquée (JEP-254).
@@ -155,29 +166,44 @@ export function BatchIngredientsEditor({
     );
   }
 
-  async function applyEditAdded(row: BatchIngredientRow, name: string, qtyStr: string, unit: string) {
-    if (!name.trim()) {
+  // Colonnes écrites pour un ingrédient ajouté à la main : « oeuf » → « œuf »
+  // et rattachement au référentiel (`ref_id`, `resolveIngredientRefId`), pour
+  // que conversions et fusion des courses s'appliquent (JEP-368).
+  function addedColumns(v: AddedValues) {
+    const name = fixOeufLigature(v.name.trim());
+    const n = numify(v.qty);
+    return {
+      name,
+      quantity: n,
+      quantity_text: n == null && v.qty.trim() ? v.qty.trim() : null,
+      unit: v.unit.trim() || null,
+      comment: v.comment.trim() || null,
+      allergen: v.allergen,
+      ref_id: resolveIngredientRefId(name, ingredientRefs),
+    };
+  }
+
+  async function applyEditAdded(row: BatchIngredientRow, v: AddedValues) {
+    if (!v.name.trim()) {
       dialog.alert("Indiquez un nom d'ingrédient.");
       return;
     }
-    const n = numify(qtyStr);
     setEditing(null);
     await mutate(
       () =>
         createClient()
           .from('batch_ingredients')
-          .update({ name: name.trim(), quantity: n, quantity_text: n == null && qtyStr.trim() ? qtyStr.trim() : null, unit: unit.trim() || null })
+          .update(addedColumns(v))
           .eq('id', row.id),
       { errorLabel: 'Modification non enregistrée' },
     );
   }
 
-  async function addIng(stepId: number, name: string, qtyStr: string, unit: string) {
-    if (!name.trim()) {
+  async function addIng(stepId: number, v: AddedValues) {
+    if (!v.name.trim()) {
       dialog.alert("Indiquez un nom d'ingrédient.");
       return;
     }
-    const n = numify(qtyStr);
     const stepRows = batch.batch_ingredients.filter((it) => it.batch_step_id === stepId);
     const nextOrder = stepRows.length ? Math.max(...stepRows.map((r) => r.order_index)) + 1 : 0;
     setAddingStep(null);
@@ -189,10 +215,7 @@ export function BatchIngredientsEditor({
             batch_id: batch.id,
             batch_step_id: stepId,
             order_index: nextOrder,
-            name: name.trim(),
-            quantity: n,
-            quantity_text: n == null && qtyStr.trim() ? qtyStr.trim() : null,
-            unit: unit.trim() || null,
+            ...addedColumns(v),
             added: true,
           }),
       { errorLabel: 'Ajout impossible' },
@@ -252,6 +275,13 @@ export function BatchIngredientsEditor({
   return (
     <div className="space-y-10">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
+      {ingredientRefs.length > 0 && (
+        <datalist id={datalistId}>
+          {ingredientRefs.map((r) => (
+            <option key={r.id} value={r.name} />
+          ))}
+        </datalist>
+      )}
       {expanding && (
         <IngredientExpandDialog
           batch={batch}
@@ -427,7 +457,18 @@ export function BatchIngredientsEditor({
                       )}
                       {editing === key &&
                         (row.added ? (
-                          <AddedEditForm key={key + '-form'} row={row} units={units} onApply={(n, q, u) => applyEditAdded(row, n, q, u)} onCancel={() => setEditing(null)} />
+                          <li key={key + '-form'} style={{ gridColumn: '1/-1' }}>
+                            <AddedIngredientForm
+                              initial={row}
+                              units={units}
+                              datalistId={datalistId}
+                              allergenNames={allergenNames}
+                              refAllergens={refAllergens}
+                              submitLabel="OK"
+                              onSubmit={(v) => applyEditAdded(row, v)}
+                              onCancel={() => setEditing(null)}
+                            />
+                          </li>
                         ) : (
                           <LineEditForm key={key + '-form'} row={row} onApply={(q, c) => applyEdit(row, q, c)} onCancel={() => setEditing(null)} />
                         ))}
@@ -437,7 +478,16 @@ export function BatchIngredientsEditor({
               </ul>
             )}
             {addingStep === step.id ? (
-              <AddForm units={units} onAdd={(n, q, u) => addIng(step.id, n, q, u)} onCancel={() => setAddingStep(null)} />
+              <AddedIngredientForm
+                units={units}
+                datalistId={datalistId}
+                allergenNames={allergenNames}
+                refAllergens={refAllergens}
+                submitLabel="Ajouter"
+                autoFocus
+                onSubmit={(v) => addIng(step.id, v)}
+                onCancel={() => setAddingStep(null)}
+              />
             ) : (
               <button type="button" onClick={() => setAddingStep(step.id)} className="no-print mt-3 flex items-center gap-1 text-primary font-label-md text-[12px] hover:underline">
                 <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter un ingrédient
@@ -479,14 +529,69 @@ function LineEditForm({ row, onApply, onCancel }: { row: BatchIngredientRow; onA
   );
 }
 
-function AddedEditForm({ row, units, onApply, onCancel }: { row: BatchIngredientRow; units: Unit[]; onApply: (name: string, qty: string, unit: string) => void; onCancel: () => void }) {
-  const [name, setName] = useState(row.name);
-  const [qty, setQty] = useState(row.quantity != null ? fmtNum(row.quantity) : row.quantity_text || '');
-  const [unit, setUnit] = useState(row.unit || '');
+// Valeurs saisies pour un ingrédient ajouté à la main (ajout ou modification).
+type AddedValues = { name: string; qty: string; unit: string; comment: string; allergen: string | null };
+
+// Découpe la valeur stockée (« a, b ») en liste d'allergènes (max 3) — même
+// règle que `parseAllergens` de CreerForm.
+const MAX_ALLERGENS = 3;
+const parseAllergens = (raw: string | null | undefined): string[] =>
+  (raw || '')
+    .split(/[,;/]/)
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .slice(0, MAX_ALLERGENS);
+const joinAllergens = (l: string[]): string | null => (l.length ? l.join(', ') : null);
+
+// Saisie d'un ingrédient ajouté à la main (JEP-368) : nom proposé depuis le
+// référentiel (datalist), quantité, unité, commentaire et allergènes — les
+// mêmes champs que l'éditeur de recette. Choisir un ingrédient du référentiel
+// pré-remplit ses allergènes, comme dans `/creer`.
+function AddedIngredientForm({
+  initial,
+  units,
+  datalistId,
+  allergenNames,
+  refAllergens,
+  submitLabel,
+  autoFocus,
+  onSubmit,
+  onCancel,
+}: {
+  initial?: BatchIngredientRow;
+  units: Unit[];
+  datalistId?: string;
+  allergenNames: string[];
+  refAllergens: Record<string, string>;
+  submitLabel: string;
+  autoFocus?: boolean;
+  onSubmit: (v: AddedValues) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(initial?.name ?? '');
+  const [qty, setQty] = useState(initial ? (initial.quantity != null ? fmtNum(initial.quantity) : initial.quantity_text || '') : '');
+  const [unit, setUnit] = useState(initial?.unit || '');
+  const [comment, setComment] = useState(initial?.comment || '');
+  const [allergens, setAllergens] = useState<string[]>(parseAllergens(initial?.allergen));
+  const onName = (v: string) => {
+    setName(v);
+    const key = v.trim().toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(refAllergens, key)) setAllergens(parseAllergens(refAllergens[key]));
+  };
+  const free = allergenNames.filter((a) => !allergens.includes(a));
   return (
-    <li style={{ gridColumn: '1/-1' }} className="py-3">
+    <div className="flex flex-col gap-2 py-3">
       <div className="flex flex-wrap items-end gap-3">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ingrédient" className={FIELD} style={{ width: '12rem' }} />
+        <input
+          value={name}
+          onChange={(e) => onName(e.target.value)}
+          list={datalistId}
+          autoComplete="off"
+          placeholder="Ingrédient"
+          className={FIELD}
+          style={{ width: '14rem' }}
+          autoFocus={autoFocus}
+        />
         <input value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Quantité" type="number" min={0} step="any" className={FIELD} style={{ width: '6rem' }} />
         <select value={unit} onChange={(e) => setUnit(e.target.value)} className={`${FIELD} bg-white`} style={{ width: '8rem' }}>
           <option value="">— Unité —</option>
@@ -495,44 +600,51 @@ function AddedEditForm({ row, units, onApply, onCancel }: { row: BatchIngredient
               {u.name}
             </option>
           ))}
+          {unit && !units.some((u) => u.name === unit) && <option value={unit}>{unit}</option>}
         </select>
-        <button type="button" onClick={() => onApply(name, qty, unit)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
-          OK
+        <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Commentaire (optionnel)" className={FIELD} style={{ width: '14rem' }} />
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mr-1">Allergènes</span>
+        {allergens.map((a) => (
+          <span key={a} className="inline-flex items-center gap-0.5 bg-secondary-fixed text-on-secondary-fixed rounded-full pl-2 pr-0.5 py-0.5 text-[12px]">
+            {a}
+            <button type="button" title="Retirer" onClick={() => setAllergens(allergens.filter((x) => x !== a))} className="hover:text-error transition-colors">
+              <span className="material-symbols-outlined text-[14px] align-middle">close</span>
+            </button>
+          </span>
+        ))}
+        {allergens.length < MAX_ALLERGENS && free.length > 0 && (
+          <select
+            value=""
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v) setAllergens([...allergens, v]);
+            }}
+            className={`${FIELD} bg-white italic`}
+            title="Ajouter un allergène (table de référence)"
+          >
+            <option value="">{allergens.length ? '+ Ajouter' : 'Aucun (optionnel)'}</option>
+            {free.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => onSubmit({ name, qty, unit, comment, allergen: joinAllergens(allergens) })}
+          className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]"
+        >
+          {submitLabel}
         </button>
         <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
           Annuler
         </button>
       </div>
-    </li>
-  );
-}
-
-function AddForm({ units, onAdd, onCancel }: { units: Unit[]; onAdd: (name: string, qty: string, unit: string) => void; onCancel: () => void }) {
-  const [name, setName] = useState('');
-  const [qty, setQty] = useState('');
-  const [unit, setUnit] = useState('');
-  return (
-    <div className="flex flex-wrap items-end gap-3 mt-2">
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ingrédient" className={FIELD} style={{ width: '12rem' }} autoFocus />
-      <input value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Quantité" type="number" min={0} step="any" className={FIELD} style={{ width: '6rem' }} />
-      <select value={unit} onChange={(e) => setUnit(e.target.value)} className={`${FIELD} bg-white`} style={{ width: '8rem' }}>
-        <option value="">— Unité —</option>
-        {units.map((u) => (
-          <option key={u.id} value={u.name}>
-            {u.name}
-          </option>
-        ))}
-      </select>
-      <button type="button" onClick={() => onAdd(name, qty, unit)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
-        Ajouter
-      </button>
-      <button
-        type="button"
-        onClick={onCancel}
-        className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant"
-      >
-        Annuler
-      </button>
     </div>
   );
 }

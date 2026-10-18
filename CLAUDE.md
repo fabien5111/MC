@@ -921,6 +921,13 @@ directes :
   aussitôt, et un `history.replaceState` réécrirait la barre d'adresse sans
   rien renvoyer au serveur. C'est la seule resynchronisation de cet écran qui
   ne soit pas un `router.refresh()`.
+- **Un ingrédient ajouté à la main se saisit comme dans `/creer`** (JEP-368,
+  `AddedIngredientForm` de `BatchIngredientsEditor`) : nom proposé depuis le
+  référentiel (datalist), quantité, unité, commentaire et allergènes (3 au plus,
+  pré-remplis au choix d'un ingrédient du référentiel). À l'ajout comme à la
+  modification d'un ajout, le nom passe par `fixOeufLigature` et la ligne est
+  rattachée (`ref_id`, `resolveIngredientRefId`) — sans quoi ni conversion ni
+  fusion des courses ne s'appliquaient.
 - **`batches.user_note` et `batches.notes` ne sont pas la même chose** :
   la première est la note personnelle de la fournée (éditée en Préparer par
   `BatchNotes`), la seconde le commentaire saisi au lancement dans

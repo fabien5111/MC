@@ -35,7 +35,7 @@ import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, matchAllergenPictos } from '@/lib/recipe-view';
-import { ingredientConversionText, shortUnitLbl, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
+import { ingredientConversionText, shortUnitLbl, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { IngredientTotalList } from '@/components/IngredientTotalList';
@@ -142,6 +142,8 @@ export function BatchView({
   ingredientDensities,
   shoppingLists,
   allergenRefs,
+  ingredientRefs,
+  refAllergens,
   lecture,
   initialMode,
   myReview,
@@ -159,6 +161,10 @@ export function BatchView({
   ingredientDensities: { name: string; density_g_per_ml: number }[];
   shoppingLists: { id: number; name: string }[];
   allergenRefs: AllergenRef[];
+  // Référentiel des ingrédients et leurs allergènes : saisie d'un ingrédient
+  // ajouté à la main (JEP-368, BatchIngredientsEditor).
+  ingredientRefs: IngredientRefOption[];
+  refAllergens: Record<string, string>;
   lecture: boolean;
   // Avis (note + commentaire) courant du membre pour la recette d'origine —
   // `null` si aucun avis n'a encore été déposé, quelle que soit la fournée.
@@ -551,6 +557,8 @@ export function BatchView({
             ingredientDensities={ingredientDensities}
             shoppingLists={shoppingLists}
             allergenRefs={allergenRefs}
+            ingredientRefs={ingredientRefs}
+            refAllergens={refAllergens}
             readOnly={readOnly}
             onDelete={deleteBatch}
             onSwitchMode={switchMode}
@@ -586,6 +594,8 @@ function PreparerView({
   ingredientDensities,
   shoppingLists,
   allergenRefs,
+  ingredientRefs,
+  refAllergens,
   readOnly,
   onDelete,
   onSwitchMode,
@@ -600,6 +610,8 @@ function PreparerView({
   ingredientDensities: { name: string; density_g_per_ml: number }[];
   shoppingLists: { id: number; name: string }[];
   allergenRefs: AllergenRef[];
+  ingredientRefs: IngredientRefOption[];
+  refAllergens: Record<string, string>;
   readOnly: boolean;
   onDelete: () => void;
   onSwitchMode: (m: 'preparer' | 'patisser') => void;
@@ -1128,7 +1140,16 @@ function PreparerView({
               <h3 className="font-headline-md text-headline-md text-primary">Ingrédients ajustés</h3>
               <span className="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
             </summary>
-            <BatchIngredientsEditor batch={batch} units={units} unitTips={unitTips} conversions={conversions} canReplaceIngredient={droits.remplacementIngredient} />
+            <BatchIngredientsEditor
+              batch={batch}
+              units={units}
+              unitTips={unitTips}
+              conversions={conversions}
+              ingredientRefs={ingredientRefs}
+              refAllergens={refAllergens}
+              allergenNames={allergenRefs.map((a) => a.name)}
+              canReplaceIngredient={droits.remplacementIngredient}
+            />
           </details>
         </div>
       )}
