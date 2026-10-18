@@ -2,7 +2,7 @@
 // rapprochement manqué laisse deux lignes dans les courses, un rapprochement
 // abusif additionne deux ingrédients différents — les deux sont silencieux.
 import { describe, expect, it } from 'vitest';
-import { ingredientKey, ingredientRefDuplicates, sameIngredient, libelleIngredient } from '@/lib/ingredient-name';
+import { ingredientKey, ingredientRefDuplicates, sameIngredient, libelleIngredient, nomsDeLigne } from '@/lib/ingredient-name';
 import { estimateWeightGrams } from '@/lib/ingredient-conversions';
 
 describe('ingredientKey', () => {
@@ -113,5 +113,25 @@ describe('libelleIngredient — accord à l’affichage (JEP-282)', () => {
   });
   it('laisse intact un libellé qui ne désigne pas la référence', () => {
     expect(libelleIngredient('Jaunes d’œufs frais', '1', null, jaune)).toBe('Jaunes d’œufs frais');
+  });
+});
+
+describe('nomsDeLigne — repli sur un doublon de la référence (JEP-282)', () => {
+  const oeuf = { singulier: 'Œuf', pluriel: 'Œufs' };
+  const noms = { parId: { 5: oeuf }, parCle: { oeuf } };
+
+  it('prend la référence de la ligne quand elle porte le pluriel', () => {
+    expect(nomsDeLigne(noms, 'Œuf', 5)).toBe(oeuf);
+  });
+  it('retombe sur une autre référence du même ingrédient (ligne rattachée au doublon)', () => {
+    expect(nomsDeLigne(noms, 'Œufs', 137)).toBe(oeuf);
+    expect(libelleIngredient('Œuf', 2, 'unité(s)', nomsDeLigne(noms, 'Œuf', 137))).toBe('Œufs');
+  });
+  it('ne fait rien pour une ligne non rattachée au référentiel', () => {
+    expect(nomsDeLigne(noms, 'Œuf', null)).toBeNull();
+    expect(nomsDeLigne(noms, 'Œuf', undefined)).toBeNull();
+  });
+  it('ne confond pas deux ingrédients différents', () => {
+    expect(nomsDeLigne(noms, 'Sucre', 12)).toBeNull();
   });
 });

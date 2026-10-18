@@ -24,7 +24,7 @@ export async function GET() {
   return NextResponse.json({
     heure: new Date().toISOString(),
     commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
-    cacheDuLayout: { nombre: Object.keys(cache).length, extrait: Object.entries(cache).slice(0, 8) },
+    cacheDuLayout: 'parId' in cache ? { parId: Object.keys(cache.parId).length, parCle: Object.keys(cache.parCle) } : cache,
     lectureAnonyme: await lecture(createPublicClient()),
     lectureSession: await lecture(await createClient()),
   });

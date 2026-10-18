@@ -88,6 +88,26 @@ export function ingredientRefDuplicates<T extends { id: number; name: string }>(
 
 export type NomsReference = { singulier: string; pluriel: string | null };
 
+// Noms accordables du référentiel, par identifiant ET par `ingredientKey`. La
+// clé sert de repli quand la ligne pointe vers un DOUBLON de la référence qui
+// porte le pluriel (« Œufs » à côté de « Œuf ») : le référentiel en contient
+// tant qu'Admin → Éléments inconnus ne les a pas fusionnés, et l'accord ne doit
+// pas dépendre de la copie que la ligne a rattachée.
+export type NomsAccordables = { parId: Record<number, NomsReference>; parCle: Record<string, NomsReference> };
+
+export const AUCUN_NOM_ACCORDABLE: NomsAccordables = { parId: {}, parCle: {} };
+
+// Références de la ligne : la sienne si elle porte un pluriel, sinon une autre
+// référence du même ingrédient. Ligne non rattachée (`refId` vide) : aucune.
+export function nomsDeLigne(
+  noms: NomsAccordables,
+  nom: string,
+  refId: number | null | undefined,
+): NomsReference | null {
+  if (refId == null) return null;
+  return noms.parId[refId] ?? noms.parCle[ingredientKey(nom)] ?? null;
+}
+
 const UNITES_COMPTAGE = new Set(['', 'unité(s)', 'unité', 'unités', 'unite(s)']);
 
 // Quantité affichée → nombre, ou null si elle n'est pas lisible

@@ -6,15 +6,15 @@
 // Chargée une fois au layout depuis le cache des référentiels ; ne contient que
 // les références qui portent un pluriel.
 import { createContext, useContext } from 'react';
-import { libelleIngredient, type NomsReference } from '@/lib/ingredient-name';
+import { AUCUN_NOM_ACCORDABLE, libelleIngredient, nomsDeLigne, type NomsAccordables } from '@/lib/ingredient-name';
 
-const Ctx = createContext<Record<number, NomsReference>>({});
+const Ctx = createContext<NomsAccordables>(AUCUN_NOM_ACCORDABLE);
 
 export function IngredientNomsProvider({
   noms,
   children,
 }: {
-  noms: Record<number, NomsReference>;
+  noms: NomsAccordables;
   children: React.ReactNode;
 }) {
   return <Ctx.Provider value={noms}>{children}</Ctx.Provider>;
@@ -29,7 +29,7 @@ export function useLibelleIngredient() {
     quantite: string | number | null | undefined,
     unite: string | null | undefined,
     refId: number | null | undefined,
-  ) => (refId != null ? libelleIngredient(nom, quantite, unite, noms[refId]) : nom);
+  ) => libelleIngredient(nom, quantite, unite, nomsDeLigne(noms, nom, refId));
 }
 
 // Version composant, pour les rendus (y compris depuis un Server Component).

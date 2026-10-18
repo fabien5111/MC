@@ -55,7 +55,7 @@ import { createPublicClient } from '@/lib/supabase/public';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
 import type { ConversionRef, IngredientRefOption } from '@/lib/ingredient-conversions';
-import type { NomsReference } from '@/lib/ingredient-name';
+import { ingredientKey, type NomsAccordables, type NomsReference } from '@/lib/ingredient-name';
 
 type Client = SupabaseClient<Database>;
 
@@ -303,17 +303,23 @@ export const getIngredientDensities = async (): Promise<{ name: string; density_
     .filter((r): r is IngredientRefRow & { density_g_per_ml: number } => !!r.name && r.density_g_per_ml != null)
     .map(({ name, density_g_per_ml }) => ({ name, density_g_per_ml }));
 
-// Noms accordables par identifiant de référence (JEP-282) : singulier = libellé
-// du référentiel, pluriel = `name_plural`. Seules les références qui portent un
-// pluriel y figurent — le reste garde le texte de l'auteur. Dérivée de la même
-// lecture que les accesseurs ci-dessus.
-export const getIngredientNomsAccordables = async (): Promise<Record<number, NomsReference>> => {
-  const map: Record<number, NomsReference> = {};
+// Noms accordables (JEP-282) : singulier = libellé du référentiel, pluriel =
+// `name_plural`, indexés par identifiant et par `ingredientKey` (repli quand une
+// ligne pointe vers un doublon de la référence qui porte le pluriel). Seules les
+// références qui portent un pluriel y figurent — le reste garde le texte de
+// l'auteur. Dérivée de la même lecture que les accesseurs ci-dessus.
+export const getIngredientNomsAccordables = async (): Promise<NomsAccordables> => {
+  const parId: Record<number, NomsReference> = {};
+  const parCle: Record<string, NomsReference> = {};
   for (const r of await lireIngredientRefs()) {
     const pluriel = r.name_plural?.trim();
-    if (r.name && pluriel) map[r.id] = { singulier: r.name, pluriel };
+    if (!r.name || !pluriel) continue;
+    const noms = { singulier: r.name, pluriel };
+    parId[r.id] = noms;
+    const cle = ingredientKey(r.name);
+    if (cle && !(cle in parCle)) parCle[cle] = noms;
   }
-  return map;
+  return { parId, parCle };
 };
 
 // ---------------------------------------------------------------------------
