@@ -106,6 +106,10 @@ export const SECTIONS: Section[] = [
     desc: 'Ingrédients de référence pour les recettes',
     fields: [
       { key: 'name', label: 'Libellé', required: true },
+      // Pluriel accordé à l'affichage quand la quantité est ≥ 2 (JEP-282) — saisi
+      // à la main : « jaunes d'œufs », « gousses de vanille », « noix de coco »
+      // ne se déduisent pas. Vide = le texte de l'auteur reste affiché tel quel.
+      { key: 'name_plural', label: 'Pluriel' },
       { key: 'allergen', label: 'Allergènes', type: 'multiref', refTable: 'allergens', max: 3 },
       { key: 'url', label: 'URL' },
       // Sert à estimer le poids d'un ingrédient saisi en volume (ml/cl/l)

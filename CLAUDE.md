@@ -823,6 +823,26 @@ n'existe qu'à l'affichage). Ne pas recoder une quatrième variante de cette
 liste. La fournée renvoie elle aussi vers les étapes (`MergedBatchRow.stepIds`,
 ancre `#etape-<id>` du déroulé Préparer).
 
+- **Accord du nom à l'affichage (JEP-282).** Le nom saisi reste en base tel
+  quel ; seul l'affichage s'accorde avec la quantité (`libelleIngredient`,
+  `lib/ingredient-name.ts`, pur et testé). Le pluriel d'un nom composé n'étant
+  pas mécanique (« jaunes d'œufs », « gousses de vanille », « noix de coco »),
+  il vient d'un libellé saisi au référentiel — `ingredient_refs.name_plural`,
+  champ « Pluriel » d'Admin → Listes → Ingrédients — jamais d'une heuristique.
+  N'agit que si la ligne a un `ref_id`, que l'unité est de comptage
+  (« unité(s) » ou aucune — jamais « 40 g de jaunes d'œufs »), que la quantité
+  est un nombre et que le nom de l'auteur a la même `ingredientKey` que la
+  référence (un libellé enrichi reste intact). Singulier de 0 à 1,99, pluriel
+  dès 2 ; majuscule initiale de l'auteur conservée. **Branchement** : table
+  `ref_id → {singulier, pluriel}` lue une fois au layout
+  (`getIngredientNomsAccordables`, cache des référentiels) et mise en contexte
+  (`IngredientNomsProvider`) ; les écrans rendent `<NomIngredient>` — fiche
+  recette (étapes, liste totale), fournée (Préparer, Pâtisser, liste totale),
+  courses, récapitulatif du mode projet. Dans une liste totale, le nom suit la
+  quantité du total. Les éditeurs (`/creer`, relecture) montrent le texte de
+  l'auteur. La lecture du référentiel est en `select('*')` : la colonne étant
+  ajoutée à la main (DDL par `psql`), la nommer ferait échouer tout le
+  référentiel avant la migration.
 - **Approximation symétrique** : « cassis » devient « cassi », « noix » reste
   « noix » — sans conséquence, les deux côtés passent par la même fonction.
   Seuls les mots de plus de 3 lettres perdent leur pluriel (« jus », « riz »).

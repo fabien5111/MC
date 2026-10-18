@@ -14,6 +14,7 @@
 // - les éléments de recette (photo, catégories, ustensiles…) s'écrivent
 //   section par section, jamais par l'enregistrement global de `CreerForm`
 //   (cf. RecipeDetailEditors).
+import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -935,7 +936,15 @@ export function ProjectV2({
               <IngredientTotalList
                 groups={ingredientGroups.map((g) => ({
                   key: ingredientKey(g.name),
-                  name: g.name,
+                  // JEP-282 : le nom suit la quantité du total (ou de l'unique ligne).
+                  name: (
+                    <NomIngredient
+                      nom={g.name}
+                      quantite={g.subtotal ? g.subtotal.qty : g.lines[0].qty}
+                      unite={g.subtotal ? g.subtotal.unit : g.lines[0].unit}
+                      refId={g.lines[0].ref_id}
+                    />
+                  ),
                   allergen:
                     Array.from(new Set(g.lines.flatMap((m) => (m.allergen ? m.allergen.split(',').map((a) => a.trim()) : []))))
                       .filter(Boolean)

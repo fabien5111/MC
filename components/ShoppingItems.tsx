@@ -4,6 +4,7 @@
 // « courses-detail » — plus complet que courses.html qui n'a que la coche).
 // La coche est optimiste puis persistée via le client Supabase navigateur
 // (RLS appliquée par la session partagée en cookies).
+import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -293,7 +294,7 @@ export function ShoppingItems({
                     className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
                   />
                   <span className={`font-body-md text-body-md flex-1 ${struck}`}>
-                    {i.name}
+                    <NomIngredient nom={i.name} quantite={i.quantity} unite={i.unit} refId={i.ref_id} />
                     {i.comment && <span className="text-on-surface-variant italic"> — {i.comment}</span>}
                   </span>
                   <span className={`font-label-md text-label-md text-primary whitespace-nowrap ${struck}`}>

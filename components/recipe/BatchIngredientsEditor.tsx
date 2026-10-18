@@ -12,6 +12,7 @@
 // Écriture immédiatement reflétée partout (fiche et mode Pâtisser lisent la
 // même ligne) : plus de session figée à proposer de supprimer après une
 // modification, contrairement à l'ancien modèle plan + session séparés.
+import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { Fragment, useId, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -367,10 +368,10 @@ export function BatchStepIngredients({
                   <span className={`font-body-md text-body-md break-words${tone ? ' ' + tone : ''}`}>
                     {row.url ? (
                       <a href={row.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
-                        {row.name}
+                        <NomIngredient nom={row.name} quantite={row.quantity ?? row.quantity_text} unite={row.unit} refId={row.ref_id} />
                       </a>
                     ) : (
-                      row.name
+                      <NomIngredient nom={row.name} quantite={row.quantity ?? row.quantity_text} unite={row.unit} refId={row.ref_id} />
                     )}
                     {row.comment && <span className="text-on-surface-variant text-sm italic"> — {row.comment}</span>}
                   </span>

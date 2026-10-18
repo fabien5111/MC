@@ -2,7 +2,7 @@
 // rapprochement manqué laisse deux lignes dans les courses, un rapprochement
 // abusif additionne deux ingrédients différents — les deux sont silencieux.
 import { describe, expect, it } from 'vitest';
-import { ingredientKey, ingredientRefDuplicates, sameIngredient } from '@/lib/ingredient-name';
+import { ingredientKey, ingredientRefDuplicates, sameIngredient, libelleIngredient } from '@/lib/ingredient-name';
 import { estimateWeightGrams } from '@/lib/ingredient-conversions';
 
 describe('ingredientKey', () => {
@@ -73,5 +73,45 @@ describe('estimateWeightGrams — masse volumique rapprochée par la clé', () =
     );
     expect(est.grams).toBe(101);
     expect(est.unconverted).toEqual([]);
+  });
+});
+
+describe('libelleIngredient — accord à l’affichage (JEP-282)', () => {
+  const jaune = { singulier: 'Jaune d’œuf', pluriel: 'Jaunes d’œufs' };
+  const oeuf = { singulier: 'Œuf', pluriel: 'Œufs' };
+
+  it('« 1 jaune d’œuf » ajusté ×3 devient « 3 jaunes d’œufs »', () => {
+    expect(libelleIngredient('Jaune d’œuf', '3', 'unité(s)', jaune)).toBe('Jaunes d’œufs');
+  });
+  it('« 2 jaunes d’œufs » divisé par deux devient « 1 jaune d’œuf »', () => {
+    expect(libelleIngredient('Jaunes d’œufs', '1', 'unité(s)', jaune)).toBe('Jaune d’œuf');
+  });
+  it('singulier jusqu’à 1,99, pluriel à partir de 2', () => {
+    expect(libelleIngredient('Œufs', '1,5', null, oeuf)).toBe('Œuf');
+    expect(libelleIngredient('Œuf', '1.99', '', oeuf)).toBe('Œuf');
+    expect(libelleIngredient('Œuf', '2', null, oeuf)).toBe('Œufs');
+    expect(libelleIngredient('Œuf', 0, null, oeuf)).toBe('Œuf');
+    expect(libelleIngredient('Œuf', '3/2', null, oeuf)).toBe('Œuf');
+  });
+  it('ne touche jamais une unité de poids ou de volume', () => {
+    expect(libelleIngredient('Jaune d’œuf', '40', 'g', jaune)).toBe('Jaune d’œuf');
+    expect(libelleIngredient('Jaunes d’œufs', '1', 'ml', jaune)).toBe('Jaunes d’œufs');
+  });
+  it('sans référence, sans pluriel ou sans quantité lisible : texte de l’auteur', () => {
+    expect(libelleIngredient('Jaune d’œuf', '3', null, null)).toBe('Jaune d’œuf');
+    expect(libelleIngredient('Jaune d’œuf', '3', null, { singulier: 'Jaune d’œuf', pluriel: null })).toBe('Jaune d’œuf');
+    expect(libelleIngredient('Jaune d’œuf', '', null, jaune)).toBe('Jaune d’œuf');
+    expect(libelleIngredient('Jaune d’œuf', '2-3', null, jaune)).toBe('Jaune d’œuf');
+    expect(libelleIngredient('Jaune d’œuf', 'quelques', null, jaune)).toBe('Jaune d’œuf');
+  });
+  it('conserve la casse initiale de l’auteur', () => {
+    expect(libelleIngredient('jaune d’œuf', '3', null, jaune)).toBe('jaunes d’œufs');
+    expect(libelleIngredient('JAUNE D’ŒUF', '3', null, jaune)).toBe('Jaunes d’œufs');
+  });
+  it('reconnaît l’apostrophe droite et « oeuf » sans ligature', () => {
+    expect(libelleIngredient("Jaune d'oeuf", '3', null, jaune)).toBe('Jaunes d’œufs');
+  });
+  it('laisse intact un libellé qui ne désigne pas la référence', () => {
+    expect(libelleIngredient('Jaunes d’œufs frais', '1', null, jaune)).toBe('Jaunes d’œufs frais');
   });
 });

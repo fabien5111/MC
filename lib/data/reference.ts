@@ -55,6 +55,7 @@ import { createPublicClient } from '@/lib/supabase/public';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
 import type { ConversionRef, IngredientRefOption } from '@/lib/ingredient-conversions';
+import type { NomsReference } from '@/lib/ingredient-name';
 
 type Client = SupabaseClient<Database>;
 
@@ -249,15 +250,24 @@ export const getAllergenRefs = async (): Promise<{ id: number; name: string }[]>
 // ingredient_refs — une lecture, trois formes
 // ---------------------------------------------------------------------------
 
-type IngredientRefRow = { id: number; name: string; allergen: string | null; density_g_per_ml: number | null };
+type IngredientRefRow = {
+  id: number;
+  name: string;
+  allergen: string | null;
+  density_g_per_ml: number | null;
+  // JEP-282 : absent tant que la migration n'est pas jouée.
+  name_plural?: string | null;
+};
 
 const lireIngredientRefs = referenceAccessor<IngredientRefRow>({
   table: 'ingredient_refs',
   revalidate: HEURE,
   // `density_g_per_ml` : cast `as any` tant que la migration n'a pas été
   // régénérée (npm run gen:types), même motif que `review_status` ailleurs.
-  query: async (sb) =>
-    lignes(await (sb as any).from('ingredient_refs').select('id, name, allergen, density_g_per_ml').order('name')),
+  // `select('*')` et non une liste de colonnes : `name_plural` (JEP-282) est
+  // ajoutée par une migration jouée à la main, et nommer une colonne absente
+  // ferait échouer toute la lecture du référentiel.
+  query: async (sb) => lignes(await (sb as any).from('ingredient_refs').select('*').order('name')),
 });
 
 // Ingrédients de référence (id + libellé) : rapproche un article saisi à la
@@ -292,6 +302,19 @@ export const getIngredientDensities = async (): Promise<{ name: string; density_
   (await lireIngredientRefs())
     .filter((r): r is IngredientRefRow & { density_g_per_ml: number } => !!r.name && r.density_g_per_ml != null)
     .map(({ name, density_g_per_ml }) => ({ name, density_g_per_ml }));
+
+// Noms accordables par identifiant de référence (JEP-282) : singulier = libellé
+// du référentiel, pluriel = `name_plural`. Seules les références qui portent un
+// pluriel y figurent — le reste garde le texte de l'auteur. Dérivée de la même
+// lecture que les accesseurs ci-dessus.
+export const getIngredientNomsAccordables = async (): Promise<Record<number, NomsReference>> => {
+  const map: Record<number, NomsReference> = {};
+  for (const r of await lireIngredientRefs()) {
+    const pluriel = r.name_plural?.trim();
+    if (r.name && pluriel) map[r.id] = { singulier: r.name, pluriel };
+  }
+  return map;
+};
 
 // ---------------------------------------------------------------------------
 // utensils

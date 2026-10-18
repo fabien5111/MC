@@ -5,6 +5,7 @@
 // divergent jamais. Pas de `'use client'` : un Server Component peut le
 // rendre ; seul `qty` (rendu d'une quantité, qui dépend des conversions de
 // l'appelant) est fourni par l'appelant.
+import { NomIngredient } from '@/components/IngredientNomsProvider';
 import type { ReactNode } from 'react';
 import { formatTime } from '@/lib/format';
 import { dayLabel } from '@/lib/recipe-view';
@@ -82,7 +83,7 @@ export function RecipeStep({
                     {qty(it)}
                   </span>
                   <span className="font-body-md text-body-md break-words">
-                    {it.name}
+                    <NomIngredient nom={it.name} quantite={it.quantity} unite={it.unit} refId={it.ref_id} />
                     {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                   </span>
                 </li>

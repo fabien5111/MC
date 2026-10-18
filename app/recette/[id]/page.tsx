@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { NomIngredient } from '@/components/IngredientNomsProvider';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
@@ -687,14 +688,23 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   // Allergènes de l'ingrédient : ceux de toutes ses lignes, sans doublon.
                   const allergens = Array.from(new Set(g.lines.flatMap((m) => (m.allergen ? m.allergen.split(',').map((a) => a.trim()) : [])).filter(Boolean)));
                   const url = g.lines.find((m) => m.url)?.url || null;
+                  // JEP-282 : le nom suit la quantité du total (ou de l'unique ligne).
+                  const nomAccorde = (
+                    <NomIngredient
+                      nom={g.name}
+                      quantite={g.subtotal ? g.subtotal.qty : g.lines[0].qty}
+                      unite={g.subtotal ? g.subtotal.unit : g.lines[0].unit}
+                      refId={g.lines[0].ref_id}
+                    />
+                  );
                   return {
                     key: ingredientKey(g.name),
                     name: url ? (
                       <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
-                        {g.name}
+                        {nomAccorde}
                       </a>
                     ) : (
-                      g.name
+                      nomAccorde
                     ),
                     allergen: allergens.join(', ') || null,
                     total: g.subtotal ? <Qty quantity={g.subtotal.qty} unit={g.subtotal.unit} refId={g.lines[0].ref_id} /> : null,
