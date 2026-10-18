@@ -421,7 +421,7 @@ export function BatchView({
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
           <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{batch.recipe_title || 'Fournée'}</h1>
           <span className="flex items-center gap-3">
-            <span className={`font-label-md text-[12px] px-3 py-1 rounded-full text-white ${BATCH_STATUS_LBL[batch.status]?.cls || 'bg-secondary'}`}>
+            <span className={`no-print font-label-md text-[12px] px-3 py-1 rounded-full text-white ${BATCH_STATUS_LBL[batch.status]?.cls || 'bg-secondary'}`}>
               {BATCH_STATUS_LBL[batch.status]?.label || batch.status}
             </span>
             <span className="no-print">
@@ -535,7 +535,7 @@ export function BatchView({
             </button>
           </span>
           {all.length > 0 && (
-            <span className="ml-auto font-label-md text-[12px] text-on-surface-variant">
+            <span className="no-print ml-auto font-label-md text-[12px] text-on-surface-variant">
               {done} / {all.length} étapes
             </span>
           )}
@@ -1629,12 +1629,15 @@ function PatisserBody({
   let pendingMarked = false;
 
   function jalonDate(j: BatchJalon): Date | null {
-    if (!batch.degustation_at) return null;
-    const d = new Date(batch.degustation_at);
-    d.setDate(d.getDate() - (j.offset || 0));
-    return d;
+    // `planned_date` (jour de dégustation) en repli : sans heure de dégustation
+    // saisie, les jours J − n restaient sans date.
+    const base = batch.degustation_at ? new Date(batch.degustation_at) : batch.planned_date ? new Date(batch.planned_date + 'T00:00:00') : null;
+    if (!base) return null;
+    base.setDate(base.getDate() - (j.offset || 0));
+    return base;
   }
   function jalonTarget(j: BatchJalon): Date | null {
+    if (!batch.degustation_at) return null; // sans heure de dégustation, pas d'heure de départ
     const d = jalonDate(j);
     return d ? new Date(d.getTime() - jalonDur(j) * MIN) : null;
   }
@@ -1655,7 +1658,7 @@ function PatisserBody({
 
   return (
     <>
-      <div className="flex items-center gap-4 flex-wrap">
+      <div className="no-print flex items-center gap-4 flex-wrap">
         <div className="flex-1 min-w-[180px]">
           <div className="flex justify-between text-[12px] font-label-md text-on-surface-variant mb-1">
             <span>Progression</span>
