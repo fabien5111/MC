@@ -1379,7 +1379,7 @@ export function CreerForm({
                     + Ajouter un tag
                   </button>
                   {tagPickerOpen && (
-                    <div className="absolute z-20 mt-2 left-0 bg-white border border-outline-variant rounded-xl shadow-lg min-w-[220px] max-h-64 flex flex-col overflow-hidden">
+                    <div className="absolute z-20 mt-2 left-0 bg-white border border-outline-variant rounded-xl shadow-lg w-max min-w-[220px] max-w-[min(32rem,calc(100vw-2rem))] max-h-64 flex flex-col overflow-hidden">
                       <div className="px-2 pt-2 pb-2 shrink-0">
                         <input
                           type="text"
@@ -1391,11 +1391,17 @@ export function CreerForm({
                         />
                       </div>
                       <div className="overflow-y-auto flex-1 min-h-0 pb-2">
+                        {/* Cale invisible : la liste prend la largeur du plus long tag, filtré ou non. */}
+                        <div aria-hidden className="invisible h-0 overflow-hidden px-4 pl-10 pr-6">
+                          {remainingTags.map((t) => (
+                            <div key={t.id} className="whitespace-nowrap font-label-md text-label-md">{t.name}</div>
+                          ))}
+                        </div>
                         {filteredRemainingTags.length ? (
                           filteredRemainingTags.map((t) => (
                             <label
                               key={t.id}
-                              className="flex items-center gap-2 w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
+                              className="flex items-center gap-2 w-full text-left px-4 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors cursor-pointer whitespace-nowrap"
                             >
                               <input
                                 type="checkbox"
