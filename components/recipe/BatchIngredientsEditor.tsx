@@ -543,6 +543,13 @@ const parseAllergens = (raw: string | null | undefined): string[] =>
     .slice(0, MAX_ALLERGENS);
 const joinAllergens = (l: string[]): string | null => (l.length ? l.join(', ') : null);
 
+// Commentaire qui grandit avec son texte — même geste que `autoGrow` de CreerForm.
+function autoGrow(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 // Saisie d'un ingrédient ajouté à la main (JEP-368) : nom proposé depuis le
 // référentiel (datalist), quantité, unité, commentaire et allergènes — les
 // mêmes champs que l'éditeur de recette. Choisir un ingrédient du référentiel
@@ -579,22 +586,49 @@ function AddedIngredientForm({
     if (Object.prototype.hasOwnProperty.call(refAllergens, key)) setAllergens(parseAllergens(refAllergens[key]));
   };
   const free = allergenNames.filter((a) => !allergens.includes(a));
+  // Le « + » des allergènes déplie une liste (comme le premier choix) — la
+  // fenêtre à pastilles de `/creer` serait de trop pour une ligne isolée.
+  const [moreAllergen, setMoreAllergen] = useState(false);
+  const addAllergen = (v: string) => {
+    if (v && !allergens.includes(v) && allergens.length < MAX_ALLERGENS) setAllergens([...allergens, v]);
+    setMoreAllergen(false);
+  };
+  const allergenSelect = (
+    <select
+      value=""
+      onChange={(e) => addAllergen(e.target.value)}
+      className="editorial-input text-on-surface cursor-pointer italic"
+      style={{ width: 'auto' }}
+      title="Ajouter un allergène (table de référence)"
+    >
+      <option value="">Allergène (optionnel)</option>
+      {free.map((a) => (
+        <option key={a} value={a}>
+          {a}
+        </option>
+      ))}
+    </select>
+  );
+  // Même ligne que l'éditeur de recette (`CreerForm`) : nom, quantité, unité,
+  // allergènes, commentaire — empilés sous `xl`, sur une ligne au-delà.
   return (
-    <div className="flex flex-col gap-2 py-3">
-      <div className="flex flex-wrap items-end gap-3">
-        <input
-          value={name}
-          onChange={(e) => onName(e.target.value)}
-          list={datalistId}
-          autoComplete="off"
-          placeholder="Ingrédient"
-          className={FIELD}
-          style={{ width: '14rem' }}
-          autoFocus={autoFocus}
-        />
-        <input value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Quantité" type="number" min={0} step="any" className={FIELD} style={{ width: '6rem' }} />
-        <select value={unit} onChange={(e) => setUnit(e.target.value)} className={`${FIELD} bg-white`} style={{ width: '8rem' }}>
-          <option value="">— Unité —</option>
+    <div className="flex flex-col gap-3 py-3">
+      <div className="flex flex-wrap xl:flex-nowrap items-center gap-x-4 gap-y-1.5">
+        <div className="relative flex-1 min-w-0">
+          <input
+            value={name}
+            onChange={(e) => onName(e.target.value)}
+            list={datalistId}
+            autoComplete="off"
+            placeholder="Ingrédient"
+            className="editorial-input text-on-surface w-full"
+            type="text"
+            autoFocus={autoFocus}
+          />
+        </div>
+        <input value={qty} onChange={(e) => setQty(e.target.value)} className="w-16 xl:w-20 editorial-input text-on-surface" type="text" inputMode="decimal" placeholder="Qté" />
+        <select value={unit} onChange={(e) => setUnit(e.target.value)} className="editorial-input text-on-surface cursor-pointer" style={{ width: 'auto' }}>
+          <option value=""></option>
           {units.map((u) => (
             <option key={u.id} value={u.name}>
               {u.name}
@@ -602,36 +636,50 @@ function AddedIngredientForm({
           ))}
           {unit && !units.some((u) => u.name === unit) && <option value={unit}>{unit}</option>}
         </select>
-        <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Commentaire (optionnel)" className={FIELD} style={{ width: '14rem' }} />
-      </div>
-      <div className="flex flex-wrap items-center gap-1">
-        <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mr-1">Allergènes</span>
-        {allergens.map((a) => (
-          <span key={a} className="inline-flex items-center gap-0.5 bg-secondary-fixed text-on-secondary-fixed rounded-full pl-2 pr-0.5 py-0.5 text-[12px]">
-            {a}
-            <button type="button" title="Retirer" onClick={() => setAllergens(allergens.filter((x) => x !== a))} className="hover:text-error transition-colors">
-              <span className="material-symbols-outlined text-[14px] align-middle">close</span>
-            </button>
-          </span>
-        ))}
-        {allergens.length < MAX_ALLERGENS && free.length > 0 && (
-          <select
-            value=""
+        <div className="basis-full xl:hidden" />
+        <div className="flex-1 min-w-0 order-1 xl:order-2">
+          <textarea
+            value={comment}
             onChange={(e) => {
-              const v = e.target.value;
-              if (v) setAllergens([...allergens, v]);
+              setComment(e.target.value);
+              autoGrow(e.target);
             }}
-            className={`${FIELD} bg-white italic`}
-            title="Ajouter un allergène (table de référence)"
-          >
-            <option value="">{allergens.length ? '+ Ajouter' : 'Aucun (optionnel)'}</option>
-            {free.map((a) => (
-              <option key={a} value={a}>
+            ref={autoGrow}
+            className="editorial-input text-on-surface w-full resize-none overflow-hidden"
+            rows={1}
+            placeholder="Commentaire (optionnel)"
+          />
+        </div>
+        <div className="basis-full xl:hidden order-2" />
+        <div className="flex-1 min-w-0 order-3 xl:order-1">
+          <span className="xl:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">Allergènes</span>
+          <div className="flex flex-wrap items-center gap-1">
+            {allergens.map((a) => (
+              <span key={a} className="inline-flex items-center gap-0.5 bg-secondary-fixed text-on-secondary-fixed rounded-full pl-2 pr-0.5 py-0.5 text-[12px]">
                 {a}
-              </option>
+                <button type="button" title="Retirer" onClick={() => setAllergens(allergens.filter((x) => x !== a))} className="hover:text-error transition-colors">
+                  <span className="material-symbols-outlined text-[14px] align-middle">close</span>
+                </button>
+              </span>
             ))}
-          </select>
-        )}
+            {allergens.length === 0
+              ? allergenSelect
+              : allergens.length < MAX_ALLERGENS &&
+                free.length > 0 &&
+                (moreAllergen ? (
+                  allergenSelect
+                ) : (
+                  <button
+                    type="button"
+                    title="Ajouter un allergène"
+                    onClick={() => setMoreAllergen(true)}
+                    className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-outline-variant text-primary hover:bg-primary-container transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                  </button>
+                ))}
+          </div>
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button
