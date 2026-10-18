@@ -34,6 +34,7 @@ import {
 } from '@/lib/carnet-params';
 import { useCarnetTransition } from '@/components/carnet/CarnetProvider';
 import { CarnetFiltersSheet } from '@/components/carnet/CarnetFiltersSheet';
+import { LockedAction } from '@/components/LockedAction';
 
 const DEBOUNCE_MS = 300;
 
@@ -169,11 +170,11 @@ export function CarnetToolbar({
   // portée que la plupart n'utiliseront jamais. Elle reste affichée si elle
   // est la portée active, sinon on ne pourrait plus en sortir depuis le
   // sélecteur mobile.
-  // « Carnet CAP » est visible toujours quand le droit existe, même à 0 : c'est
-  // un point d'entrée (impression), pas un tiroir qu'on remplit soi-même.
-  const scopes = SCOPES.filter((s) =>
-    s === 'proj' ? params.scope === 'proj' || (counts.proj ?? 0) > 0 : s === 'cap' ? peutCap : true,
-  );
+  // « Carnet CAP » est visible toujours, même à 0 : c'est un point d'entrée
+  // (impression), pas un tiroir qu'on remplit soi-même. Sans le droit, la
+  // pastille reste affichée mais verrouillée (`LockedAction`, JEP-130) : une
+  // fonction qui n'apparaît pas ne s'explique pas.
+  const scopes = SCOPES.filter((s) => (s === 'proj' ? params.scope === 'proj' || (counts.proj ?? 0) > 0 : true));
 
   // Recherche + tri du bureau, à droite de la ligne des statuts — qui reste
   // affichée sur les portées sans statut (Favoris, Abonnements, Projets) pour
@@ -215,6 +216,18 @@ export function CarnetToolbar({
           <div className="flex flex-wrap gap-2">
             {scopes.map((s) => {
               const active = params.scope === s;
+              if (s === 'cap' && !peutCap) {
+                return (
+                  <LockedAction
+                    key={s}
+                    label={SCOPE_LABELS[s]}
+                    message="Le carnet CAP n'est pas inclus dans votre formule."
+                    className="whitespace-nowrap rounded-pill border border-outline-variant px-4 py-1.5 font-label-md text-[12.5px]"
+                  >
+                    {SCOPE_LABELS[s]}
+                  </LockedAction>
+                );
+              }
               return (
                 <Link
                   key={s}
@@ -273,6 +286,7 @@ export function CarnetToolbar({
         <CarnetFiltersSheet
           params={params}
           scopes={scopes}
+          capVerrouille={!peutCap}
           counts={counts}
           statusCounts={statusCounts}
           onApply={appliquerDepuisFeuille}

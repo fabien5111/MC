@@ -20,6 +20,7 @@
 // déclenche le bouton de `CarnetToolbar`, monté hors de la feuille (`onShare`).
 import { useEffect, useId, useState } from 'react';
 import { BottomSheet } from '@/components/BottomSheet';
+import { LockedAction } from '@/components/LockedAction';
 import {
   SCOPE_LABELS,
   SORT_KEYS,
@@ -45,6 +46,7 @@ const PASTILLE =
 export function CarnetFiltersSheet({
   params,
   scopes,
+  capVerrouille = false,
   counts,
   statusCounts,
   onApply,
@@ -52,6 +54,8 @@ export function CarnetFiltersSheet({
 }: {
   params: CarnetParams;
   scopes: CarnetParams['scope'][];
+  /** Sans le droit `carnet_cap` : pastille verrouillée au lieu d'un choix. */
+  capVerrouille?: boolean;
   counts: Record<string, number>;
   statusCounts: Record<string, number>;
   onApply: (next: CarnetParams) => void;
@@ -188,6 +192,18 @@ export function CarnetFiltersSheet({
             <div className="flex flex-wrap gap-2">
               {scopes.map((s) => {
                 const actif = draft.scope === s;
+                if (s === 'cap' && capVerrouille) {
+                  return (
+                    <LockedAction
+                      key={s}
+                      label={SCOPE_LABELS[s]}
+                      message="Le carnet CAP n'est pas inclus dans votre formule."
+                      className="whitespace-nowrap rounded-pill border border-outline-variant px-4 py-2 font-label-md text-[13px]"
+                    >
+                      {SCOPE_LABELS[s]}
+                    </LockedAction>
+                  );
+                }
                 return (
                   <button
                     key={s}

@@ -1580,9 +1580,12 @@ même quantité ne doit y figurer qu'une fois.
   réservé au droit **`carnet_cap`** (plan Pro), atteint par la rubrique
   « Carnet CAP » du carnet.
 - **Rubrique « Carnet CAP » du carnet** (portée `cap`, `lib/carnet-params.ts`,
-  à côté de « Projets » ; plus de bouton dans l'en-tête). **Visible des seuls
-  membres qui ont `carnet_cap`** : sans le droit, la pastille n'existe pas et
-  `?scope=cap` retombe sur « Tout » (`app/carnet/page.tsx`). Elle liste **toutes
+  à côté de « Projets » ; plus de bouton dans l'en-tête). **Accessible aux seuls
+  membres qui ont `carnet_cap`** : sans le droit, la pastille reste affichée mais
+  verrouillée (`LockedAction`, picto `block`, bulle « Le carnet CAP n'est pas
+  inclus dans votre formule. » + lien vers `/plans`, sans compteur, sur la ligne
+  de pastilles et dans la feuille mobile), `?scope=cap` retombe sur « Tout » et
+  rien n'est lu (`app/carnet/page.tsx`). Elle liste **toutes
   les recettes portant un tag « [CAP] … » (nom contenant `[CAP]`, sans casse ni espaces) auxquelles le membre a accès**
   (`getItemsCap`, `lib/carnet-cap-data.ts` : les siennes, les partagées, les
   publiées et publiques de la communauté — la **RLS** décide, sous la session) ;
