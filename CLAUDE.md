@@ -1011,6 +1011,13 @@ directes :
   non un `<label>`, qui renverrait vers la case à cocher tout clic sur le
   titre, et un `stopPropagation` sur la case — sans lui, cocher une étape la
   replierait au passage.
+- **Le sommaire de la fournée vise SES ancres, pas celles de la fiche.**
+  `RecipeToc` vise par défaut `sec-etape-N` (`stepAnchorId`), qui n'existent que
+  sur la fiche recette et dans les éditeurs : dans la fournée, les entrées
+  d'étape du rail ne menaient nulle part. Le prop facultatif `anchorFor` nomme
+  l'ancre de chaque entrée — `etape-<id>` en Préparer, `sec-jalon-<n>` en
+  Pâtisser (où une entrée est un jour, pas une étape). Le suivi de la section
+  courante (`useToc`) utilise les mêmes identifiants.
 - **Une note saisie se signale en vert** (`border-green-700 bg-green-50`) sur
   les trois champs du mode Pâtisser — ingrédient, sous-étape, étape. Ces
   champs sont vides sur l'immense majorité des lignes : sans marqueur, celui

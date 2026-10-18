@@ -113,6 +113,10 @@ type Props = {
   // Appelé avec l'index de l'étape visée avant le défilement, pour la déplier
   // si elle est repliée.
   onNavigateToStep?: (index: number) => void;
+  // Ancre de l'entrée d'étape numéro `index`. Par défaut `stepAnchorId` (fiche,
+  // éditeur) ; la fournée n'a pas ces ancres — ses blocs portent `etape-<id>`
+  // (Préparer) ou `sec-jalon-<n>` (Pâtisser) — et nomme les siennes.
+  anchorFor?: (index: number) => string;
   // Boutons d'action en pied de rail (quitter/enregistrer/publier côté éditeur,
   // créer/enregistrer/supprimer côté relecture). Absent : le pied du rail ne
   // garde que le bouton d'épinglage, comme avant leur introduction.
@@ -132,6 +136,7 @@ export function RecipeToc({
   sections,
   steps,
   onNavigateToStep,
+  anchorFor = stepAnchorId,
   actions,
   mobile = 'none',
   mobileInset = 'none',
@@ -140,7 +145,7 @@ export function RecipeToc({
     () => [
       ...sections.before,
       ...steps.map((st, i) => ({
-        id: stepAnchorId(i),
+        id: anchorFor(i),
         label: `${i + 1}. ${st.title.trim() || 'Étape sans titre'}`,
         icon: 'radio_button_unchecked',
         level: 2 as const,
@@ -148,7 +153,7 @@ export function RecipeToc({
       })),
       ...sections.after,
     ],
-    [sections, steps],
+    [sections, steps, anchorFor],
   );
 
   const ids = useMemo(() => items.map((it) => it.id), [items]);
