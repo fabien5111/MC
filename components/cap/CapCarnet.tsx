@@ -32,6 +32,8 @@ export function CapCarnet({ fiches, titreEcran, retour, carnet = false }: Props)
   const [poidsTotal, setPoidsTotal] = useState(true);
   const [sommaire, setSommaire] = useState(carnet);
   const [unParPage, setUnParPage] = useState(false);
+  // Deux fiches côte à côte pour gagner de la place ; incompatible avec « une recette par page ».
+  const [deuxColonnes, setDeuxColonnes] = useState(false);
 
   const nomDe = (fiche: CapFiche, cle: string, defaut: string) => noms[`${fiche.cle}/${cle}`] ?? defaut;
   // Catégories (carnet de plusieurs recettes seulement) : sommaire à deux
@@ -80,8 +82,26 @@ export function CapCarnet({ fiches, titreEcran, retour, carnet = false }: Props)
                 Sommaire
               </label>
               <label className="inline-flex cursor-pointer items-center gap-2">
-                <input type="checkbox" checked={unParPage} onChange={(e) => setUnParPage(e.target.checked)} className="accent-primary" />
+                <input
+                  type="checkbox"
+                  checked={unParPage}
+                  disabled={deuxColonnes}
+                  onChange={(e) => setUnParPage(e.target.checked)}
+                  className="accent-primary"
+                />
                 Une recette par page
+              </label>
+              <label className="inline-flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={deuxColonnes}
+                  onChange={(e) => {
+                    setDeuxColonnes(e.target.checked);
+                    if (e.target.checked) setUnParPage(false);
+                  }}
+                  className="accent-primary"
+                />
+                Deux colonnes
               </label>
             </>
           )}
@@ -150,20 +170,24 @@ export function CapCarnet({ fiches, titreEcran, retour, carnet = false }: Props)
               {g.categorie ?? SANS_CATEGORIE}
             </h2>
           )}
-          <div className="space-y-6 print:space-y-4">
+          <div className={deuxColonnes ? 'columns-1 gap-6 sm:columns-2 print:columns-2 print:gap-4' : 'space-y-6 print:space-y-4'}>
             {g.fiches.map((f, i) => (
           <article
               key={f.cle}
               className={`cap-fiche break-inside-avoid border border-dashed border-black/70 bg-white p-5 text-black print:p-4 ${
                 unParPage && i > 0 ? 'break-before-page' : ''
-              }`}
+              } ${deuxColonnes ? 'mb-6 print:mb-4' : ''}`}
             >
               <header className="mb-4 border-b border-black pb-2 text-center">
                 <h2 className="text-[18px] font-bold">{f.titre}</h2>
                 {f.rendement && <p className="text-[13px]">({f.rendement})</p>}
               </header>
               {!f.preparations.length && <p className="text-[13px] italic">Aucun ingrédient saisi.</p>}
-              <div className={`grid gap-x-10 gap-y-5 ${f.preparations.length > 1 ? 'sm:grid-cols-2 print:grid-cols-2' : 'mx-auto max-w-sm'}`}>
+              <div
+                className={`grid gap-x-10 gap-y-5 ${
+                  deuxColonnes ? '' : f.preparations.length > 1 ? 'sm:grid-cols-2 print:grid-cols-2' : 'mx-auto max-w-sm'
+                }`}
+              >
                 {f.preparations.map((p) => {
                   const nom = nomDe(f, p.cle, p.nom);
                   const plusieurs = f.preparations.length > 1;

@@ -1637,6 +1637,10 @@ même quantité ne doit y figurer qu'une fois.
   part : présentation inchangée, sans bandeau. Le fond gris porte
   `print-color-adjust: exact`, sans quoi les navigateurs l'impriment blanc.
   Une fiche de recette seule ou de fournée n'a pas de catégorie.
+- **Deux colonnes** (case décochée par défaut, `CapCarnet`) : deux fiches côte à côte
+  (`columns-2`, chaque fiche d'un seul tenant, préparations sur une seule colonne
+  dans la fiche) pour gagner de la place ; le bandeau de catégorie reste pleine
+  largeur. Incompatible avec « Une recette par page » (case grisée).
 - **Poids total** par préparation (case cochée par défaut), seulement si
   toutes ses lignes sont des masses chiffrées (`poidsTotalCap`) — un total
   faux est pire qu'absent.
