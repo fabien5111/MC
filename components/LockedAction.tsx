@@ -120,8 +120,9 @@ export function LockedAction({
         role="tooltip"
         // `inset-auto m-0 border-0` reprend le reset d'AllergenPicto :
         // l'UA pose par défaut une bordure, une marge et un centrage sur
-        // tout élément `popover`.
-        className="inset-auto m-0 w-max max-w-[min(17rem,70vw)] -translate-x-full rounded border-0 bg-primary px-3 py-2 text-left font-body-md text-[12px] leading-snug text-white shadow-lg"
+        // tout élément `popover`. `whitespace-normal` : le conteneur peut porter
+        // `whitespace-nowrap` (pastille du carnet), que la bulle hériterait.
+        className="inset-auto m-0 w-max max-w-[min(17rem,70vw)] -translate-x-full whitespace-normal rounded border-0 bg-primary px-3 py-2 text-left font-body-md text-[12px] leading-snug text-white shadow-lg"
       >
         {message}
         <Link href="/plans" prefetch={false} className="mt-1.5 block font-label-md text-[11px] underline">

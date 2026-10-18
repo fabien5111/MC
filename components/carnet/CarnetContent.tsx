@@ -8,7 +8,7 @@
 // mes recettes portent statut/actions, les recettes des autres portent
 // auteur/note, jamais les deux).
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { ImportsEnAttente } from '@/components/carnet/ImportsEnAttente';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useCarnetTransition } from '@/components/carnet/CarnetProvider';
@@ -90,24 +90,7 @@ export function CarnetContent({
     <>
       <LoadingOverlay visible={busy || navVisible} label="Traitement en cours…" />
 
-      {importsEnAttente > 0 && (
-        <Link
-          href="/importer"
-          prefetch={false}
-          className="mt-6 flex items-center gap-3 rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3 transition-colors hover:border-primary"
-        >
-          <span className="material-symbols-outlined text-[20px] text-primary" aria-hidden>
-            inbox
-          </span>
-          <span className="font-body-md text-sm text-on-surface">
-            {importsEnAttente} import{importsEnAttente > 1 ? 's' : ''} en attente de relecture — un import n&apos;entre
-            au carnet qu&apos;une fois relu.
-          </span>
-          <span className="material-symbols-outlined ml-auto text-[20px] text-on-surface-variant" aria-hidden>
-            chevron_right
-          </span>
-        </Link>
-      )}
+      <ImportsEnAttente nombre={importsEnAttente} className="mt-6" />
 
       {list.length > 0 ? (
         <>

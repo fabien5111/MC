@@ -1565,6 +1565,91 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   restent donc vides. En donner un à toutes les recettes suppose de l'ajouter
   d'abord à `/creer` et à la relecture d'import.
 
+## Carnet CAP (JEP-6)
+
+Impression au format du **carnet de recettes autorisé à l'examen du CAP
+Pâtissier** (EP1 / EP2) : ingrédients et quantités **seuls**. Les consignes
+nationales retirent au candidat, pour toute l'épreuve, un carnet qui porte une
+technique, un procédé, une température ou « une autre précision » — et une
+même quantité ne doit y figurer qu'une fois.
+
+- **Trois entrées** : la fiche d'une recette (`/recette/[id]/cap`) et celle
+  d'une fournée (`/fournee/[id]/cap`, quantités **ajustées** sur une seule
+  colonne), toutes deux gratuites, ouvertes par le menu du bouton Imprimer
+  (`PrintButton`, prop `capHref`) ; et le carnet complet (`/carnet/cap`),
+  réservé au droit **`carnet_cap`** (plan Pro), atteint par la rubrique
+  « Carnet CAP » du carnet.
+- **Rubrique « Carnet CAP » du carnet** (portée `cap`, `lib/carnet-params.ts`,
+  à côté de « Projets » ; plus de bouton dans l'en-tête). **Accessible aux seuls
+  membres qui ont `carnet_cap`** : sans le droit, la pastille reste affichée mais
+  verrouillée (`LockedAction`, picto `block`, bulle « Le carnet CAP n'est pas
+  inclus dans votre formule. » + lien vers `/plans`, sans compteur, sur la ligne
+  de pastilles et dans la feuille mobile), `?scope=cap` retombe sur « Tout » et
+  rien n'est lu (`app/carnet/page.tsx`). Elle liste **toutes
+  les recettes portant un tag « [CAP] … » (nom contenant `[CAP]`, sans casse ni espaces) auxquelles le membre a accès**
+  (`getItemsCap`, `lib/carnet-cap-data.ts` : les siennes, les partagées, les
+  publiées et publiques de la communauté — la **RLS** décide, sous la session) ;
+  les tags sont retrouvés par leur nom (`tagsCapIds`, jamais par un id en
+  dur), et l'absence de tout tag `[CAP]` est dite à l'écran. Une recette que le carnet
+  contient déjà garde son élément (marques et gestes habituels), les autres sont
+  des cartes « d'un autre » sans marque ; un projet en cours n'y entre jamais
+  (`itemsCap`, pur et testé). **La barre de statut est affichée sur TOUTES les
+  portées** (homogénéité, JEP-6) : Favoris, Abonnements, Projets et Carnet CAP
+  comptent et filtrent leurs propres recettes (`compteursStatut`, `statutDe`,
+  `lib/carnet.ts` : une recette d'un autre sans statut connu vaut « publiée »),
+  alors que « Tout », « Mes recettes » et « Partagées » gardent leur règle
+  d'origine (« Tout » laisse passer les recettes des autres quel que soit le
+  statut). Dans la rubrique CAP, le bandeau « imports en attente »
+  (`ImportsEnAttente`) se place **au-dessus** du bandeau d'information, qui
+  occupe toute la largeur. Un bandeau
+  précise la règle, et « Imprimer (n) » ouvre la sélection `/carnet/cap?liste=cap`
+  (recherche de la rubrique reprise par `?q=`, tout coché d'office). Cette page
+  propose aussi « Tout mon carnet » : la sélection de tout le carnet reste
+  possible. Coût : une lecture de plus à chaque ouverture du carnet, pour les
+  seuls membres Pro (compteur de la pastille).
+- **Liste blanche, jamais un masquage** (`lib/carnet-cap.ts`, pur et testé) :
+  ne sortent que titre, rendement (`rendementCap` — jamais `yield_notes`),
+  nom des préparations, et nom / quantité / unité. Commentaire d'ingrédient,
+  allergènes, étapes, temps, températures, photos n'atteignent jamais la page.
+  C'est pourquoi la fiche CAP est une **page dédiée** et non une feuille de
+  style d'impression de la fiche : un bloc ajouté plus tard à la fiche ne peut
+  pas fuir sur la feuille d'examen par oubli d'un `no-print`.
+- **Une préparation = un groupe d'ingrédients** (donc une étape), nommée comme
+  l'étape ; pour un projet, les groupes d'un même composant sont réunis sous le
+  nom du composant. Préparations sans ingrédient écartées. Dans une
+  préparation, le même ingrédient (`ingredientKey`) dans la même unité est
+  additionné (20 g + 60 g de sucre = 80 g) ; deux unités restent deux lignes.
+  « unité(s) » / « pièce » s'effacent (« Œufs 3 »).
+- **Fournée** : lignes retirées, remplacées par une sous-recette ou portées par
+  une étape entièrement remplacée écartées ; une étape « déjà faite » garde
+  ses ingrédients (le carnet décrit la recette, pas l'avancement).
+- **Noms de préparation modifiables dans l'aperçu, jamais enregistrés**
+  (`CapCarnet`) : le titre d'une étape est souvent un geste (« Monter les
+  blancs »). `nomPreparationSuspect` signale verbe de technique, température
+  ou durée — repère, jamais blocage. Une préparation seule n'imprime pas son
+  nom.
+- **Catégories** (carnet de plusieurs recettes seulement) : la catégorie d'une
+  recette est le nom de son tag **`[CAP] Xxx` privé de la marque**
+  (`[CAP] Crèmes` → « Crèmes », `categorieCap`, `lib/carnet-cap.ts`) ; s'il y
+  en a plusieurs, le premier par ordre alphabétique, pour un résultat stable ;
+  un tag exactement `[CAP]` range la recette sans catégorie. L'ancien tag
+  « Recette CAP » n'est plus lu. Le sommaire liste chaque catégorie (bandeau gris) avec
+  ses recettes ; à l'impression, chaque catégorie s'ouvre sur un **bandeau
+  gris** et **saute une page** (`grouperParCategorie`) ; les recettes sans
+  tag de catégorie vont en dernier sous « Sans catégorie ». Aucune catégorie nulle
+  part : présentation inchangée, sans bandeau. Le fond gris porte
+  `print-color-adjust: exact`, sans quoi les navigateurs l'impriment blanc.
+  Une fiche de recette seule ou de fournée n'a pas de catégorie.
+- **Deux colonnes** (case décochée par défaut, `CapCarnet`) : deux fiches côte à côte
+  (`columns-2`, chaque fiche d'un seul tenant, préparations sur une seule colonne
+  dans la fiche) pour gagner de la place ; le bandeau de catégorie reste pleine
+  largeur. Incompatible avec « Une recette par page » (case grisée).
+- **Poids total** par préparation (case cochée par défaut), seulement si
+  toutes ses lignes sont des masses chiffrées (`poidsTotalCap`) — un total
+  faux est pire qu'absent.
+- Aucun auteur, logo ni adresse du site sur la feuille : le carnet doit être
+  « personnel ». Le jury reste seul juge ; l'écran le dit.
+
 ## Boîte à idées
 
 Module communautaire : `/idees` (liste triable, publique) et `/idees/nouvelle`

@@ -283,7 +283,7 @@ export function TagsEditor({
             + Ajouter un tag
           </button>
           {pickerOpen && (
-            <div className="absolute left-0 z-20 mt-2 flex max-h-64 min-w-[220px] flex-col overflow-hidden rounded-xl border border-outline-variant bg-white shadow-lg">
+            <div className="absolute left-0 z-20 mt-2 flex max-h-64 w-max min-w-[220px] max-w-[min(32rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-outline-variant bg-white shadow-lg">
               <div className="shrink-0 px-2 pb-2 pt-2">
                 <input
                   type="text"
@@ -295,11 +295,17 @@ export function TagsEditor({
                 />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+                {/* Cale invisible : la liste prend la largeur du plus long tag, filtré ou non. */}
+                <div aria-hidden className="invisible h-0 overflow-hidden px-4 pl-10 pr-6">
+                  {remaining.map((t) => (
+                    <div key={t.id} className="whitespace-nowrap font-label-md text-label-md">{t.name}</div>
+                  ))}
+                </div>
                 {filtered.length ? (
                   filtered.map((t) => (
                     <label
                       key={t.id}
-                      className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left font-label-md text-label-md text-on-surface transition-colors hover:bg-surface-container"
+                      className="flex w-full cursor-pointer items-center gap-2 whitespace-nowrap px-4 py-2 text-left font-label-md text-label-md text-on-surface transition-colors hover:bg-surface-container"
                     >
                       <input
                         type="checkbox"

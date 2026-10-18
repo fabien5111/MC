@@ -425,7 +425,7 @@ export function BatchView({
               {BATCH_STATUS_LBL[batch.status]?.label || batch.status}
             </span>
             <span className="no-print">
-              <PrintButton />
+              <PrintButton capHref={`/fournee/${batch.id}/cap`} />
             </span>
             {/* Volontairement indépendant de `lecture` : « Fournées
                 terminées » (/en-cuisine) n'ouvre QUE en `?lecture=1`, s'y

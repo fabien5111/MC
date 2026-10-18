@@ -312,6 +312,16 @@ export async function getRecipeFull(id: string, scope: RecipeReadScope): Promise
   return (data as unknown as RecipeFull | null) ?? null;
 }
 
+// Plusieurs recettes en une requête (carnet CAP, JEP-6) — RLS appliquée : une
+// recette hors de portée est simplement absente du résultat.
+export async function getRecipesFull(ids: string[], scope: RecipeReadScope): Promise<RecipeFull[]> {
+  if (!ids.length) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('recipes').select(selectPourPortee(scope)).in('id', ids);
+  if (error) console.error('getRecipesFull:', error.message);
+  return (data as unknown as RecipeFull[] | null) ?? [];
+}
+
 // Identifiants des recettes publiées — sert uniquement à la commande de
 // réindexation complète (§6.3, /api/reindex-recette) : la similarité
 // interne à la validation lit désormais l'index persisté

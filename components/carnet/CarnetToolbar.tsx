@@ -34,6 +34,7 @@ import {
 } from '@/lib/carnet-params';
 import { useCarnetTransition } from '@/components/carnet/CarnetProvider';
 import { CarnetFiltersSheet } from '@/components/carnet/CarnetFiltersSheet';
+import { LockedAction } from '@/components/LockedAction';
 
 const DEBOUNCE_MS = 300;
 
@@ -42,6 +43,7 @@ export function CarnetToolbar({
   counts,
   statusCounts,
   shareButton,
+  peutCap = false,
 }: {
   params: CarnetParams;
   counts: Record<string, number>;
@@ -50,6 +52,9 @@ export function CarnetToolbar({
   // simplement rejouée ici pour la ligne mobile « Partager + recherche » —
   // évite de faire remonter ownerId/bookSharesGiven jusqu'à ce composant.
   shareButton?: ReactNode;
+  // Droit `carnet_cap` (plan Pro) : la rubrique « Carnet CAP » n'existe que
+  // pour ceux qui l'ont (JEP-6).
+  peutCap?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -155,25 +160,21 @@ export function CarnetToolbar({
     navigate(next);
   }
 
-  // La barre de statut disparaît sur Favoris et Mes abonnements. Sur Mes
-  // abonnements, ces recettes des autres sont toujours déjà publiées et
-  // publiques, leur statut ne varie jamais. Sur Favoris, une recette dont je
-  // suis l'auteur peut porter n'importe quel statut (JEP-131 : mes propres
-  // recettes favorites y apparaissent désormais aussi) — sa barre de statut
-  // n'a simplement jamais été construite pour ce scope, `parseCarnetParams`
-  // y force `statut = 'all'`. Elle reste affichée sur Partagées avec moi :
-  // une recette partagée peut être un brouillon (portée « brouillons
-  // compris » du partage de carnet, ou partage direct sans restriction de
-  // statut) — ses compteurs viennent alors de `sharedStatusCounts`, pas de
-  // `statusCounts` (cf. app/carnet/page.tsx).
-  const showStatusBar = params.scope !== 'fav' && params.scope !== 'sub' && params.scope !== 'proj';
+  // La barre de statut est affichée sur toutes les portées (JEP-6, homogénéité).
+  // Ses compteurs sont ceux de la portée courante (`statusCounts`, calculés par
+  // app/carnet/page.tsx) ; sur « Tout » et « Mes recettes » ils portent, comme
+  // avant, sur mes recettes.
 
   // « Projets » n'apparaît que s'il y a quelque chose à y voir : une pastille
   // vide en permanence coûterait de la place à tous les carnets pour une
   // portée que la plupart n'utiliseront jamais. Elle reste affichée si elle
   // est la portée active, sinon on ne pourrait plus en sortir depuis le
   // sélecteur mobile.
-  const scopes = SCOPES.filter((s) => s !== 'proj' || params.scope === 'proj' || (counts.proj ?? 0) > 0);
+  // « Carnet CAP » est visible toujours, même à 0 : c'est un point d'entrée
+  // (impression), pas un tiroir qu'on remplit soi-même. Sans le droit, la
+  // pastille reste affichée mais verrouillée (`LockedAction`, JEP-130) : une
+  // fonction qui n'apparaît pas ne s'explique pas.
+  const scopes = SCOPES.filter((s) => (s === 'proj' ? params.scope === 'proj' || (counts.proj ?? 0) > 0 : true));
 
   // Recherche + tri du bureau, à droite de la ligne des statuts — qui reste
   // affichée sur les portées sans statut (Favoris, Abonnements, Projets) pour
@@ -215,16 +216,25 @@ export function CarnetToolbar({
           <div className="flex flex-wrap gap-2">
             {scopes.map((s) => {
               const active = params.scope === s;
+              if (s === 'cap' && !peutCap) {
+                return (
+                  <LockedAction
+                    key={s}
+                    label={SCOPE_LABELS[s]}
+                    message="Le carnet CAP n'est pas inclus dans votre formule."
+                    className="whitespace-nowrap rounded-pill border border-outline-variant px-4 py-1.5 font-label-md text-[12.5px]"
+                  >
+                    {SCOPE_LABELS[s]}
+                  </LockedAction>
+                );
+              }
               return (
                 <Link
                   key={s}
                   href={hrefFor({
                     ...params,
                     scope: s,
-                    // Le statut n'existe pas sur les recettes des autres : on le
-                    // remet à « Tous » en y entrant, sinon un filtre invisible
-                    // resterait actif (même règle que `parseCarnetParams`).
-                    statut: s === 'fav' || s === 'sub' || s === 'proj' ? 'all' : params.statut,
+                    statut: params.statut,
                   })}
                   scroll={false}
                   aria-current={active ? 'true' : undefined}
@@ -243,8 +253,7 @@ export function CarnetToolbar({
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-outline-variant/50 pt-4">
-          {showStatusBar && (
-            <>
+          <>
               <span className="mr-1 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
                 Statut
               </span>
@@ -265,8 +274,7 @@ export function CarnetToolbar({
                   </Link>
                 );
               })}
-            </>
-          )}
+          </>
           <div className="ml-auto flex items-center gap-4">{rechercheTri}</div>
         </div>
       </div>
@@ -278,6 +286,7 @@ export function CarnetToolbar({
         <CarnetFiltersSheet
           params={params}
           scopes={scopes}
+          capVerrouille={!peutCap}
           counts={counts}
           statusCounts={statusCounts}
           onApply={appliquerDepuisFeuille}

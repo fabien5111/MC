@@ -177,6 +177,24 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
 // fonction pure, séparée de `getCarnetData` pour rester testable sans Supabase
 // et pour que `app/carnet/page.tsx` l'applique après avoir choisi les compteurs
 // à afficher (qui, eux, portent toujours sur le jeu complet, non filtré).
+// Portées dont la barre de statut porte sur TOUS les éléments (JEP-6).
+const PORTEES_STATUT_COMPLET: ReadonlyArray<CarnetParams['scope']> = ['fav', 'sub', 'proj', 'cap'];
+
+// Statut d'un élément : celui de ma recette ; pour la recette d'un autre, celui
+// de son partage s'il est connu, sinon « publiée » — favoris, abonnements et
+// recettes de la communauté ne portent que du déjà publié.
+export function statutDe(item: CarnetItem): string {
+  if (item.kind === 'mine') return item.recipe.status || 'draft';
+  return item.status ?? 'published';
+}
+
+// Compteurs de la barre de statut pour une liste d'éléments déjà restreinte à
+// une portée (avant filtre de statut et de recherche).
+export function compteursStatut(items: CarnetItem[]): CarnetData['statusCounts'] {
+  const n = (s: string) => items.filter((i) => statutDe(i) === s).length;
+  return { all: items.length, published: n('published'), draft: n('draft'), pending: n('pending'), rejected: n('rejected') };
+}
+
 export function applyCarnetFilters(items: CarnetItem[], params: CarnetParams): CarnetItem[] {
   const q = params.q.trim();
   const filtered = items.filter((item) => {
@@ -198,8 +216,15 @@ export function applyCarnetFilters(items: CarnetItem[], params: CarnetParams): C
     if (params.scope === 'sub' && !(item.kind === 'other' && item.subscription)) return false;
     if (params.scope === 'shared' && !(item.kind === 'other' && item.shared)) return false;
     if (params.statut !== 'all') {
-      if (item.kind === 'mine' && (item.recipe.status || 'draft') !== params.statut) return false;
-      if (item.kind === 'other' && item.shared && (item.status || 'draft') !== params.statut) return false;
+      // Favoris, abonnements, projets et « Carnet CAP » (JEP-6) : tout élément a
+      // un statut, celui d'une recette d'un autre sans statut connu étant
+      // « publiée » (cf. `statutDe`). « Tout », « Mes recettes » et « Partagées
+      // avec moi » gardent leur règle d'origine, ci-dessous.
+      if (PORTEES_STATUT_COMPLET.includes(params.scope)) {
+        if (statutDe(item) !== params.statut) return false;
+      } else if (item.kind === 'mine') {
+        if ((item.recipe.status || 'draft') !== params.statut) return false;
+      } else if (item.shared && (item.status || 'draft') !== params.statut) return false;
     }
     if (q && !matchesSearch([item.recipe.title], q)) return false;
     return true;

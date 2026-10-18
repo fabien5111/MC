@@ -8,7 +8,13 @@
 // ne doit apparaître dans AUCUNE autre pastille, « Tout » compris (spec
 // §10). « Tout » cesse donc d'être littéralement tout — c'est le prix de
 // l'étanchéité, assumé ici plutôt que contourné.
-export const SCOPES = ['all', 'mine', 'fav', 'sub', 'shared', 'proj'] as const;
+//
+// `cap` — recettes portant un tag « [CAP] … » auxquelles le membre a
+// accès (JEP-6) : les siennes, celles qu'on lui a partagées et les recettes
+// publiées de la communauté. Rubrique du droit `carnet_cap` (plan Pro) : la
+// page la retire des pastilles sans ce droit et ramène `?scope=cap` à « Tout ».
+// Comme « Projets », elle n'a pas de barre de statut.
+export const SCOPES = ['all', 'mine', 'fav', 'sub', 'shared', 'proj', 'cap'] as const;
 export type Scope = (typeof SCOPES)[number];
 
 export const SCOPE_LABELS: Record<Scope, string> = {
@@ -18,7 +24,9 @@ export const SCOPE_LABELS: Record<Scope, string> = {
   sub: 'Mes abonnements',
   shared: 'Partagées avec moi',
   proj: 'Projets',
+  cap: 'Carnet CAP',
 };
+
 
 export const STATUSES = ['all', 'published', 'draft', 'pending', 'rejected'] as const;
 export type Status = (typeof STATUSES)[number];
@@ -55,17 +63,13 @@ export type CarnetParams = {
 
 export const EMPTY_CARNET_PARAMS: CarnetParams = { scope: 'all', statut: 'all', q: '', tri: 'recent' };
 
-// La barre de statut disparaît sur Favoris, Mes abonnements et Projets : le statut y
-// est donc toujours remis à « Tous », qu'il ait été passé dans l'URL ou non —
-// une URL trafiquée (`?scope=fav&statut=draft`) ne doit pas produire un état
-// que l'interface ne peut jamais atteindre par elle-même.
+// La barre de statut est affichée sur toutes les portées (homogénéité) ; ses
+// compteurs et son filtre portent sur les recettes de la portée courante.
 export function parseCarnetParams(sp: Record<string, string | string[] | undefined>): CarnetParams {
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const scope = SCOPES.includes(one(sp.scope) as Scope) ? (one(sp.scope) as Scope) : 'all';
   const statutRaw = STATUSES.includes(one(sp.statut) as Status) ? (one(sp.statut) as Status) : 'all';
-  // Idem sur « Projets » : un projet en cours est toujours un brouillon de
-  // modération, la barre de statut n'y a aucun sens.
-  const statut = scope === 'fav' || scope === 'sub' || scope === 'proj' ? 'all' : statutRaw;
+  const statut = statutRaw;
   const tri = SORT_KEYS.includes(one(sp.tri) as CarnetSortKey) ? (one(sp.tri) as CarnetSortKey) : 'recent';
   return { scope, statut, q: one(sp.q) || '', tri };
 }
