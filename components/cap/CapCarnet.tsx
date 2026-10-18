@@ -151,7 +151,13 @@ export function CapCarnet({ fiches, titreEcran, retour, carnet = false }: Props)
                     <table className="w-full text-[13px] leading-snug">
                       <tbody>
                         {p.lignes.map((l, k) => (
-                          <tr key={k}>
+                          // Filet pointillé sous chaque ingrédient : il guide l'œil du
+                          // nom à sa quantité. Pas sous la dernière ligne quand « Poids
+                          // total » suit, dont le trait plein joue déjà ce rôle.
+                          <tr
+                            key={k}
+                            className={poids != null && k === p.lignes.length - 1 ? '' : 'border-b border-dotted border-black/50'}
+                          >
                             <td className="py-0.5 pr-3 align-top">{l.nom}</td>
                             <td className="whitespace-nowrap py-0.5 text-right align-top tabular-nums">
                               {[l.quantite, l.unite].filter(Boolean).join(' ')}
