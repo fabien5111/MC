@@ -1686,7 +1686,7 @@ function PatisserBody({
             id={jalonAnchorId(ji)}
             open={!collapsedJalons.has(ji)}
             onToggle={(e) => onJalonOpenChange(ji, (e.currentTarget as HTMLDetailsElement).open)}
-            className={`scroll-mt-28 rounded-xl border ${isCurrent ? 'border-primary shadow-md' : 'border-outline-variant'} bg-surface-container-lowest overflow-hidden`}
+            className={`scroll-mt-28 rounded-xl border ${isCurrent ? 'border-primary shadow-md' : 'border-outline-variant'} bg-surface-container-lowest overflow-hidden print:overflow-visible print:[break-inside:auto]`}
           >
             <summary className={`flex items-center gap-4 p-4 cursor-pointer list-none ${isCurrent ? 'bg-primary/5' : 'bg-surface-container-low'}`}>
               <span className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0 ${jDone ? 'bg-green-700 text-white' : isCurrent ? 'bg-primary text-white' : 'bg-surface-container-high text-on-surface-variant'}`}>
@@ -1855,7 +1855,7 @@ function StepCookCard({
   ].filter(Boolean);
 
   return (
-    <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
+    <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden print:overflow-visible print:[break-inside:avoid]${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
       {/* Tout l'en-tête déplie/replie l'étape, pas seulement le chevron : une
           cible de la taille d'une icône était inutilement difficile à viser,
           au doigt comme à la souris. La case à cocher garde donc son propre
