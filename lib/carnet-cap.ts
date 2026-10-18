@@ -16,7 +16,9 @@
 //
 // Pur (aucun accès base, aucun `next/headers`) : utilisé par les pages
 // serveur et par l'aperçu client.
-import type { RecipeFull } from '@/lib/recipes';
+import type { RecipeFull, UserRecipeCard } from '@/lib/recipes';
+import type { CarnetItem } from '@/lib/carnet';
+import { isProjectDraft } from '@/lib/projects';
 import type { BatchFull } from '@/lib/recipe-plan';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { UNITS_LBL } from '@/lib/recipe-view';
@@ -228,4 +230,47 @@ export function nomPreparationSuspect(nom: string): boolean {
   if (/\d\s*°|°\s*c\b|\b\d+\s*(min|minutes?|h|heures?|s|secondes?)\b/.test(t)) return true;
   const premier = t.split(/[\s'’,.:;-]+/)[0];
   return VERBES.has(premier);
+}
+
+// ── Rubrique « Carnet CAP » du carnet (JEP-6) ─────────────────────────────
+
+// Nom du tag qui range une recette dans la rubrique, tel que créé au
+// back-office. Comparé sans casse ni accents (`tagCapId`), jamais par id en
+// dur : l'id change d'une base à l'autre.
+export const TAG_CAP = 'Recette CAP';
+
+const norm = (s: string) =>
+  s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+
+export function tagCapId(tags: { id: number; name: string }[]): number | null {
+  return tags.find((t) => norm(t.name) === norm(TAG_CAP))?.id ?? null;
+}
+
+/**
+ * Éléments de la rubrique : les recettes étiquetées auxquelles le membre a
+ * accès (déjà filtrées par la RLS à la lecture). Une recette que le carnet
+ * contient déjà garde son élément (marques favori / abonnement / partage, donc
+ * sa carte et ses gestes habituels) ; les autres — recettes publiées de la
+ * communauté — sont des cartes « d'un autre » sans marque. Un projet en cours
+ * n'y entre jamais (`isProjectDraft`, spec §10).
+ */
+export function itemsCap(
+  etiquetees: UserRecipeCard[],
+  carnet: CarnetItem[],
+  userId: string,
+): CarnetItem[] {
+  const duCarnet = new Map(carnet.map((i) => [i.recipe.id, i]));
+  const out: CarnetItem[] = [];
+  for (const r of etiquetees) {
+    if (isProjectDraft(r)) continue;
+    const existant = duCarnet.get(r.id);
+    if (existant) {
+      out.push(existant);
+    } else if (r.author_id === userId) {
+      out.push({ kind: 'mine', recipe: r, favorite: false });
+    } else {
+      out.push({ kind: 'other', recipe: r, favorite: false, subscription: false, shared: null, status: null, publishedAt: r.created_at });
+    }
+  }
+  return out;
 }

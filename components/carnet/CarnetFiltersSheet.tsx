@@ -22,6 +22,7 @@ import { useEffect, useId, useState } from 'react';
 import { BottomSheet } from '@/components/BottomSheet';
 import {
   SCOPE_LABELS,
+  SCOPES_SANS_STATUT,
   SORT_KEYS,
   SORT_LABELS,
   STATUSES,
@@ -32,7 +33,7 @@ import {
 
 // Portées sans barre de statut — même règle que `CarnetToolbar` et
 // `parseCarnetParams`.
-const SANS_STATUT: ReadonlyArray<CarnetParams['scope']> = ['fav', 'sub', 'proj'];
+const SANS_STATUT = SCOPES_SANS_STATUT;
 
 function reglagesActifs(p: CarnetParams) {
   return [

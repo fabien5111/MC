@@ -2,9 +2,11 @@
 // sortir sur la feuille) est dans `lib/carnet-cap.ts`, pure.
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
-import { getRecipeFull, getRecipesFull, type RecipeFull } from '@/lib/recipes';
+import { CARD_SELECT, getRecipeFull, getRecipesFull, withAllergenNames, type RecipeFull, type UserRecipeCard } from '@/lib/recipes';
+import { getTags } from '@/lib/data/reference';
+import type { CarnetItem } from '@/lib/carnet';
 import { isProjectRecipe } from '@/lib/projects';
-import { ficheCapRecette, type CapFiche } from '@/lib/carnet-cap';
+import { ficheCapRecette, itemsCap, tagCapId, type CapFiche } from '@/lib/carnet-cap';
 
 // Au-delà, la page d'impression deviendrait lourde à rendre et à imprimer ;
 // un carnet d'examen tient largement dans cette limite.
@@ -43,4 +45,33 @@ export async function getFichesCapRecettes(ids: string[]): Promise<CapFiche[]> {
   return recipes
     .map((r) => ficheCapRecette(r, noms.get(r.id)))
     .sort((a, b) => a.titre.localeCompare(b.titre, 'fr'));
+}
+
+// Plafond de la rubrique : une grille déjà entièrement chargée côté serveur
+// (cf. `CarnetContent`), comme le reste du carnet.
+const CAP_MAX_RUBRIQUE = 300;
+
+/**
+ * Rubrique « Carnet CAP » : toutes les recettes étiquetées « Recette CAP »
+ * auxquelles le membre a accès. La lecture passe par sa session — la RLS décide
+ * (les siennes, les partagées, les publiées et publiques des autres), jamais le
+ * code. `tagTrouve` faux = le tag n'existe pas encore au back-office : l'écran
+ * le dit plutôt que d'annoncer une rubrique vide.
+ */
+export async function getItemsCap(
+  userId: string,
+  carnet: CarnetItem[],
+): Promise<{ items: CarnetItem[]; tagTrouve: boolean }> {
+  const tagId = tagCapId(await getTags());
+  if (tagId == null) return { items: [], tagTrouve: false };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('recipes')
+    .select(`${CARD_SELECT}, status, is_public, kind, project_stage, recipe_tags!inner(tag_id)`)
+    .eq('recipe_tags.tag_id', tagId)
+    .order('created_at', { ascending: false })
+    .limit(CAP_MAX_RUBRIQUE);
+  if (error) console.error('getItemsCap:', error.message);
+  const rows = withAllergenNames((data as unknown as UserRecipeCard[] | null) ?? []);
+  return { items: itemsCap(rows, carnet, userId), tagTrouve: true };
 }

@@ -8,7 +8,13 @@
 // ne doit apparaître dans AUCUNE autre pastille, « Tout » compris (spec
 // §10). « Tout » cesse donc d'être littéralement tout — c'est le prix de
 // l'étanchéité, assumé ici plutôt que contourné.
-export const SCOPES = ['all', 'mine', 'fav', 'sub', 'shared', 'proj'] as const;
+//
+// `cap` — recettes portant le tag « Recette CAP » auxquelles le membre a
+// accès (JEP-6) : les siennes, celles qu'on lui a partagées et les recettes
+// publiées de la communauté. Rubrique du droit `carnet_cap` (plan Pro) : la
+// page la retire des pastilles sans ce droit et ramène `?scope=cap` à « Tout ».
+// Comme « Projets », elle n'a pas de barre de statut.
+export const SCOPES = ['all', 'mine', 'fav', 'sub', 'shared', 'proj', 'cap'] as const;
 export type Scope = (typeof SCOPES)[number];
 
 export const SCOPE_LABELS: Record<Scope, string> = {
@@ -18,7 +24,12 @@ export const SCOPE_LABELS: Record<Scope, string> = {
   sub: 'Mes abonnements',
   shared: 'Partagées avec moi',
   proj: 'Projets',
+  cap: 'Carnet CAP',
 };
+
+// Portées sans barre de statut — partagé par la barre, la feuille mobile et
+// `parseCarnetParams`, pour qu'une règle ne diverge pas d'un écran à l'autre.
+export const SCOPES_SANS_STATUT: ReadonlyArray<Scope> = ['fav', 'sub', 'proj', 'cap'];
 
 export const STATUSES = ['all', 'published', 'draft', 'pending', 'rejected'] as const;
 export type Status = (typeof STATUSES)[number];
@@ -65,7 +76,7 @@ export function parseCarnetParams(sp: Record<string, string | string[] | undefin
   const statutRaw = STATUSES.includes(one(sp.statut) as Status) ? (one(sp.statut) as Status) : 'all';
   // Idem sur « Projets » : un projet en cours est toujours un brouillon de
   // modération, la barre de statut n'y a aucun sens.
-  const statut = scope === 'fav' || scope === 'sub' || scope === 'proj' ? 'all' : statutRaw;
+  const statut = SCOPES_SANS_STATUT.includes(scope) ? 'all' : statutRaw;
   const tri = SORT_KEYS.includes(one(sp.tri) as CarnetSortKey) ? (one(sp.tri) as CarnetSortKey) : 'recent';
   return { scope, statut, q: one(sp.q) || '', tri };
 }

@@ -1576,10 +1576,27 @@ même quantité ne doit y figurer qu'une fois.
 - **Trois entrées** : la fiche d'une recette (`/recette/[id]/cap`) et celle
   d'une fournée (`/fournee/[id]/cap`, quantités **ajustées** sur une seule
   colonne), toutes deux gratuites, ouvertes par le menu du bouton Imprimer
-  (`PrintButton`, prop `capHref`) ; le carnet complet (`/carnet/cap` :
-  sélection des recettes du carnet, sommaire, ordre alphabétique, « une recette
-  par page »), réservé au droit **`carnet_cap`** (plan Pro), bouton « Carnet
-  CAP » du carnet verrouillé par `LockedAction` sans le droit.
+  (`PrintButton`, prop `capHref`) ; et le carnet complet (`/carnet/cap`),
+  réservé au droit **`carnet_cap`** (plan Pro), atteint par la rubrique
+  « Carnet CAP » du carnet.
+- **Rubrique « Carnet CAP » du carnet** (portée `cap`, `lib/carnet-params.ts`,
+  à côté de « Projets » ; plus de bouton dans l'en-tête). **Visible des seuls
+  membres qui ont `carnet_cap`** : sans le droit, la pastille n'existe pas et
+  `?scope=cap` retombe sur « Tout » (`app/carnet/page.tsx`). Elle liste **toutes
+  les recettes étiquetées « Recette CAP » auxquelles le membre a accès**
+  (`getItemsCap`, `lib/carnet-cap-data.ts` : les siennes, les partagées, les
+  publiées et publiques de la communauté — la **RLS** décide, sous la session) ;
+  le tag est retrouvé par son nom sans casse ni accents (`tagCapId`, jamais par
+  un id en dur), et un tag absent est dit à l'écran. Une recette que le carnet
+  contient déjà garde son élément (marques et gestes habituels), les autres sont
+  des cartes « d'un autre » sans marque ; un projet en cours n'y entre jamais
+  (`itemsCap`, pur et testé). Pas de barre de statut (`SCOPES_SANS_STATUT`,
+  partagé par la barre, la feuille mobile et `parseCarnetParams`). Un bandeau
+  précise la règle, et « Imprimer (n) » ouvre la sélection `/carnet/cap?liste=cap`
+  (recherche de la rubrique reprise par `?q=`, tout coché d'office). Cette page
+  propose aussi « Tout mon carnet » : la sélection de tout le carnet reste
+  possible. Coût : une lecture de plus à chaque ouverture du carnet, pour les
+  seuls membres Pro (compteur de la pastille).
 - **Liste blanche, jamais un masquage** (`lib/carnet-cap.ts`, pur et testé) :
   ne sortent que titre, rendement (`rendementCap` — jamais `yield_notes`),
   nom des préparations, et nom / quantité / unité. Commentaire d'ingrédient,

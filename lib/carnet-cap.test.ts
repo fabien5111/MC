@@ -4,9 +4,13 @@
 import { describe, expect, it } from 'vitest';
 import type { RecipeFull } from '@/lib/recipes';
 import type { BatchFull } from '@/lib/recipe-plan';
+import type { CarnetItem } from '@/lib/carnet';
+import type { UserRecipeCard } from '@/lib/recipes';
 import {
   ficheCapFournee,
   ficheCapRecette,
+  itemsCap,
+  tagCapId,
   lignesCap,
   nomPreparationSuspect,
   poidsTotalCap,
@@ -156,5 +160,30 @@ describe('nomPreparationSuspect', () => {
     expect(nomPreparationSuspect('Crème à 85 °C')).toBe(true);
     expect(nomPreparationSuspect('Pâte sucrée')).toBe(false);
     expect(nomPreparationSuspect('Beurre noisette')).toBe(false);
+  });
+});
+
+describe('rubrique « Carnet CAP »', () => {
+  it('retrouve le tag sans tenir compte de la casse ni des accents', () => {
+    expect(tagCapId([{ id: 1, name: 'Entremets' }, { id: 7, name: 'recette  cap' }])).toBe(7);
+    expect(tagCapId([{ id: 1, name: 'Entremets' }])).toBeNull();
+  });
+
+  const carte = (id: string, auteur: string, extra: Partial<UserRecipeCard> = {}) =>
+    ({ id, title: id, author_id: auteur, created_at: '2026-10-01', status: 'published', is_public: true, kind: 'simple', project_stage: null, ...extra }) as unknown as UserRecipeCard;
+
+  it('garde l’élément du carnet, crée une carte « d’un autre » pour la communauté, écarte les projets en cours', () => {
+    const deMoi = carte('a', 'moi');
+    const favori = { kind: 'other', recipe: carte('b', 'x'), favorite: true, subscription: false, shared: null, status: null, publishedAt: null } as unknown as CarnetItem;
+    const carnet: CarnetItem[] = [{ kind: 'mine', recipe: deMoi, favorite: true }, favori];
+    const items = itemsCap(
+      [deMoi, carte('b', 'x'), carte('c', 'y'), carte('p', 'moi', { kind: 'project', project_stage: 'wizard' })],
+      carnet,
+      'moi',
+    );
+    expect(items.map((i) => i.recipe.id)).toEqual(['a', 'b', 'c']);
+    expect(items[0]).toBe(carnet[0]);
+    expect(items[1]).toBe(favori);
+    expect(items[2]).toMatchObject({ kind: 'other', favorite: false, subscription: false, shared: null });
   });
 });

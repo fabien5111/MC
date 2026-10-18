@@ -8,7 +8,10 @@ import { countImportsEnAttente } from '@/lib/imports';
 import { getBookSharesGiven } from '@/lib/shares-data';
 import { cheminPartageCarnet } from '@/lib/book-link';
 import { getRecipeDefaultPhoto } from '@/lib/site';
+import Link from 'next/link';
 import { canAccess } from '@/lib/entitlements';
+import { getItemsCap } from '@/lib/carnet-cap-data';
+import { TAG_CAP } from '@/lib/carnet-cap';
 import { getEntitlements } from '@/lib/entitlements-data';
 import { parseCarnetParams, carnetParamsToQueryString, type Scope } from '@/lib/carnet-params';
 import { Header } from '@/components/Header';
@@ -20,8 +23,6 @@ import { CarnetContent } from '@/components/carnet/CarnetContent';
 import { ShareBookButton } from '@/components/carnet/ShareBookButton';
 import { InvitationScreen } from '@/components/invitation/InvitationScreen';
 import { CreateMenuButton } from '@/components/carnet/CreateMenuButton';
-import { LockedAction } from '@/components/LockedAction';
-import Link from 'next/link';
 
 export const metadata: Metadata = { title: 'Mon carnet | Je pâtisse !' };
 // Jamais de cache (edge/CDN inclus) : le carnet doit toujours refléter les
@@ -34,6 +35,7 @@ const EMPTY_MESSAGES: Record<Scope, string> = {
   fav: 'Aucun favori. Le cœur sur une fiche recette l’ajoute ici.',
   sub: "Aucune publication récente chez les pâtissiers que vous suivez.",
   shared: 'Personne n’a encore partagé son carnet ou une recette avec vous.',
+  cap: `Aucune recette ne porte encore le tag « ${TAG_CAP} ».`,
   proj: 'Aucun projet en cours. Un projet est un dessert composé de plusieurs recettes de base, mis au point essai après essai.',
 };
 
@@ -57,7 +59,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
     );
   }
 
-  const params = parseCarnetParams(await searchParams);
+  const parsed = parseCarnetParams(await searchParams);
   const [readOnly, { items, counts, statusCounts, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven, defaultPhoto, allergenRefs, droits] =
     await Promise.all([
       isReadOnlySession(),
@@ -76,7 +78,16 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
       // déjà.
       getEntitlements(user.id),
     ]);
-  const filtered = applyCarnetFilters(items, params);
+  // Rubrique « Carnet CAP » (JEP-6) : droit `carnet_cap` (plan Pro). Sans lui,
+  // `?scope=cap` retombe sur « Tout » et la pastille n'existe pas.
+  const peutCap = canAccess(droits, 'carnet_cap');
+  const params = !peutCap && parsed.scope === 'cap' ? { ...parsed, scope: 'all' as const } : parsed;
+  // Une lecture de plus, réservée à ceux qui ont la rubrique : elle sert au
+  // compteur de la pastille autant qu'à la grille.
+  const cap = peutCap ? await getItemsCap(user.id, items) : null;
+  const filtered = applyCarnetFilters(params.scope === 'cap' && cap ? cap.items : items, params);
+  const countsAffiches = cap ? { ...counts, cap: cap.items.length } : counts;
+  const lienImpression = `/carnet/cap?choisir=1&liste=cap${params.q ? `&q=${encodeURIComponent(params.q)}` : ''}`;
   const lienPartage = cheminPartageCarnet(user.id);
 
   return (
@@ -97,29 +108,6 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               <div className="hidden lg:flex">
                 <ShareBookButton ownerId={user.id} given={bookSharesGiven} lienPartage={lienPartage} />
               </div>
-              {/* Carnet CAP (JEP-6, lot 3) : plusieurs recettes imprimées au
-                  format d'examen, droit `carnet_cap`. Visible mais verrouillé
-                  sans le droit (JEP-130). */}
-              {canAccess(droits, 'carnet_cap') ? (
-                <Link
-                  href="/carnet/cap"
-                  prefetch={false}
-                  className="flex items-center gap-1.5 rounded-pill border border-primary px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/5"
-                >
-                  <span className="material-symbols-outlined text-[18px]" aria-hidden>
-                    school
-                  </span>
-                  Carnet CAP
-                </Link>
-              ) : (
-                <LockedAction
-                  label="Carnet CAP"
-                  message="Imprimer plusieurs recettes au format du carnet du CAP Pâtissier est réservé à la formule Pro."
-                  className="text-[13px] font-semibold"
-                >
-                  Carnet CAP
-                </LockedAction>
-              )}
               <CreateMenuButton peutProjet={canAccess(droits, 'mode_projet')} />
             </div>
           )}
@@ -127,10 +115,35 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
         <CarnetProvider>
           <CarnetToolbar
             params={params}
-            counts={counts}
+            counts={countsAffiches}
+            peutCap={peutCap}
             statusCounts={params.scope === 'shared' ? sharedStatusCounts : statusCounts}
             shareButton={!readOnly ? <ShareBookButton ownerId={user.id} given={bookSharesGiven} lienPartage={lienPartage} /> : null}
           />
+          {params.scope === 'cap' && cap && (
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-outline-variant bg-surface-container-low px-5 py-4">
+              <div className="min-w-0 max-w-[62ch] text-[14px] text-on-surface">
+                <p className="font-semibold text-primary">Recettes portant le tag « {TAG_CAP} »</p>
+                <p className="mt-1 text-on-surface-variant">
+                  {cap.tagTrouve
+                    ? 'Toutes celles auxquelles vous avez accès : les vôtres, celles qu’on vous a partagées et les recettes publiées de la communauté. Imprimées pour le CAP, seuls leurs ingrédients et quantités figurent sur la feuille.'
+                    : `Le tag « ${TAG_CAP} » n’existe pas encore : un administrateur doit le créer pour que des recettes y figurent.`}
+                </p>
+              </div>
+              {cap.tagTrouve && filtered.length > 0 && (
+                <Link
+                  href={lienImpression}
+                  prefetch={false}
+                  className="flex shrink-0 items-center gap-1.5 rounded-pill bg-primary px-5 py-2.5 text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-[18px]" aria-hidden>
+                    print
+                  </span>
+                  Imprimer ({filtered.length})
+                </Link>
+              )}
+            </div>
+          )}
           <CarnetContent
             key={carnetParamsToQueryString(params)}
             items={filtered}

@@ -9,7 +9,19 @@ import { matchesSearch } from '@/lib/text-search';
 
 export type CapChoix = { id: string; titre: string; origine: string };
 
-export function CapSelection({ recettes, coches, max }: { recettes: CapChoix[]; coches: string[]; max: number }) {
+export function CapSelection({
+  recettes,
+  coches,
+  max,
+  liste,
+}: {
+  recettes: CapChoix[];
+  coches: string[];
+  max: number;
+  // Liste d'origine (`cap` = rubrique « Carnet CAP »), reportée dans l'URL de
+  // l'aperçu pour que « Modifier la sélection » y revienne.
+  liste?: string;
+}) {
   const [q, setQ] = useState('');
   const [selection, setSelection] = useState<Set<string>>(() => new Set(coches));
   const visibles = recettes.filter((r) => matchesSearch([r.titre], q));
@@ -30,6 +42,7 @@ export function CapSelection({ recettes, coches, max }: { recettes: CapChoix[]; 
 
   return (
     <form method="get" action="/carnet/cap" className="space-y-4">
+      {liste && <input type="hidden" name="liste" value={liste} />}
       <div className="flex flex-wrap items-center gap-3">
         <input
           type="search"

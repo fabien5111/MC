@@ -24,6 +24,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   SCOPES,
+  SCOPES_SANS_STATUT,
   SCOPE_LABELS,
   STATUSES,
   STATUS_LABELS,
@@ -42,6 +43,7 @@ export function CarnetToolbar({
   counts,
   statusCounts,
   shareButton,
+  peutCap = false,
 }: {
   params: CarnetParams;
   counts: Record<string, number>;
@@ -50,6 +52,9 @@ export function CarnetToolbar({
   // simplement rejouée ici pour la ligne mobile « Partager + recherche » —
   // évite de faire remonter ownerId/bookSharesGiven jusqu'à ce composant.
   shareButton?: ReactNode;
+  // Droit `carnet_cap` (plan Pro) : la rubrique « Carnet CAP » n'existe que
+  // pour ceux qui l'ont (JEP-6).
+  peutCap?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -166,14 +171,18 @@ export function CarnetToolbar({
   // compris » du partage de carnet, ou partage direct sans restriction de
   // statut) — ses compteurs viennent alors de `sharedStatusCounts`, pas de
   // `statusCounts` (cf. app/carnet/page.tsx).
-  const showStatusBar = params.scope !== 'fav' && params.scope !== 'sub' && params.scope !== 'proj';
+  const showStatusBar = !SCOPES_SANS_STATUT.includes(params.scope);
 
   // « Projets » n'apparaît que s'il y a quelque chose à y voir : une pastille
   // vide en permanence coûterait de la place à tous les carnets pour une
   // portée que la plupart n'utiliseront jamais. Elle reste affichée si elle
   // est la portée active, sinon on ne pourrait plus en sortir depuis le
   // sélecteur mobile.
-  const scopes = SCOPES.filter((s) => s !== 'proj' || params.scope === 'proj' || (counts.proj ?? 0) > 0);
+  // « Carnet CAP » est visible toujours quand le droit existe, même à 0 : c'est
+  // un point d'entrée (impression), pas un tiroir qu'on remplit soi-même.
+  const scopes = SCOPES.filter((s) =>
+    s === 'proj' ? params.scope === 'proj' || (counts.proj ?? 0) > 0 : s === 'cap' ? peutCap : true,
+  );
 
   // Recherche + tri du bureau, à droite de la ligne des statuts — qui reste
   // affichée sur les portées sans statut (Favoris, Abonnements, Projets) pour
@@ -224,7 +233,7 @@ export function CarnetToolbar({
                     // Le statut n'existe pas sur les recettes des autres : on le
                     // remet à « Tous » en y entrant, sinon un filtre invisible
                     // resterait actif (même règle que `parseCarnetParams`).
-                    statut: s === 'fav' || s === 'sub' || s === 'proj' ? 'all' : params.statut,
+                    statut: SCOPES_SANS_STATUT.includes(s) ? 'all' : params.statut,
                   })}
                   scroll={false}
                   aria-current={active ? 'true' : undefined}
