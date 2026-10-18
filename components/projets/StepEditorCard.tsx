@@ -333,7 +333,7 @@ export function StepEditorCard({
                         <span className="min-[1232px]:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">
                           Allergènes
                         </span>
-                        <div className="flex flex-wrap items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-1 min-[1232px]:w-full">
                           {alle.map((a) => (
                             <span
                               key={a}
@@ -357,8 +357,7 @@ export function StepEditorCard({
                                 const v = e.target.value;
                                 if (v) onIngredientChange(j, { allergen: v });
                               }}
-                              className="editorial-input text-on-surface cursor-pointer italic h-[42px] max-md:h-[38px]"
-                              style={{ width: 'auto' }}
+                              className="editorial-input text-on-surface cursor-pointer italic h-[42px] max-md:h-[38px] w-auto min-[1232px]:w-full"
                               title="Ajouter un allergène (table de référence)"
                             >
                               <option value="">Allergène (optionnel)</option>

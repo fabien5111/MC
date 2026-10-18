@@ -933,8 +933,10 @@ directes :
   le haut (`items-start`) et de même hauteur (42 px : `h-[42px]` sur les listes
   déroulantes, `block` sur le `<textarea>` du commentaire, qui sinon laisse un
   vide sous lui comme tout élément en ligne, et `autoGrow` qui ajoute la
-  bordure à `scrollHeight`) ; allergènes en colonne fixe (`w-56`), commentaire
-  plus large que le nom (`flex-[3]` contre `flex-[2]`).
+  bordure à `scrollHeight`) ; allergènes en colonne fixe (`w-56`) dont la liste
+  déroulante la remplit (`xl:w-full` sur elle ET sur son conteneur — plus
+  étroite, elle doublait l'espace avant le commentaire : 31 px au lieu de 16),
+  commentaire plus large que le nom (`flex-[3]` contre `flex-[2]`).
 - **`batches.user_note` et `batches.notes` ne sont pas la même chose** :
   la première est la note personnelle de la fournée (éditée en Préparer par
   `BatchNotes`), la seconde le commentaire saisi au lancement dans

@@ -599,8 +599,7 @@ function AddedIngredientForm({
     <select
       value=""
       onChange={(e) => addAllergen(e.target.value)}
-      className="editorial-input text-on-surface cursor-pointer italic h-[42px] max-md:h-[38px]"
-      style={{ width: 'auto' }}
+      className="editorial-input text-on-surface cursor-pointer italic h-[42px] max-md:h-[38px] w-auto xl:w-full"
       title="Ajouter un allergène (table de référence)"
     >
       <option value="">Allergène (optionnel)</option>
@@ -655,7 +654,7 @@ function AddedIngredientForm({
         <div className="basis-full xl:hidden order-2" />
         <div className="flex-1 min-w-0 order-3 xl:order-1 xl:flex-none xl:w-56 xl:min-h-[42px] xl:flex xl:items-center">
           <span className="xl:hidden block font-label-md text-[10px] uppercase tracking-widest text-outline mb-1">Allergènes</span>
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1 xl:w-full">
             {allergens.map((a) => (
               <span key={a} className="inline-flex items-center gap-0.5 bg-secondary-fixed text-on-secondary-fixed rounded-full pl-2 pr-0.5 py-0.5 text-[12px]">
                 {a}
