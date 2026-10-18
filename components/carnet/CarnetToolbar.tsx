@@ -24,7 +24,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   SCOPES,
-  SCOPES_SANS_STATUT,
   SCOPE_LABELS,
   STATUSES,
   STATUS_LABELS,
@@ -160,18 +159,10 @@ export function CarnetToolbar({
     navigate(next);
   }
 
-  // La barre de statut disparaît sur Favoris et Mes abonnements. Sur Mes
-  // abonnements, ces recettes des autres sont toujours déjà publiées et
-  // publiques, leur statut ne varie jamais. Sur Favoris, une recette dont je
-  // suis l'auteur peut porter n'importe quel statut (JEP-131 : mes propres
-  // recettes favorites y apparaissent désormais aussi) — sa barre de statut
-  // n'a simplement jamais été construite pour ce scope, `parseCarnetParams`
-  // y force `statut = 'all'`. Elle reste affichée sur Partagées avec moi :
-  // une recette partagée peut être un brouillon (portée « brouillons
-  // compris » du partage de carnet, ou partage direct sans restriction de
-  // statut) — ses compteurs viennent alors de `sharedStatusCounts`, pas de
-  // `statusCounts` (cf. app/carnet/page.tsx).
-  const showStatusBar = !SCOPES_SANS_STATUT.includes(params.scope);
+  // La barre de statut est affichée sur toutes les portées (JEP-6, homogénéité).
+  // Ses compteurs sont ceux de la portée courante (`statusCounts`, calculés par
+  // app/carnet/page.tsx) ; sur « Tout » et « Mes recettes » ils portent, comme
+  // avant, sur mes recettes.
 
   // « Projets » n'apparaît que s'il y a quelque chose à y voir : une pastille
   // vide en permanence coûterait de la place à tous les carnets pour une
@@ -230,10 +221,7 @@ export function CarnetToolbar({
                   href={hrefFor({
                     ...params,
                     scope: s,
-                    // Le statut n'existe pas sur les recettes des autres : on le
-                    // remet à « Tous » en y entrant, sinon un filtre invisible
-                    // resterait actif (même règle que `parseCarnetParams`).
-                    statut: SCOPES_SANS_STATUT.includes(s) ? 'all' : params.statut,
+                    statut: params.statut,
                   })}
                   scroll={false}
                   aria-current={active ? 'true' : undefined}
@@ -252,8 +240,7 @@ export function CarnetToolbar({
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-outline-variant/50 pt-4">
-          {showStatusBar && (
-            <>
+          <>
               <span className="mr-1 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
                 Statut
               </span>
@@ -274,8 +261,7 @@ export function CarnetToolbar({
                   </Link>
                 );
               })}
-            </>
-          )}
+          </>
           <div className="ml-auto flex items-center gap-4">{rechercheTri}</div>
         </div>
       </div>

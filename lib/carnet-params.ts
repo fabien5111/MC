@@ -27,9 +27,6 @@ export const SCOPE_LABELS: Record<Scope, string> = {
   cap: 'Carnet CAP',
 };
 
-// Portées sans barre de statut — partagé par la barre, la feuille mobile et
-// `parseCarnetParams`, pour qu'une règle ne diverge pas d'un écran à l'autre.
-export const SCOPES_SANS_STATUT: ReadonlyArray<Scope> = ['fav', 'sub', 'proj', 'cap'];
 
 export const STATUSES = ['all', 'published', 'draft', 'pending', 'rejected'] as const;
 export type Status = (typeof STATUSES)[number];
@@ -66,17 +63,13 @@ export type CarnetParams = {
 
 export const EMPTY_CARNET_PARAMS: CarnetParams = { scope: 'all', statut: 'all', q: '', tri: 'recent' };
 
-// La barre de statut disparaît sur Favoris, Mes abonnements et Projets : le statut y
-// est donc toujours remis à « Tous », qu'il ait été passé dans l'URL ou non —
-// une URL trafiquée (`?scope=fav&statut=draft`) ne doit pas produire un état
-// que l'interface ne peut jamais atteindre par elle-même.
+// La barre de statut est affichée sur toutes les portées (homogénéité) ; ses
+// compteurs et son filtre portent sur les recettes de la portée courante.
 export function parseCarnetParams(sp: Record<string, string | string[] | undefined>): CarnetParams {
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const scope = SCOPES.includes(one(sp.scope) as Scope) ? (one(sp.scope) as Scope) : 'all';
   const statutRaw = STATUSES.includes(one(sp.statut) as Status) ? (one(sp.statut) as Status) : 'all';
-  // Idem sur « Projets » : un projet en cours est toujours un brouillon de
-  // modération, la barre de statut n'y a aucun sens.
-  const statut = SCOPES_SANS_STATUT.includes(scope) ? 'all' : statutRaw;
+  const statut = statutRaw;
   const tri = SORT_KEYS.includes(one(sp.tri) as CarnetSortKey) ? (one(sp.tri) as CarnetSortKey) : 'recent';
   return { scope, statut, q: one(sp.q) || '', tri };
 }

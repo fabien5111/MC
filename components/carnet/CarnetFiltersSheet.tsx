@@ -22,7 +22,6 @@ import { useEffect, useId, useState } from 'react';
 import { BottomSheet } from '@/components/BottomSheet';
 import {
   SCOPE_LABELS,
-  SCOPES_SANS_STATUT,
   SORT_KEYS,
   SORT_LABELS,
   STATUSES,
@@ -30,10 +29,6 @@ import {
   EMPTY_CARNET_PARAMS,
   type CarnetParams,
 } from '@/lib/carnet-params';
-
-// Portées sans barre de statut — même règle que `CarnetToolbar` et
-// `parseCarnetParams`.
-const SANS_STATUT = SCOPES_SANS_STATUT;
 
 function reglagesActifs(p: CarnetParams) {
   return [
@@ -83,7 +78,6 @@ export function CarnetFiltersSheet({
     params.tri !== 'recent' ? SORT_LABELS[params.tri] : null,
   ].filter(Boolean);
 
-  const avecStatut = !SANS_STATUT.includes(draft.scope);
   // Les compteurs de statut sont ceux de la portée appliquée : ils ne valent
   // pas pour une autre portée choisie dans le brouillon.
   const statutsChiffres = draft.scope === params.scope;
@@ -200,7 +194,7 @@ export function CarnetFiltersSheet({
                     type="button"
                     aria-pressed={actif}
                     onClick={() =>
-                      setDraft({ ...draft, scope: s, statut: SANS_STATUT.includes(s) ? 'all' : draft.statut })
+                      setDraft({ ...draft, scope: s, statut: draft.statut })
                     }
                     className={`${PASTILLE} ${
                       actif ? 'bg-primary text-on-primary' : 'border border-outline-variant text-on-surface-variant'
@@ -213,30 +207,28 @@ export function CarnetFiltersSheet({
             </div>
           </fieldset>
 
-          {avecStatut && (
-            <fieldset className="flex flex-col gap-2">
-              <legend className="mb-2 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">Statut</legend>
-              <div className="flex flex-wrap gap-2">
-                {STATUSES.map((s) => {
-                  const actif = draft.statut === s;
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      aria-pressed={actif}
-                      onClick={() => setDraft({ ...draft, statut: s })}
-                      className={`${PASTILLE} ${
-                        actif ? 'bg-surface-container-high text-primary' : 'border border-outline-variant text-on-surface-variant'
-                      }`}
-                    >
-                      {STATUS_LABELS[s]}
-                      {s !== 'all' && statutsChiffres && <span className="opacity-60"> {statusCounts[s] ?? 0}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </fieldset>
-          )}
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-2 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">Statut</legend>
+            <div className="flex flex-wrap gap-2">
+              {STATUSES.map((s) => {
+                const actif = draft.statut === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    aria-pressed={actif}
+                    onClick={() => setDraft({ ...draft, statut: s })}
+                    className={`${PASTILLE} ${
+                      actif ? 'bg-surface-container-high text-primary' : 'border border-outline-variant text-on-surface-variant'
+                    }`}
+                  >
+                    {STATUS_LABELS[s]}
+                    {s !== 'all' && statutsChiffres && <span className="opacity-60"> {statusCounts[s] ?? 0}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
           <div className="flex items-center gap-3 border-t border-outline-variant pt-4">
             <button

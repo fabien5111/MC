@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
-import { getCarnetData, applyCarnetFilters } from '@/lib/carnet';
+import { getCarnetData, applyCarnetFilters, compteursStatut } from '@/lib/carnet';
 import { getAllergensWithPicto } from '@/lib/recipes';
 import { getFavoriteIds } from '@/lib/favorites';
 import { countImportsEnAttente } from '@/lib/imports';
@@ -20,6 +20,7 @@ import { MobileNav } from '@/components/MobileNav';
 import { CarnetProvider } from '@/components/carnet/CarnetProvider';
 import { CarnetToolbar } from '@/components/carnet/CarnetToolbar';
 import { CarnetContent } from '@/components/carnet/CarnetContent';
+import { ImportsEnAttente } from '@/components/carnet/ImportsEnAttente';
 import { ShareBookButton } from '@/components/carnet/ShareBookButton';
 import { InvitationScreen } from '@/components/invitation/InvitationScreen';
 import { CreateMenuButton } from '@/components/carnet/CreateMenuButton';
@@ -85,7 +86,18 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
   // Une lecture de plus, réservée à ceux qui ont la rubrique : elle sert au
   // compteur de la pastille autant qu'à la grille.
   const cap = peutCap ? await getItemsCap(user.id, items) : null;
-  const filtered = applyCarnetFilters(params.scope === 'cap' && cap ? cap.items : items, params);
+  const source = params.scope === 'cap' && cap ? cap.items : items;
+  const filtered = applyCarnetFilters(source, params);
+  // Barre de statut sur toutes les portées (JEP-6) : « Tout » et « Mes
+  // recettes » gardent leurs compteurs d'origine, « Partagées » les siens, les
+  // autres comptent leurs propres recettes (avant filtre de statut et de
+  // recherche).
+  const statusCountsAffiches =
+    params.scope === 'shared'
+      ? sharedStatusCounts
+      : params.scope === 'fav' || params.scope === 'sub' || params.scope === 'proj' || params.scope === 'cap'
+        ? compteursStatut(applyCarnetFilters(source, { ...params, statut: 'all', q: '' }))
+        : statusCounts;
   const countsAffiches = cap ? { ...counts, cap: cap.items.length } : counts;
   const lienImpression = `/carnet/cap?choisir=1&liste=cap${params.q ? `&q=${encodeURIComponent(params.q)}` : ''}`;
   const lienPartage = cheminPartageCarnet(user.id);
@@ -117,38 +129,44 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
             params={params}
             counts={countsAffiches}
             peutCap={peutCap}
-            statusCounts={params.scope === 'shared' ? sharedStatusCounts : statusCounts}
+            statusCounts={statusCountsAffiches}
             shareButton={!readOnly ? <ShareBookButton ownerId={user.id} given={bookSharesGiven} lienPartage={lienPartage} /> : null}
           />
           {params.scope === 'cap' && cap && (
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-outline-variant bg-surface-container-low px-5 py-4">
-              <div className="min-w-0 max-w-[62ch] text-[14px] text-on-surface">
-                <p className="font-semibold text-primary">Recettes portant le tag « {TAG_CAP} »</p>
-                <p className="mt-1 text-on-surface-variant">
-                  {cap.tagTrouve
-                    ? 'Toutes celles auxquelles vous avez accès : les vôtres, celles qu’on vous a partagées et les recettes publiées de la communauté. Imprimées pour le CAP, seuls leurs ingrédients et quantités figurent sur la feuille.'
-                    : `Le tag « ${TAG_CAP} » n’existe pas encore : un administrateur doit le créer pour que des recettes y figurent.`}
-                </p>
+            // Ordre voulu (JEP-6) : imports en attente d'abord, puis l'information
+            // de la rubrique, sur toute la largeur. Sur cette portée, la grille ne
+            // remontre pas le bandeau d'imports (`importsEnAttente={0}` plus bas).
+            <div className="mt-6 flex flex-col gap-4">
+              <ImportsEnAttente nombre={importsEnAttente} />
+              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-lg border border-outline-variant bg-surface-container-low px-5 py-4">
+                <div className="min-w-0 flex-1 basis-[28rem] text-[14px] text-on-surface">
+                  <p className="font-semibold text-primary">Recettes portant le tag « {TAG_CAP} »</p>
+                  <p className="mt-1 text-on-surface-variant">
+                    {cap.tagTrouve
+                      ? 'Toutes celles auxquelles vous avez accès : les vôtres, celles qu’on vous a partagées et les recettes publiées de la communauté. Imprimées pour le CAP, seuls leurs ingrédients et quantités figurent sur la feuille.'
+                      : `Le tag « ${TAG_CAP} » n’existe pas encore : un administrateur doit le créer pour que des recettes y figurent.`}
+                  </p>
+                </div>
+                {cap.tagTrouve && filtered.length > 0 && (
+                  <Link
+                    href={lienImpression}
+                    prefetch={false}
+                    className="flex shrink-0 items-center gap-1.5 rounded-pill bg-primary px-5 py-2.5 text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-[18px]" aria-hidden>
+                      print
+                    </span>
+                    Imprimer ({filtered.length})
+                  </Link>
+                )}
               </div>
-              {cap.tagTrouve && filtered.length > 0 && (
-                <Link
-                  href={lienImpression}
-                  prefetch={false}
-                  className="flex shrink-0 items-center gap-1.5 rounded-pill bg-primary px-5 py-2.5 text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-[18px]" aria-hidden>
-                    print
-                  </span>
-                  Imprimer ({filtered.length})
-                </Link>
-              )}
             </div>
           )}
           <CarnetContent
             key={carnetParamsToQueryString(params)}
             items={filtered}
             favIds={[...favIds]}
-            importsEnAttente={importsEnAttente}
+            importsEnAttente={params.scope === 'cap' && cap ? 0 : importsEnAttente}
             allergenRefs={allergenRefs}
             emptyMessage={
               params.q || params.statut !== 'all'

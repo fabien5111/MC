@@ -1590,8 +1590,15 @@ même quantité ne doit y figurer qu'une fois.
   un id en dur), et un tag absent est dit à l'écran. Une recette que le carnet
   contient déjà garde son élément (marques et gestes habituels), les autres sont
   des cartes « d'un autre » sans marque ; un projet en cours n'y entre jamais
-  (`itemsCap`, pur et testé). Pas de barre de statut (`SCOPES_SANS_STATUT`,
-  partagé par la barre, la feuille mobile et `parseCarnetParams`). Un bandeau
+  (`itemsCap`, pur et testé). **La barre de statut est affichée sur TOUTES les
+  portées** (homogénéité, JEP-6) : Favoris, Abonnements, Projets et Carnet CAP
+  comptent et filtrent leurs propres recettes (`compteursStatut`, `statutDe`,
+  `lib/carnet.ts` : une recette d'un autre sans statut connu vaut « publiée »),
+  alors que « Tout », « Mes recettes » et « Partagées » gardent leur règle
+  d'origine (« Tout » laisse passer les recettes des autres quel que soit le
+  statut). Dans la rubrique CAP, le bandeau « imports en attente »
+  (`ImportsEnAttente`) se place **au-dessus** du bandeau d'information, qui
+  occupe toute la largeur. Un bandeau
   précise la règle, et « Imprimer (n) » ouvre la sélection `/carnet/cap?liste=cap`
   (recherche de la rubrique reprise par `?q=`, tout coché d'office). Cette page
   propose aussi « Tout mon carnet » : la sélection de tout le carnet reste
