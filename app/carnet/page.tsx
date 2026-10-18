@@ -20,6 +20,8 @@ import { CarnetContent } from '@/components/carnet/CarnetContent';
 import { ShareBookButton } from '@/components/carnet/ShareBookButton';
 import { InvitationScreen } from '@/components/invitation/InvitationScreen';
 import { CreateMenuButton } from '@/components/carnet/CreateMenuButton';
+import { LockedAction } from '@/components/LockedAction';
+import Link from 'next/link';
 
 export const metadata: Metadata = { title: 'Mon carnet | Je pâtisse !' };
 // Jamais de cache (edge/CDN inclus) : le carnet doit toujours refléter les
@@ -95,6 +97,29 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               <div className="hidden lg:flex">
                 <ShareBookButton ownerId={user.id} given={bookSharesGiven} lienPartage={lienPartage} />
               </div>
+              {/* Carnet CAP (JEP-6, lot 3) : plusieurs recettes imprimées au
+                  format d'examen, droit `carnet_cap`. Visible mais verrouillé
+                  sans le droit (JEP-130). */}
+              {canAccess(droits, 'carnet_cap') ? (
+                <Link
+                  href="/carnet/cap"
+                  prefetch={false}
+                  className="flex items-center gap-1.5 rounded-pill border border-primary px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/5"
+                >
+                  <span className="material-symbols-outlined text-[18px]" aria-hidden>
+                    school
+                  </span>
+                  Carnet CAP
+                </Link>
+              ) : (
+                <LockedAction
+                  label="Carnet CAP"
+                  message="Imprimer plusieurs recettes au format du carnet du CAP Pâtissier est réservé à la formule Pro."
+                  className="text-[13px] font-semibold"
+                >
+                  Carnet CAP
+                </LockedAction>
+              )}
               <CreateMenuButton peutProjet={canAccess(droits, 'mode_projet')} />
             </div>
           )}

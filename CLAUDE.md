@@ -1565,6 +1565,48 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   restent donc vides. En donner un à toutes les recettes suppose de l'ajouter
   d'abord à `/creer` et à la relecture d'import.
 
+## Carnet CAP (JEP-6)
+
+Impression au format du **carnet de recettes autorisé à l'examen du CAP
+Pâtissier** (EP1 / EP2) : ingrédients et quantités **seuls**. Les consignes
+nationales retirent au candidat, pour toute l'épreuve, un carnet qui porte une
+technique, un procédé, une température ou « une autre précision » — et une
+même quantité ne doit y figurer qu'une fois.
+
+- **Trois entrées** : la fiche d'une recette (`/recette/[id]/cap`) et celle
+  d'une fournée (`/fournee/[id]/cap`, quantités **ajustées** sur une seule
+  colonne), toutes deux gratuites, ouvertes par le menu du bouton Imprimer
+  (`PrintButton`, prop `capHref`) ; le carnet complet (`/carnet/cap` :
+  sélection des recettes du carnet, sommaire, ordre alphabétique, « une recette
+  par page »), réservé au droit **`carnet_cap`** (plan Pro), bouton « Carnet
+  CAP » du carnet verrouillé par `LockedAction` sans le droit.
+- **Liste blanche, jamais un masquage** (`lib/carnet-cap.ts`, pur et testé) :
+  ne sortent que titre, rendement (`rendementCap` — jamais `yield_notes`),
+  nom des préparations, et nom / quantité / unité. Commentaire d'ingrédient,
+  allergènes, étapes, temps, températures, photos n'atteignent jamais la page.
+  C'est pourquoi la fiche CAP est une **page dédiée** et non une feuille de
+  style d'impression de la fiche : un bloc ajouté plus tard à la fiche ne peut
+  pas fuir sur la feuille d'examen par oubli d'un `no-print`.
+- **Une préparation = un groupe d'ingrédients** (donc une étape), nommée comme
+  l'étape ; pour un projet, les groupes d'un même composant sont réunis sous le
+  nom du composant. Préparations sans ingrédient écartées. Dans une
+  préparation, le même ingrédient (`ingredientKey`) dans la même unité est
+  additionné (20 g + 60 g de sucre = 80 g) ; deux unités restent deux lignes.
+  « unité(s) » / « pièce » s'effacent (« Œufs 3 »).
+- **Fournée** : lignes retirées, remplacées par une sous-recette ou portées par
+  une étape entièrement remplacée écartées ; une étape « déjà faite » garde
+  ses ingrédients (le carnet décrit la recette, pas l'avancement).
+- **Noms de préparation modifiables dans l'aperçu, jamais enregistrés**
+  (`CapCarnet`) : le titre d'une étape est souvent un geste (« Monter les
+  blancs »). `nomPreparationSuspect` signale verbe de technique, température
+  ou durée — repère, jamais blocage. Une préparation seule n'imprime pas son
+  nom.
+- **Poids total** par préparation (case cochée par défaut), seulement si
+  toutes ses lignes sont des masses chiffrées (`poidsTotalCap`) — un total
+  faux est pire qu'absent.
+- Aucun auteur, logo ni adresse du site sur la feuille : le carnet doit être
+  « personnel ». Le jury reste seul juge ; l'écran le dit.
+
 ## Boîte à idées
 
 Module communautaire : `/idees` (liste triable, publique) et `/idees/nouvelle`
