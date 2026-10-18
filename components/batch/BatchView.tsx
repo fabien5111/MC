@@ -1872,7 +1872,7 @@ function StepCookCard({
           ev.preventDefault();
           setOpen((o) => !o);
         }}
-        className="flex items-start gap-2 p-4 cursor-pointer select-none bg-primary/10 hover:bg-primary/15 print:border-b print:border-primary transition-colors"
+        className="flex items-start gap-2 p-4 cursor-pointer select-none step-band bg-surface-container-high hover:bg-surface-container-highest transition-colors"
       >
         <span onClick={(ev) => ev.stopPropagation()} className="shrink-0 mt-0.5 flex">
           <input
