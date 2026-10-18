@@ -11,7 +11,12 @@
 // suspect (`nomPreparationSuspect`), sans jamais bloquer l'impression.
 import { useState } from 'react';
 import Link from 'next/link';
-import { fmtPoids, nomPreparationSuspect, poidsTotalCap, type CapFiche } from '@/lib/carnet-cap';
+import { fmtPoids, grouperParCategorie, nomPreparationSuspect, poidsTotalCap, type CapFiche } from '@/lib/carnet-cap';
+
+// Les navigateurs n'impriment pas les fonds par défaut : sans cette consigne, le
+// bandeau gris sortirait blanc.
+const BANDEAU = { printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as const;
+const SANS_CATEGORIE = 'Sans catégorie';
 
 type Props = {
   fiches: CapFiche[];
@@ -29,6 +34,11 @@ export function CapCarnet({ fiches, titreEcran, retour, carnet = false }: Props)
   const [unParPage, setUnParPage] = useState(false);
 
   const nomDe = (fiche: CapFiche, cle: string, defaut: string) => noms[`${fiche.cle}/${cle}`] ?? defaut;
+  // Catégories (carnet de plusieurs recettes seulement) : sommaire à deux
+  // niveaux, bandeau gris par catégorie et saut de page entre catégories. Sans
+  // aucune catégorie, le carnet se présente comme avant.
+  const groupes = carnet ? grouperParCategorie(fiches) : [{ categorie: null, fiches }];
+  const avecCategories = carnet && groupes.some((g) => g.categorie);
   const suspects = fiches.reduce(
     (n, f) => n + (f.preparations.length > 1 ? f.preparations.filter((p) => nomPreparationSuspect(nomDe(f, p.cle, p.nom))).length : 0),
     0,
@@ -101,84 +111,115 @@ export function CapCarnet({ fiches, titreEcran, retour, carnet = false }: Props)
       {carnet && sommaire && fiches.length > 1 && (
         <nav className="cap-sommaire mb-8 break-after-page">
           <h2 className="mb-3 text-center text-[20px] font-bold text-black">Carnet de recettes — CAP Pâtissier</h2>
-          <ol className="columns-1 gap-8 text-[13px] text-black sm:columns-2 print:columns-2">
-            {fiches.map((f) => (
-              <li key={f.cle} className="break-inside-avoid border-b border-dotted border-black/30 py-0.5">
-                {f.titre}
-              </li>
-            ))}
-          </ol>
+          {avecCategories ? (
+            <div className="columns-1 gap-8 text-[13px] text-black sm:columns-2 print:columns-2">
+              {groupes.map((g) => (
+                <section key={g.categorie ?? '—'} className="mb-4 break-inside-avoid">
+                  <h3 className="mb-1 bg-neutral-300 px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide" style={BANDEAU}>
+                    {g.categorie ?? SANS_CATEGORIE}
+                  </h3>
+                  <ol>
+                    {g.fiches.map((f) => (
+                      <li key={f.cle} className="border-b border-dotted border-black/30 py-0.5 pl-2">
+                        {f.titre}
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <ol className="columns-1 gap-8 text-[13px] text-black sm:columns-2 print:columns-2">
+              {fiches.map((f) => (
+                <li key={f.cle} className="break-inside-avoid border-b border-dotted border-black/30 py-0.5">
+                  {f.titre}
+                </li>
+              ))}
+            </ol>
+          )}
         </nav>
       )}
 
-      <div className="space-y-6 print:space-y-4">
-        {fiches.map((f, i) => (
+      {groupes.map((g, gi) => (
+        <div key={g.categorie ?? '—'} className={gi > 0 ? 'mt-10 break-before-page print:mt-0' : ''}>
+          {avecCategories && (
+            <h2
+              className="mb-4 bg-neutral-300 px-4 py-2 text-center text-[16px] font-bold uppercase tracking-[0.12em] text-black"
+              style={BANDEAU}
+            >
+              {g.categorie ?? SANS_CATEGORIE}
+            </h2>
+          )}
+          <div className="space-y-6 print:space-y-4">
+            {g.fiches.map((f, i) => (
           <article
-            key={f.cle}
-            className={`cap-fiche break-inside-avoid border border-dashed border-black/70 bg-white p-5 text-black print:p-4 ${
-              unParPage && i > 0 ? 'break-before-page' : ''
-            }`}
-          >
-            <header className="mb-4 border-b border-black pb-2 text-center">
-              <h2 className="text-[18px] font-bold">{f.titre}</h2>
-              {f.rendement && <p className="text-[13px]">({f.rendement})</p>}
-            </header>
-            {!f.preparations.length && <p className="text-[13px] italic">Aucun ingrédient saisi.</p>}
-            <div className={`grid gap-x-10 gap-y-5 ${f.preparations.length > 1 ? 'sm:grid-cols-2 print:grid-cols-2' : 'mx-auto max-w-sm'}`}>
-              {f.preparations.map((p) => {
-                const nom = nomDe(f, p.cle, p.nom);
-                const plusieurs = f.preparations.length > 1;
-                const suspect = plusieurs && nomPreparationSuspect(nom);
-                const poids = poidsTotal ? poidsTotalCap(p) : null;
-                return (
-                  <section key={p.cle} className="break-inside-avoid">
-                    {plusieurs && (
-                      <>
-                        <input
-                          value={nom}
-                          onChange={(e) => setNoms((n) => ({ ...n, [`${f.cle}/${p.cle}`]: e.target.value }))}
-                          aria-label={`Nom de la préparation « ${p.nom} »`}
-                          className={`no-print mb-1 w-full border-0 border-b border-dashed bg-transparent px-0 py-0.5 text-[14px] font-bold underline focus:outline-none ${
-                            suspect ? 'border-amber-600 bg-amber-50' : 'border-black/40'
-                          }`}
-                        />
-                        {suspect && (
-                          <p className="no-print mb-1 text-[11px] text-amber-800">Ressemble à une technique : renommez la préparation.</p>
-                        )}
-                        <h3 className="mb-1 hidden text-[14px] font-bold underline print:block">{nom}</h3>
-                      </>
-                    )}
-                    <table className="w-full text-[13px] leading-snug">
-                      <tbody>
-                        {p.lignes.map((l, k) => (
-                          // Filet pointillé sous chaque ingrédient : il guide l'œil du
-                          // nom à sa quantité. Pas sous la dernière ligne quand « Poids
-                          // total » suit, dont le trait plein joue déjà ce rôle.
-                          <tr
-                            key={k}
-                            className={poids != null && k === p.lignes.length - 1 ? '' : 'border-b border-dotted border-black/50'}
-                          >
-                            <td className="py-0.5 pr-3 align-top">{l.nom}</td>
-                            <td className="whitespace-nowrap py-0.5 text-right align-top tabular-nums">
-                              {[l.quantite, l.unite].filter(Boolean).join(' ')}
-                            </td>
-                          </tr>
-                        ))}
-                        {poids != null && (
-                          <tr className="border-t border-black/40 font-bold">
-                            <td className="pt-1 pr-3">Poids total</td>
-                            <td className="whitespace-nowrap pt-1 text-right tabular-nums">{fmtPoids(poids)}</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </section>
-                );
-              })}
-            </div>
-          </article>
-        ))}
-      </div>
+              key={f.cle}
+              className={`cap-fiche break-inside-avoid border border-dashed border-black/70 bg-white p-5 text-black print:p-4 ${
+                unParPage && i > 0 ? 'break-before-page' : ''
+              }`}
+            >
+              <header className="mb-4 border-b border-black pb-2 text-center">
+                <h2 className="text-[18px] font-bold">{f.titre}</h2>
+                {f.rendement && <p className="text-[13px]">({f.rendement})</p>}
+              </header>
+              {!f.preparations.length && <p className="text-[13px] italic">Aucun ingrédient saisi.</p>}
+              <div className={`grid gap-x-10 gap-y-5 ${f.preparations.length > 1 ? 'sm:grid-cols-2 print:grid-cols-2' : 'mx-auto max-w-sm'}`}>
+                {f.preparations.map((p) => {
+                  const nom = nomDe(f, p.cle, p.nom);
+                  const plusieurs = f.preparations.length > 1;
+                  const suspect = plusieurs && nomPreparationSuspect(nom);
+                  const poids = poidsTotal ? poidsTotalCap(p) : null;
+                  return (
+                    <section key={p.cle} className="break-inside-avoid">
+                      {plusieurs && (
+                        <>
+                          <input
+                            value={nom}
+                            onChange={(e) => setNoms((n) => ({ ...n, [`${f.cle}/${p.cle}`]: e.target.value }))}
+                            aria-label={`Nom de la préparation « ${p.nom} »`}
+                            className={`no-print mb-1 w-full border-0 border-b border-dashed bg-transparent px-0 py-0.5 text-[14px] font-bold underline focus:outline-none ${
+                              suspect ? 'border-amber-600 bg-amber-50' : 'border-black/40'
+                            }`}
+                          />
+                          {suspect && (
+                            <p className="no-print mb-1 text-[11px] text-amber-800">Ressemble à une technique : renommez la préparation.</p>
+                          )}
+                          <h3 className="mb-1 hidden text-[14px] font-bold underline print:block">{nom}</h3>
+                        </>
+                      )}
+                      <table className="w-full text-[13px] leading-snug">
+                        <tbody>
+                          {p.lignes.map((l, k) => (
+                            // Filet pointillé sous chaque ingrédient : il guide l'œil du
+                            // nom à sa quantité. Pas sous la dernière ligne quand « Poids
+                            // total » suit, dont le trait plein joue déjà ce rôle.
+                            <tr
+                              key={k}
+                              className={poids != null && k === p.lignes.length - 1 ? '' : 'border-b border-dotted border-black/50'}
+                            >
+                              <td className="py-0.5 pr-3 align-top">{l.nom}</td>
+                              <td className="whitespace-nowrap py-0.5 text-right align-top tabular-nums">
+                                {[l.quantite, l.unite].filter(Boolean).join(' ')}
+                              </td>
+                            </tr>
+                          ))}
+                          {poids != null && (
+                            <tr className="border-t border-black/40 font-bold">
+                              <td className="pt-1 pr-3">Poids total</td>
+                              <td className="whitespace-nowrap pt-1 text-right tabular-nums">{fmtPoids(poids)}</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </section>
+                  );
+                })}
+              </div>
+            </article>
+              ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

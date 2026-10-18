@@ -25,7 +25,15 @@ import { UNITS_LBL } from '@/lib/recipe-view';
 
 export type CapLigne = { nom: string; quantite: string; unite: string };
 export type CapPreparation = { cle: string; nom: string; lignes: CapLigne[] };
-export type CapFiche = { cle: string; titre: string; rendement: string | null; preparations: CapPreparation[] };
+// `categorie` : tag de la recette autre que « Recette CAP » (cf. `categorieCap`) ;
+// `null` pour une fournée ou une recette sans autre tag.
+export type CapFiche = {
+  cle: string;
+  titre: string;
+  rendement: string | null;
+  categorie: string | null;
+  preparations: CapPreparation[];
+};
 
 const nombre = (v: string): number | null => {
   const t = v.trim().replace(',', '.');
@@ -123,6 +131,7 @@ export function ficheCapRecette(recipe: RecipeFull, composants?: Map<number, str
   return {
     cle: recipe.id,
     titre: recipe.title,
+    categorie: categorieCap(recipe.recipe_tags),
     rendement: rendementCap({
       measure_type: recipe.measure_type,
       yield_qty: recipe.yield_qty,
@@ -162,6 +171,7 @@ export function ficheCapFournee(batch: BatchFull): CapFiche {
   return {
     cle: `fournee-${batch.id}`,
     titre: batch.recipe_title || 'Fournée',
+    categorie: null,
     rendement: rendementCap({
       measure_type: batch.measure_type,
       yield_qty: batch.yield_qty,
@@ -273,4 +283,37 @@ export function itemsCap(
     }
   }
   return out;
+}
+
+// ── Catégories du carnet (JEP-6) ──────────────────────────────────────────
+
+/**
+ * Catégorie d'une recette : son tag autre que « Recette CAP ». La base ne range
+ * pas les tags d'une recette dans un ordre (`recipe_tags` = recette + tag),
+ * donc « le second tag » se définit par exclusion ; s'il y en a plusieurs, le
+ * premier par ordre alphabétique, pour un résultat stable d'une impression à
+ * l'autre. `null` sans autre tag.
+ */
+export function categorieCap(tags: { tags: { name: string } | null }[] | null | undefined): string | null {
+  const cap = norm(TAG_CAP);
+  const noms = (tags ?? [])
+    .map((t) => t.tags?.name?.trim() ?? '')
+    .filter((n) => n && norm(n) !== cap)
+    .sort((a, b) => a.localeCompare(b, 'fr'));
+  return noms[0] ?? null;
+}
+
+export type CapGroupe = { categorie: string | null; fiches: CapFiche[] };
+
+/**
+ * Fiches regroupées par catégorie, catégories dans l'ordre alphabétique et
+ * « sans catégorie » en dernier ; l'ordre des fiches dans un groupe est
+ * conservé (déjà alphabétique).
+ */
+export function grouperParCategorie(fiches: CapFiche[]): CapGroupe[] {
+  const parCat = new Map<string | null, CapFiche[]>();
+  for (const f of fiches) parCat.set(f.categorie, [...(parCat.get(f.categorie) ?? []), f]);
+  return [...parCat.entries()]
+    .sort(([a], [b]) => (a === null ? 1 : b === null ? -1 : a.localeCompare(b, 'fr')))
+    .map(([categorie, liste]) => ({ categorie, fiches: liste }));
 }

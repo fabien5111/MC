@@ -8,7 +8,9 @@ import type { CarnetItem } from '@/lib/carnet';
 import type { UserRecipeCard } from '@/lib/recipes';
 import {
   ficheCapFournee,
+  categorieCap,
   ficheCapRecette,
+  grouperParCategorie,
   itemsCap,
   tagCapId,
   lignesCap,
@@ -185,5 +187,24 @@ describe('rubrique « Carnet CAP »', () => {
     expect(items[0]).toBe(carnet[0]);
     expect(items[1]).toBe(favori);
     expect(items[2]).toMatchObject({ kind: 'other', favorite: false, subscription: false, shared: null });
+  });
+});
+
+describe('catégories', () => {
+  const t = (...noms: string[]) => noms.map((name) => ({ tags: { name } }));
+  it('la catégorie est le tag autre que « Recette CAP », le premier par ordre alphabétique', () => {
+    expect(categorieCap(t('Recette CAP', 'Crèmes'))).toBe('Crèmes');
+    expect(categorieCap(t('Pâtes', 'recette cap', 'Crèmes'))).toBe('Crèmes');
+    expect(categorieCap(t('Recette CAP'))).toBeNull();
+    expect(categorieCap(undefined)).toBeNull();
+  });
+  it('regroupe par catégorie alphabétique, « sans catégorie » en dernier', () => {
+    const f = (cle: string, categorie: string | null) => ({ cle, titre: cle, rendement: null, categorie, preparations: [] });
+    const g = grouperParCategorie([f('a', null), f('b', 'Pâtes'), f('c', 'Crèmes'), f('d', 'Pâtes')]);
+    expect(g.map((x) => [x.categorie, x.fiches.map((y) => y.cle)])).toEqual([
+      ['Crèmes', ['c']],
+      ['Pâtes', ['b', 'd']],
+      [null, ['a']],
+    ]);
   });
 });

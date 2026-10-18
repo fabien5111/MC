@@ -1625,6 +1625,18 @@ même quantité ne doit y figurer qu'une fois.
   blancs »). `nomPreparationSuspect` signale verbe de technique, température
   ou durée — repère, jamais blocage. Une préparation seule n'imprime pas son
   nom.
+- **Catégories** (carnet de plusieurs recettes seulement) : la catégorie d'une
+  recette est son tag **autre que « Recette CAP »** (`categorieCap`,
+  `lib/carnet-cap.ts`) — la base ne range pas les tags dans un ordre
+  (`recipe_tags` = recette + tag), « le second tag » se définit donc par
+  exclusion, et s'il y en a plusieurs le premier par ordre alphabétique, pour
+  un résultat stable. Le sommaire liste chaque catégorie (bandeau gris) avec
+  ses recettes ; à l'impression, chaque catégorie s'ouvre sur un **bandeau
+  gris** et **saute une page** (`grouperParCategorie`) ; les recettes sans
+  autre tag vont en dernier sous « Sans catégorie ». Aucune catégorie nulle
+  part : présentation inchangée, sans bandeau. Le fond gris porte
+  `print-color-adjust: exact`, sans quoi les navigateurs l'impriment blanc.
+  Une fiche de recette seule ou de fournée n'a pas de catégorie.
 - **Poids total** par préparation (case cochée par défaut), seulement si
   toutes ses lignes sont des masses chiffrées (`poidsTotalCap`) — un total
   faux est pire qu'absent.
