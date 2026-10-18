@@ -1855,7 +1855,7 @@ function StepCookCard({
   ].filter(Boolean);
 
   return (
-    <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden print:overflow-visible print:[break-inside:avoid]${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
+    <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden print:overflow-visible print:[break-inside:auto]${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
       {/* Tout l'en-tête déplie/replie l'étape, pas seulement le chevron : une
           cible de la taille d'une icône était inutilement difficile à viser,
           au doigt comme à la souris. La case à cocher garde donc son propre
