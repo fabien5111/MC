@@ -69,3 +69,75 @@ export function ingredientRefDuplicates<T extends { id: number; name: string }>(
     .map((g) => [...g].sort((a, b) => a.name.localeCompare(b.name, 'fr')))
     .sort((a, b) => a[0].name.localeCompare(b[0].name, 'fr'));
 }
+
+// ---------------------------------------------------------------------------
+// Accord du nom à l'affichage (JEP-282) — fonction pure.
+//
+// Le texte saisi par l'auteur reste en base tel quel ; seul l'AFFICHAGE
+// s'accorde, quand la quantité change sans que le nom suive (« 1 jaune
+// d'œuf » ajusté ×3, « 2 jaunes d'œufs » divisé par deux). Le pluriel d'un
+// nom composé n'étant pas mécanique (« jaunes d'œufs », « gousses de
+// vanille », « noix de coco »), il vient d'un libellé saisi au référentiel
+// (`ingredient_refs.name_plural`), jamais d'une heuristique.
+//
+// N'agit que si : la ligne est rattachée au référentiel, l'unité est une unité
+// de comptage (« unité(s) » ou aucune — jamais « 40 g de jaunes d'œufs »), la
+// quantité est un nombre, la référence porte un pluriel, et le nom de
+// l'auteur désigne bien cette référence (même `ingredientKey`) — un libellé
+// enrichi (« Jaunes d'œufs frais ») reste intact. Sinon, texte de l'auteur.
+
+export type NomsReference = { singulier: string; pluriel: string | null };
+
+// Noms accordables du référentiel, par identifiant ET par `ingredientKey`. La
+// clé sert de repli quand la ligne pointe vers un DOUBLON de la référence qui
+// porte le pluriel (« Œufs » à côté de « Œuf ») : le référentiel en contient
+// tant qu'Admin → Éléments inconnus ne les a pas fusionnés, et l'accord ne doit
+// pas dépendre de la copie que la ligne a rattachée.
+export type NomsAccordables = { parId: Record<number, NomsReference>; parCle: Record<string, NomsReference> };
+
+export const AUCUN_NOM_ACCORDABLE: NomsAccordables = { parId: {}, parCle: {} };
+
+// Références de la ligne : la sienne si elle porte un pluriel, sinon une autre
+// référence du même ingrédient. Ligne non rattachée (`refId` vide) : aucune.
+export function nomsDeLigne(
+  noms: NomsAccordables,
+  nom: string,
+  refId: number | null | undefined,
+): NomsReference | null {
+  if (refId == null) return null;
+  return noms.parId[refId] ?? noms.parCle[ingredientKey(nom)] ?? null;
+}
+
+const UNITES_COMPTAGE = new Set(['', 'unité(s)', 'unité', 'unités', 'unite(s)']);
+
+// Quantité affichée → nombre, ou null si elle n'est pas lisible
+// (« 1/2 » et « 1,5 » acceptés ; « quelques », « 2-3 » écartés).
+export function quantiteNumerique(q: string | number | null | undefined): number | null {
+  if (q == null) return null;
+  const s = String(q).trim().replace(',', '.');
+  if (!s) return null;
+  const frac = /^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/.exec(s);
+  if (frac) return Number(frac[2]) ? Number(frac[1]) / Number(frac[2]) : null;
+  if (!/^\d+(?:\.\d+)?$/.test(s)) return null;
+  return Number(s);
+}
+
+export function libelleIngredient(
+  nom: string,
+  quantite: string | number | null | undefined,
+  unite: string | null | undefined,
+  ref: NomsReference | null | undefined,
+): string {
+  if (!ref || !ref.pluriel || !ref.singulier) return nom;
+  if (!UNITES_COMPTAGE.has((unite ?? '').trim().toLowerCase())) return nom;
+  const n = quantiteNumerique(quantite);
+  if (n == null) return nom;
+  const cle = ingredientKey(nom);
+  if (!cle || (cle !== ingredientKey(ref.singulier) && cle !== ingredientKey(ref.pluriel))) return nom;
+  const voulu = n >= 2 ? ref.pluriel : ref.singulier;
+  // Majuscule initiale : celle de l'auteur, pas celle du référentiel.
+  const premier = nom.charAt(0);
+  const maj = premier !== premier.toLowerCase();
+  const tete = voulu.charAt(0);
+  return (maj ? tete.toUpperCase() : tete.toLowerCase()) + voulu.slice(1);
+}

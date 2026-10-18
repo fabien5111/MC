@@ -3,6 +3,7 @@
 // Génération de liste de courses depuis une recette (porté de mcShoppingOpen /
 // mcShoppingValidate de recette.html) : sélection des ingrédients, ajout à une
 // liste existante ou création d'une nouvelle, puis redirection vers la liste.
+import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -212,7 +213,7 @@ export function ShoppingWidget({
                     className="w-4 h-4 rounded border-outline accent-primary focus:ring-primary cursor-pointer"
                   />
                   <span className="font-body-md text-body-md break-words">
-                    {m.name}
+                    <NomIngredient nom={m.name} quantite={m.qty} unite={m.unit} refId={m.ref_id} />
                     {m.comment && <span className="text-on-surface-variant italic"> — {m.comment}</span>}
                   </span>
                   <span className="font-label-md text-label-md text-primary whitespace-nowrap">

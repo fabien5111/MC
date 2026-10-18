@@ -5,6 +5,7 @@
 // temps et récap global live), enregistrement des corrections, puis conversion
 // en recette (recipes + steps + groups + ingredients + utensils). Mutations via
 // le client Supabase navigateur.
+import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -1818,7 +1819,7 @@ export function RelectureEditor({
                             onChange={(e) => {
                               // Ingrédient choisi dans le référentiel → allergène pré-rempli
                               // (chaîne vide si le référentiel n'en a pas). Sinon, saisie libre.
-                              const nom = e.target.value;
+                              const nom = saisieIngredient(e.target);
                               const refKey = nom.trim().toLowerCase();
                               if (Object.prototype.hasOwnProperty.call(refAllergenMap, refKey)) {
                                 patchIng(si, ii, { nom, allergen: parseAllergens(refAllergenMap[refKey]) });

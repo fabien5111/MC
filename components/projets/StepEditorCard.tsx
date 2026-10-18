@@ -7,6 +7,7 @@
 // l'écriture en base : c'est `ComponentResolver` qui enregistre, par
 // `writeComponentContent` — jamais par l'enregistrement global de CreerForm,
 // qui effacerait les `component_id`.
+import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImageSlot } from '@/components/ImageSlot';
@@ -254,7 +255,7 @@ export function StepEditorCard({
                       // à l'enregistrement. Un ingrédient du référentiel pré-remplit
                       // ses allergènes (comme l'éditeur de recette).
                       onChange={(e) => {
-                        const name = e.target.value;
+                        const name = saisieIngredient(e.target);
                         const refKey = name.trim().toLowerCase();
                         if (refAllergens && Object.prototype.hasOwnProperty.call(refAllergens, refKey)) {
                           onIngredientChange(j, {

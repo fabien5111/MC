@@ -13,6 +13,7 @@
 // Autocomplétion des ingrédients/ustensiles/allergènes via datalist ; ajout à
 // la volée d'un libellé inconnu au référentiel réservé aux administrateurs
 // (bouton « Ajouter au référentiel »).
+import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -1969,7 +1970,7 @@ export function CreerForm({
                               list="dl-ingredients"
                               value={g.name}
                               onChange={(e) => {
-                                const name = e.target.value;
+                                const name = saisieIngredient(e.target);
                                 // Ingrédient choisi dans le référentiel → allergène pré-rempli
                                 // (chaîne vide si le référentiel n'en a pas). Sinon, on ne touche
                                 // pas au champ : il reste en saisie libre.

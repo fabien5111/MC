@@ -18,6 +18,7 @@
 // a plus de copie séparée à garder synchronisée, donc plus de session à
 // proposer de supprimer après un déplacement de jour ou l'ajout d'une
 // sous-étape.
+import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -31,7 +32,7 @@ import { dayLabel } from '@/lib/recipe-view';
 type StepFlags = Pick<BatchStepRow, 'id' | 'done' | 'day_offset' | 'base_day_offset' | 'user_note'>;
 type IngRow = Pick<
   BatchIngredientRow,
-  'id' | 'name' | 'quantity' | 'quantity_text' | 'unit' | 'comment' | 'removed' | 'excluded_when_done' | 'expanded_into_recipe_id'
+  'id' | 'name' | 'ref_id' | 'quantity' | 'quantity_text' | 'unit' | 'comment' | 'removed' | 'excluded_when_done' | 'expanded_into_recipe_id'
 > & { expanded_recipe?: { id: string; title: string } | null };
 type SubRow = Pick<BatchSubstepRow, 'id' | 'texte' | 'order_index' | 'excluded_when_done' | 'added'>;
 
@@ -476,7 +477,7 @@ export function BatchStepDonePanel({
                         {qtyText(it)} {it.unit || ''}
                       </span>
                       <span className={`font-body-md text-body-md break-words ${tone}`}>
-                        {it.name}
+                        <NomIngredient nom={it.name} quantite={it.quantity ?? it.quantity_text} unite={it.unit} refId={it.ref_id} />
                         {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                       </span>
                       {replaced && (

@@ -823,6 +823,26 @@ n'existe qu'à l'affichage). Ne pas recoder une quatrième variante de cette
 liste. La fournée renvoie elle aussi vers les étapes (`MergedBatchRow.stepIds`,
 ancre `#etape-<id>` du déroulé Préparer).
 
+- **Accord du nom à l'affichage (JEP-282).** Le nom saisi reste en base tel
+  quel ; seul l'affichage s'accorde avec la quantité (`libelleIngredient`,
+  `lib/ingredient-name.ts`, pur et testé). Le pluriel d'un nom composé n'étant
+  pas mécanique (« jaunes d'œufs », « gousses de vanille », « noix de coco »),
+  il vient d'un libellé saisi au référentiel — `ingredient_refs.name_plural`,
+  champ « Pluriel » d'Admin → Listes → Ingrédients — jamais d'une heuristique.
+  N'agit que si la ligne a un `ref_id`, que l'unité est de comptage
+  (« unité(s) » ou aucune — jamais « 40 g de jaunes d'œufs »), que la quantité
+  est un nombre et que le nom de l'auteur a la même `ingredientKey` que la
+  référence (un libellé enrichi reste intact). Singulier de 0 à 1,99, pluriel
+  dès 2 ; majuscule initiale de l'auteur conservée. **Branchement** : table
+  `ref_id → {singulier, pluriel}` lue une fois au layout
+  (`getIngredientNomsAccordables`, cache des référentiels) et mise en contexte
+  (`IngredientNomsProvider`) ; les écrans rendent `<NomIngredient>` — fiche
+  recette (étapes, liste totale), fournée (Préparer, Pâtisser, liste totale),
+  courses, récapitulatif du mode projet. Dans une liste totale, le nom suit la
+  quantité du total. Les éditeurs (`/creer`, relecture) montrent le texte de
+  l'auteur. La lecture du référentiel est en `select('*')` : la colonne étant
+  ajoutée à la main (DDL par `psql`), la nommer ferait échouer tout le
+  référentiel avant la migration.
 - **Approximation symétrique** : « cassis » devient « cassi », « noix » reste
   « noix » — sans conséquence, les deux côtés passent par la même fonction.
   Seuls les mots de plus de 3 lettres perdent leur pluriel (« jus », « riz »).
@@ -830,7 +850,13 @@ ancre `#etape-<id>` du déroulé Préparer).
   `public.mc_ingredient_key` (rattrapage des `ref_id`) doit rester aligné.
 - **« oeuf » → « œuf » à l'écriture** (`fixOeufLigature`) sur tous les chemins
   qui écrivent un nom d'ingrédient : `CreerForm`, relecture d'import, courses,
-  composants de projet.
+  composants de projet — **et à la frappe** dans les champs nom d'ingrédient
+  (`saisieIngredient`, `lib/saisie-ingredient.ts`, JEP-282), sans quoi la
+  suggestion « Œuf » du `<datalist>` natif (filtré en sous-chaîne simple) ne
+  s'affichait jamais pour « oeuf ». **Liste fermée de mots** (`MOTS_LIGATURE`,
+  `lib/text.ts` : œuf, bœuf, cœur, œillet, œillette, singulier et pluriel),
+  jamais tout « oe » — « moelleux », « coefficient », « Noël » s'écrivent sans
+  ligature. Un mot à ajouter s'y range, avec son test (`lib/text.test.ts`).
 - **Un ingrédient, une seule entrée au référentiel** — préalable aux coûts et
   aux stocks, qui se rattacheront à `ingredient_refs.id`, jamais au texte.
   Admin → Éléments inconnus liste les **doublons du référentiel** (même clé)
@@ -991,6 +1017,13 @@ directes :
   non un `<label>`, qui renverrait vers la case à cocher tout clic sur le
   titre, et un `stopPropagation` sur la case — sans lui, cocher une étape la
   replierait au passage.
+- **Le sommaire de la fournée vise SES ancres, pas celles de la fiche.**
+  `RecipeToc` vise par défaut `sec-etape-N` (`stepAnchorId`), qui n'existent que
+  sur la fiche recette et dans les éditeurs : dans la fournée, les entrées
+  d'étape du rail ne menaient nulle part. Le prop facultatif `anchorFor` nomme
+  l'ancre de chaque entrée — `etape-<id>` en Préparer, `sec-jalon-<n>` en
+  Pâtisser (où une entrée est un jour, pas une étape). Le suivi de la section
+  courante (`useToc`) utilise les mêmes identifiants.
 - **Une note saisie se signale en vert** (`border-green-700 bg-green-50`) sur
   les trois champs du mode Pâtisser — ingrédient, sous-étape, étape. Ces
   champs sont vides sur l'immense majorité des lignes : sans marqueur, celui

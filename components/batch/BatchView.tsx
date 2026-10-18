@@ -39,6 +39,7 @@ import { ingredientConversionText, shortUnitLbl, type ConversionRef, type Ingred
 import { ingredientKey } from '@/lib/ingredient-name';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { IngredientTotalList } from '@/components/IngredientTotalList';
+import { NomIngredient } from '@/components/IngredientNomsProvider';
 import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
 import { trackEvent } from '@/lib/analytics';
@@ -813,7 +814,7 @@ function PreparerView({
           du site (`<MobileNav current="cuisine" />`) — sans ce réglage, le
           bouton flottant du tiroir se pose dessous elle (z-index inférieur)
           et devient inatteignable au clic sur mobile. */}
-      <RecipeToc sections={tocSections} steps={tocSteps} actions={actions} mobile="drawer" mobileInset="nav" />
+      <RecipeToc sections={tocSections} steps={tocSteps} anchorFor={(i) => `etape-${tocSteps[i].key}`} actions={actions} mobile="drawer" mobileInset="nav" />
 
       <p className="no-print font-body-md text-[12px] text-on-surface-variant">
         Sur cette fiche : <span className="text-green-700">en vert</span> ce que vous avez ajouté (dont les étapes venues
@@ -1038,7 +1039,10 @@ function PreparerView({
               };
               return {
                 key: ingredientKey(g.name),
-                name: g.name,
+                // JEP-282 : le nom suit la quantité du total (ou de l'unique ligne).
+                name: g.subtotal
+                  ? <NomIngredient nom={g.name} quantite={g.subtotal.qty} unite={g.subtotal.unit} refId={g.lines[0].ref_id} />
+                  : <NomIngredient nom={g.name} quantite={mergedRowQtyText(g.lines[0])} unite={g.lines[0].unit} refId={g.lines[0].ref_id} />,
                 allergen: Array.from(new Set(g.lines.flatMap((r) => (r.allergen ? r.allergen.split(',').map((a) => a.trim()) : [])).filter(Boolean))).join(', ') || null,
                 total: g.subtotal ? qtyNode(g.subtotal.qty, g.subtotal.unit, g.lines[0].ref_id) : null,
                 lines: g.lines.map((r) => {
@@ -1542,7 +1546,7 @@ function PatisserView({
           session (terminer/annuler) et la sortie, qui doivent rester
           atteignables même pour une fournée sans étape. `mobileInset="nav"` :
           même raison que dans PreparerView, cf. son commentaire. */}
-      <RecipeToc sections={tocSections} steps={tocSteps} actions={tocActions} onNavigateToStep={expandJalon} mobile="drawer" mobileInset="nav" />
+      <RecipeToc sections={tocSections} steps={tocSteps} anchorFor={jalonAnchorId} actions={tocActions} onNavigateToStep={expandJalon} mobile="drawer" mobileInset="nav" />
 
       {meta && <p className="text-on-surface-variant text-sm mb-6">{meta}</p>}
 
@@ -1984,7 +1988,7 @@ function StepCookCard({
                 <label className="flex items-center gap-3">
                   {checkbox}
                   <span className={`font-body-md text-[16px] flex-1 min-w-0${struck}`}>
-                    {ing.name}
+                    <NomIngredient nom={ing.name} quantite={ing.quantity ?? ing.quantity_text} unite={ing.unit} refId={ing.ref_id} />
                     {ing.comment && <span className="italic text-on-surface-variant"> ({ing.comment})</span>}
                   </span>
                 </label>
@@ -2035,7 +2039,7 @@ function StepCookCard({
                       return (
                         <li key={it.id}>
                           <span className={`text-[12px] font-label-md text-on-surface-variant${su.done || subExcluded ? ' line-through opacity-50' : ''}`}>
-                            {it.name}
+                            <NomIngredient nom={it.name} quantite={it.quantity ?? it.quantity_text} unite={it.unit} refId={it.ref_id} />
                             {qtyTxt && <> — {qtyTxt}</>}
                             {conv && <> ({conv})</>}
                             {it.comment && <span className="italic"> ({it.comment})</span>}

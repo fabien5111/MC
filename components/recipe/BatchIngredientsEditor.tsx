@@ -12,6 +12,8 @@
 // Écriture immédiatement reflétée partout (fiche et mode Pâtisser lisent la
 // même ligne) : plus de session figée à proposer de supprimer après une
 // modification, contrairement à l'ancien modèle plan + session séparés.
+import { saisieIngredient } from '@/lib/saisie-ingredient';
+import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { Fragment, useId, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -367,10 +369,10 @@ export function BatchStepIngredients({
                   <span className={`font-body-md text-body-md break-words${tone ? ' ' + tone : ''}`}>
                     {row.url ? (
                       <a href={row.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
-                        {row.name}
+                        <NomIngredient nom={row.name} quantite={row.quantity ?? row.quantity_text} unite={row.unit} refId={row.ref_id} />
                       </a>
                     ) : (
-                      row.name
+                      <NomIngredient nom={row.name} quantite={row.quantity ?? row.quantity_text} unite={row.unit} refId={row.ref_id} />
                     )}
                     {row.comment && <span className="text-on-surface-variant text-sm italic"> — {row.comment}</span>}
                   </span>
@@ -515,8 +517,15 @@ const FIELD = 'border border-outline-variant rounded px-3 py-1.5 font-body-md te
 
 function LineEditForm({ row, onApply, onCancel }: { row: BatchIngredientRow; onApply: (qty: string, coef: string) => void; onCancel: () => void }) {
   const coef = row.base_quantity && row.quantity != null ? +(row.quantity / row.base_quantity).toFixed(2) : null;
-  const [coefStr, setCoefStr] = useState(coef != null ? fmtNum(coef) : '');
-  const [qty, setQty] = useState(row.quantity != null ? fmtNum(row.quantity) : '');
+  const coefInitial = coef != null ? fmtNum(coef) : '';
+  const qtyInitial = row.quantity != null ? fmtNum(row.quantity) : '';
+  const [coefStr, setCoefStr] = useState(coefInitial);
+  const [qty, setQty] = useState(qtyInitial);
+  // Les deux champs sont pré-remplis, et `applyEdit` donne la priorité à la
+  // quantité : changer seulement le coefficient était donc ignoré (la quantité
+  // inchangée l'emportait). On ne transmet la quantité que si elle a été
+  // modifiée ; sinon le coefficient saisi s'applique.
+  const valider = () => onApply(qty !== qtyInitial || coefStr === coefInitial ? qty : '', coefStr);
   return (
     <li style={{ gridColumn: '1/-1' }} className="py-3">
       <div className="flex flex-wrap items-end gap-3">
@@ -529,7 +538,7 @@ function LineEditForm({ row, onApply, onCancel }: { row: BatchIngredientRow; onA
           <span className="font-label-md text-[10px] uppercase text-on-surface-variant">ou quantité ajustée{row.unit ? ` (${row.unit})` : ''}</span>
           <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} className={FIELD} style={{ width: '7rem' }} />
         </label>
-        <button type="button" onClick={() => onApply(qty, coefStr)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
+        <button type="button" onClick={valider} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px]">
           OK
         </button>
         <button type="button" onClick={onCancel} className="border border-outline px-4 py-1.5 rounded-full font-label-md text-[12px] text-on-surface-variant">
@@ -629,7 +638,7 @@ function AddedIngredientForm({
         <div className="relative flex-[2] min-w-0">
           <input
             value={name}
-            onChange={(e) => onName(e.target.value)}
+            onChange={(e) => onName(saisieIngredient(e.target))}
             list={datalistId}
             autoComplete="off"
             placeholder="Ingrédient"
