@@ -408,7 +408,7 @@ export function BatchView({
 
   return (
     <>
-      <div className="recipe-print-content max-w-[900px] mx-auto px-margin-mobile py-6 pb-32">
+      <div className="recipe-print-content max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
         {/* Retour contextuel : vers l'écran de liste d'où l'on vient quand il
