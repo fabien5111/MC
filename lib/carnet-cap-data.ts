@@ -6,7 +6,7 @@ import { CARD_SELECT, getRecipeFull, getRecipesFull, withAllergenNames, type Rec
 import { getTags } from '@/lib/data/reference';
 import type { CarnetItem } from '@/lib/carnet';
 import { isProjectRecipe } from '@/lib/projects';
-import { ficheCapRecette, itemsCap, tagCapId, type CapFiche } from '@/lib/carnet-cap';
+import { ficheCapRecette, itemsCap, tagsCapIds, type CapFiche } from '@/lib/carnet-cap';
 
 // Au-delà, la page d'impression deviendrait lourde à rendre et à imprimer ;
 // un carnet d'examen tient largement dans cette limite.
@@ -52,23 +52,23 @@ export async function getFichesCapRecettes(ids: string[]): Promise<CapFiche[]> {
 const CAP_MAX_RUBRIQUE = 300;
 
 /**
- * Rubrique « Carnet CAP » : toutes les recettes étiquetées « Recette CAP »
+ * Rubrique « Carnet CAP » : toutes les recettes portant un tag « [CAP] … »
  * auxquelles le membre a accès. La lecture passe par sa session — la RLS décide
  * (les siennes, les partagées, les publiées et publiques des autres), jamais le
- * code. `tagTrouve` faux = le tag n'existe pas encore au back-office : l'écran
+ * code. `tagTrouve` faux = aucun tag « [CAP] » n'existe encore au back-office : l'écran
  * le dit plutôt que d'annoncer une rubrique vide.
  */
 export async function getItemsCap(
   userId: string,
   carnet: CarnetItem[],
 ): Promise<{ items: CarnetItem[]; tagTrouve: boolean }> {
-  const tagId = tagCapId(await getTags());
-  if (tagId == null) return { items: [], tagTrouve: false };
+  const ids = tagsCapIds(await getTags());
+  if (!ids.length) return { items: [], tagTrouve: false };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('recipes')
     .select(`${CARD_SELECT}, status, is_public, kind, project_stage, recipe_tags!inner(tag_id)`)
-    .eq('recipe_tags.tag_id', tagId)
+    .in('recipe_tags.tag_id', ids)
     .order('created_at', { ascending: false })
     .limit(CAP_MAX_RUBRIQUE);
   if (error) console.error('getItemsCap:', error.message);

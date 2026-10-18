@@ -25,7 +25,7 @@ import { UNITS_LBL } from '@/lib/recipe-view';
 
 export type CapLigne = { nom: string; quantite: string; unite: string };
 export type CapPreparation = { cle: string; nom: string; lignes: CapLigne[] };
-// `categorie` : tag de la recette autre que « Recette CAP » (cf. `categorieCap`) ;
+// `categorie` : nom du tag « [CAP] … » privé de la marque (cf. `categorieCap`) ;
 // `null` pour une fournée ou une recette sans autre tag.
 export type CapFiche = {
   cle: string;
@@ -244,16 +244,22 @@ export function nomPreparationSuspect(nom: string): boolean {
 
 // ── Rubrique « Carnet CAP » du carnet (JEP-6) ─────────────────────────────
 
-// Nom du tag qui range une recette dans la rubrique, tel que créé au
-// back-office. Comparé sans casse ni accents (`tagCapId`), jamais par id en
-// dur : l'id change d'une base à l'autre.
-export const TAG_CAP = 'Recette CAP';
+// Convention de nommage : un tag dont le nom contient « [CAP] » range la
+// recette dans la rubrique, le reste du nom étant sa catégorie
+// (« [CAP] Crèmes » → « Crèmes »). Détecté sans casse ni accents, jamais par id
+// en dur : l'id change d'une base à l'autre.
+export const MARQUE_CAP = '[CAP]';
 
 const norm = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 
-export function tagCapId(tags: { id: number; name: string }[]): number | null {
-  return tags.find((t) => norm(t.name) === norm(TAG_CAP))?.id ?? null;
+const RE_MARQUE_CAP = /\[\s*cap\s*\]/i;
+
+export const estTagCap = (nom: string) => RE_MARQUE_CAP.test(norm(nom));
+
+/** Ids de tous les tags « [CAP] … ». */
+export function tagsCapIds(tags: { id: number; name: string }[]): number[] {
+  return tags.filter((t) => estTagCap(t.name)).map((t) => t.id);
 }
 
 /**
@@ -288,19 +294,18 @@ export function itemsCap(
 // ── Catégories du carnet (JEP-6) ──────────────────────────────────────────
 
 /**
- * Catégorie d'une recette : son tag autre que « Recette CAP ». La base ne range
- * pas les tags d'une recette dans un ordre (`recipe_tags` = recette + tag),
- * donc « le second tag » se définit par exclusion ; s'il y en a plusieurs, le
- * premier par ordre alphabétique, pour un résultat stable d'une impression à
- * l'autre. `null` sans autre tag.
+ * Catégorie d'une recette : le nom de son tag « [CAP] … » privé de la marque
+ * (« [CAP] Crèmes » → « Crèmes »). Plusieurs tags « [CAP] » : le premier par
+ * ordre alphabétique, pour un résultat stable d'une impression à l'autre.
+ * `null` sans tag « [CAP] » ou quand le tag est exactement « [CAP] ».
  */
 export function categorieCap(tags: { tags: { name: string } | null }[] | null | undefined): string | null {
-  const cap = norm(TAG_CAP);
   const noms = (tags ?? [])
     .map((t) => t.tags?.name?.trim() ?? '')
-    .filter((n) => n && norm(n) !== cap)
+    .filter((n) => n && estTagCap(n))
+    .map((n) => n.replace(/\[\s*cap\s*\]/i, ' ').replace(/\s+/g, ' ').replace(/^[\s:–—-]+|[\s:–—-]+$/g, ''))
     .sort((a, b) => a.localeCompare(b, 'fr'));
-  return noms[0] ?? null;
+  return noms.find((n) => n) ?? null;
 }
 
 export type CapGroupe = { categorie: string | null; fiches: CapFiche[] };

@@ -9,7 +9,7 @@
 // §10). « Tout » cesse donc d'être littéralement tout — c'est le prix de
 // l'étanchéité, assumé ici plutôt que contourné.
 //
-// `cap` — recettes portant le tag « Recette CAP » auxquelles le membre a
+// `cap` — recettes portant un tag « [CAP] … » auxquelles le membre a
 // accès (JEP-6) : les siennes, celles qu'on lui a partagées et les recettes
 // publiées de la communauté. Rubrique du droit `carnet_cap` (plan Pro) : la
 // page la retire des pastilles sans ce droit et ramène `?scope=cap` à « Tout ».

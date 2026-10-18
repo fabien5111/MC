@@ -12,7 +12,7 @@ import {
   ficheCapRecette,
   grouperParCategorie,
   itemsCap,
-  tagCapId,
+  tagsCapIds,
   lignesCap,
   nomPreparationSuspect,
   poidsTotalCap,
@@ -166,9 +166,9 @@ describe('nomPreparationSuspect', () => {
 });
 
 describe('rubrique « Carnet CAP »', () => {
-  it('retrouve le tag sans tenir compte de la casse ni des accents', () => {
-    expect(tagCapId([{ id: 1, name: 'Entremets' }, { id: 7, name: 'recette  cap' }])).toBe(7);
-    expect(tagCapId([{ id: 1, name: 'Entremets' }])).toBeNull();
+  it('retrouve les tags « [CAP] » sans tenir compte de la casse ni des espaces', () => {
+    expect(tagsCapIds([{ id: 1, name: 'Entremets' }, { id: 7, name: '[cap]  Crèmes' }, { id: 8, name: 'Pâtes [ CAP ]' }, { id: 9, name: 'CAP' }])).toEqual([7, 8]);
+    expect(tagsCapIds([{ id: 1, name: 'Entremets' }])).toEqual([]);
   });
 
   const carte = (id: string, auteur: string, extra: Partial<UserRecipeCard> = {}) =>
@@ -192,10 +192,11 @@ describe('rubrique « Carnet CAP »', () => {
 
 describe('catégories', () => {
   const t = (...noms: string[]) => noms.map((name) => ({ tags: { name } }));
-  it('la catégorie est le tag autre que « Recette CAP », le premier par ordre alphabétique', () => {
-    expect(categorieCap(t('Recette CAP', 'Crèmes'))).toBe('Crèmes');
-    expect(categorieCap(t('Pâtes', 'recette cap', 'Crèmes'))).toBe('Crèmes');
-    expect(categorieCap(t('Recette CAP'))).toBeNull();
+  it('la catégorie est le nom du tag [CAP] sans la marque, le premier par ordre alphabétique', () => {
+    expect(categorieCap(t('Entremets', '[CAP] Crèmes'))).toBe('Crèmes');
+    expect(categorieCap(t('[cap] Pâtes', '[CAP] Crèmes'))).toBe('Crèmes');
+    expect(categorieCap(t('[CAP]'))).toBeNull();
+    expect(categorieCap(t('Entremets'))).toBeNull();
     expect(categorieCap(undefined)).toBeNull();
   });
   it('regroupe par catégorie alphabétique, « sans catégorie » en dernier', () => {

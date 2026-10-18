@@ -1583,11 +1583,11 @@ même quantité ne doit y figurer qu'une fois.
   à côté de « Projets » ; plus de bouton dans l'en-tête). **Visible des seuls
   membres qui ont `carnet_cap`** : sans le droit, la pastille n'existe pas et
   `?scope=cap` retombe sur « Tout » (`app/carnet/page.tsx`). Elle liste **toutes
-  les recettes étiquetées « Recette CAP » auxquelles le membre a accès**
+  les recettes portant un tag « [CAP] … » (nom contenant `[CAP]`, sans casse ni espaces) auxquelles le membre a accès**
   (`getItemsCap`, `lib/carnet-cap-data.ts` : les siennes, les partagées, les
   publiées et publiques de la communauté — la **RLS** décide, sous la session) ;
-  le tag est retrouvé par son nom sans casse ni accents (`tagCapId`, jamais par
-  un id en dur), et un tag absent est dit à l'écran. Une recette que le carnet
+  les tags sont retrouvés par leur nom (`tagsCapIds`, jamais par un id en
+  dur), et l'absence de tout tag `[CAP]` est dite à l'écran. Une recette que le carnet
   contient déjà garde son élément (marques et gestes habituels), les autres sont
   des cartes « d'un autre » sans marque ; un projet en cours n'y entre jamais
   (`itemsCap`, pur et testé). **La barre de statut est affichée sur TOUTES les
@@ -1626,14 +1626,14 @@ même quantité ne doit y figurer qu'une fois.
   ou durée — repère, jamais blocage. Une préparation seule n'imprime pas son
   nom.
 - **Catégories** (carnet de plusieurs recettes seulement) : la catégorie d'une
-  recette est son tag **autre que « Recette CAP »** (`categorieCap`,
-  `lib/carnet-cap.ts`) — la base ne range pas les tags dans un ordre
-  (`recipe_tags` = recette + tag), « le second tag » se définit donc par
-  exclusion, et s'il y en a plusieurs le premier par ordre alphabétique, pour
-  un résultat stable. Le sommaire liste chaque catégorie (bandeau gris) avec
+  recette est le nom de son tag **`[CAP] Xxx` privé de la marque**
+  (`[CAP] Crèmes` → « Crèmes », `categorieCap`, `lib/carnet-cap.ts`) ; s'il y
+  en a plusieurs, le premier par ordre alphabétique, pour un résultat stable ;
+  un tag exactement `[CAP]` range la recette sans catégorie. L'ancien tag
+  « Recette CAP » n'est plus lu. Le sommaire liste chaque catégorie (bandeau gris) avec
   ses recettes ; à l'impression, chaque catégorie s'ouvre sur un **bandeau
   gris** et **saute une page** (`grouperParCategorie`) ; les recettes sans
-  autre tag vont en dernier sous « Sans catégorie ». Aucune catégorie nulle
+  tag de catégorie vont en dernier sous « Sans catégorie ». Aucune catégorie nulle
   part : présentation inchangée, sans bandeau. Le fond gris porte
   `print-color-adjust: exact`, sans quoi les navigateurs l'impriment blanc.
   Une fiche de recette seule ou de fournée n'a pas de catégorie.

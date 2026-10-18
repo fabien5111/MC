@@ -11,7 +11,7 @@ import { getRecipeDefaultPhoto } from '@/lib/site';
 import Link from 'next/link';
 import { canAccess } from '@/lib/entitlements';
 import { getItemsCap } from '@/lib/carnet-cap-data';
-import { TAG_CAP } from '@/lib/carnet-cap';
+import { MARQUE_CAP } from '@/lib/carnet-cap';
 import { getEntitlements } from '@/lib/entitlements-data';
 import { parseCarnetParams, carnetParamsToQueryString, type Scope } from '@/lib/carnet-params';
 import { Header } from '@/components/Header';
@@ -36,7 +36,7 @@ const EMPTY_MESSAGES: Record<Scope, string> = {
   fav: 'Aucun favori. Le cœur sur une fiche recette l’ajoute ici.',
   sub: "Aucune publication récente chez les pâtissiers que vous suivez.",
   shared: 'Personne n’a encore partagé son carnet ou une recette avec vous.',
-  cap: `Aucune recette ne porte encore le tag « ${TAG_CAP} ».`,
+  cap: `Aucune recette ne porte encore de tag « ${MARQUE_CAP} … ».`,
   proj: 'Aucun projet en cours. Un projet est un dessert composé de plusieurs recettes de base, mis au point essai après essai.',
 };
 
@@ -140,11 +140,11 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               <ImportsEnAttente nombre={importsEnAttente} />
               <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-lg border border-outline-variant bg-surface-container-low px-5 py-4">
                 <div className="min-w-0 flex-1 basis-[28rem] text-[14px] text-on-surface">
-                  <p className="font-semibold text-primary">Recettes portant le tag « {TAG_CAP} »</p>
+                  <p className="font-semibold text-primary">Recettes portant un tag « {MARQUE_CAP} … »</p>
                   <p className="mt-1 text-on-surface-variant">
                     {cap.tagTrouve
                       ? 'Toutes celles auxquelles vous avez accès : les vôtres, celles qu’on vous a partagées et les recettes publiées de la communauté. Imprimées pour le CAP, seuls leurs ingrédients et quantités figurent sur la feuille.'
-                      : `Le tag « ${TAG_CAP} » n’existe pas encore : un administrateur doit le créer pour que des recettes y figurent.`}
+                      : `Aucun tag « ${MARQUE_CAP} … » n’existe encore (par exemple « ${MARQUE_CAP} Crèmes », dont « Crèmes » sera la catégorie) : un administrateur doit le créer pour que des recettes y figurent.`}
                   </p>
                 </div>
                 {cap.tagTrouve && filtered.length > 0 && (
