@@ -12,6 +12,7 @@
 // Écriture immédiatement reflétée partout (fiche et mode Pâtisser lisent la
 // même ligne) : plus de session figée à proposer de supprimer après une
 // modification, contrairement à l'ancien modèle plan + session séparés.
+import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { Fragment, useId, useState } from 'react';
 import Link from 'next/link';
@@ -637,7 +638,7 @@ function AddedIngredientForm({
         <div className="relative flex-[2] min-w-0">
           <input
             value={name}
-            onChange={(e) => onName(e.target.value)}
+            onChange={(e) => onName(saisieIngredient(e.target))}
             list={datalistId}
             autoComplete="off"
             placeholder="Ingrédient"

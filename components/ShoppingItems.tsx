@@ -4,6 +4,7 @@
 // « courses-detail » — plus complet que courses.html qui n'a que la coche).
 // La coche est optimiste puis persistée via le client Supabase navigateur
 // (RLS appliquée par la session partagée en cookies).
+import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
@@ -375,7 +376,7 @@ function EditItemRow({
   return (
     <div className="py-3 border-b border-outline-variant/30">
       <div className="flex flex-wrap items-end gap-3">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ingrédient" list="dl-shopping-ingredients" className={FIELD} style={{ width: '13rem' }} autoFocus />
+        <input value={name} onChange={(e) => setName(saisieIngredient(e.target))} placeholder="Ingrédient" list="dl-shopping-ingredients" className={FIELD} style={{ width: '13rem' }} autoFocus />
         <input value={qty} onChange={(e) => setQty(e.target.value)} type="number" min={0} step="any" placeholder="Quantité" className={FIELD} style={{ width: '6rem' }} />
         <select value={unit} onChange={(e) => setUnit(e.target.value)} className={`${FIELD} bg-white`} style={{ width: '8rem' }}>
           <option value="">— Unité —</option>
@@ -499,7 +500,7 @@ function AddItemRow({
     <div className="flex flex-wrap items-end gap-3 mt-8 pt-6 border-t border-outline-variant/50 max-w-2xl">
       <label className="flex flex-col gap-1">
         <span className={LBL}>Ingrédient</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ex : Beurre" list="dl-shopping-ingredients" className={FIELD} style={{ width: '13rem' }} autoFocus />
+        <input value={name} onChange={(e) => setName(saisieIngredient(e.target))} placeholder="ex : Beurre" list="dl-shopping-ingredients" className={FIELD} style={{ width: '13rem' }} autoFocus />
       </label>
       <label className="flex flex-col gap-1">
         <span className={LBL}>Quantité</span>
