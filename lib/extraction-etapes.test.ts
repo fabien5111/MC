@@ -120,10 +120,12 @@ describe('titreParDefaut / creditExtraction', () => {
     expect(titreParDefaut([{ title: 'A' }, { title: 'B' }], 'Mille-feuille')).toBe('Mille-feuille — préparation');
     expect(titreParDefaut([{ title: '  ' }], 'Mille-feuille')).toBe('Mille-feuille — préparation');
   });
-  it('nomme l’auteur d’origine, sauf s’il extrait sa propre recette', () => {
+  it('nomme l’auteur d’origine', () => {
     expect(creditExtraction('Mille-feuille', 'Élise', false)).toBe('Extrait de « Mille-feuille », de Élise');
-    expect(creditExtraction('Mille-feuille', 'Élise', true)).toBe('Extrait de « Mille-feuille »');
     expect(creditExtraction('Mille-feuille', null, false)).toBe('Extrait de « Mille-feuille »');
+  });
+  it('ne crédite rien quand on extrait sa propre recette', () => {
+    expect(creditExtraction('Mille-feuille', 'Élise', true)).toBeNull();
   });
 });
 

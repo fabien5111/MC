@@ -12,7 +12,8 @@
 //  - plusieurs étapes possibles ;
 //  - **copie seule** : la recette d'origine n'est ni modifiée ni reliée à la
 //    copie (même doctrine que les fournées et les composants de projet) ;
-//  - l'auteur d'origine est **crédité** (champ « Source » de la copie) ;
+//  - l'auteur d'origine est **crédité** (champ « Source » de la copie), sauf
+//    quand on extrait sa propre recette ;
 //  - rendement déduit du poids des ingrédients copiés, modifiable avant la
 //    création.
 import { estimateWeightGrams, type ConversionRef, type UnitRef, type WeightEstimate } from '@/lib/ingredient-conversions';
@@ -166,12 +167,14 @@ export function titreParDefaut(etapes: Pick<EtapeSource, 'title'>[], titreRecett
   return (seul || `${titreRecette.trim()} — préparation`).slice(0, EXTRACTION_TITRE_MAX);
 }
 
-// Crédit écrit dans le champ « Source » de la copie. L'auteur n'est nommé que
-// s'il n'est pas celui qui extrait : citer son propre nom n'apprend rien.
-export function creditExtraction(titreRecette: string, auteur: string | null, memeAuteur: boolean): string {
+// Crédit écrit dans le champ « Source » de la copie, ou `null` quand on
+// extrait sa propre recette : se créditer soi-même n'apprend rien, et la
+// source resterait à effacer à la main (arbitrage du 19/10/2026).
+export function creditExtraction(titreRecette: string, auteur: string | null, memeAuteur: boolean): string | null {
+  if (memeAuteur) return null;
   const base = `Extrait de « ${titreRecette.trim()} »`;
   const nom = (auteur || '').trim();
-  return memeAuteur || !nom ? base : `${base}, de ${nom}`;
+  return nom ? `${base}, de ${nom}` : base;
 }
 
 // Colonnes de rendement de la copie : « Par nombre d'unités / poids », en

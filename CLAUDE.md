@@ -1634,7 +1634,8 @@ plusieurs étapes cochées en une **nouvelle recette**, brouillon privé du memb
 qui extrait, puis ouvre l'éditeur (`/creer?id=…`, comme « Dupliquer »).
 Arbitrages du 19/10/2026 : fiche recette seulement (ni éditeur, ni projet, ni
 fournée), plusieurs étapes possibles, **copie seule** (la recette d'origine
-n'est ni modifiée ni reliée à la copie), auteur d'origine crédité, rendement
+n'est ni modifiée ni reliée à la copie), auteur d'origine crédité (sauf sa
+propre recette), rendement
 déduit du poids des ingrédients et modifiable avant la création.
 
 - **Droit `extraction_etapes`, plan Pro** (`DROIT_EXTRACTION`,
@@ -1660,8 +1661,13 @@ déduit du poids des ingrédients et modifiable avant la création.
   retenue devient le jour J, les écarts entre étapes sont gardés (un
   `day_offset` compte depuis la dégustation de SA recette).
 - **Crédit dans le champ « Source »** (`creditExtraction`) : « Extrait de
-  « Titre », de Pseudo » (le nom est omis si l'on extrait sa propre recette),
-  `source_url` = `/recette/<id>` (relatif, valable sur tous les domaines).
+  « Titre », de Pseudo », `source_url` = `/recette/<id>` (relatif, valable sur
+  tous les domaines). **Aucun crédit — ni texte ni lien — quand on extrait sa
+  propre recette** (arbitrage du 19/10/2026).
+- **Le voile ne ferme la fenêtre que si le clic y a commencé** (`pointerdown`
+  ET `click` sur le voile) : une sélection de texte commencée dans le champ du
+  nom et relâchée au-dehors produit un `click` sur le voile, qui fermait la
+  fenêtre en pleine saisie.
   **Limite assumée** : contrairement aux crédits du mode projet, ce champ reste
   modifiable par l'auteur de la copie dans `/creer` — pas de colonne dédiée.
 - **Rendement** : poids estimé des ingrédients des étapes cochées

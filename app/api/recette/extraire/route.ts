@@ -64,7 +64,8 @@ export async function POST(req: Request) {
   if (!etapes.length) return NextResponse.json({ erreur: 'Aucune des étapes choisies n’appartient à cette recette.' }, { status: 400 });
 
   const supabase = await createClient();
-  const memeAuteur = source.author_id === user.id;
+  // Sa propre recette : aucun crédit, ni texte ni lien (arbitrage du 19/10/2026).
+  const credit = creditExtraction(source.title, source.profiles?.full_name ?? null, source.author_id === user.id);
   const { data: cree, error: recErr } = await supabase
     .from('recipes')
     .insert({
@@ -74,11 +75,11 @@ export async function POST(req: Request) {
       // montrée à qui que ce soit.
       status: 'draft',
       is_public: false,
-      source: creditExtraction(source.title, source.profiles?.full_name ?? null, memeAuteur),
+      source: credit,
       // Lien relatif : il mène à la fiche d'origine quel que soit le domaine
       // (dev, www, aperçu de PR), et reste affiché en texte si elle devient
       // inaccessible.
-      source_url: `/recette/${source.id}`,
+      source_url: credit ? `/recette/${source.id}` : null,
       ...(rendementExtraction(poids) ?? {}),
     } as never)
     .select('id')

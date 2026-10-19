@@ -3,14 +3,15 @@
 // « Extraire des étapes » — sur la fiche recette (JEP-258, plan Pro) : les
 // étapes cochées deviennent une nouvelle recette, brouillon privé du membre
 // qui extrait. Copie seule : la recette affichée n'est ni modifiée ni reliée
-// à la copie ; son auteur est crédité dans la source de la copie.
+// à la copie ; son auteur, s'il n'est pas celui qui extrait, est crédité dans
+// la source de la copie.
 //
 // La fenêtre ne propose que le nom et le rendement (poids des ingrédients,
 // modifiable) ; le contenu est relu et écrit par `POST /api/recette/extraire`,
 // qui ne reçoit d'ici que des identifiants d'étapes. Le reste se complète
 // ensuite dans l'éditeur, où l'on arrive directement — comme après
 // « Dupliquer la recette ».
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
@@ -51,6 +52,10 @@ export function ExtractStepsDialog({
   const guard = useWriteGuard();
   const [selection, setSelection] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
+  // Le voile ne ferme la fenêtre que si le clic y a COMMENCÉ : une sélection
+  // de texte commencée dans un champ et relâchée au-dehors produit un `click`
+  // sur le voile, qui fermait la fenêtre en pleine saisie.
+  const pressionSurVoile = useRef(false);
   // Nom et poids suivent la sélection tant que l'utilisateur n'y a pas touché ;
   // une fois saisis, ils sont à lui.
   const [titre, setTitre] = useState<string | null>(null);
@@ -119,11 +124,17 @@ export function ExtractStepsDialog({
       aria-modal="true"
       aria-label="Extraire des étapes en recette"
       className="fixed inset-0 z-[95] flex items-start justify-center bg-background/60 backdrop-blur-[2px] p-4 overflow-y-auto"
-      onClick={() => !busy && onClose()}
+      onPointerDown={(e) => {
+        pressionSurVoile.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const surVoile = pressionSurVoile.current && e.target === e.currentTarget;
+        pressionSurVoile.current = false;
+        if (surVoile && !busy) onClose();
+      }}
     >
       <LoadingOverlay visible={busy} label="Création de la recette…" />
       <div
-        onClick={(e) => e.stopPropagation()}
         className="w-full max-w-2xl my-8 bg-surface-container-low border border-outline-variant rounded-xl shadow-lg flex flex-col"
       >
         <div className="flex items-start justify-between gap-4 p-6 border-b border-outline-variant">
@@ -134,7 +145,7 @@ export function ExtractStepsDialog({
             </h3>
             <p className="font-body-md text-sm text-on-surface-variant">
               Les étapes cochées deviennent une nouvelle recette, en brouillon privé dans votre carnet. Cette recette-ci
-              n&apos;est pas modifiée, et son auteur est crédité dans la source de la copie.
+              n&apos;est pas modifiée ; si elle est d&apos;un autre membre, il est crédité dans la source de la copie.
             </p>
           </div>
           <button type="button" onClick={onClose} disabled={busy} aria-label="Fermer" className="text-on-surface-variant hover:text-primary">
