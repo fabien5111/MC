@@ -11,6 +11,7 @@ import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImageSlot } from '@/components/ImageSlot';
+import { DureeInput } from '@/components/DureeInput';
 import type { ComponentStepDraft } from '@/lib/projects';
 
 type Ingredient = ComponentStepDraft['ingredients'][number];
@@ -182,18 +183,31 @@ export function StepEditorCard({
         ).map(([lab, val, set, unit]) => (
           <div key={lab} className="flex flex-col w-44">
             <label className={`${label} text-left`}>{lab}</label>
-            <div className="flex items-baseline gap-2">
-              <span className="flex-1" />
-              <input
-                value={val ?? ''}
-                onChange={(e) => set(entier(e.target.value))}
-                className="editorial-input text-on-surface text-center shrink-0"
-                style={{ width: '5rem' }}
-                type="number"
-                min={0}
-              />
-              <span className="flex-1 text-sm text-on-surface-variant">{unit}</span>
-            </div>
+            {/* L'attente se saisit aussi en heures (JEP-20), comme dans /creer. */}
+            {lab === "TEMPS D'ATTENTE" ? (
+              <div className="flex justify-center">
+                <DureeInput
+                  value={val == null ? '' : String(val)}
+                  onChange={(v) => set(entier(v))}
+                  inputClassName="editorial-input text-on-surface text-center shrink-0"
+                  inputStyle={{ width: '5rem' }}
+                  ariaLabel="Temps d'attente"
+                />
+              </div>
+            ) : (
+              <div className="flex items-baseline gap-2">
+                <span className="flex-1" />
+                <input
+                  value={val ?? ''}
+                  onChange={(e) => set(entier(e.target.value))}
+                  className="editorial-input text-on-surface text-center shrink-0"
+                  style={{ width: '5rem' }}
+                  type="number"
+                  min={0}
+                />
+                <span className="flex-1 text-sm text-on-surface-variant">{unit}</span>
+              </div>
+            )}
           </div>
         ))}
       </div>

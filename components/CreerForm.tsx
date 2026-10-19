@@ -22,6 +22,7 @@ import { resizeDataUrlToThumb, resizeFilesToDataUrls } from '@/lib/images';
 import { televerserImage } from '@/lib/storage-client';
 import { estDataUrlImage } from '@/lib/storage';
 import { ImageSlot } from '@/components/ImageSlot';
+import { DureeInput } from '@/components/DureeInput';
 import { swapAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
@@ -39,7 +40,7 @@ import type { VisibleHelpBlock } from '@/lib/help';
 import { resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { buildIngredientsRecap } from '@/lib/ingredients-recap';
 import { IngredientsRecapList } from '@/components/IngredientsRecapList';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatTime } from '@/lib/format';
 import { normLoose } from '@/lib/search-params';
 import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
 import { revalidateReference } from '@/lib/revalidate-reference';
@@ -1863,19 +1864,32 @@ export function CreerForm({
                       <div key={label} className="flex flex-col w-44">
                         <label className="font-label-md text-label-md text-outline text-left">{label}</label>
                         {/* Champ centré dans la colonne : deux espaceurs égaux
-                            l'encadrent, l'unité vit dans celui de droite. */}
-                        <div className="flex items-baseline gap-2">
-                          <span className="flex-1" />
-                          <input
-                            value={val}
-                            onChange={(e) => set(e.target.value)}
-                            className="editorial-input text-on-surface text-center shrink-0"
-                            style={{ width: '5rem' }}
-                            type="number"
-                            min={0}
-                          />
-                          <span className="flex-1 text-sm text-on-surface-variant">{unit}</span>
-                        </div>
+                            l'encadrent, l'unité vit dans celui de droite.
+                            L'attente se saisit aussi en heures (JEP-20). */}
+                        {label === "TEMPS D'ATTENTE" ? (
+                          <div className="flex justify-center">
+                            <DureeInput
+                              value={val}
+                              onChange={set}
+                              inputClassName="editorial-input text-on-surface text-center shrink-0"
+                              inputStyle={{ width: '5rem' }}
+                              ariaLabel="Temps d'attente"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-baseline gap-2">
+                            <span className="flex-1" />
+                            <input
+                              value={val}
+                              onChange={(e) => set(e.target.value)}
+                              className="editorial-input text-on-surface text-center shrink-0"
+                              style={{ width: '5rem' }}
+                              type="number"
+                              min={0}
+                            />
+                            <span className="flex-1 text-sm text-on-surface-variant">{unit}</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -2472,10 +2486,20 @@ export function CreerForm({
                 <div key={label} className="flex flex-col border-b border-outline-variant pb-4">
                   <label className="font-label-md text-label-md text-outline">{label}</label>
                   <div className="flex items-baseline gap-2">
-                    <span className="font-headline-md text-headline-md text-on-surface-variant inline-block" style={{ width: '5.5rem' }}>
-                      {val || 0}
-                    </span>
-                    <span className="text-sm text-on-surface-variant">min</span>
+                    {/* L'attente en heures dès qu'elle les atteint (JEP-20) :
+                        une nuit de repos se lit « 12h », pas « 720 min ». */}
+                    {label === 'ATTENTE' && val >= 60 ? (
+                      <span className="font-headline-md text-headline-md text-on-surface-variant inline-block" style={{ width: '5.5rem' }}>
+                        {formatTime(val)}
+                      </span>
+                    ) : (
+                      <>
+                        <span className="font-headline-md text-headline-md text-on-surface-variant inline-block" style={{ width: '5.5rem' }}>
+                          {val || 0}
+                        </span>
+                        <span className="text-sm text-on-surface-variant">min</span>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -2496,17 +2520,27 @@ export function CreerForm({
               ).map(([label, val, set]) => (
                 <div key={label} className="flex flex-col border-b border-outline-variant pb-4">
                   <label className="font-label-md text-label-md text-outline">{label}</label>
-                  <div className="flex items-baseline gap-2">
-                    <input
+                  {label === 'ATTENTE' ? (
+                    <DureeInput
                       value={val}
-                      onChange={(e) => set(e.target.value)}
-                      className="editorial-input font-headline-md text-headline-md text-primary"
-                      style={{ width: '5.5rem' }}
-                      type="number"
-                      min={0}
+                      onChange={set}
+                      inputClassName="editorial-input font-headline-md text-headline-md text-primary"
+                      inputStyle={{ width: '5.5rem' }}
+                      ariaLabel="Temps d'attente de la recette"
                     />
-                    <span className="text-sm text-on-surface-variant">min</span>
-                  </div>
+                  ) : (
+                    <div className="flex items-baseline gap-2">
+                      <input
+                        value={val}
+                        onChange={(e) => set(e.target.value)}
+                        className="editorial-input font-headline-md text-headline-md text-primary"
+                        style={{ width: '5.5rem' }}
+                        type="number"
+                        min={0}
+                      />
+                      <span className="text-sm text-on-surface-variant">min</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

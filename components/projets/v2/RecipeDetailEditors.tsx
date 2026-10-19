@@ -19,6 +19,8 @@ import { capitalizeSentences, slugify } from '@/lib/text';
 import type { useMutation } from '@/lib/use-mutation';
 import { ImageSlot } from '@/components/ImageSlot';
 import { MaryseIcon } from '@/components/MaryseIcon';
+import { DureeInput } from '@/components/DureeInput';
+import { formatTime } from '@/lib/format';
 import { resizeDataUrlToThumb } from '@/lib/images';
 import { televerserImage } from '@/lib/storage-client';
 import { estDataUrlImage } from '@/lib/storage';
@@ -528,7 +530,7 @@ export function OrganisationEditor({
       </div>
 
       <div>
-        <label className={etiquette}>TEMPS (EN MINUTES)</label>
+        <label className={etiquette}>TEMPS (EN MINUTES — REPOS EN MINUTES OU EN HEURES)</label>
         {/* Somme des temps des étapes (lecture seule) : la valeur qui fait foi
             tant qu'un champ ci-dessous est vide, comme dans l'éditeur /creer. */}
         <div className="mb-3 rounded-lg bg-surface-container-low px-3 py-2">
@@ -538,7 +540,7 @@ export function OrganisationEditor({
           <div className="grid grid-cols-2 gap-3 text-[14px] text-on-surface sm:grid-cols-4">
             <span>Préparation : {sommes.prep} min</span>
             <span>Cuisson : {sommes.cook} min</span>
-            <span>Repos : {sommes.wait} min</span>
+            <span>Repos : {sommes.wait >= 60 ? formatTime(sommes.wait) : `${sommes.wait} min`}</span>
             <span>Total : {sommes.total} min</span>
           </div>
         </div>
@@ -556,20 +558,32 @@ export function OrganisationEditor({
             return (
               <div key={libelle}>
                 <span className="mb-0.5 block text-[12px] text-on-surface-variant">{libelle}</span>
-                <input
-                  value={valeur}
-                  onChange={(e) => maj(e.target.value)}
-                  inputMode="numeric"
-                  placeholder={somme ? String(somme) : ''}
-                  className={champ}
-                />
+                {/* Le repos se saisit aussi en heures (JEP-20). */}
+                {libelle === 'Repos' ? (
+                  <DureeInput
+                    value={valeur}
+                    onChange={maj}
+                    placeholderMinutes={somme || undefined}
+                    inputClassName={`${champ} min-w-0 flex-1`}
+                    ariaLabel="Temps de repos"
+                    pleineLargeur
+                  />
+                ) : (
+                  <input
+                    value={valeur}
+                    onChange={(e) => maj(e.target.value)}
+                    inputMode="numeric"
+                    placeholder={somme ? String(somme) : ''}
+                    className={champ}
+                  />
+                )}
                 {corrige && (
                   <button
                     type="button"
                     onClick={() => maj('')}
                     className="mt-0.5 text-left text-[11.5px] text-primary underline underline-offset-2"
                   >
-                    corrigé à la main · revenir à {somme} min
+                    corrigé à la main · revenir à {libelle === 'Repos' && somme >= 60 ? formatTime(somme) : `${somme} min`}
                   </button>
                 )}
               </div>

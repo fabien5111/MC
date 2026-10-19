@@ -16,6 +16,7 @@ import type { VisibleHelpBlock } from '@/lib/help';
 import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import { MaryseIcon } from '@/components/MaryseIcon';
+import { DureeInput } from '@/components/DureeInput';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ImageSlot, PHOTO_DND_TYPE } from '@/components/ImageSlot';
 import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
@@ -1739,7 +1740,22 @@ export function RelectureEditor({
                   ['cuisson', 'Cuisson', 'min'],
                   ['temp', 'T°C cuisson', '°C'],
                 ] as const
-              ).map(([field, label, unit]) => (
+              ).map(([field, label, unit]) =>
+                field === 'attente' ? (
+                  // L'attente se saisit aussi en heures (JEP-20) : une nuit au
+                  // froid se tape « 12 h ». Pas de <label> englobant : il
+                  // porte aussi l'unité et le raccourci « Une nuit ».
+                  <div key={field} className="flex flex-col items-center text-center gap-1">
+                    <span className="font-label-md text-[9px] uppercase tracking-widest text-on-surface-variant">{label}</span>
+                    <DureeInput
+                      value={String(sp.attente ?? '')}
+                      onChange={(v) => patchSp(si, { attente: v })}
+                      inputClassName={`${champ} text-center`}
+                      inputStyle={{ width: '4rem' }}
+                      ariaLabel="Attente"
+                    />
+                  </div>
+                ) : (
                 <label key={field} className="flex flex-col items-center text-center gap-1">
                   <span className="font-label-md text-[9px] uppercase tracking-widest text-on-surface-variant">{label}</span>
                   <span className="flex items-baseline gap-1">
@@ -1754,7 +1770,8 @@ export function RelectureEditor({
                     <span className="text-xs text-on-surface-variant">{unit}</span>
                   </span>
                 </label>
-              ))}
+                ),
+              )}
               <label className="flex flex-col items-center text-center gap-1">
                 <span className="font-label-md text-[9px] uppercase tracking-widest text-on-surface-variant">Total</span>
                 <span className="font-label-md text-primary" style={{ width: '4rem', textAlign: 'center' }}>

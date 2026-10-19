@@ -745,6 +745,23 @@ d'`ilike('title', …)` : c'est ce qui rendait « eclair » introuvable.
 La recherche avancée (`mc_norm`) et l'autocomplétion des ingrédients
 (`suggest_ingredients`) l'étaient déjà.
 
+## Temps d'attente en heures (JEP-20)
+
+**L'attente se saisit en minutes OU en heures**, la base garde des minutes
+entières (`wait_time`, `attente_min` — aucune migration). Un seul composant,
+`components/DureeInput.tsx` (nombre + sélecteur « min / h » + raccourci
+« Une nuit (12 h) »), sur les quatre écrans de saisie : étape et temps de la
+recette dans `/creer`, sous-préparation de la relecture d'import, étape d'une
+préparation du mode projet (`StepEditorCard`) et « Repos » de
+`OrganisationEditor`. Le parent ne voit que des minutes (texte) : ses états et
+ses conversions à l'enregistrement sont inchangés. Conversion pure et testée
+dans `lib/duree.ts` : une durée enregistrée s'ouvre en heures dès 1 h si elle
+tombe sur la demi-heure (720 → 12 h, 90 → 1,5 h), en minutes sinon ; changer
+d'unité garde le nombre tapé (on corrige « 12 min » en « 12 h »). **Préparation
+et cuisson restent en minutes** (arbitrage du 19/10/2026). Le raccourci « une
+nuit » ne touche pas au jour de l'étape (`day_offset`) : deux notions
+distinctes.
+
 ## Noms d'ingrédients : singulier, pluriel, « oeuf » (JEP-249)
 
 **Le texte saisi reste affiché tel quel ; c'est la comparaison qui confond
