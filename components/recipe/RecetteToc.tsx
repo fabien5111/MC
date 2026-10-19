@@ -15,6 +15,8 @@ import { useDialog } from '@/components/Dialog';
 import { useMutation } from '@/lib/use-mutation';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
+import { ExtractStepsDialog, type EtapeAExtraire } from '@/components/recipe/ExtractStepsDialog';
+import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
 
 // Même seuil que `SPY_THRESHOLD` dans lib/use-toc.ts : on veut retrouver la
 // même étape que celle mise en surbrillance dans le sommaire au moment du
@@ -43,6 +45,7 @@ export function RecetteToc({
   status,
   isPublic,
   isAdmin,
+  extraction,
 }: {
   recipeId: string;
   isOwner: boolean;
@@ -55,6 +58,18 @@ export function RecetteToc({
   status: string;
   isPublic: boolean;
   isAdmin: boolean;
+  // « Extraire des étapes » (JEP-258) : membre connecté seulement, toute
+  // recette lisible (la sienne comme celle d'un autre). `allowed` = droit
+  // `extraction_etapes` (plan Pro) ; sans lui l'action reste visible et
+  // explique ce qui manque (doctrine de `LockedAction`). Absent : pas d'action.
+  extraction?: {
+    allowed: boolean;
+    recipeTitle: string;
+    steps: EtapeAExtraire[];
+    conversions: ConversionRef[];
+    units: UnitRef[];
+    densities: { name: string; density_g_per_ml: number }[];
+  };
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -63,6 +78,22 @@ export function RecetteToc({
   // Distingue Éditer (navigation) de Dupliquer (écriture puis navigation) :
   // chacun a son propre libellé de spinner.
   const [pending, setPending] = useState<'edit' | 'duplicate' | null>(null);
+  const [extracting, setExtracting] = useState(false);
+
+  async function extract() {
+    if (pending || !extraction) return;
+    if (!extraction.allowed) {
+      if (
+        await dialog.confirm('L’extraction d’étapes en recette n’est pas incluse dans votre formule.', {
+          okLabel: 'Voir les formules',
+          cancelLabel: 'Fermer',
+        })
+      )
+        router.push('/plans');
+      return;
+    }
+    setExtracting(true);
+  }
 
   function edit() {
     if (pending) return;
@@ -168,6 +199,20 @@ export function RecetteToc({
     ...(isOwner
       ? [{ id: 'duplicate', icon: 'content_copy', label: 'Dupliquer la recette', variant: 'outline' as const, onClick: duplicate, disabled: pending !== null }]
       : []),
+    ...(extraction && extraction.steps.length > 0
+      ? [
+          {
+            id: 'extract',
+            // Sans le droit, le picto `block` remplace celui de l'action, comme
+            // partout où une action est hors formule (LockedAction).
+            icon: extraction.allowed ? 'content_cut' : 'block',
+            label: 'Extraire des étapes en recette',
+            variant: 'outline' as const,
+            onClick: extract,
+            disabled: pending !== null,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -180,6 +225,17 @@ export function RecetteToc({
       <RecipeToc sections={sections} steps={steps} actions={actions} mobile="drawer" mobileInset="nav" />
       <LoadingOverlay visible={pending !== null} label={pending === 'duplicate' ? 'Duplication de la recette…' : 'Ouverture de l’éditeur…'} />
       <LoadingOverlay visible={statusBusy} label="Mise à jour du statut…" />
+      {extracting && extraction && (
+        <ExtractStepsDialog
+          recipeId={recipeId}
+          recipeTitle={extraction.recipeTitle}
+          steps={extraction.steps}
+          conversions={extraction.conversions}
+          units={extraction.units}
+          densities={extraction.densities}
+          onClose={() => setExtracting(false)}
+        />
+      )}
     </>
   );
 }
