@@ -58,6 +58,18 @@ export function RecipeStep({
         </h4>
         {action}
         <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
+          {/* JEP-19 : picto seul, l'explication est dans l'infobulle (même
+              repère que la carte recette). */}
+          {s.can_prepare_ahead && (
+            <span
+              className="bg-surface-variant px-2 py-1 flex items-center"
+              title="Cette étape peut être préparée à l'avance"
+              aria-label="Cette étape peut être préparée à l'avance"
+              role="img"
+            >
+              <span className="material-symbols-outlined text-[16px] leading-none text-primary">event_upcoming</span>
+            </span>
+          )}
           {badges.map((b, k) => (
             <span key={k} className="bg-surface-variant px-3 py-1">
               {b}

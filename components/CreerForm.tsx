@@ -57,6 +57,8 @@ type StepState = {
   key: string;
   title: string;
   dayOffset: string;
+  // JEP-19 : l'étape peut être faite en amont (possibilité, pas le jour prévu).
+  prepAhead: boolean;
   prep: string;
   cook: string;
   temp: string;
@@ -139,6 +141,7 @@ const emptyStep = (): StepState => ({
   key: key(),
   title: '',
   dayOffset: '',
+  prepAhead: false,
   prep: '',
   cook: '',
   temp: '',
@@ -172,6 +175,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       key: key(),
       title: s.title || '',
       dayOffset: s.day_offset ? String(s.day_offset) : '',
+      prepAhead: s.can_prepare_ahead === true,
       prep: s.prep_time != null ? String(s.prep_time) : '',
       cook: s.cook_time != null ? String(s.cook_time) : '',
       temp: s.cook_temp != null ? String(s.cook_temp) : '',
@@ -1008,7 +1012,10 @@ export function CreerForm({
             video_url: st.videoUrl.trim() || null,
             sous_etapes: subs.length ? subs : null,
             order_index: gi,
-          })
+            // Écrite seulement si cochée : décochée, le défaut `false` de la
+            // colonne suffit (les étapes sont supprimées puis réinsérées).
+            ...(st.prepAhead ? { can_prepare_ahead: true } : {}),
+          } as never) // `can_prepare_ahead` absente des types générés
           .select('id')
           .single();
         if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
@@ -1892,6 +1899,17 @@ export function CreerForm({
                     />
                     <span className="text-sm text-on-surface-variant italic">jour(s) avant dégustation</span>
                   </div>
+
+                  <label className="flex items-center gap-3 cursor-pointer w-fit">
+                    <input
+                      type="checkbox"
+                      checked={st.prepAhead}
+                      onChange={(e) => patchStep(si, { prepAhead: e.target.checked })}
+                      className="w-4 h-4 accent-primary"
+                    />
+                    <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
+                    <span className="font-label-md text-label-md text-outline">PEUT ÊTRE PRÉPARÉE À L&apos;AVANCE</span>
+                  </label>
 
                   <div className="flex flex-col">
                     {/* En-tête « INGRÉDIENTS » (+ miroirs quantité/unité,

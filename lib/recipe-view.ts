@@ -218,6 +218,17 @@ export function effectiveTimes(
   };
 }
 
+// Une recette « se prépare à l'avance » (JEP-19) dès qu'une de ses étapes est
+// cochée comme telle dans l'éditeur. Possibilité donnée par l'auteur, distincte
+// du jour prévu (`day_offset`) : sert au picto de la carte recette.
+// `prepare_ahead` : marque déjà calculée (recherche avancée, lib/search.ts).
+export function peutSePreparerAvance(recipe: {
+  prepare_ahead?: boolean;
+  recipe_steps?: { can_prepare_ahead?: boolean | null }[] | null;
+}): boolean {
+  return recipe.prepare_ahead === true || (recipe.recipe_steps || []).some((s) => s.can_prepare_ahead === true);
+}
+
 // Somme des temps des étapes (préparation, cuisson, repos) et total — ce que
 // `effectiveTimes` retient quand rien n'est saisi à la main. Pure : sert aussi
 // à l'éditeur du mode projet, qui l'affiche à côté des champs corrigeables.

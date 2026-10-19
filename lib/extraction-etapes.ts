@@ -42,6 +42,7 @@ export type EtapeSource = {
   tips: string | null;
   video_url: string | null;
   day_offset: number | null;
+  can_prepare_ahead?: boolean | null;
   order_index: number | null;
   step_photos?: { url: string; original_url?: string | null; order_index: number | null; ai_retouched: boolean }[];
 };
@@ -74,6 +75,8 @@ export type EtapeExtraite = {
   tips: string | null;
   video_url: string | null;
   day_offset: number;
+  // JEP-19 : présente (vraie) seulement si l'étape d'origine était cochée.
+  can_prepare_ahead?: true;
   scaling_mode: string | null;
   ingredients: Omit<IngredientSource, 'order_index'>[];
   photos: { url: string; original_url: string | null; ai_retouched: boolean }[];
@@ -117,6 +120,7 @@ export function planExtraction(etapes: EtapeSource[], groupes: GroupeSource[], i
       tips: e.tips,
       video_url: e.video_url,
       day_offset: Math.max(0, e.day_offset ?? 0) - jourMin,
+      ...(e.can_prepare_ahead === true ? { can_prepare_ahead: true as const } : {}),
       // Repris tel quel : c'est lui qui décide qu'une pâte à foncer suive la
       // surface à l'ajustement d'une fournée (`scalingCoef`).
       scaling_mode: groupe?.scaling_mode ?? null,

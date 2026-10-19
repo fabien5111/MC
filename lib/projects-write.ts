@@ -98,7 +98,7 @@ export async function readComponentDraft(
   const { data: stepDetails, error: stepErr } = await supabase
     .from('recipe_steps')
     .select(
-      'id, order_index, title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, step_photos(url, original_url, order_index, ai_retouched)',
+      'id, order_index, title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, can_prepare_ahead, step_photos(url, original_url, order_index, ai_retouched)',
     )
     .in('id', mine.map((s) => s.id));
   if (stepErr) throw stepErr;
@@ -126,6 +126,7 @@ export async function readComponentDraft(
     cook_temp: number | null;
     tips: string | null;
     day_offset: number | null;
+    can_prepare_ahead?: boolean | null;
     step_photos: { url: string; original_url: string | null; order_index: number | null; ai_retouched: boolean }[] | null;
   };
   // `*` et non une liste : `base_quantity` est absente des types générés
@@ -179,6 +180,7 @@ export async function readComponentDraft(
       cook_temp: d?.cook_temp ?? null,
       tips: d?.tips ?? null,
       day_offset: d?.day_offset ?? null,
+      can_prepare_ahead: d?.can_prepare_ahead === true,
       ingredients: ingredients.length ? ingredients : [{ name: '', quantity: '', unit: null, comment: null, allergen: null, ref_id: null }],
       photos: [...(d?.step_photos ?? [])]
         .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
@@ -227,6 +229,8 @@ export async function writeComponentContent(
         cook_temp: st.cook_temp,
         tips: st.tips,
         day_offset: st.day_offset,
+        // Écrite seulement si cochée, comme dans CreerForm.
+        ...(st.can_prepare_ahead ? { can_prepare_ahead: true } : {}),
       } as never)
       .select('id')
       .single();

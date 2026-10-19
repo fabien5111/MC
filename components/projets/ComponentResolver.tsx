@@ -86,7 +86,7 @@ const COPY_SELECT = `
   id, title, author_id,
   profiles!recipes_author_id_fkey(full_name),
   ingredient_groups(order_index, scaling_mode, ingredients(name, quantity, unit, comment, allergen, ref_id, order_index)),
-  recipe_steps(title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, order_index),
+  recipe_steps(title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, can_prepare_ahead, order_index),
   recipe_utensils(name, ref_id, comment, order_index)
 `;
 
@@ -714,6 +714,7 @@ export function ComponentResolver({
                   title: st.title,
                   description: st.description,
                   day_offset: st.day_offset,
+                  can_prepare_ahead: st.can_prepare_ahead,
                   prep_time: st.prep_time,
                   cook_time: st.cook_time,
                   wait_time: st.wait_time,

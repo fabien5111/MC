@@ -96,6 +96,13 @@ describe('planExtraction', () => {
   it('ne rend rien sans étape retenue', () => {
     expect(planExtraction(etapes, groupes, [])).toEqual([]);
   });
+
+  it('garde « peut être préparée à l’avance » (JEP-19), seulement si cochée', () => {
+    const avecAvance = [etape(1, 0, 0, 'Pâte', { can_prepare_ahead: true }), etape(2, 1, 0, 'Crème')];
+    const p = planExtraction(avecAvance, [], [1, 2]);
+    expect(p[0].can_prepare_ahead).toBe(true);
+    expect('can_prepare_ahead' in p[1]).toBe(false);
+  });
 });
 
 describe('poidsExtraction', () => {

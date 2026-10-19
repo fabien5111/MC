@@ -41,7 +41,7 @@ type Recipe = Database['public']['Tables']['recipes']['Row'];
 export const CARD_SELECT =
   'id, title, description, hero_card_url, author_id, prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
   'profiles!recipes_author_id_fkey(full_name, username, author_ratings(rating_avg, rated_recipes)), recipe_types(name), difficulties(name, level), ' +
-  'ingredient_groups(ingredients(allergen)), recipe_steps(prep_time, cook_time, wait_time)';
+  'ingredient_groups(ingredients(allergen)), recipe_steps(prep_time, cook_time, wait_time, can_prepare_ahead)';
 
 export type RecipeCard = Pick<
   Recipe,
@@ -66,7 +66,12 @@ export type RecipeCard = Pick<
   recipe_types: { name: string } | null;
   difficulties: { name: string; level: number } | null;
   ingredient_groups: { ingredients: { allergen: string | null }[] }[];
-  recipe_steps: { prep_time: number | null; cook_time: number | null; wait_time: number | null }[];
+  // `can_prepare_ahead` (JEP-19) : absente de `lib/database.types.ts` tant
+  // que les types ne sont pas régénérés ; facultative, la RPC de recherche ne
+  // la renvoie pas (cf. `marquerPreparationAvance`, lib/search.ts).
+  recipe_steps: { prep_time: number | null; cook_time: number | null; wait_time: number | null; can_prepare_ahead?: boolean | null }[];
+  // Posé par la recherche avancée seulement, à la place des étapes.
+  prepare_ahead?: boolean;
 };
 
 
@@ -149,6 +154,9 @@ export type RecipeStepView = {
   video_url: string | null;
   sous_etapes: string[] | null;
   order_index: number | null;
+  // Étape qui PEUT être faite en amont (JEP-19) — une possibilité, pas le jour
+  // prévu (`day_offset`). Lue par `recipe_steps(*)`, absente des types générés.
+  can_prepare_ahead?: boolean | null;
   // Absentes en portée `texte`, sans `original_url` en portée `lecture`.
   step_photos?: { url: string; original_url?: string | null; order_index: number | null; ai_retouched: boolean }[];
   // Mode planifié seulement : étape signalée « déjà faite » et conservée pour

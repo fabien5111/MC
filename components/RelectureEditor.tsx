@@ -55,6 +55,8 @@ type SpState = {
   cuisson: string;
   temp: string;
   jour: string;
+  // JEP-19 : l'étape peut être faite en amont (possibilité, pas le jour prévu).
+  avance: boolean;
   // Comment les quantités de l'étape suivent un changement de rendement.
   // Même mécanisme que l'éditeur de recette : persisté dans
   // `ingredient_groups.scaling_mode` à la création.
@@ -178,6 +180,8 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
     cuisson: t.cuisson_min ?? (lignesCuisson || ''),
     temp: sp.temperature_c ?? (tMax || ''),
     jour: String(sp.day_offset ?? 0),
+    // Absent d'un import (l'IA ne le déduit pas) : décoché.
+    avance: sp.avance === true,
     // Absent d'un import (l'IA ne le déduit pas) : l'ajustement proportionnel
     // est le comportement attendu par défaut, comme à la création.
     scaling: typeof sp.scaling_mode === 'string' ? sp.scaling_mode : 'simple',
@@ -679,6 +683,7 @@ export function RelectureEditor({
     cuisson: '',
     temp: '',
     jour: '0',
+    avance: false,
     scaling: 'simple',
     ings: [],
     etapes: [{ key: nextKey(), imported: null, texte: '' }],
@@ -840,6 +845,7 @@ export function RelectureEditor({
       },
       temperature_c: numOrNull(sp.temp),
       day_offset: numOrNull(sp.jour) || 0,
+      avance: sp.avance,
       scaling_mode: normScaling(sp.scaling),
       ingredients: sp.ings
         .map((g) => ({
@@ -1062,7 +1068,9 @@ export function RelectureEditor({
             video_url: sp.video || null,
             sous_etapes: sousEtapes.length ? sousEtapes : null,
             order_index: i,
-          })
+            // Écrite seulement si cochée, comme dans CreerForm.
+            ...(sp.avance === true ? { can_prepare_ahead: true } : {}),
+          } as never) // `can_prepare_ahead` absente des types générés
           .select('id')
           .single();
         if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
@@ -1774,6 +1782,21 @@ export function RelectureEditor({
                     style={{ width: '3.5rem' }}
                   />
                   <span className="text-xs text-on-surface-variant">j</span>
+                </span>
+              </label>
+              <label
+                className="flex flex-col items-center text-center gap-1 cursor-pointer"
+                title="L'étape peut être préparée à l'avance"
+              >
+                <span className="font-label-md text-[9px] uppercase tracking-widest text-on-surface-variant">À l&apos;avance</span>
+                <span className="flex items-center gap-1 h-[2.125rem]">
+                  <input
+                    type="checkbox"
+                    checked={sp.avance}
+                    onChange={(e) => patchSp(si, { avance: e.target.checked })}
+                    className="w-4 h-4 accent-primary"
+                  />
+                  <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
                 </span>
               </label>
             </div>

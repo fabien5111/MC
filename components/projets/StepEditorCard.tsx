@@ -211,6 +211,18 @@ export function StepEditorCard({
         <span className="text-sm text-on-surface-variant italic">jour(s) avant dégustation</span>
       </div>
 
+      {/* JEP-19 — même case que l'éditeur /creer (deux copies à garder alignées). */}
+      <label className="flex items-center gap-3 cursor-pointer w-fit">
+        <input
+          type="checkbox"
+          checked={step.can_prepare_ahead === true}
+          onChange={(e) => onChange({ can_prepare_ahead: e.target.checked })}
+          className="w-4 h-4 accent-primary"
+        />
+        <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
+        <span className={label}>PEUT ÊTRE PRÉPARÉE À L&apos;AVANCE</span>
+      </label>
+
       <div className="flex flex-col">
         <div className="border-l-2 border-transparent pl-4 min-[1232px]:border-l-0 min-[1232px]:pl-0 flex items-center gap-4 mb-2">
           <div className="flex-[2] min-w-0">
