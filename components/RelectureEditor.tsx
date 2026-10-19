@@ -1732,7 +1732,10 @@ export function RelectureEditor({
               </select>
             </div>
 
-            <div className="px-6 py-4 bg-surface-container-low/40 border-b border-outline-variant/50 flex flex-wrap items-end gap-x-6 gap-y-3">
+            {/* Colonnes alignées par le haut : le lien « Une nuit (12 h) » sous
+                l'attente allonge sa colonne, qui, alignée par le bas, remontait
+                son libellé et son champ au-dessus de ceux des voisins (JEP-20). */}
+            <div className="px-6 py-4 bg-surface-container-low/40 border-b border-outline-variant/50 flex flex-wrap items-start gap-x-6 gap-y-3">
               {(
                 [
                   ['prep', 'Réalisation', 'min'],
