@@ -34,8 +34,11 @@ export function DureeInput({
   pleineLargeur?: boolean;
 }) {
   const minutesExt = lireMinutes(value);
-  const [unite, setUnite] = useState<UniteDuree>(() => uniteParDefaut(minutesExt));
-  const [texte, setTexte] = useState(() => depuisMinutes(minutesExt, uniteParDefaut(minutesExt)));
+  // Champ vide : l'unité suit la valeur suggérée (« Repos » vide, somme des
+  // étapes = 720 → placeholder « 12 » en h, jamais « 720 » en min).
+  const uniteNaturelle = (m: number | null) => uniteParDefaut(m ?? placeholderMinutes);
+  const [unite, setUnite] = useState<UniteDuree>(() => uniteNaturelle(minutesExt));
+  const [texte, setTexte] = useState(() => depuisMinutes(minutesExt, uniteNaturelle(minutesExt)));
 
   // Valeur changée d'ailleurs (réinitialisation, « revenir à la somme »…) :
   // on la réaffiche dans son unité naturelle. L'écho de notre propre saisie
@@ -43,7 +46,7 @@ export function DureeInput({
   // doigts.
   useEffect(() => {
     if (versMinutes(texte, unite) === minutesExt) return;
-    const u = uniteParDefaut(minutesExt);
+    const u = uniteNaturelle(minutesExt);
     setUnite(u);
     setTexte(depuisMinutes(minutesExt, u));
     // eslint-disable-next-line react-hooks/exhaustive-deps
