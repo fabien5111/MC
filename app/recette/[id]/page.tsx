@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, type AllergenRef } from '@/lib/recipes';
+import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, getIngredientDensities, type AllergenRef } from '@/lib/recipes';
+import { DROIT_EXTRACTION } from '@/lib/extraction-etapes';
 import { isProjectDraft, isProjectRecipe } from '@/lib/projects';
 import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
@@ -169,6 +170,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
     user ? getEntitlements(user.id) : Promise.resolve({}),
   ]);
   const peutAjusterIA = canAccess(entitlements, 'ajustement_ia_mensuel');
+  // Extraire des étapes en recette (JEP-258, plan Pro) : les masses
+  // volumiques (référentiel en cache) ne servent qu'à proposer le poids de la
+  // copie — lues seulement pour qui a le droit.
+  const peutExtraire = canAccess(entitlements, DROIT_EXTRACTION);
+  const densities = peutExtraire ? await getIngredientDensities() : [];
   // Lecture d'affichage uniquement (`mc_check_quota`, §1.3 docs/abonnements.md) :
   // seulement quand le droit existe déjà, pour ne pas payer cet aller-retour
   // aux membres qui n'ont de toute façon pas accès à l'ajustement par IA.
@@ -345,6 +351,29 @@ export default async function RecettePage({ params, searchParams }: Params) {
           status={recipe.status || 'draft'}
           isPublic={recipe.is_public !== false}
           isAdmin={userIsAdmin}
+          extraction={
+            user
+              ? {
+                  allowed: peutExtraire,
+                  recipeTitle: recipe.title,
+                  steps: steps.map((s) => ({
+                    id: s.id,
+                    title: s.title,
+                    // Sans le droit, la fenêtre ne s'ouvre pas : inutile de
+                    // sérialiser les ingrédients vers le navigateur.
+                    ingredients: (peutExtraire ? groupsByOrder[s.order_index || 0]?.ingredients || [] : []).map((it) => ({
+                      name: it.name,
+                      quantity: it.quantity,
+                      unit: it.unit,
+                      ref_id: it.ref_id,
+                    })),
+                  })),
+                  conversions: peutExtraire ? conversions : [],
+                  units: peutExtraire ? units : [],
+                  densities,
+                }
+              : undefined
+          }
         />
         <div className="recipe-print-content lg:col-span-8">
           {/* En-tête */}

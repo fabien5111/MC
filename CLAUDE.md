@@ -1626,6 +1626,50 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   restent donc vides. En donner un à toutes les recettes suppose de l'ajouter
   d'abord à `/creer` et à la relecture d'import.
 
+## Extraire des étapes en recette (JEP-258)
+
+Sur la fiche recette, l'action du rail « Extraire des étapes en recette »
+(`RecetteToc` → `components/recipe/ExtractStepsDialog.tsx`) transforme une ou
+plusieurs étapes cochées en une **nouvelle recette**, brouillon privé du membre
+qui extrait, puis ouvre l'éditeur (`/creer?id=…`, comme « Dupliquer »).
+Arbitrages du 19/10/2026 : fiche recette seulement (ni éditeur, ni projet, ni
+fournée), plusieurs étapes possibles, **copie seule** (la recette d'origine
+n'est ni modifiée ni reliée à la copie), auteur d'origine crédité, rendement
+déduit du poids des ingrédients et modifiable avant la création.
+
+- **Droit `extraction_etapes`, plan Pro** (`DROIT_EXTRACTION`,
+  `lib/extraction-etapes.ts`). Une clé absente de la grille vaut refus : tant
+  que la ligne n'est pas posée en base, l'action est verrouillée pour tous.
+  Sans le droit, l'action reste visible (picto `block`) et propose `/plans`.
+  Membre connecté seulement, sur toute recette qu'il peut lire — la sienne
+  comme celle d'un autre.
+- **Seule la route écrit** (`POST /api/recette/extraire`) : droit, compte
+  bloqué, session en lecture seule, puis **relecture de la recette sous la
+  session** (`getRecipeFull`, RLS) — le navigateur n'envoie que des
+  identifiants d'étapes, un nom et un poids, jamais le contenu. Écritures sous
+  la session (RLS, plafond `recettes_max`) ; échec en cours de copie → la
+  recette créée est supprimée (cascade). Un projet en cours n'est pas
+  extractible (`isProjectDraft`).
+- **Contenu copié** (`planExtraction`, pur et testé) : étapes dans l'ordre de
+  la recette (jamais celui des cases), sous-étapes, temps, température,
+  conseils, vidéo, ingrédients de chaque étape (appariement étape ↔ groupe par
+  `order_index`, `scaling_mode` du groupe gardé, `fixOeufLigature`) et photos
+  — **par URL**, rien n'est redéposé sur Swift. Pas de `base_quantity` (mode
+  projet seulement), ni ustensiles, tags, difficulté ou photo d'en-tête : ils
+  ne sont pas portés par une étape. **Jours recalés** : la dernière étape
+  retenue devient le jour J, les écarts entre étapes sont gardés (un
+  `day_offset` compte depuis la dégustation de SA recette).
+- **Crédit dans le champ « Source »** (`creditExtraction`) : « Extrait de
+  « Titre », de Pseudo » (le nom est omis si l'on extrait sa propre recette),
+  `source_url` = `/recette/<id>` (relatif, valable sur tous les domaines).
+  **Limite assumée** : contrairement aux crédits du mode projet, ce champ reste
+  modifiable par l'auteur de la copie dans `/creer` — pas de colonne dédiée.
+- **Rendement** : poids estimé des ingrédients des étapes cochées
+  (`poidsExtraction` = `estimateWeightGrams`, jamais de densité générique, les
+  lignes non pesables listées), proposé en « Par nombre d'unités / poids », en
+  grammes (`rendementExtraction`). Modifiable dans la fenêtre ; vide = rien
+  n'est posé. C'est le poids **avant** perte de réalisation, la fenêtre le dit.
+
 ## Carnet CAP (JEP-6)
 
 Impression au format du **carnet de recettes autorisé à l'examen du CAP

@@ -157,6 +157,7 @@ pour la page publique et ne demandent aucun code. Les points à câbler (lot 5) 
 | `reordonnancement_etapes` | binaire | `PlanningDayView` (`/en-cuisine`) |
 | `fusion_listes_courses` | binaire | `CuisineContent` (`/en-cuisine`) |
 | `navigation_sans_pub` | binaire | `PartnerSlot` hors accueil |
+| `extraction_etapes` | binaire | `/api/recette/extraire`, rail de la fiche recette (`RecetteToc`) — JEP-258, plan Pro |
 
 **Correctif JEP-77** : `BatchWidget` gardait son troisième mode d'ajustement
 (« Ajuster les quantités par IA ») derrière `isAdmin`, un reliquat du
