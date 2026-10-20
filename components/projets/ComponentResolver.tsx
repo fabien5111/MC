@@ -20,7 +20,7 @@
 // `refresh: false` puis rend la main au parent, qui reste monté. Une
 // transition déclarée ici mourrait avec la modale, le spinner s'éteindrait
 // avant le retour du rendu serveur (cf. CLAUDE.md).
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
@@ -28,6 +28,8 @@ import { LockedAction, LockedHint } from '@/components/LockedAction';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { SearchResultsBusy } from '@/components/SearchResultsBusy';
 import { PickerStatusBadge, pickerRatingText } from '@/components/recipe/PickerStatusBadge';
+import { RecipeCardTime } from '@/components/recipe/RecipeCardTime';
+import { MaryseIcon } from '@/components/MaryseIcon';
 import {
   COMPONENT_SOURCE_LABELS,
   PICKER_SCOPES,
@@ -76,6 +78,10 @@ type Trouvee = {
   isPublic: boolean | null;
   ratingAvg: number | null;
   ratingCount: number | null;
+  // Difficulté et temps, tels que la route les renvoie : même présentation que
+  // les cartes recettes (maryses, « préparation (total) », picto « à l'avance »).
+  difficulte: { name: string | null; level: number | null } | null;
+  temps: ComponentProps<typeof RecipeCardTime>['recipe'];
 };
 
 // Lecture d'une recette source, réduite à ce que la copie exige : ni photos
@@ -242,15 +248,16 @@ export function ComponentResolver({
       reponses.forEach((rep, i) => {
         const scope = actives[i];
         const kind = PICKER_SCOPE_KIND[scope];
-        for (const it of (rep?.items ?? []) as {
+        for (const it of (rep?.items ?? []) as ({
           id: string;
           title: string;
           status?: string | null;
           is_public?: boolean | null;
           rating_avg?: number | null;
           rating_count?: number | null;
+          difficulties?: { name: string | null; level: number | null } | null;
           profiles?: { full_name: string | null } | null;
-        }[]) {
+        } & ComponentProps<typeof RecipeCardTime>['recipe'])[]) {
           if (vues.has(it.id)) continue;
           vues.add(it.id);
           out.push({
@@ -263,6 +270,8 @@ export function ComponentResolver({
             isPublic: it.is_public ?? null,
             ratingAvg: it.rating_avg ?? null,
             ratingCount: it.rating_count ?? null,
+            difficulte: it.difficulties ?? null,
+            temps: it,
           });
         }
       });
@@ -661,7 +670,24 @@ export function ComponentResolver({
                       className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-outline-variant px-4 py-3 text-left transition-colors enabled:hover:border-primary disabled:cursor-default"
                     >
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-body-md text-[15px] text-on-surface">{it.title}</span>
+                        <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                          <span className="min-w-0 truncate font-body-md text-[15px] text-on-surface">{it.title}</span>
+                          {(it.difficulte?.level || 0) > 0 && (
+                            <span
+                              className="flex shrink-0 items-center gap-0.5"
+                              title={it.difficulte?.name ? `Difficulté : ${it.difficulte.name}` : undefined}
+                            >
+                              {[1, 2, 3, 4, 5].map((n) => (
+                                <MaryseIcon
+                                  key={n}
+                                  size={12}
+                                  className={n <= (it.difficulte?.level || 0) ? 'text-primary' : 'text-outline-variant'}
+                                />
+                              ))}
+                            </span>
+                          )}
+                          <RecipeCardTime recipe={it.temps} />
+                        </span>
                         <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-on-surface-variant">
                           <span>
                             {it.label}

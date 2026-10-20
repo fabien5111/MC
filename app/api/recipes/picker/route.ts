@@ -44,7 +44,7 @@ const SELECT =
   'id, title, status, is_public, author_id, kind, project_stage, measure_type, yield_qty, yield_unit, yield_desc, ' +
   'prep_time, cook_time, wait_time, total_time, rating_avg, rating_count, created_at, ' +
   'profiles!recipes_author_id_fkey(full_name), recipe_types(name), difficulties(name, level), ' +
-  'recipe_steps(prep_time, cook_time, wait_time)';
+  'recipe_steps(prep_time, cook_time, wait_time, can_prepare_ahead)';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
