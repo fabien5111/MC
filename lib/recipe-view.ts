@@ -4,6 +4,7 @@
 import type { AllergenRef, RecipeCard, RecipeFull } from '@/lib/recipes';
 import { convertQty, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 import { ingredientKey } from '@/lib/ingredient-name';
+import { formatTime } from '@/lib/format';
 
 // Noms d'allergènes (texte libre des ingrédients) présents dans une carte,
 // dédoublonnés (insensible à la casse). Le rapprochement avec les pictos se
@@ -227,6 +228,21 @@ export function peutSePreparerAvance(recipe: {
   recipe_steps?: { can_prepare_ahead?: boolean | null }[] | null;
 }): boolean {
   return recipe.prepare_ahead === true || (recipe.recipe_steps || []).some((s) => s.can_prepare_ahead === true);
+}
+
+// Temps affiché sur une carte recette (JEP-19) : la préparation, et le total
+// entre parenthèses quand il en diffère (« 20 min (1h40) »). `titre` porte
+// l'explication en clair pour l'infobulle — sans libellé, la valeur entre
+// parenthèses se lirait mal. Aucun temps connu : `null`, la carte n'affiche rien.
+export function tempsCarte(times: Pick<RecipeTimes, 'prep' | 'total'>): { texte: string; titre: string } | null {
+  const prep = times.prep || 0;
+  const total = times.total || 0;
+  if (prep && total && total !== prep) {
+    return { texte: `${formatTime(prep)} (${formatTime(total)})`, titre: `Préparation ${formatTime(prep)} · total ${formatTime(total)}` };
+  }
+  if (prep) return { texte: formatTime(prep), titre: `Préparation ${formatTime(prep)}` };
+  if (total) return { texte: formatTime(total), titre: `Temps total ${formatTime(total)}` };
+  return null;
 }
 
 // Somme des temps des étapes (préparation, cuisson, repos) et total — ce que

@@ -1646,7 +1646,12 @@ seulement** — la fournée n'en copie rien (on y déplace déjà le jour de cha
   étapes étant supprimées puis réinsérées, le défaut de la colonne suffit.
 - **Affichage** : picto sur la carte recette dès qu'une étape est cochée
   (`peutSePreparerAvance`, `lib/recipe-view.ts`) et sur l'étape de la fiche
-  (`RecipeStep`). `CARD_SELECT` lit la colonne ; la RPC
+  (`RecipeStep`). **Temps de la carte : préparation, total entre parenthèses
+  quand il diffère** (« 20 min (1h40) », `tempsCarte`), infobulle explicite,
+  puis le picto. Un seul composant pour les trois cartes
+  (`components/recipe/RecipeCardTime.tsx` : `RecipeCardLayout`, `MineCard`,
+  `OtherCard`) — les cartes du carnet affichaient leur temps à part, et le
+  picto leur avait d'abord manqué. `CARD_SELECT` lit la colonne ; la RPC
   `search_advanced_recipes`, qui compose son propre JSON, est complétée par une
   lecture de plus (`marquerPreparationAvance`, `lib/search.ts`, marque
   `prepare_ahead` sur la carte).
