@@ -369,6 +369,24 @@ saisie « Fabien Chenu »
   (noms réservés + grossièretés évidentes), qui ne dépend d'aucun réseau — il
   compare **mot à mot le slug**, jamais par sous-chaîne, sinon « con » refuserait
   « Constance ».
+- **Durcissement (JEP-266, prompt v2)** : **toute** vulgarité, même légère
+  (« merde », « con », « cul »…), et deux motifs nouveaux, `religion`
+  (divinités, figures, termes de culte, slogans) et `politique` (partis,
+  idéologies, slogans, élus, militantisme, conflits internationaux compris) ;
+  le motif personnalité (code `personnalite_non_recommandable` gardé pour la
+  continuité des journaux) couvre aussi les personnalités politiques,
+  religieuses ou clivantes. **Sur ces quatre thèmes le doute vaut refus** ;
+  ailleurs il profite toujours à l'inscrit. Restent autorisés les chefs et
+  personnalités non clivantes (« Pierre Hermé ») et les **prénoms**, seuls ou
+  suivis d'un nom, même s'ils coïncident avec une figure (Christian, Jésus,
+  Emmanuel, Marine, Mohamed) — **jamais un prénom dans `MOTS_INTERDITS`**,
+  l'IA juge le contexte (« Vive Jésus » refusé, « Jésus Martin » accepté). Le
+  filet local lit aussi chaque mot sans ses chiffres de déguisement
+  (`m3rde` → `merde`, comparaison seulement, jamais le slug enregistré) et
+  cherche les expressions de plusieurs mots comme une **suite de mots**
+  (`SUITES_INTERDITES` : « sale arabe », « Le Pen »…) — une entrée à tiret
+  dans `MOTS_INTERDITS` ne correspondrait jamais à rien. Pas d'effet
+  rétroactif : les pseudos déjà enregistrés ne sont pas recontrôlés.
 - **`lib/pseudo.ts` (pur) / `lib/pseudo-data.ts` (base + IA, serveur)** : même
   séparation que `ideas.ts` / `ideas-data.ts`, sans quoi le formulaire client
   tirerait `next/headers` et casserait le build.
