@@ -1746,6 +1746,12 @@ export function RelectureEditor({
               </select>
             </div>
 
+            {si === 0 && (
+              <div className="px-6 pt-6">
+                <HelpBlockSlot blockKey="relecture.jour_et_avance" help={help} />
+              </div>
+            )}
+
             {/* Colonnes alignées par le haut : le lien « Une nuit (12 h) » sous
                 l'attente allonge sa colonne, qui, alignée par le bas, remontait
                 son libellé et son champ au-dessus de ceux des voisins (JEP-20). */}

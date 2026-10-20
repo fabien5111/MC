@@ -1910,6 +1910,8 @@ export function CreerForm({
                     ))}
                   </div>
 
+                  {si === 0 && <HelpBlockSlot blockKey="creer.jour_et_avance" help={help} />}
+
                   <div className="flex items-center gap-3">
                     <label className="font-label-md text-label-md text-outline whitespace-nowrap">À PRÉPARER LE JOUR J −</label>
                     <input
