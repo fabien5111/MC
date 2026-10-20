@@ -18,7 +18,9 @@ export function RecipeCardTime({ recipe }: { recipe: Recette }) {
           serrée (difficulté, type, temps). */}
       {avance && (
         <span
-          className="material-symbols-outlined text-[13px] leading-none text-primary"
+          // Taille en style en ligne : la feuille des icônes (24 px) l'emporte sur une classe.
+          style={{ fontSize: 13, lineHeight: 1 }}
+          className="material-symbols-outlined text-primary"
           title="Certaines étapes peuvent être préparées à l'avance"
           aria-label="Certaines étapes peuvent être préparées à l'avance"
           role="img"
