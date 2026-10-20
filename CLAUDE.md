@@ -645,6 +645,26 @@ Toujours par `POST /api/admin/membres/[id]/moderation` (admin complet,
 - **Audit** : `impersonation_sessions` (connexions) + `impersonation_events`
   (écritures abouties ou refusées), consultables en bas d'Admin → Membres.
 
+## Indexation par les moteurs de recherche (JEP-274)
+
+**Seul `www.jepatisse.com` est indexable ; tout autre domaine est fermé.**
+La règle est dans `lib/indexation.mjs` (`estHoteIndexable`) et **autorise www
+explicitement** : un domaine oublié (aperçu de PR, `*.vercel.app`, `Host`
+absent) est fermé par défaut — l'inverse désindexerait tout le site au
+lancement si `www` était touché par erreur. Deux mécanismes, car `robots.txt`
+interdit l'exploration mais ne retire pas une page déjà connue :
+- **`X-Robots-Tag: noindex, nofollow`** posé par `headers()` de
+  `next.config.mjs` (condition `has` sur `Host`, motif calculé dans
+  `lib/indexation.mjs`), pas par le middleware dont le `matcher` exclut les
+  assets : l'en-tête couvre pages, images, fichiers et API ;
+- **`app/robots.ts`**, décidé sur `Host` : `www` autorise et cite le sitemap,
+  le reste `Disallow: /`.
+`app/sitemap.ts` utilise `ORIGINE_CANONIQUE`, jamais `siteUrl()` (qui suit
+l'environnement). **Après tout déploiement touchant cette logique, tester les
+deux cas** : `curl -sI -H "Host: www.jepatisse.com" …` (aucun `X-Robots-Tag`)
+et le même avec `dev.jepatisse.com` (en-tête présent). Si dev est déjà indexé :
+demander la suppression dans Search Console (propriété `dev`, « Suppressions »).
+
 ## Recherche avancée
 
 Écran `/recherche` : huit facettes (ingrédients à inclure / exclure, type,

@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process';
 import { collectMaterialSymbolIcons } from './scripts/material-symbols.mjs';
+import { EN_TETE_NON_INDEXABLE, MOTIF_HOTE_NON_INDEXABLE } from './lib/indexation.mjs';
 
 /**
  * Identifiant du build — sert de version au cache du service worker et de
@@ -63,6 +64,21 @@ const nextConfig = {
   // devenait un jour une vraie page.
   async redirects() {
     return [{ source: '/cookies', destination: '/confidentialite#cookies', permanent: false }];
+  },
+
+  // JEP-274 — `X-Robots-Tag: noindex, nofollow` sur TOUTE réponse d'un domaine
+  // autre que `www` : pages, images, fichiers, API. Posé ici plutôt que dans le
+  // middleware, dont le `matcher` exclut justement les assets statiques. La
+  // condition `has` porte sur `Host` et exclut `www` explicitement (cf.
+  // lib/indexation.mjs) : `www` ne reçoit jamais l'en-tête.
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: MOTIF_HOTE_NON_INDEXABLE }],
+        headers: [EN_TETE_NON_INDEXABLE],
+      },
+    ];
   },
 
   // Rien ici pour `/sw.js` : il est désormais servi par `app/sw.js/route.ts`,

@@ -6,10 +6,12 @@
 // pagination sur des milliers d'entrées) que le handoff blog ne couvre pas.
 import type { MetadataRoute } from 'next';
 import { getSitemapArticles } from '@/lib/blog';
-import { siteUrl } from '@/lib/site-url';
+import { ORIGINE_CANONIQUE } from '@/lib/indexation.mjs';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = siteUrl();
+  // Toujours l'origine canonique, quel que soit le domaine qui sert le plan
+  // (JEP-274) : `siteUrl()` suit l'environnement et donnerait des URL `dev`.
+  const base = ORIGINE_CANONIQUE;
   // `sitemap.ts` s'exécute au build (comme `generateStaticParams`) : sans
   // variables Supabase posées à ce moment, on dégrade vers un plan de site
   // réduit à l'accueil et à la liste plutôt que de faire échouer le build.
