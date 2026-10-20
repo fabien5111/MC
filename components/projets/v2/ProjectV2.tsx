@@ -781,6 +781,20 @@ export function ProjectV2({
                           .join(' · ')
                       : 'À résoudre'}
                   </span>
+                  {/* Recette d'origine, dans un nouvel onglet : seulement pour une
+                      préparation copiée (l'IA et la saisie à la main n'en ont pas). */}
+                  {c.resolved && c.source_recipe_id && (
+                    <a
+                      href={`/recette/${c.source_recipe_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Voir la recette d'origine"
+                      aria-label={`Voir la recette d'origine de ${c.name}`}
+                      className="shrink-0 rounded-full p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">visibility</span>
+                    </a>
+                  )}
                   {boutonRecette(c)}
                 </div>
               )}
