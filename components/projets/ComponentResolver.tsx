@@ -428,6 +428,9 @@ export function ComponentResolver({
     }
   }
 
+  // La recette actuellement copiée dans cette préparation.
+  const estChoisie = (item: Trouvee) => component.resolved && !!component.source_recipe_id && component.source_recipe_id === item.id;
+
   async function attacher(item: Trouvee) {
     setChargement(true);
     try {
@@ -653,7 +656,9 @@ export function ComponentResolver({
                     <button
                       type="button"
                       onClick={() => void attacher(it)}
-                      className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-outline-variant px-4 py-3 text-left transition-colors hover:border-primary"
+                      // Recette déjà choisie pour cette préparation : rien à ajouter.
+                      disabled={estChoisie(it)}
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-outline-variant px-4 py-3 text-left transition-colors enabled:hover:border-primary disabled:cursor-default"
                     >
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-body-md text-[15px] text-on-surface">{it.title}</span>
@@ -670,9 +675,18 @@ export function ComponentResolver({
                       </span>
                       {/* Faux bouton : le clic remonte à la carte, qui est le vrai bouton (un
                           <button> dans un <button> serait invalide). */}
-                      <span className="shrink-0 rounded-pill border border-outline-variant px-4 py-1.5 font-label-md text-[13px] font-semibold text-primary">
-                        Ajouter
-                      </span>
+                      {estChoisie(it) ? (
+                        <span className="flex shrink-0 items-center gap-1 font-label-md text-[13px] font-semibold text-green-700">
+                          <span className="material-symbols-outlined" style={{ fontSize: 18, lineHeight: 1 }}>
+                            check
+                          </span>
+                          Recette sélectionnée
+                        </span>
+                      ) : (
+                        <span className="shrink-0 rounded-pill border border-outline-variant px-4 py-1.5 font-label-md text-[13px] font-semibold text-primary">
+                          Ajouter
+                        </span>
+                      )}
                     </button>
                   </li>
                 ))}
