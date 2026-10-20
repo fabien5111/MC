@@ -224,12 +224,12 @@ export function StepEditorCard({
         <span className={label}>PEUT ÊTRE PRÉPARÉE À L&apos;AVANCE</span>
       </label>
       {step.can_prepare_ahead === true && (
-        <div className="flex flex-col gap-1 pl-7">
+        <div className="flex flex-col gap-1">
           <input
             id={`avance-note-${index}`}
             value={step.advance_note ?? ''}
             onChange={(e) => onChange({ advance_note: e.target.value.slice(0, ADVANCE_NOTE_MAX) })}
-            className="editorial-input text-on-surface w-full max-w-xl"
+            className="editorial-input text-on-surface w-full"
             type="text"
             maxLength={ADVANCE_NOTE_MAX}
             placeholder="Précisions : conservation, précautions… (ex. 3 jours au frais, filmée au contact)"
