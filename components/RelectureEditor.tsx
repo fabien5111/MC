@@ -31,6 +31,7 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import { moveAt } from '@/lib/photo-reorder';
 import { demanderVignettes, televerserImage } from '@/lib/storage-client';
 import { connexionHref } from '@/lib/nav';
+import { PictoAvance } from '@/components/recipe/PictoAvance';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 
@@ -781,9 +782,9 @@ export function RelectureEditor({
   const planningDays = useMemo(() => {
     if (allSameDay) return [];
     const items = sps
-      .map((sp, i) => ({ title: sp.nom.trim() || `Étape ${i + 1}`, offset: Math.max(0, numOrNull(sp.jour) || 0), order: i, isLast: false }))
+      .map((sp, i) => ({ title: sp.nom.trim() || `Étape ${i + 1}`, offset: Math.max(0, numOrNull(sp.jour) || 0), order: i, isLast: false, avance: sp.avance, note: sp.avanceNote }))
       .sort((a, b) => b.offset - a.offset || a.order - b.order);
-    items.push({ title: 'Dégustation', offset: 0, order: 999, isLast: true });
+    items.push({ title: 'Dégustation', offset: 0, order: 999, isLast: true, avance: false, note: '' });
     const days: { offset: number; items: typeof items }[] = [];
     items.forEach((it) => {
       let d = days.find((x) => x.offset === it.offset);
@@ -2194,6 +2195,7 @@ export function RelectureEditor({
                   {day.items.map((it, k) => (
                     <p key={k} className={`font-body-md text-body-md font-semibold${it.isLast ? ' text-secondary' : ''}`}>
                       {it.title}
+                      {it.avance && <PictoAvance note={noteAvance(it.note)} />}
                     </p>
                   ))}
                 </div>

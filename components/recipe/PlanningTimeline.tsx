@@ -1,3 +1,4 @@
+import { PictoAvance } from '@/components/recipe/PictoAvance';
 import { dayLabel, planningDays } from '@/lib/recipe-view';
 
 // « Planning de préparation » : une colonne par jour, un rond numéroté relié
@@ -36,6 +37,7 @@ export function PlanningTimeline({
             {d.items.map((it, k) => (
               <p key={k} className="font-body-md text-body-md font-semibold">
                 {it.title || 'Sans titre'}
+                {it.can_prepare_ahead && <PictoAvance note={it.advance_note} />}
               </p>
             ))}
           </div>

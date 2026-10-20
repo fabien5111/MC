@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ADVANCE_NOTE_MAX, noteAvance, peutSePreparerAvance, tempsCarte } from '@/lib/recipe-view';
+import { ADVANCE_NOTE_MAX, noteAvance, peutSePreparerAvance, planningDays, tempsCarte } from '@/lib/recipe-view';
 
 describe('peutSePreparerAvance (JEP-19)', () => {
   it('vrai dès qu’une étape est cochée', () => {
@@ -43,5 +43,21 @@ describe('noteAvance (JEP-19)', () => {
   });
   it('coupe à la longueur maximale', () => {
     expect(noteAvance('a'.repeat(ADVANCE_NOTE_MAX + 50))).toHaveLength(ADVANCE_NOTE_MAX);
+  });
+});
+
+describe('planningDays (JEP-19)', () => {
+  it('porte le drapeau et la note de l’étape préparable à l’avance', () => {
+    const jours = planningDays([
+      { title: 'Pâte', day_offset: 1, order_index: 0, can_prepare_ahead: true, advance_note: ' 3 jours au frais ' },
+      { title: 'Cuisson', day_offset: 0, order_index: 1 },
+    ]);
+    expect(jours[0].items[0]).toMatchObject({ can_prepare_ahead: true, advance_note: '3 jours au frais' });
+    expect(jours[1].items[0].can_prepare_ahead).toBe(false);
+    expect(jours[1].items[1]).toMatchObject({ title: 'Dégustation', can_prepare_ahead: false });
+  });
+  it('ignore la note d’une étape décochée', () => {
+    const [jour] = planningDays([{ title: 'A', day_offset: 0, order_index: 0, can_prepare_ahead: false, advance_note: 'x' }]);
+    expect(jour.items[0].advance_note).toBeNull();
   });
 });

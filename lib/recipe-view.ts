@@ -282,8 +282,16 @@ export function dayLabel(offset: number | null | undefined): string {
 type PlanningStep = Pick<RecipeFull['recipe_steps'][number], 'title' | 'day_offset' | 'order_index'> & {
   fully_done?: boolean;
   added?: boolean;
+  can_prepare_ahead?: boolean | null;
+  advance_note?: string | null;
 };
-export type PlanningDayItem = { title: string; fully_done: boolean; added: boolean };
+export type PlanningDayItem = {
+  title: string;
+  fully_done: boolean;
+  added: boolean;
+  can_prepare_ahead: boolean;
+  advance_note: string | null;
+};
 
 export function planningDays(steps: PlanningStep[]): { offset: number; items: PlanningDayItem[] }[] {
   const days: { offset: number; items: PlanningDayItem[] }[] = [];
@@ -297,7 +305,13 @@ export function planningDays(steps: PlanningStep[]): { offset: number; items: Pl
         d = { offset: o, items: [] };
         days.push(d);
       }
-      d.items.push({ title: s.title || '', fully_done: s.fully_done ?? false, added: s.added ?? false });
+      d.items.push({
+        title: s.title || '',
+        fully_done: s.fully_done ?? false,
+        added: s.added ?? false,
+        can_prepare_ahead: s.can_prepare_ahead === true,
+        advance_note: s.can_prepare_ahead === true ? noteAvance(s.advance_note) : null,
+      });
     });
   return days;
 }

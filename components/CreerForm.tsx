@@ -46,6 +46,7 @@ import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
 import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { connexionHref } from '@/lib/nav';
+import { PictoAvance } from '@/components/recipe/PictoAvance';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -722,9 +723,9 @@ export function CreerForm({
   const planningDays = useMemo(() => {
     if (allSameDay) return [];
     const items = steps
-      .map((s, i) => ({ title: s.title.trim() || `Étape ${i + 1}`, offset: Math.max(0, parseInt(s.dayOffset, 10) || 0), order: i, isLast: false }))
+      .map((s, i) => ({ title: s.title.trim() || `Étape ${i + 1}`, offset: Math.max(0, parseInt(s.dayOffset, 10) || 0), order: i, isLast: false, avance: s.prepAhead, note: s.prepAheadNote }))
       .sort((a, b) => b.offset - a.offset || a.order - b.order);
-    items.push({ title: 'Dégustation', offset: 0, order: 999, isLast: true });
+    items.push({ title: 'Dégustation', offset: 0, order: 999, isLast: true, avance: false, note: '' });
     const days: { offset: number; items: typeof items }[] = [];
     items.forEach((it) => {
       let d = days.find((x) => x.offset === it.offset);
@@ -2462,6 +2463,7 @@ export function CreerForm({
                     {day.items.map((it, k) => (
                       <p key={k} className={`font-body-md text-body-md font-semibold${it.isLast ? ' text-secondary' : ''}`}>
                         {it.title}
+                        {it.avance && <PictoAvance note={noteAvance(it.note)} />}
                       </p>
                     ))}
                   </div>
