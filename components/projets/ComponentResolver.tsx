@@ -787,9 +787,7 @@ export function ComponentResolver({
               placeholder="Précisions pour l’IA (optionnel)"
               className={`${champ} resize-none overflow-hidden`}
             />
-            {/* Barre collée en bas de la zone qui défile (même motif que l'aperçu :
-                jamais `fixed`, le backdrop-blur du conteneur en ferait le repère). */}
-            <div className="sticky bottom-0 z-10 after:absolute after:inset-x-0 after:top-full after:h-4 after:bg-surface-container-lowest -mx-6 -mb-6 mt-5 flex flex-wrap gap-3 rounded-b-2xl border-t border-outline-variant bg-surface-container-lowest px-6 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
+            <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
               <button type="button" onClick={() => setMode('sources')} className={btnGhost}>
                 Retour aux recettes
               </button>
@@ -940,7 +938,9 @@ export function ComponentResolver({
               </datalist>
             )}
 
-            <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
+            {/* Barre collée en bas de la zone qui défile (même motif que l'aperçu :
+                jamais `fixed`, le backdrop-blur du conteneur en ferait le repère). */}
+            <div className="sticky bottom-0 z-10 after:absolute after:inset-x-0 after:top-full after:h-4 after:bg-surface-container-lowest -mx-6 -mb-6 mt-5 flex flex-wrap gap-3 rounded-b-2xl border-t border-outline-variant bg-surface-container-lowest px-6 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
               <button type="button" onClick={() => setMode('sources')} className={btnGhost}>
                 Retour aux recettes
               </button>
