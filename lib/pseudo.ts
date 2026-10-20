@@ -84,42 +84,92 @@ const PSEUDOS_RESERVES = new Set([
 //
 // Comparaison par MOT du slug, jamais par sous-chaîne : « con » en
 // sous-chaîne refuserait « Constance », « Conchita » ou « Second ».
+//
+// JEP-266 : toute vulgarité, même légère, et les termes religieux ou
+// politiques SANS AMBIGUÏTÉ. Jamais un prénom (Christian, Jésus, Emmanuel,
+// Marine, Mohamed…) : un prénom ordinaire reste autorisé même s'il coïncide
+// avec une figure religieuse ou politique — c'est l'IA qui juge le contexte.
 const MOTS_INTERDITS = new Set([
-  'connard',
-  'connasse',
-  'conard',
-  'salope',
-  'salaud',
-  'pute',
-  'putain',
-  'encule',
-  'enculee',
-  'enfoire',
-  'batard',
-  'bite',
-  'couille',
-  'couilles',
-  'chatte',
-  'nique',
-  'niquer',
-  'ntm',
-  'pd',
-  'pede',
-  'tapette',
-  'negre',
-  'bougnoule',
-  'youpin',
-  'sale-arabe',
-  'nazi',
-  'hitler',
-  'fuck',
-  'fucker',
-  'bitch',
-  'nigger',
-  'cunt',
-  'porn',
-  'porno',
+  // Vulgarités et insultes
+  'merde', 'merdes', 'merdeux', 'merdeuse', 'merdique',
+  'emmerde', 'emmerder', 'emmerdeur', 'emmerdeuse',
+  'con', 'cons', 'conne', 'connes', 'connerie', 'conneries',
+  'connard', 'connards', 'connasse', 'conard',
+  'cul', 'culs', 'trouduc',
+  'chier', 'chieur', 'chieuse', 'chiasse',
+  'bordel', 'foutre',
+  'caca', 'prout', 'pisse', 'pisser',
+  'salope', 'salopard', 'salaud', 'pute', 'putes', 'putain', 'ptn', 'fdp', 'tg',
+  'pouffiasse', 'poufiasse', 'grognasse',
+  'encule', 'enculee', 'enculer', 'enfoire', 'batard',
+  'bite', 'teub', 'zob', 'zizi', 'penis', 'vagin',
+  'couille', 'couilles', 'chatte', 'nichon', 'nichons', 'nibard', 'nibards',
+  'branleur', 'branleuse', 'branler', 'bander', 'sexe',
+  'nique', 'niquer', 'ntm',
+  'pd', 'pede', 'tapette', 'gouine',
+  // Vulgarités anglaises
+  'fuck', 'fucker', 'fucking', 'motherfucker', 'wtf',
+  'shit', 'shitty', 'bullshit', 'crap', 'damn', 'piss',
+  'dick', 'cock', 'pussy', 'ass', 'asshole', 'bastard',
+  'bitch', 'slut', 'whore', 'wanker', 'twat', 'cunt',
+  'tits', 'boobs', 'sex', 'porn', 'porno',
+  // Haine
+  'negre', 'nigger', 'nigga', 'bougnoule', 'youpin',
+  'nazi', 'nazis', 'neonazi', 'hitler', 'heil', '1488',
+  // Religion : divinités, figures et termes de culte (jamais un prénom)
+  'allah', 'allahu', 'jihad', 'djihad', 'jihadiste', 'djihadiste',
+  'inchallah', 'inshallah', 'bismillah', 'alleluia', 'hallelujah',
+  'dieu', 'god', 'yahve', 'yahweh', 'jehovah', 'christ', 'mahomet',
+  'bouddha', 'buddha', 'vishnou', 'vishnu',
+  'satan', 'lucifer', 'belzebuth', 'antechrist', 'messie', 'prophete',
+  'rabbin', 'ayatollah', 'calife', 'califat',
+  'coran', 'bible', 'torah', 'evangile', 'charia', 'sharia',
+  // Politique : partis, mouvements, idéologies, responsables sans ambiguïté
+  'rn', 'fn', 'lfi', 'nupes', 'reconquete', 'ump',
+  'facho', 'fachos', 'fasciste', 'fascisme', 'communiste', 'communisme',
+  'stalinien', 'antifa', 'maga', 'sioniste', 'antisioniste', 'zionist',
+  'hamas', 'hezbollah', 'daech', 'daesh', 'isis', 'intifada',
+  'macron', 'macroniste', 'trump', 'putin', 'zemmour', 'melenchon', 'bardella', 'sarkozy',
 ]);
+
+// Expressions de plusieurs mots, cherchées comme une SUITE de mots du slug :
+// une entrée à tiret dans `MOTS_INTERDITS` ne pourrait jamais correspondre à
+// un mot seul (c'était le cas de l'ancienne entrée `sale-arabe`).
+const SUITES_INTERDITES: string[][] = [
+  ['sale', 'arabe'],
+  ['sale', 'juif'],
+  ['sale', 'juive'],
+  ['sale', 'noir'],
+  ['sale', 'noire'],
+  ['le', 'pen'],
+  ['sieg', 'heil'],
+  ['free', 'palestine'],
+  ['free', 'gaza'],
+];
+
+// Chiffres employés pour déguiser un mot (« m3rde », « c0n », « b1te »).
+const CHIFFRES_LETTRES: Record<string, string> = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '@': 'a' };
+
+// Lecture « sans déguisement » d'un mot du slug, pour la comparaison
+// seulement — jamais pour le slug enregistré. Un mot sans lettre (« 2 »,
+// « 1312 ») est gardé tel quel : « Fabien 2 » ne doit pas devenir « Fabien z ».
+function sansChiffres(mot: string): string {
+  if (!/[a-z]/.test(mot)) return mot;
+  return mot.replace(/[013457@]/g, (c) => CHIFFRES_LETTRES[c]);
+}
+
+// Vrai si le slug contient un mot interdit ou une suite interdite, en clair
+// ou déguisé par des chiffres.
+export function contientTermeInterdit(slug: string): boolean {
+  const lectures = [slug.split('-'), slug.split('-').map(sansChiffres)];
+  return lectures.some(
+    (mots) =>
+      mots.some((m) => MOTS_INTERDITS.has(m)) ||
+      SUITES_INTERDITES.some((suite) =>
+        mots.some((_, i) => suite.every((mot, j) => mots[i + j] === mot)),
+      ),
+  );
+}
 
 // Retire les caractères non autorisés, écrase les espaces multiples et borne
 // la longueur. Conserve un éventuel espace final : l'utilisateur est peut-être
@@ -197,7 +247,7 @@ export function validerPseudo(saisie: string): ValidationPseudo {
   }
 
   const mots = slug.split('-');
-  if (PSEUDOS_RESERVES.has(slug) || mots.some((m) => PSEUDOS_RESERVES.has(m) || MOTS_INTERDITS.has(m))) {
+  if (PSEUDOS_RESERVES.has(slug) || mots.some((m) => PSEUDOS_RESERVES.has(m)) || contientTermeInterdit(slug)) {
     return { ok: false, message: PSEUDO_REFUS };
   }
 
