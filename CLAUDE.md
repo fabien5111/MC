@@ -1638,8 +1638,10 @@ seulement** — la fournée n'en copie rien (on y déplace déjà le jour de cha
 
 - **Saisie** : `/creer`, relecture d'import (clé `avance` du brouillon), mode
   projet (`StepEditorCard`, `ComponentStepDraft.can_prepare_ahead`). Copiée par
-  `planComponentCopy` / `readComponentDraft` / `writeComponentContent` et par
-  l'extraction d'étapes (`planExtraction`). Écrite **seulement si cochée** : les
+  `planComponentCopy` / `readComponentDraft` / `writeComponentContent`, par
+  l'extraction d'étapes (`planExtraction`) et par la RPC `duplicate_recipe`
+  (colonnes d'étape listées une à une : toute nouvelle colonne de
+  `recipe_steps` doit y être ajoutée, sinon « Dupliquer » la perd). Écrite **seulement si cochée** : les
   étapes étant supprimées puis réinsérées, le défaut de la colonne suffit.
 - **Affichage** : picto sur la carte recette dès qu'une étape est cochée
   (`peutSePreparerAvance`, `lib/recipe-view.ts`) et sur l'étape de la fiche
