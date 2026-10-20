@@ -1805,24 +1805,24 @@ export function RelectureEditor({
                   <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
                 </span>
               </label>
+              {sp.avance && (
+                <div className="basis-full flex flex-col gap-1">
+                  <input
+                    id={`avance-note-${sp.key}`}
+                    type="text"
+                    value={sp.avanceNote}
+                    onChange={(e) => patchSp(si, { avanceNote: e.target.value.slice(0, ADVANCE_NOTE_MAX) })}
+                    maxLength={ADVANCE_NOTE_MAX}
+                    className={`${champ} w-full`}
+                    placeholder="À l'avance : précisions (ex. 3 jours au frais, filmée au contact)"
+                    aria-label="Précisions sur la préparation à l'avance"
+                  />
+                  <span className="text-xs text-on-surface-variant">
+                    {sp.avanceNote.length}/{ADVANCE_NOTE_MAX} · visible sur la fiche recette
+                  </span>
+                </div>
+              )}
             </div>
-            {sp.avance && (
-              <div className="px-6 pt-4 flex flex-col gap-1">
-                <input
-                  id={`avance-note-${sp.key}`}
-                  type="text"
-                  value={sp.avanceNote}
-                  onChange={(e) => patchSp(si, { avanceNote: e.target.value.slice(0, ADVANCE_NOTE_MAX) })}
-                  maxLength={ADVANCE_NOTE_MAX}
-                  className={`${champ} w-full`}
-                  placeholder="À l'avance : précisions (ex. 3 jours au frais, filmée au contact)"
-                  aria-label="Précisions sur la préparation à l'avance"
-                />
-                <span className="text-xs text-on-surface-variant">
-                  {sp.avanceNote.length}/{ADVANCE_NOTE_MAX} · visible sur la fiche recette
-                </span>
-              </div>
-            )}
 
             <div className="p-6">
               {/* Ingrédients */}
