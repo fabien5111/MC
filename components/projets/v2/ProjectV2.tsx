@@ -769,7 +769,7 @@ export function ProjectV2({
               components={composants}
               extra={(c) => (
                 <div id={`prep-${c.id}-recette`} className="mt-2 flex scroll-mt-28 flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-2">
-                  <span className={`min-w-0 flex-1 text-[12.5px] ${c.resolved ? 'text-green-700' : 'text-secondary'}`}>
+                  <span className={`flex min-w-0 flex-1 items-center gap-1.5 text-[12.5px] ${c.resolved ? 'text-green-700' : 'text-secondary'}`}>
                     {c.resolved
                       ? [
                           COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind,
@@ -789,7 +789,7 @@ export function ProjectV2({
                         rel="noopener noreferrer"
                         title="Voir la recette d'origine"
                         aria-label={`Voir la recette d'origine de ${c.name}`}
-                        className="ml-1.5 inline-block align-text-bottom text-on-surface-variant transition-colors hover:text-primary"
+                        className="relative top-px shrink-0 text-on-surface-variant transition-colors hover:text-primary"
                       >
                         {/* Taille en style en ligne : la feuille des icônes (24 px) l'emporterait sur une classe. */}
                         <span className="material-symbols-outlined block" style={{ fontSize: 14, lineHeight: 1 }}>
