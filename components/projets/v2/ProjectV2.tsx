@@ -900,16 +900,21 @@ export function ProjectV2({
                       </details>
                     )}
                     {own.length ? (
-                      <details id={`prep-${c.id}-etapes`} open={ouvertAuChargement(c, 'etapes')} className="group scroll-mt-28">
-                        <summary className="mb-6 flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest px-4 py-3">
+                      <details id={`prep-${c.id}-etapes`} open={ouvertAuChargement(c, 'etapes')} className="group scroll-mt-28 rounded-xl border border-dashed border-secondary/40">
+                        {/* Un seul cadre autour de l'en-tête ET des étapes (comme le
+                            volet « Ajustement des quantités ») : ouvert, on voit que
+                            les étapes dessous appartiennent à ce bandeau. */}
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl bg-surface-container-lowest px-4 py-3 group-open:rounded-b-none group-open:border-b group-open:border-dashed group-open:border-secondary/40">
                           <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
                             Étapes · {own.length}
                             {verifDe(c.id, 'etapes')?.etat === 'fait' && <span className="text-green-700"> · relues</span>}
                           </span>
                           <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                         </summary>
-                        <div className="space-y-10">{own.map((s, k) => etape(s, steps.indexOf(s), k === own.length - 1))}</div>
-                        <VerifCase item={verifDe(c.id, 'etapes')} onToggle={(it) => void basculerVerif(it)} busy={busy} />
+                        <div className="px-4 py-6 md:px-6">
+                          <div className="space-y-10">{own.map((s, k) => etape(s, steps.indexOf(s), k === own.length - 1))}</div>
+                          <VerifCase item={verifDe(c.id, 'etapes')} onToggle={(it) => void basculerVerif(it)} busy={busy} />
+                        </div>
                       </details>
                     ) : (
                       <p className="text-sm italic text-on-surface-variant">Pas encore de recette pour cette préparation.</p>

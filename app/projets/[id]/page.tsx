@@ -49,7 +49,7 @@ export default async function ProjetPage({ params }: Params) {
     return (
       <>
         <Header />
-        <main className="mx-auto mb-24 max-w-[900px] px-margin-mobile py-12 md:px-margin-desktop">
+        <main className="mx-auto mb-24 max-w-container-max px-margin-mobile py-12 md:px-margin-desktop">
           <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">Mode projet</p>
           <h1 className="mb-8 font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[34px]">
             {project.title === 'Nouveau projet' ? 'Nouveau projet' : project.title}
@@ -94,7 +94,7 @@ export default async function ProjetPage({ params }: Params) {
   return (
     <>
       <Header />
-      <main className="mx-auto mb-24 max-w-[900px] px-margin-mobile py-12 md:px-margin-desktop">
+      <main className="mx-auto mb-24 max-w-container-max px-margin-mobile py-12 md:px-margin-desktop">
         <ProjectV2
           project={project}
           recipe={recipe}
