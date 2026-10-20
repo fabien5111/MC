@@ -24,7 +24,7 @@ import { getApprovedComments } from '@/lib/reviews-data';
 import { getProjectCredits, getProjectTrials } from '@/lib/projects-data';
 import { formatTime, formatDate, formatDateHeure } from '@/lib/format';
 import { PlanningTimeline } from '@/components/recipe/PlanningTimeline';
-import { UNITS_LBL, yieldInfo, mergeIngredients, mergeIngredientLines, planningDays, effectiveTimes } from '@/lib/recipe-view';
+import { UNITS_LBL, yieldInfo, mergeIngredients, mergeIngredientLines, planningDays, effectiveTimes, peutSePreparerAvance } from '@/lib/recipe-view';
 import { recipeJsonLd } from '@/lib/recipe-jsonld';
 import { siteUrl } from '@/lib/site-url';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
@@ -599,6 +599,14 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 </div>
               ))}
             </div>
+            {peutSePreparerAvance({ recipe_steps: steps }) && (
+              <p className="print-fs-11 flex items-center justify-center gap-2 text-center font-body-md text-body-md text-on-surface-variant">
+                <span className="material-symbols-outlined text-primary" style={{ fontSize: 20, lineHeight: 1 }} aria-hidden="true">
+                  event_upcoming
+                </span>
+                Certaines étapes peuvent être préparées à l&apos;avance
+              </p>
+            )}
             {allergens.length > 0 && (
               <div className="flex items-center justify-center gap-3 flex-wrap pt-2 border-t border-outline-variant/40">
                 <span className="print-fs-9 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
