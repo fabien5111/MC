@@ -789,9 +789,12 @@ export function ProjectV2({
                         rel="noopener noreferrer"
                         title="Voir la recette d'origine"
                         aria-label={`Voir la recette d'origine de ${c.name}`}
-                        className="ml-1.5 inline-block align-middle text-on-surface-variant transition-colors hover:text-primary"
+                        className="ml-1.5 inline-block align-text-bottom text-on-surface-variant transition-colors hover:text-primary"
                       >
-                        <span className="material-symbols-outlined block text-[14px] leading-none">visibility</span>
+                        {/* Taille en style en ligne : la feuille des icônes (24 px) l'emporterait sur une classe. */}
+                        <span className="material-symbols-outlined block" style={{ fontSize: 14, lineHeight: 1 }}>
+                          visibility
+                        </span>
                       </a>
                     )}
                   </span>

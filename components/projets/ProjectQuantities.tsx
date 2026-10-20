@@ -555,7 +555,9 @@ export function QuantitiesStep({
                         aria-label={`Voir la recette d'origine de ${c.name}`}
                         className="shrink-0 self-center text-on-surface-variant transition-colors hover:text-primary"
                       >
-                        <span className="material-symbols-outlined block text-[14px] leading-none">visibility</span>
+                        <span className="material-symbols-outlined block" style={{ fontSize: 14, lineHeight: 1 }}>
+                          visibility
+                        </span>
                       </a>
                     )}
                   </dd>
