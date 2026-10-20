@@ -163,7 +163,7 @@ export function ProjectV2({
   const states = projectV2BlockStates({ ...project, intent: project.intent });
 
   const composants = useProjectComponents(project, mutate, dialog);
-  const { ordered, resolving, resolvingInit, setResolvingInit, consultBusy, ouvrirComposant, retirerRecette, fermerResolution } =
+  const { ordered, resolving, resolvingInit, setResolvingInit, consultBusy, ouvrirComposant, changerRecette, retirerRecette, fermerResolution } =
     composants;
 
   // ── Format (relu depuis la recette, comme l'étape 2 du parcours) ──────
@@ -571,6 +571,11 @@ export function ProjectV2({
         <button type="button" onClick={() => void ouvrirComposant(c, c.resolved)} className={btnGhost}>
           {c.resolved ? 'Modifier cette préparation' : 'Choisir une recette'}
         </button>
+        {c.resolved && (
+          <button type="button" onClick={() => changerRecette(c)} disabled={busy} className={btnGhost}>
+            Choisir une autre recette
+          </button>
+        )}
         {c.resolved && (
           <button type="button" onClick={() => void retirerRecette(c)} className={btnGhost}>
             Retirer la recette

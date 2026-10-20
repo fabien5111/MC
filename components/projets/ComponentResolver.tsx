@@ -311,6 +311,15 @@ export function ComponentResolver({
       dialog.alert('Ce composant n’a aucune étape : il resterait vide dans la recette.');
       return;
     }
+    // Préparation déjà résolue et contenu neuf (autre recette, proposition de
+    // l'IA, saisie) : les étapes actuelles vont être remplacées. Une
+    // modification de l'existant (`initialDraft`) n'est pas concernée.
+    if (component.resolved && !initialDraft) {
+      const ok = await dialog.confirm(
+        `Remplacer le contenu actuel de « ${component.name} » ? Ses étapes et ses quantités seront remplacées, y compris les retouches faites à la main. Le coefficient d'ajustement est à vérifier ensuite.`,
+      );
+      if (!ok) return;
+    }
     // Mode d'ajustement choisi à l'étape 3 (JEP-254, point 4) : il prime sur
     // celui de la recette copiée. Sans choix, celui de la source est gardé.
     // Rattachement des ingrédients au référentiel, comme dans l'éditeur.
@@ -570,6 +579,13 @@ export function ComponentResolver({
 
         {mode === 'sources' ? (
           <>
+            {component.resolved && (
+              <p className="mb-4 rounded-xl bg-surface-container px-4 py-3 text-[13px] text-on-surface-variant">
+                Recette actuelle :{' '}
+                <strong className="text-on-surface">{component.source_title || 'saisie à la main ou proposée par l’IA'}</strong>.
+                Choisissez-en une autre pour la remplacer, ou fermez cette fenêtre pour la conserver.
+              </p>
+            )}
             <div className="relative mb-4">
               <input
                 value={terme}

@@ -150,6 +150,14 @@ export function useProjectComponents(project: ProjectFull, mutate: Mutate, dialo
     setResolving(c);
   }
 
+  // « Choisir une autre recette » : ouvre la recherche sans rien effacer. Le
+  // contenu actuel n'est remplacé qu'au choix (avec confirmation) ; fermer la
+  // fenêtre garde la recette en place.
+  function changerRecette(c: ProjectComponent) {
+    setResolvingInit(null);
+    setResolving(c);
+  }
+
   function fermerResolution() {
     setResolving(null);
     setResolvingInit(null);
@@ -248,6 +256,7 @@ export function useProjectComponents(project: ProjectFull, mutate: Mutate, dialo
     setRole,
     setScalingMode,
     ouvrirComposant,
+    changerRecette,
     fermerResolution,
     removeComponent,
     retirerRecette,
