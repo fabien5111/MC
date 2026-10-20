@@ -157,6 +157,8 @@ export type RecipeStepView = {
   // Étape qui PEUT être faite en amont (JEP-19) — une possibilité, pas le jour
   // prévu (`day_offset`). Lue par `recipe_steps(*)`, absente des types générés.
   can_prepare_ahead?: boolean | null;
+  // Précisions de l'auteur sur la préparation à l'avance (conservation…).
+  advance_note?: string | null;
   // Absentes en portée `texte`, sans `original_url` en portée `lecture`.
   step_photos?: { url: string; original_url?: string | null; order_index: number | null; ai_retouched: boolean }[];
   // Mode planifié seulement : étape signalée « déjà faite » et conservée pour

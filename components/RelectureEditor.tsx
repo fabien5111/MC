@@ -19,7 +19,7 @@ import { MaryseIcon } from '@/components/MaryseIcon';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ImageSlot, PHOTO_DND_TYPE } from '@/components/ImageSlot';
 import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
-import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
+import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL, ADVANCE_NOTE_MAX, noteAvance } from '@/lib/recipe-view';
 import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { fixOeufLigature } from '@/lib/text';
 import { resolveIngredientRefId, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
@@ -57,6 +57,7 @@ type SpState = {
   jour: string;
   // JEP-19 : l'étape peut être faite en amont (possibilité, pas le jour prévu).
   avance: boolean;
+  avanceNote: string;
   // Comment les quantités de l'étape suivent un changement de rendement.
   // Même mécanisme que l'éditeur de recette : persisté dans
   // `ingredient_groups.scaling_mode` à la création.
@@ -182,6 +183,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
     jour: String(sp.day_offset ?? 0),
     // Absent d'un import (l'IA ne le déduit pas) : décoché.
     avance: sp.avance === true,
+    avanceNote: typeof sp.avance_note === 'string' ? sp.avance_note : '',
     // Absent d'un import (l'IA ne le déduit pas) : l'ajustement proportionnel
     // est le comportement attendu par défaut, comme à la création.
     scaling: typeof sp.scaling_mode === 'string' ? sp.scaling_mode : 'simple',
@@ -684,6 +686,7 @@ export function RelectureEditor({
     temp: '',
     jour: '0',
     avance: false,
+    avanceNote: '',
     scaling: 'simple',
     ings: [],
     etapes: [{ key: nextKey(), imported: null, texte: '' }],
@@ -846,6 +849,7 @@ export function RelectureEditor({
       temperature_c: numOrNull(sp.temp),
       day_offset: numOrNull(sp.jour) || 0,
       avance: sp.avance,
+      avance_note: sp.avance ? noteAvance(sp.avanceNote) : null,
       scaling_mode: normScaling(sp.scaling),
       ingredients: sp.ings
         .map((g) => ({
@@ -1070,7 +1074,8 @@ export function RelectureEditor({
             order_index: i,
             // Écrite seulement si cochée, comme dans CreerForm.
             ...(sp.avance === true ? { can_prepare_ahead: true } : {}),
-          } as never) // `can_prepare_ahead` absente des types générés
+            ...(sp.avance === true && noteAvance(sp.avance_note) ? { advance_note: noteAvance(sp.avance_note) } : {}),
+          } as never) // `can_prepare_ahead` / `advance_note` absentes des types générés
           .select('id')
           .single();
         if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
@@ -1800,6 +1805,23 @@ export function RelectureEditor({
                 </span>
               </label>
             </div>
+            {sp.avance && (
+              <div className="px-6 pt-4 flex flex-col gap-1">
+                <input
+                  id={`avance-note-${sp.key}`}
+                  type="text"
+                  value={sp.avanceNote}
+                  onChange={(e) => patchSp(si, { avanceNote: e.target.value.slice(0, ADVANCE_NOTE_MAX) })}
+                  maxLength={ADVANCE_NOTE_MAX}
+                  className={`${champ} w-full`}
+                  placeholder="À l'avance : précisions (ex. 3 jours au frais, filmée au contact)"
+                  aria-label="Précisions sur la préparation à l'avance"
+                />
+                <span className="text-xs text-on-surface-variant">
+                  {sp.avanceNote.length}/{ADVANCE_NOTE_MAX} · visible sur la fiche recette
+                </span>
+              </div>
+            )}
 
             <div className="p-6">
               {/* Ingrédients */}

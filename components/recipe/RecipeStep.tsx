@@ -80,6 +80,19 @@ export function RecipeStep({
           )}
         </div>
       </div>
+      {/* JEP-19 : précisions de l'auteur, seulement si l'étape peut se faire à
+          l'avance (une note laissée sur une étape décochée reste masquée). */}
+      {s.can_prepare_ahead && s.advance_note && (
+        <p className="font-body-md text-body-md text-on-surface-variant -mt-2 flex items-start gap-2">
+          <span className="material-symbols-outlined text-[18px] leading-none text-primary mt-1 shrink-0" aria-hidden="true">
+            event_upcoming
+          </span>
+          <span>
+            <span className="font-label-md text-label-md text-primary">À l&apos;avance : </span>
+            {s.advance_note}
+          </span>
+        </p>
+      )}
       {ings.length > 0 && (
         <details className="group border border-outline-variant mb-2" open>
           <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">

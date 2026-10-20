@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImageSlot } from '@/components/ImageSlot';
 import type { ComponentStepDraft } from '@/lib/projects';
+import { ADVANCE_NOTE_MAX } from '@/lib/recipe-view';
 
 type Ingredient = ComponentStepDraft['ingredients'][number];
 
@@ -222,6 +223,23 @@ export function StepEditorCard({
         <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
         <span className={label}>PEUT ÊTRE PRÉPARÉE À L&apos;AVANCE</span>
       </label>
+      {step.can_prepare_ahead === true && (
+        <div className="flex flex-col gap-1 pl-7">
+          <input
+            id={`avance-note-${index}`}
+            value={step.advance_note ?? ''}
+            onChange={(e) => onChange({ advance_note: e.target.value.slice(0, ADVANCE_NOTE_MAX) })}
+            className="editorial-input text-on-surface w-full max-w-xl"
+            type="text"
+            maxLength={ADVANCE_NOTE_MAX}
+            placeholder="Précisions : conservation, précautions… (ex. 3 jours au frais, filmée au contact)"
+            aria-label="Précisions sur la préparation à l'avance"
+          />
+          <span className="text-xs text-on-surface-variant">
+            {(step.advance_note ?? '').length}/{ADVANCE_NOTE_MAX} · visible sur la fiche recette
+          </span>
+        </div>
+      )}
 
       <div className="flex flex-col">
         <div className="border-l-2 border-transparent pl-4 min-[1232px]:border-l-0 min-[1232px]:pl-0 flex items-center gap-4 mb-2">

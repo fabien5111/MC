@@ -1636,6 +1636,15 @@ jour **prévu**. Arbitrages du 19/10/2026 : une simple case, un picto
 seulement** — la fournée n'en copie rien (on y déplace déjà le jour de chaque
 étape).
 
+- **Précisions facultatives** (`recipe_steps.advance_note`, 200 caractères,
+  `noteAvance` / `ADVANCE_NOTE_MAX`, `lib/recipe-view.ts`) : un champ texte sous
+  la case (« 3 jours au frais, filmée au contact »), affiché sur la fiche sous
+  l'étape (`RecipeStep`) **seulement si la case est cochée**. Écrite seulement
+  si la case l'est (décocher la perd). Jamais sur la carte recette : un texte
+  par étape alourdirait toutes les grilles, l'infobulle y reste générique.
+  Même chemin de copie que la case — dont `duplicate_recipe`. Colonne ajoutée
+  par `psql` (nœud 216075) : `readComponentDraft` la nomme dans son `select`,
+  elle doit donc exister avant le déploiement.
 - **Saisie** : `/creer`, relecture d'import (clé `avance` du brouillon), mode
   projet (`StepEditorCard`, `ComponentStepDraft.can_prepare_ahead`). Copiée par
   `planComponentCopy` / `readComponentDraft` / `writeComponentContent`, par

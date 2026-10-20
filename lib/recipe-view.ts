@@ -230,6 +230,15 @@ export function peutSePreparerAvance(recipe: {
   return recipe.prepare_ahead === true || (recipe.recipe_steps || []).some((s) => s.can_prepare_ahead === true);
 }
 
+// Précisions sur la préparation à l'avance (JEP-19) : « se conserve 3 jours au
+// frais ». Nettoyée à l'écriture (espaces, longueur) ; vide = `null`, jamais
+// une chaîne vide en base.
+export const ADVANCE_NOTE_MAX = 200;
+export function noteAvance(raw: string | null | undefined): string | null {
+  const t = (raw ?? '').replace(/\s+/g, ' ').trim().slice(0, ADVANCE_NOTE_MAX);
+  return t || null;
+}
+
 // Temps affiché sur une carte recette (JEP-19) : la préparation, et le total
 // entre parenthèses quand il en diffère (« 20 min (1h40) »). `titre` porte
 // l'explication en clair pour l'infobulle — sans libellé, la valeur entre

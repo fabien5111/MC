@@ -444,6 +444,8 @@ export type ComponentStepDraft = {
   day_offset: number | null;
   // JEP-19 : l'étape peut être faite en amont. Absent des propositions de l'IA.
   can_prepare_ahead?: boolean;
+  // Précisions sur la préparation à l'avance (conservation…).
+  advance_note?: string | null;
   ingredients: ComponentIngredientDraft[];
   // Photos de l'étape. Absentes des copies et des propositions de l'IA ;
   // relues par `readComponentDraft` pour qu'une modification du composant
@@ -471,6 +473,7 @@ export type CopyableRecipe = {
     tips: string | null;
     day_offset: number | null;
     can_prepare_ahead?: boolean | null;
+    advance_note?: string | null;
     order_index: number | null;
   }[];
 };
@@ -505,6 +508,7 @@ export function planComponentCopy(recipe: CopyableRecipe): ComponentStepDraft[] 
         tips: s.tips,
         day_offset: s.day_offset,
         can_prepare_ahead: s.can_prepare_ahead === true,
+        advance_note: s.can_prepare_ahead === true ? s.advance_note ?? null : null,
         ingredients: [...(group?.ingredients || [])].map((it) => ({
           name: it.name,
           quantity: it.quantity ?? null,

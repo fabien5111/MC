@@ -103,6 +103,16 @@ describe('planExtraction', () => {
     expect(p[0].can_prepare_ahead).toBe(true);
     expect('can_prepare_ahead' in p[1]).toBe(false);
   });
+
+  it('garde la note « à l\u2019avance » seulement si l\u2019étape est cochée', () => {
+    const avecNote = [
+      etape(1, 0, 0, 'Pâte', { can_prepare_ahead: true, advance_note: ' 3 jours au frais ' }),
+      etape(2, 1, 0, 'Crème', { can_prepare_ahead: false, advance_note: 'oubliée' }),
+    ];
+    const p = planExtraction(avecNote, [], [1, 2]);
+    expect(p[0].advance_note).toBe('3 jours au frais');
+    expect('advance_note' in p[1]).toBe(false);
+  });
 });
 
 describe('poidsExtraction', () => {

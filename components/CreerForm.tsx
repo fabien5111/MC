@@ -35,6 +35,7 @@ import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
+import { ADVANCE_NOTE_MAX, noteAvance } from '@/lib/recipe-view';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { buildIngredientsRecap } from '@/lib/ingredients-recap';
@@ -59,6 +60,8 @@ type StepState = {
   dayOffset: string;
   // JEP-19 : l'étape peut être faite en amont (possibilité, pas le jour prévu).
   prepAhead: boolean;
+  // Précisions sur la préparation à l'avance (conservation…), saisies quand la case est cochée.
+  prepAheadNote: string;
   prep: string;
   cook: string;
   temp: string;
@@ -142,6 +145,7 @@ const emptyStep = (): StepState => ({
   title: '',
   dayOffset: '',
   prepAhead: false,
+  prepAheadNote: '',
   prep: '',
   cook: '',
   temp: '',
@@ -176,6 +180,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       title: s.title || '',
       dayOffset: s.day_offset ? String(s.day_offset) : '',
       prepAhead: s.can_prepare_ahead === true,
+      prepAheadNote: s.advance_note || '',
       prep: s.prep_time != null ? String(s.prep_time) : '',
       cook: s.cook_time != null ? String(s.cook_time) : '',
       temp: s.cook_temp != null ? String(s.cook_temp) : '',
@@ -1015,7 +1020,10 @@ export function CreerForm({
             // Écrite seulement si cochée : décochée, le défaut `false` de la
             // colonne suffit (les étapes sont supprimées puis réinsérées).
             ...(st.prepAhead ? { can_prepare_ahead: true } : {}),
-          } as never) // `can_prepare_ahead` absente des types générés
+            // La note n'est écrite que si la case est cochée : décochée, elle est perdue
+            // (la reprise d'un champ masqué en base surprendrait plus qu'elle n'aiderait).
+            ...(st.prepAhead && noteAvance(st.prepAheadNote) ? { advance_note: noteAvance(st.prepAheadNote) } : {}),
+          } as never) // `can_prepare_ahead` / `advance_note` absentes des types générés
           .select('id')
           .single();
         if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
@@ -1910,6 +1918,23 @@ export function CreerForm({
                     <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
                     <span className="font-label-md text-label-md text-outline">PEUT ÊTRE PRÉPARÉE À L&apos;AVANCE</span>
                   </label>
+                  {st.prepAhead && (
+                    <div className="flex flex-col gap-1 pl-7">
+                      <input
+                        id={`avance-note-${st.key}`}
+                        value={st.prepAheadNote}
+                        onChange={(e) => patchStep(si, { prepAheadNote: e.target.value.slice(0, ADVANCE_NOTE_MAX) })}
+                        className="editorial-input text-on-surface w-full max-w-xl"
+                        type="text"
+                        maxLength={ADVANCE_NOTE_MAX}
+                        placeholder="Précisions : conservation, précautions… (ex. 3 jours au frais, filmée au contact)"
+                        aria-label="Précisions sur la préparation à l'avance"
+                      />
+                      <span className="text-xs text-on-surface-variant">
+                        {st.prepAheadNote.length}/{ADVANCE_NOTE_MAX} · visible sur la fiche recette
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex flex-col">
                     {/* En-tête « INGRÉDIENTS » (+ miroirs quantité/unité,

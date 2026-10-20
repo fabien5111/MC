@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { peutSePreparerAvance, tempsCarte } from '@/lib/recipe-view';
+import { ADVANCE_NOTE_MAX, noteAvance, peutSePreparerAvance, tempsCarte } from '@/lib/recipe-view';
 
 describe('peutSePreparerAvance (JEP-19)', () => {
   it('vrai dès qu’une étape est cochée', () => {
@@ -31,5 +31,17 @@ describe('tempsCarte (JEP-19)', () => {
   it('aucun temps : rien', () => {
     expect(tempsCarte({ prep: null, total: null })).toBeNull();
     expect(tempsCarte({ prep: 0, total: 0 })).toBeNull();
+  });
+});
+
+describe('noteAvance (JEP-19)', () => {
+  it('nettoie les espaces et rend null pour le vide', () => {
+    expect(noteAvance('  3 jours   au frais \n filmée ')).toBe('3 jours au frais filmée');
+    expect(noteAvance('   ')).toBeNull();
+    expect(noteAvance(null)).toBeNull();
+    expect(noteAvance(undefined)).toBeNull();
+  });
+  it('coupe à la longueur maximale', () => {
+    expect(noteAvance('a'.repeat(ADVANCE_NOTE_MAX + 50))).toHaveLength(ADVANCE_NOTE_MAX);
   });
 });

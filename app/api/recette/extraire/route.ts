@@ -115,6 +115,7 @@ export async function POST(req: Request) {
           video_url: st.video_url,
           day_offset: st.day_offset,
           ...(st.can_prepare_ahead ? { can_prepare_ahead: true } : {}),
+          ...(st.advance_note ? { advance_note: st.advance_note } : {}),
         } as never)
         .select('id')
         .single();
