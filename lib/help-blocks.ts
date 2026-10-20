@@ -38,6 +38,11 @@ export const HELP_BLOCKS: HelpBlockDef[] = [
     adminLabel: "Dans la 1ʳᵉ étape, avant le champ « Description »",
   },
   {
+    key: 'creer.jour_et_avance',
+    page: 'creer',
+    adminLabel: "Dans la 1ʳᵉ étape, avant « À préparer le jour J − » (jour prévu et préparation à l'avance)",
+  },
+  {
     key: 'creer.verification',
     page: 'creer',
     adminLabel: "« Vérification de la recette » — avant la section « Planning de préparation »",
@@ -59,6 +64,11 @@ export const HELP_BLOCKS: HelpBlockDef[] = [
     key: 'relecture.description_etape',
     page: 'relecture',
     adminLabel: "Dans la 1ʳᵉ étape, avant « Sous-étapes importées »",
+  },
+  {
+    key: 'relecture.jour_et_avance',
+    page: 'relecture',
+    adminLabel: "Dans la 1ʳᵉ étape, avant les temps (réalisation, attente, cuisson, jour prévu, à l'avance)",
   },
   {
     key: 'relecture.verification',
