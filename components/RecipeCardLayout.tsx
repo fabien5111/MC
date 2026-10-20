@@ -4,8 +4,7 @@
 // initial, données déjà résolues côté client pour la pagination).
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { formatTime } from '@/lib/format';
-import { effectiveTimes } from '@/lib/recipe-view';
+import { RecipeCardTime } from '@/components/recipe/RecipeCardTime';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
@@ -37,7 +36,6 @@ export function RecipeCardLayout({
   defaultPhoto?: string | null;
 }) {
   const r = recipe;
-  const times = effectiveTimes(r);
   // Planifier se décale d'un cran quand Éditer s'intercale entre Favori et
   // lui — même incrément que celui qui sépare déjà Favori (right-3) de
   // Planifier (right-14).
@@ -85,9 +83,7 @@ export function RecipeCardLayout({
                 </span>
               )}
             </div>
-            <span className="text-xs text-on-surface-variant whitespace-nowrap shrink-0">
-              {formatTime(times.total || times.prep)}
-            </span>
+            <RecipeCardTime recipe={r} />
           </div>
           <h3 className="font-headline-md text-xl text-on-surface mb-2 line-clamp-2 min-h-[3.5rem] group-hover:text-primary transition-colors">
             {r.title}

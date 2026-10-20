@@ -20,7 +20,7 @@
 // `refresh: false` puis rend la main au parent, qui reste monté. Une
 // transition déclarée ici mourrait avec la modale, le spinner s'éteindrait
 // avant le retour du rendu serveur (cf. CLAUDE.md).
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
@@ -28,6 +28,8 @@ import { LockedAction, LockedHint } from '@/components/LockedAction';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { SearchResultsBusy } from '@/components/SearchResultsBusy';
 import { PickerStatusBadge, pickerRatingText } from '@/components/recipe/PickerStatusBadge';
+import { RecipeCardTime } from '@/components/recipe/RecipeCardTime';
+import { MaryseIcon } from '@/components/MaryseIcon';
 import {
   COMPONENT_SOURCE_LABELS,
   PICKER_SCOPES,
@@ -76,6 +78,10 @@ type Trouvee = {
   isPublic: boolean | null;
   ratingAvg: number | null;
   ratingCount: number | null;
+  // Difficulté et temps, tels que la route les renvoie : même présentation que
+  // les cartes recettes (maryses, « préparation (total) », picto « à l'avance »).
+  difficulte: { name: string | null; level: number | null } | null;
+  temps: ComponentProps<typeof RecipeCardTime>['recipe'];
 };
 
 // Lecture d'une recette source, réduite à ce que la copie exige : ni photos
@@ -86,7 +92,7 @@ const COPY_SELECT = `
   id, title, author_id,
   profiles!recipes_author_id_fkey(full_name),
   ingredient_groups(order_index, scaling_mode, ingredients(name, quantity, unit, comment, allergen, ref_id, order_index)),
-  recipe_steps(title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, order_index),
+  recipe_steps(title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, can_prepare_ahead, advance_note, order_index),
   recipe_utensils(name, ref_id, comment, order_index)
 `;
 
@@ -242,15 +248,16 @@ export function ComponentResolver({
       reponses.forEach((rep, i) => {
         const scope = actives[i];
         const kind = PICKER_SCOPE_KIND[scope];
-        for (const it of (rep?.items ?? []) as {
+        for (const it of (rep?.items ?? []) as ({
           id: string;
           title: string;
           status?: string | null;
           is_public?: boolean | null;
           rating_avg?: number | null;
           rating_count?: number | null;
+          difficulties?: { name: string | null; level: number | null } | null;
           profiles?: { full_name: string | null } | null;
-        }[]) {
+        } & ComponentProps<typeof RecipeCardTime>['recipe'])[]) {
           if (vues.has(it.id)) continue;
           vues.add(it.id);
           out.push({
@@ -263,6 +270,8 @@ export function ComponentResolver({
             isPublic: it.is_public ?? null,
             ratingAvg: it.rating_avg ?? null,
             ratingCount: it.rating_count ?? null,
+            difficulte: it.difficulties ?? null,
+            temps: it,
           });
         }
       });
@@ -310,6 +319,15 @@ export function ComponentResolver({
     if (!steps.length) {
       dialog.alert('Ce composant n’a aucune étape : il resterait vide dans la recette.');
       return;
+    }
+    // Préparation déjà résolue et contenu neuf (autre recette, proposition de
+    // l'IA, saisie) : les étapes actuelles vont être remplacées. Une
+    // modification de l'existant (`initialDraft`) n'est pas concernée.
+    if (component.resolved && !initialDraft) {
+      const ok = await dialog.confirm(
+        `Remplacer le contenu actuel de « ${component.name} » ? Ses étapes et ses quantités seront remplacées, y compris les retouches faites à la main. Le coefficient d'ajustement est à vérifier ensuite.`,
+      );
+      if (!ok) return;
     }
     // Mode d'ajustement choisi à l'étape 3 (JEP-254, point 4) : il prime sur
     // celui de la recette copiée. Sans choix, celui de la source est gardé.
@@ -418,6 +436,9 @@ export function ComponentResolver({
       setChargement(false);
     }
   }
+
+  // La recette actuellement copiée dans cette préparation.
+  const estChoisie = (item: Trouvee) => component.resolved && !!component.source_recipe_id && component.source_recipe_id === item.id;
 
   async function attacher(item: Trouvee) {
     setChargement(true);
@@ -570,6 +591,13 @@ export function ComponentResolver({
 
         {mode === 'sources' ? (
           <>
+            {component.resolved && (
+              <p className="mb-4 rounded-xl bg-surface-container px-4 py-3 text-[13px] text-on-surface-variant">
+                Recette actuelle :{' '}
+                <strong className="text-on-surface">{component.source_title || 'saisie à la main ou proposée par l’IA'}</strong>.
+                Choisissez-en une autre pour la remplacer, ou fermez cette fenêtre pour la conserver.
+              </p>
+            )}
             <div className="relative mb-4">
               <input
                 value={terme}
@@ -637,10 +665,29 @@ export function ComponentResolver({
                     <button
                       type="button"
                       onClick={() => void attacher(it)}
-                      className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-outline-variant px-4 py-3 text-left transition-colors hover:border-primary"
+                      // Recette déjà choisie pour cette préparation : rien à ajouter.
+                      disabled={estChoisie(it)}
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-outline-variant px-4 py-3 text-left transition-colors enabled:hover:border-primary disabled:cursor-default"
                     >
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-body-md text-[15px] text-on-surface">{it.title}</span>
+                        <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                          <span className="min-w-0 truncate font-body-md text-[15px] text-on-surface">{it.title}</span>
+                          {(it.difficulte?.level || 0) > 0 && (
+                            <span
+                              className="flex shrink-0 items-center gap-0.5"
+                              title={it.difficulte?.name ? `Difficulté : ${it.difficulte.name}` : undefined}
+                            >
+                              {[1, 2, 3, 4, 5].map((n) => (
+                                <MaryseIcon
+                                  key={n}
+                                  size={12}
+                                  className={n <= (it.difficulte?.level || 0) ? 'text-primary' : 'text-outline-variant'}
+                                />
+                              ))}
+                            </span>
+                          )}
+                          <RecipeCardTime recipe={it.temps} />
+                        </span>
                         <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-on-surface-variant">
                           <span>
                             {it.label}
@@ -654,9 +701,18 @@ export function ComponentResolver({
                       </span>
                       {/* Faux bouton : le clic remonte à la carte, qui est le vrai bouton (un
                           <button> dans un <button> serait invalide). */}
-                      <span className="shrink-0 rounded-pill border border-outline-variant px-4 py-1.5 font-label-md text-[13px] font-semibold text-primary">
-                        Ajouter
-                      </span>
+                      {estChoisie(it) ? (
+                        <span className="flex shrink-0 items-center gap-1 font-label-md text-[13px] font-semibold text-green-700">
+                          <span className="material-symbols-outlined" style={{ fontSize: 18, lineHeight: 1 }}>
+                            check
+                          </span>
+                          Recette sélectionnée
+                        </span>
+                      ) : (
+                        <span className="shrink-0 rounded-pill border border-outline-variant px-4 py-1.5 font-label-md text-[13px] font-semibold text-primary">
+                          Ajouter
+                        </span>
+                      )}
                     </button>
                   </li>
                 ))}
@@ -714,6 +770,8 @@ export function ComponentResolver({
                   title: st.title,
                   description: st.description,
                   day_offset: st.day_offset,
+                  can_prepare_ahead: st.can_prepare_ahead,
+                  advance_note: st.advance_note,
                   prep_time: st.prep_time,
                   cook_time: st.cook_time,
                   wait_time: st.wait_time,
@@ -936,7 +994,9 @@ export function ComponentResolver({
               </datalist>
             )}
 
-            <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
+            {/* Barre collée en bas de la zone qui défile (même motif que l'aperçu :
+                jamais `fixed`, le backdrop-blur du conteneur en ferait le repère). */}
+            <div className="sticky bottom-0 z-10 after:absolute after:inset-x-0 after:top-full after:h-4 after:bg-surface-container-lowest -mx-6 -mb-6 mt-5 flex flex-wrap gap-3 rounded-b-2xl border-t border-outline-variant bg-surface-container-lowest px-6 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
               <button type="button" onClick={() => setMode('sources')} className={btnGhost}>
                 Retour aux recettes
               </button>

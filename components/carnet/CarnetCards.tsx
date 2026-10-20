@@ -12,10 +12,11 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { useMutation } from '@/lib/use-mutation';
-import { formatDate, formatTime } from '@/lib/format';
-import { effectiveTimes, matchAllergenPictos } from '@/lib/recipe-view';
+import { formatDate } from '@/lib/format';
+import { matchAllergenPictos } from '@/lib/recipe-view';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
 import { MaryseIcon } from '@/components/MaryseIcon';
+import { RecipeCardTime } from '@/components/recipe/RecipeCardTime';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
 import { isProjectDraft } from '@/lib/projects';
@@ -86,7 +87,6 @@ export function MineCard({
   const projet = isProjectDraft(r);
   const href = projet ? `/projets/${r.id}` : `/recette/${r.id}`;
   const st = STATUS[r.status] || STATUS.draft;
-  const times = effectiveTimes(r);
   return (
     <div className="group relative border border-outline-variant bg-surface-container-lowest transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
       <Link href={href} className="block">
@@ -172,9 +172,7 @@ export function MineCard({
               </span>
             )}
           </div>
-          <span className="shrink-0 whitespace-nowrap text-xs text-on-surface-variant">
-            {formatTime(times.total || times.prep)}
-          </span>
+          <RecipeCardTime recipe={r} />
         </div>
         <Link href={href}>
           <h3 className="mb-2 font-headline-md text-xl text-on-surface transition-colors group-hover:text-primary">
@@ -206,7 +204,6 @@ export function OtherCard({
   allergenRefs: AllergenRef[];
 }) {
   const r = item.recipe;
-  const times = effectiveTimes(r);
   return (
     <div className="group relative border border-primary bg-surface-container-lowest transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
       <Link href={`/recette/${r.id}`} className="block">
@@ -284,9 +281,7 @@ export function OtherCard({
               </span>
             )}
           </div>
-          <span className="shrink-0 whitespace-nowrap text-xs text-on-surface-variant">
-            {formatTime(times.total || times.prep)}
-          </span>
+          <RecipeCardTime recipe={r} />
         </div>
         <Link href={`/recette/${r.id}`}>
           <h3 className="mb-2 font-headline-md text-xl text-on-surface transition-colors group-hover:text-primary">

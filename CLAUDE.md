@@ -1643,6 +1643,48 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   restent donc vides. En donner un à toutes les recettes suppose de l'ajouter
   d'abord à `/creer` et à la relecture d'import.
 
+## Étape préparable à l'avance (JEP-19)
+
+Case « Peut être préparée à l'avance » sur chaque étape (`recipe_steps.can_prepare_ahead`,
+booléen, défaut `false`) : une **possibilité** donnée par l'auteur (« la pâte
+sucrée se garde au frais »), à ne pas confondre avec `day_offset`, qui est le
+jour **prévu**. Arbitrages du 19/10/2026 : une simple case, un picto
+(`event_upcoming`) + une infobulle (`title`) pour tout affichage, **recette
+seulement** — la fournée n'en copie rien (on y déplace déjà le jour de chaque
+étape).
+
+- **Précisions facultatives** (`recipe_steps.advance_note`, 200 caractères,
+  `noteAvance` / `ADVANCE_NOTE_MAX`, `lib/recipe-view.ts`) : un champ texte sous
+  la case (« 3 jours au frais, filmée au contact »), affiché sur la fiche sous
+  l'étape (`RecipeStep`) **seulement si la case est cochée**. Écrite seulement
+  si la case l'est (décocher la perd). Jamais sur la carte recette : un texte
+  par étape alourdirait toutes les grilles, l'infobulle y reste générique.
+  Même chemin de copie que la case — dont `duplicate_recipe`. Colonne ajoutée
+  par `psql` (nœud 216075) : `readComponentDraft` la nomme dans son `select`,
+  elle doit donc exister avant le déploiement.
+- **Saisie** : `/creer`, relecture d'import (clé `avance` du brouillon), mode
+  projet (`StepEditorCard`, `ComponentStepDraft.can_prepare_ahead`). Copiée par
+  `planComponentCopy` / `readComponentDraft` / `writeComponentContent`, par
+  l'extraction d'étapes (`planExtraction`) et par la RPC `duplicate_recipe`
+  (colonnes d'étape listées une à une : toute nouvelle colonne de
+  `recipe_steps` doit y être ajoutée, sinon « Dupliquer » la perd ; elle
+  oubliait aussi `video_url`, rattrapé dans le même correctif). Écrite **seulement si cochée** : les
+  étapes étant supprimées puis réinsérées, le défaut de la colonne suffit.
+- **Affichage** : picto sur la carte recette dès qu'une étape est cochée
+  (`peutSePreparerAvance`, `lib/recipe-view.ts`) et sur l'étape de la fiche
+  (`RecipeStep`). **Temps de la carte : préparation, total entre parenthèses
+  quand il diffère** (« 20 min (1h40) », `tempsCarte`), infobulle explicite,
+  puis le picto. Un seul composant pour les trois cartes
+  (`components/recipe/RecipeCardTime.tsx` : `RecipeCardLayout`, `MineCard`,
+  `OtherCard`) — les cartes du carnet affichaient leur temps à part, et le
+  picto leur avait d'abord manqué. `CARD_SELECT` lit la colonne ; la RPC
+  `search_advanced_recipes`, qui compose son propre JSON, est complétée par une
+  lecture de plus (`marquerPreparationAvance`, `lib/search.ts`, marque
+  `prepare_ahead` sur la carte).
+- **La colonne doit exister avant le déploiement** : `CARD_SELECT` la nomme,
+  toutes les grilles du site échoueraient sans elle. DDL sur une table
+  existante → `psql` en tant que `postgres` sur le nœud 216075.
+
 ## Extraire des étapes en recette (JEP-258)
 
 Sur la fiche recette, l'action du rail « Extraire des étapes en recette »

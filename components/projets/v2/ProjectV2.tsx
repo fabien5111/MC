@@ -163,7 +163,7 @@ export function ProjectV2({
   const states = projectV2BlockStates({ ...project, intent: project.intent });
 
   const composants = useProjectComponents(project, mutate, dialog);
-  const { ordered, resolving, resolvingInit, setResolvingInit, consultBusy, ouvrirComposant, retirerRecette, fermerResolution } =
+  const { ordered, resolving, resolvingInit, setResolvingInit, consultBusy, ouvrirComposant, changerRecette, retirerRecette, fermerResolution } =
     composants;
 
   // ── Format (relu depuis la recette, comme l'étape 2 du parcours) ──────
@@ -572,6 +572,11 @@ export function ProjectV2({
           {c.resolved ? 'Modifier cette préparation' : 'Choisir une recette'}
         </button>
         {c.resolved && (
+          <button type="button" onClick={() => changerRecette(c)} disabled={busy} className={btnGhost}>
+            Choisir une autre recette
+          </button>
+        )}
+        {c.resolved && (
           <button type="button" onClick={() => void retirerRecette(c)} className={btnGhost}>
             Retirer la recette
           </button>
@@ -769,7 +774,7 @@ export function ProjectV2({
               components={composants}
               extra={(c) => (
                 <div id={`prep-${c.id}-recette`} className="mt-2 flex scroll-mt-28 flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-2">
-                  <span className={`min-w-0 flex-1 text-[12.5px] ${c.resolved ? 'text-green-700' : 'text-secondary'}`}>
+                  <span className={`flex min-w-0 flex-1 items-center gap-1.5 text-[12.5px] ${c.resolved ? 'text-green-700' : 'text-secondary'}`}>
                     {c.resolved
                       ? [
                           COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind,
@@ -780,6 +785,23 @@ export function ProjectV2({
                           .filter(Boolean)
                           .join(' · ')
                       : 'À résoudre'}
+                    {/* Recette d'origine, dans un nouvel onglet : seulement pour une
+                        préparation copiée (l'IA et la saisie à la main n'en ont pas). */}
+                    {c.resolved && c.source_recipe_id && (
+                      <a
+                        href={`/recette/${c.source_recipe_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Voir la recette d'origine"
+                        aria-label={`Voir la recette d'origine de ${c.name}`}
+                        className="relative top-px shrink-0 text-on-surface-variant transition-colors hover:text-primary"
+                      >
+                        {/* Taille en style en ligne : la feuille des icônes (24 px) l'emporterait sur une classe. */}
+                        <span className="material-symbols-outlined block" style={{ fontSize: 14, lineHeight: 1 }}>
+                          visibility
+                        </span>
+                      </a>
+                    )}
                   </span>
                   {boutonRecette(c)}
                 </div>
@@ -900,16 +922,21 @@ export function ProjectV2({
                       </details>
                     )}
                     {own.length ? (
-                      <details id={`prep-${c.id}-etapes`} open={ouvertAuChargement(c, 'etapes')} className="group scroll-mt-28">
-                        <summary className="mb-6 flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest px-4 py-3">
+                      <details id={`prep-${c.id}-etapes`} open={ouvertAuChargement(c, 'etapes')} className="group scroll-mt-28 rounded-xl border border-dashed border-secondary/40">
+                        {/* Un seul cadre autour de l'en-tête ET des étapes (comme le
+                            volet « Ajustement des quantités ») : ouvert, on voit que
+                            les étapes dessous appartiennent à ce bandeau. */}
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl bg-surface-container-lowest px-4 py-3 group-open:rounded-b-none group-open:border-b group-open:border-dashed group-open:border-secondary/40">
                           <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
                             Étapes · {own.length}
                             {verifDe(c.id, 'etapes')?.etat === 'fait' && <span className="text-green-700"> · relues</span>}
                           </span>
                           <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                         </summary>
-                        <div className="space-y-10">{own.map((s, k) => etape(s, steps.indexOf(s), k === own.length - 1))}</div>
-                        <VerifCase item={verifDe(c.id, 'etapes')} onToggle={(it) => void basculerVerif(it)} busy={busy} />
+                        <div className="px-4 py-6 md:px-6">
+                          <div className="space-y-10">{own.map((s, k) => etape(s, steps.indexOf(s), k === own.length - 1))}</div>
+                          <VerifCase item={verifDe(c.id, 'etapes')} onToggle={(it) => void basculerVerif(it)} busy={busy} />
+                        </div>
                       </details>
                     ) : (
                       <p className="text-sm italic text-on-surface-variant">Pas encore de recette pour cette préparation.</p>

@@ -58,6 +58,18 @@ export function RecipeStep({
         </h4>
         {action}
         <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
+          {/* JEP-19 : picto seul, l'explication est dans l'infobulle (même
+              repère que la carte recette). */}
+          {s.can_prepare_ahead && (
+            <span
+              className="bg-surface-variant px-2 py-1 flex items-center"
+              title="Cette étape peut être préparée à l'avance"
+              aria-label="Cette étape peut être préparée à l'avance"
+              role="img"
+            >
+              <span className="material-symbols-outlined text-[16px] leading-none text-primary">event_upcoming</span>
+            </span>
+          )}
           {badges.map((b, k) => (
             <span key={k} className="bg-surface-variant px-3 py-1">
               {b}
@@ -68,6 +80,19 @@ export function RecipeStep({
           )}
         </div>
       </div>
+      {/* JEP-19 : précisions de l'auteur, seulement si l'étape peut se faire à
+          l'avance (une note laissée sur une étape décochée reste masquée). */}
+      {s.can_prepare_ahead && s.advance_note && (
+        <p className="font-body-md text-body-md text-on-surface-variant -mt-2 flex items-start gap-2">
+          <span className="material-symbols-outlined text-[18px] leading-none text-primary mt-1 shrink-0" aria-hidden="true">
+            event_upcoming
+          </span>
+          <span>
+            <span className="font-label-md text-label-md text-primary">À l&apos;avance : </span>
+            {s.advance_note}
+          </span>
+        </p>
+      )}
       {ings.length > 0 && (
         <details className="group border border-outline-variant mb-2" open>
           <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">

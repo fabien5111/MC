@@ -535,14 +535,31 @@ export function QuantitiesStep({
                     avant / après ajustement. */}
                 <dl className="mb-3 grid grid-cols-1 gap-x-4 gap-y-1 text-[12.5px] sm:grid-cols-[auto_1fr]">
                   <dt className="text-outline">Recette d’origine</dt>
-                  <dd className="text-on-surface">
-                    {c.sourceYield
-                      ? lignesRendement(c.sourceYield).map((l, i) => (
-                          <span key={i} className="block">
-                            {l}
-                          </span>
-                        ))
-                      : 'rendement non précisé'}
+                  <dd className="flex items-center gap-1.5 text-on-surface">
+                    <span>
+                      {c.sourceYield
+                        ? lignesRendement(c.sourceYield).map((l, i) => (
+                            <span key={i} className="block">
+                              {l}
+                            </span>
+                          ))
+                        : 'rendement non précisé'}
+                    </span>
+                    {/* Recette d'origine dans un nouvel onglet (préparation copiée seulement). */}
+                    {c.source_recipe_id && (
+                      <a
+                        href={`/recette/${c.source_recipe_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Voir la recette d'origine"
+                        aria-label={`Voir la recette d'origine de ${c.name}`}
+                        className="relative top-px shrink-0 self-center text-on-surface-variant transition-colors hover:text-primary"
+                      >
+                        <span className="material-symbols-outlined block" style={{ fontSize: 14, lineHeight: 1 }}>
+                          visibility
+                        </span>
+                      </a>
+                    )}
                   </dd>
                   {masseActuelle != null && (
                     <>

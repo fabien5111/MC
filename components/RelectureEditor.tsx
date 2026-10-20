@@ -20,7 +20,7 @@ import { DureeInput } from '@/components/DureeInput';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ImageSlot, PHOTO_DND_TYPE } from '@/components/ImageSlot';
 import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
-import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL } from '@/lib/recipe-view';
+import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL, ADVANCE_NOTE_MAX, noteAvance } from '@/lib/recipe-view';
 import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { fixOeufLigature } from '@/lib/text';
 import { resolveIngredientRefId, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
@@ -32,6 +32,7 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import { moveAt } from '@/lib/photo-reorder';
 import { demanderVignettes, televerserImage } from '@/lib/storage-client';
 import { connexionHref } from '@/lib/nav';
+import { PictoAvance } from '@/components/recipe/PictoAvance';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 
@@ -56,6 +57,9 @@ type SpState = {
   cuisson: string;
   temp: string;
   jour: string;
+  // JEP-19 : l'étape peut être faite en amont (possibilité, pas le jour prévu).
+  avance: boolean;
+  avanceNote: string;
   // Comment les quantités de l'étape suivent un changement de rendement.
   // Même mécanisme que l'éditeur de recette : persisté dans
   // `ingredient_groups.scaling_mode` à la création.
@@ -179,6 +183,9 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
     cuisson: t.cuisson_min ?? (lignesCuisson || ''),
     temp: sp.temperature_c ?? (tMax || ''),
     jour: String(sp.day_offset ?? 0),
+    // Absent d'un import (l'IA ne le déduit pas) : décoché.
+    avance: sp.avance === true,
+    avanceNote: typeof sp.avance_note === 'string' ? sp.avance_note : '',
     // Absent d'un import (l'IA ne le déduit pas) : l'ajustement proportionnel
     // est le comportement attendu par défaut, comme à la création.
     scaling: typeof sp.scaling_mode === 'string' ? sp.scaling_mode : 'simple',
@@ -680,6 +687,8 @@ export function RelectureEditor({
     cuisson: '',
     temp: '',
     jour: '0',
+    avance: false,
+    avanceNote: '',
     scaling: 'simple',
     ings: [],
     etapes: [{ key: nextKey(), imported: null, texte: '' }],
@@ -774,9 +783,9 @@ export function RelectureEditor({
   const planningDays = useMemo(() => {
     if (allSameDay) return [];
     const items = sps
-      .map((sp, i) => ({ title: sp.nom.trim() || `Étape ${i + 1}`, offset: Math.max(0, numOrNull(sp.jour) || 0), order: i, isLast: false }))
+      .map((sp, i) => ({ title: sp.nom.trim() || `Étape ${i + 1}`, offset: Math.max(0, numOrNull(sp.jour) || 0), order: i, isLast: false, avance: sp.avance, note: sp.avanceNote }))
       .sort((a, b) => b.offset - a.offset || a.order - b.order);
-    items.push({ title: 'Dégustation', offset: 0, order: 999, isLast: true });
+    items.push({ title: 'Dégustation', offset: 0, order: 999, isLast: true, avance: false, note: '' });
     const days: { offset: number; items: typeof items }[] = [];
     items.forEach((it) => {
       let d = days.find((x) => x.offset === it.offset);
@@ -841,6 +850,8 @@ export function RelectureEditor({
       },
       temperature_c: numOrNull(sp.temp),
       day_offset: numOrNull(sp.jour) || 0,
+      avance: sp.avance,
+      avance_note: sp.avance ? noteAvance(sp.avanceNote) : null,
       scaling_mode: normScaling(sp.scaling),
       ingredients: sp.ings
         .map((g) => ({
@@ -1063,7 +1074,10 @@ export function RelectureEditor({
             video_url: sp.video || null,
             sous_etapes: sousEtapes.length ? sousEtapes : null,
             order_index: i,
-          })
+            // Écrite seulement si cochée, comme dans CreerForm.
+            ...(sp.avance === true ? { can_prepare_ahead: true } : {}),
+            ...(sp.avance === true && noteAvance(sp.avance_note) ? { advance_note: noteAvance(sp.avance_note) } : {}),
+          } as never) // `can_prepare_ahead` / `advance_note` absentes des types générés
           .select('id')
           .single();
         if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
@@ -1796,6 +1810,38 @@ export function RelectureEditor({
                   <span className="text-xs text-on-surface-variant">j</span>
                 </span>
               </label>
+              <label
+                className="flex flex-col items-center text-center gap-1 cursor-pointer"
+                title="L'étape peut être préparée à l'avance"
+              >
+                <span className="font-label-md text-[9px] uppercase tracking-widest text-on-surface-variant">À l&apos;avance</span>
+                <span className="flex items-center gap-1 h-[2.125rem]">
+                  <input
+                    type="checkbox"
+                    checked={sp.avance}
+                    onChange={(e) => patchSp(si, { avance: e.target.checked })}
+                    className="w-4 h-4 accent-primary"
+                  />
+                  <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
+                </span>
+              </label>
+              {sp.avance && (
+                <div className="basis-full flex flex-col gap-1">
+                  <input
+                    id={`avance-note-${sp.key}`}
+                    type="text"
+                    value={sp.avanceNote}
+                    onChange={(e) => patchSp(si, { avanceNote: e.target.value.slice(0, ADVANCE_NOTE_MAX) })}
+                    maxLength={ADVANCE_NOTE_MAX}
+                    className={`${champ} w-full`}
+                    placeholder="À l'avance : précisions (ex. 3 jours au frais, filmée au contact)"
+                    aria-label="Précisions sur la préparation à l'avance"
+                  />
+                  <span className="text-xs text-on-surface-variant">
+                    {sp.avanceNote.length}/{ADVANCE_NOTE_MAX} · visible sur la fiche recette
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="p-6">
@@ -2169,6 +2215,7 @@ export function RelectureEditor({
                   {day.items.map((it, k) => (
                     <p key={k} className={`font-body-md text-body-md font-semibold${it.isLast ? ' text-secondary' : ''}`}>
                       {it.title}
+                      {it.avance && <PictoAvance note={noteAvance(it.note)} />}
                     </p>
                   ))}
                 </div>

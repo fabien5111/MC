@@ -36,6 +36,7 @@ import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
+import { ADVANCE_NOTE_MAX, noteAvance } from '@/lib/recipe-view';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { buildIngredientsRecap } from '@/lib/ingredients-recap';
@@ -46,6 +47,7 @@ import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
 import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { connexionHref } from '@/lib/nav';
+import { PictoAvance } from '@/components/recipe/PictoAvance';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -58,6 +60,10 @@ type StepState = {
   key: string;
   title: string;
   dayOffset: string;
+  // JEP-19 : l'étape peut être faite en amont (possibilité, pas le jour prévu).
+  prepAhead: boolean;
+  // Précisions sur la préparation à l'avance (conservation…), saisies quand la case est cochée.
+  prepAheadNote: string;
   prep: string;
   cook: string;
   temp: string;
@@ -140,6 +146,8 @@ const emptyStep = (): StepState => ({
   key: key(),
   title: '',
   dayOffset: '',
+  prepAhead: false,
+  prepAheadNote: '',
   prep: '',
   cook: '',
   temp: '',
@@ -173,6 +181,8 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       key: key(),
       title: s.title || '',
       dayOffset: s.day_offset ? String(s.day_offset) : '',
+      prepAhead: s.can_prepare_ahead === true,
+      prepAheadNote: s.advance_note || '',
       prep: s.prep_time != null ? String(s.prep_time) : '',
       cook: s.cook_time != null ? String(s.cook_time) : '',
       temp: s.cook_temp != null ? String(s.cook_temp) : '',
@@ -714,9 +724,9 @@ export function CreerForm({
   const planningDays = useMemo(() => {
     if (allSameDay) return [];
     const items = steps
-      .map((s, i) => ({ title: s.title.trim() || `Étape ${i + 1}`, offset: Math.max(0, parseInt(s.dayOffset, 10) || 0), order: i, isLast: false }))
+      .map((s, i) => ({ title: s.title.trim() || `Étape ${i + 1}`, offset: Math.max(0, parseInt(s.dayOffset, 10) || 0), order: i, isLast: false, avance: s.prepAhead, note: s.prepAheadNote }))
       .sort((a, b) => b.offset - a.offset || a.order - b.order);
-    items.push({ title: 'Dégustation', offset: 0, order: 999, isLast: true });
+    items.push({ title: 'Dégustation', offset: 0, order: 999, isLast: true, avance: false, note: '' });
     const days: { offset: number; items: typeof items }[] = [];
     items.forEach((it) => {
       let d = days.find((x) => x.offset === it.offset);
@@ -1009,7 +1019,13 @@ export function CreerForm({
             video_url: st.videoUrl.trim() || null,
             sous_etapes: subs.length ? subs : null,
             order_index: gi,
-          })
+            // Écrite seulement si cochée : décochée, le défaut `false` de la
+            // colonne suffit (les étapes sont supprimées puis réinsérées).
+            ...(st.prepAhead ? { can_prepare_ahead: true } : {}),
+            // La note n'est écrite que si la case est cochée : décochée, elle est perdue
+            // (la reprise d'un champ masqué en base surprendrait plus qu'elle n'aiderait).
+            ...(st.prepAhead && noteAvance(st.prepAheadNote) ? { advance_note: noteAvance(st.prepAheadNote) } : {}),
+          } as never) // `can_prepare_ahead` / `advance_note` absentes des types générés
           .select('id')
           .single();
         if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
@@ -1248,7 +1264,7 @@ export function CreerForm({
                 {
                   id: 'publish',
                   icon: 'send',
-                  label: isPublic ? 'Publier la recette' : 'Enregistrer',
+                  label: isPublic ? 'Publier en public' : 'Publier en privé',
                   variant: 'filled',
                   onClick: () => submit('pending'),
                   disabled: busy || leaving,
@@ -1907,6 +1923,34 @@ export function CreerForm({
                     <span className="text-sm text-on-surface-variant italic">jour(s) avant dégustation</span>
                   </div>
 
+                  <label className="flex items-center gap-3 cursor-pointer w-fit">
+                    <input
+                      type="checkbox"
+                      checked={st.prepAhead}
+                      onChange={(e) => patchStep(si, { prepAhead: e.target.checked })}
+                      className="w-4 h-4 accent-primary"
+                    />
+                    <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
+                    <span className="font-label-md text-label-md text-outline">PEUT ÊTRE PRÉPARÉE À L&apos;AVANCE</span>
+                  </label>
+                  {st.prepAhead && (
+                    <div className="flex flex-col gap-1">
+                      <input
+                        id={`avance-note-${st.key}`}
+                        value={st.prepAheadNote}
+                        onChange={(e) => patchStep(si, { prepAheadNote: e.target.value.slice(0, ADVANCE_NOTE_MAX) })}
+                        className="editorial-input text-on-surface w-full"
+                        type="text"
+                        maxLength={ADVANCE_NOTE_MAX}
+                        placeholder="Précisions : conservation, précautions… (ex. 3 jours au frais, filmée au contact)"
+                        aria-label="Précisions sur la préparation à l'avance"
+                      />
+                      <span className="text-xs text-on-surface-variant">
+                        {st.prepAheadNote.length}/{ADVANCE_NOTE_MAX} · visible sur la fiche recette
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex flex-col">
                     {/* En-tête « INGRÉDIENTS » (+ miroirs quantité/unité,
                         toujours utiles : alignent la colonne « unité », dont
@@ -2433,6 +2477,7 @@ export function CreerForm({
                     {day.items.map((it, k) => (
                       <p key={k} className={`font-body-md text-body-md font-semibold${it.isLast ? ' text-secondary' : ''}`}>
                         {it.title}
+                        {it.avance && <PictoAvance note={noteAvance(it.note)} />}
                       </p>
                     ))}
                   </div>

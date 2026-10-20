@@ -109,13 +109,38 @@ async function callRpc(args: RpcArgs): Promise<SearchResult> {
     authors?: AuthorResult[];
   } | null;
   const { authors, retires } = await sansAuteursDesactives(supabase, res?.authors ?? []);
+  const recipes = await marquerPreparationAvance(supabase, res?.recipes ?? []);
   return {
     total: res?.total ?? 0,
-    recipes: res?.recipes ?? [],
+    recipes,
     authorTotal: Math.max(0, (res?.author_total ?? 0) - retires),
     authors,
     error: null,
   };
+}
+
+// « Se prépare à l'avance » (JEP-19) : la RPC compose elle-même le JSON des
+// cartes et n'y met pas `can_prepare_ahead` — plutôt que de la réécrire
+// (fonction SQL volumineuse), une lecture de plus, sur les seules recettes de
+// la page et les seules étapes cochées. Sous la session (RLS). Échec ou colonne
+// absente : cartes rendues sans le picto, jamais d'erreur.
+async function marquerPreparationAvance(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  recipes: RecipeCard[],
+): Promise<RecipeCard[]> {
+  if (recipes.length === 0) return recipes;
+  const { data, error } = await supabase
+    .from('recipe_steps')
+    .select('recipe_id')
+    .in('recipe_id', recipes.map((r) => r.id))
+    .eq('can_prepare_ahead' as never, true as never);
+  if (error || !data?.length) return recipes;
+  const avance = new Set((data as { recipe_id: string | null }[]).map((s) => s.recipe_id));
+  return recipes.map((r) =>
+    avance.has(r.id)
+      ? { ...r, prepare_ahead: true }
+      : r,
+  );
 }
 
 // Pâtissiers désactivés (JEP-272, lot 2) : la RPC lit `profiles`, que la RLS

@@ -4,6 +4,7 @@
 import type { AllergenRef, RecipeCard, RecipeFull } from '@/lib/recipes';
 import { convertQty, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 import { ingredientKey } from '@/lib/ingredient-name';
+import { formatTime } from '@/lib/format';
 
 // Noms d'allergènes (texte libre des ingrédients) présents dans une carte,
 // dédoublonnés (insensible à la casse). Le rapprochement avec les pictos se
@@ -218,6 +219,41 @@ export function effectiveTimes(
   };
 }
 
+// Une recette « se prépare à l'avance » (JEP-19) dès qu'une de ses étapes est
+// cochée comme telle dans l'éditeur. Possibilité donnée par l'auteur, distincte
+// du jour prévu (`day_offset`) : sert au picto de la carte recette.
+// `prepare_ahead` : marque déjà calculée (recherche avancée, lib/search.ts).
+export function peutSePreparerAvance(recipe: {
+  prepare_ahead?: boolean;
+  recipe_steps?: { can_prepare_ahead?: boolean | null }[] | null;
+}): boolean {
+  return recipe.prepare_ahead === true || (recipe.recipe_steps || []).some((s) => s.can_prepare_ahead === true);
+}
+
+// Précisions sur la préparation à l'avance (JEP-19) : « se conserve 3 jours au
+// frais ». Nettoyée à l'écriture (espaces, longueur) ; vide = `null`, jamais
+// une chaîne vide en base.
+export const ADVANCE_NOTE_MAX = 200;
+export function noteAvance(raw: string | null | undefined): string | null {
+  const t = (raw ?? '').replace(/\s+/g, ' ').trim().slice(0, ADVANCE_NOTE_MAX);
+  return t || null;
+}
+
+// Temps affiché sur une carte recette (JEP-19) : la préparation, et le total
+// entre parenthèses quand il en diffère (« 20 min (1h40) »). `titre` porte
+// l'explication en clair pour l'infobulle — sans libellé, la valeur entre
+// parenthèses se lirait mal. Aucun temps connu : `null`, la carte n'affiche rien.
+export function tempsCarte(times: Pick<RecipeTimes, 'prep' | 'total'>): { texte: string; titre: string } | null {
+  const prep = times.prep || 0;
+  const total = times.total || 0;
+  if (prep && total && total !== prep) {
+    return { texte: `${formatTime(prep)} (${formatTime(total)})`, titre: `Préparation ${formatTime(prep)} · total ${formatTime(total)}` };
+  }
+  if (prep) return { texte: formatTime(prep), titre: `Préparation ${formatTime(prep)}` };
+  if (total) return { texte: formatTime(total), titre: `Temps total ${formatTime(total)}` };
+  return null;
+}
+
 // Somme des temps des étapes (préparation, cuisson, repos) et total — ce que
 // `effectiveTimes` retient quand rien n'est saisi à la main. Pure : sert aussi
 // à l'éditeur du mode projet, qui l'affiche à côté des champs corrigeables.
@@ -246,8 +282,16 @@ export function dayLabel(offset: number | null | undefined): string {
 type PlanningStep = Pick<RecipeFull['recipe_steps'][number], 'title' | 'day_offset' | 'order_index'> & {
   fully_done?: boolean;
   added?: boolean;
+  can_prepare_ahead?: boolean | null;
+  advance_note?: string | null;
 };
-export type PlanningDayItem = { title: string; fully_done: boolean; added: boolean };
+export type PlanningDayItem = {
+  title: string;
+  fully_done: boolean;
+  added: boolean;
+  can_prepare_ahead: boolean;
+  advance_note: string | null;
+};
 
 export function planningDays(steps: PlanningStep[]): { offset: number; items: PlanningDayItem[] }[] {
   const days: { offset: number; items: PlanningDayItem[] }[] = [];
@@ -261,7 +305,13 @@ export function planningDays(steps: PlanningStep[]): { offset: number; items: Pl
         d = { offset: o, items: [] };
         days.push(d);
       }
-      d.items.push({ title: s.title || '', fully_done: s.fully_done ?? false, added: s.added ?? false });
+      d.items.push({
+        title: s.title || '',
+        fully_done: s.fully_done ?? false,
+        added: s.added ?? false,
+        can_prepare_ahead: s.can_prepare_ahead === true,
+        advance_note: s.can_prepare_ahead === true ? noteAvance(s.advance_note) : null,
+      });
     });
   return days;
 }
