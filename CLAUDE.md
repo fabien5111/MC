@@ -1641,7 +1641,8 @@ seulement** — la fournée n'en copie rien (on y déplace déjà le jour de cha
   `planComponentCopy` / `readComponentDraft` / `writeComponentContent`, par
   l'extraction d'étapes (`planExtraction`) et par la RPC `duplicate_recipe`
   (colonnes d'étape listées une à une : toute nouvelle colonne de
-  `recipe_steps` doit y être ajoutée, sinon « Dupliquer » la perd). Écrite **seulement si cochée** : les
+  `recipe_steps` doit y être ajoutée, sinon « Dupliquer » la perd ; elle
+  oubliait aussi `video_url`, rattrapé dans le même correctif). Écrite **seulement si cochée** : les
   étapes étant supprimées puis réinsérées, le défaut de la colonne suffit.
 - **Affichage** : picto sur la carte recette dès qu'une étape est cochée
   (`peutSePreparerAvance`, `lib/recipe-view.ts`) et sur l'étape de la fiche
