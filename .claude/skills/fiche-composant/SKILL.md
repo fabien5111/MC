@@ -140,6 +140,8 @@ Ajouter ensuite 0 à 3 entrées commençant par "Variante — " : variantes de p
 
 Autres champs
 "anticipation_jours" : nombre de jours AVANT le moment où le composant doit être prêt (0 = le jour même ; 1 pour une pâte qui repose une nuit).
+"peut_preparer_avance" / "precisions_avance" : à n'écrire (true + une phrase de 200 caractères au plus, ex. « Se garde 3 jours au frais, filmée au contact ») que pour une étape réellement préparable à l'avance, d'après la recette ; sinon OMETTRE les deux clés. À ne pas confondre avec "anticipation_jours" (jour prévu).
+"commentaire" (ingrédient, facultatif) : précision de la ligne (« mou », « tamisée »), le nom restant l'ingrédient seul ; omettre sans précision.
 "temps_attente_minutes" : repos, refroidissement, prise au froid. null quand il n'y en a pas, comme pour les autres temps.
 "conseils_conservation" : durée au réfrigérateur et au congélateur, emballage, décongélation, et moment idéal pour l'utiliser dans un montage.
 "auteur_origine" : l'auteur si les précisions imposent une source précise, sinon null.
