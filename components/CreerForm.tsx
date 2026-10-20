@@ -1262,7 +1262,7 @@ export function CreerForm({
                 {
                   id: 'publish',
                   icon: 'send',
-                  label: isPublic ? 'Publier la recette' : 'Enregistrer',
+                  label: isPublic ? 'Publier en public' : 'Publier en privé',
                   variant: 'filled',
                   onClick: () => submit('pending'),
                   disabled: busy || leaving,
