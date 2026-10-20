@@ -780,21 +780,21 @@ export function ProjectV2({
                           .filter(Boolean)
                           .join(' · ')
                       : 'À résoudre'}
+                    {/* Recette d'origine, dans un nouvel onglet : seulement pour une
+                        préparation copiée (l'IA et la saisie à la main n'en ont pas). */}
+                    {c.resolved && c.source_recipe_id && (
+                      <a
+                        href={`/recette/${c.source_recipe_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Voir la recette d'origine"
+                        aria-label={`Voir la recette d'origine de ${c.name}`}
+                        className="ml-1.5 inline-block align-middle text-on-surface-variant transition-colors hover:text-primary"
+                      >
+                        <span className="material-symbols-outlined block text-[14px] leading-none">visibility</span>
+                      </a>
+                    )}
                   </span>
-                  {/* Recette d'origine, dans un nouvel onglet : seulement pour une
-                      préparation copiée (l'IA et la saisie à la main n'en ont pas). */}
-                  {c.resolved && c.source_recipe_id && (
-                    <a
-                      href={`/recette/${c.source_recipe_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Voir la recette d'origine"
-                      aria-label={`Voir la recette d'origine de ${c.name}`}
-                      className="shrink-0 rounded-full p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">visibility</span>
-                    </a>
-                  )}
                   {boutonRecette(c)}
                 </div>
               )}

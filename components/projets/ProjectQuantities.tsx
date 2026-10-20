@@ -535,7 +535,7 @@ export function QuantitiesStep({
                     avant / après ajustement. */}
                 <dl className="mb-3 grid grid-cols-1 gap-x-4 gap-y-1 text-[12.5px] sm:grid-cols-[auto_1fr]">
                   <dt className="text-outline">Recette d’origine</dt>
-                  <dd className="flex items-start gap-2 text-on-surface">
+                  <dd className="flex items-center gap-1.5 text-on-surface">
                     <span>
                       {c.sourceYield
                         ? lignesRendement(c.sourceYield).map((l, i) => (
@@ -553,9 +553,9 @@ export function QuantitiesStep({
                         rel="noopener noreferrer"
                         title="Voir la recette d'origine"
                         aria-label={`Voir la recette d'origine de ${c.name}`}
-                        className="-my-1 shrink-0 rounded-full p-1 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                        className="shrink-0 self-center text-on-surface-variant transition-colors hover:text-primary"
                       >
-                        <span className="material-symbols-outlined text-[18px]">visibility</span>
+                        <span className="material-symbols-outlined block text-[14px] leading-none">visibility</span>
                       </a>
                     )}
                   </dd>
