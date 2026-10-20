@@ -1,13 +1,21 @@
 // Logique d'extraction/normalisation d'une recette importée (schéma pivot v1.0).
 // Porté depuis api/import-url.js — fonctions pures, testables isolément.
 import { addUsage, callClaude, parseStrictJson, type ClaudeUsage, type UsageSink } from '@/lib/ai/claude';
+import { noteAvance } from '@/lib/recipe-view';
 
 // ── Schéma d'extraction (sortie brute de l'IA) ───────────────
 // Volontairement plat et concis : chaque clé superflue rallonge la génération,
 // et c'est la durée de génération qui décide de tenir dans le `maxDuration` de
 // la route. Les champs structurés absents ici (moule, difficulté, tags,
 // catégorie) sont saisis à la relecture — cf. `toPivotInterne`.
-export type IngredientIA = { nom?: string; quantite?: number | null; unite?: string | null };
+export type IngredientIA = {
+  nom?: string;
+  quantite?: number | null;
+  unite?: string | null;
+  // Précision écrite à côté de l'ingrédient (« mou », « tamisée », « 35 % MG »),
+  // distincte de son nom : elle porte le commentaire de la ligne (JEP-249).
+  commentaire?: string | null;
+};
 
 export type EtapeIA = {
   nom_etape?: string;
@@ -20,6 +28,11 @@ export type EtapeIA = {
   temps_cuisson_minutes?: number | null;
   temperature_cuisson_celsius?: number | null;
   anticipation_jours?: number | null;
+  // Étape que la recette dit pouvoir préparer à l'avance (JEP-19) : une
+  // possibilité, à ne pas confondre avec `anticipation_jours` (jour prévu).
+  // Omis quand faux.
+  peut_preparer_avance?: boolean | null;
+  precisions_avance?: string | null;
   ingredients?: IngredientIA[];
   instructions?: string[];
   conseils_etape?: string | null;
@@ -57,11 +70,14 @@ Le JSON doit respecter scrupuleusement la structure et les clés suivantes :
       "temps_cuisson_minutes": 12,
       "temperature_cuisson_celsius": 180,
       "anticipation_jours": 2,
+      "peut_preparer_avance": true,
+      "precisions_avance": "Se garde 3 jours au frais, filmée au contact",
       "ingredients": [
         {
-          "nom": "Farine",
+          "nom": "Beurre",
           "quantite": 250,
-          "unite": "g"
+          "unite": "g",
+          "commentaire": "mou"
         }
       ],
       "instructions": [
@@ -74,6 +90,10 @@ Le JSON doit respecter scrupuleusement la structure et les clés suivantes :
   "astuces_recette": ["Astuce globale 1", "Astuce globale 2"],
   "conseils_conservation": "Instructions pour la dégustation et conservation"
 }
+
+PRÉPARATION À L'AVANCE. "peut_preparer_avance": true UNIQUEMENT si la recette dit explicitement que l'étape peut être faite à l'avance ou se conserve avant l'assemblage (« se prépare la veille », « se garde 3 jours au frais », « peut être congelée »). Ne le déduis jamais de ta connaissance de la pâtisserie, et ne le confonds pas avec "anticipation_jours" (le jour où l'étape est prévue) ni avec un simple temps de repos. "precisions_avance" reprend la phrase de la recette sur la conservation, telle qu'elle est écrite (200 caractères au plus). Si l'étape n'est pas concernée, OMETS les deux clés.
+
+COMMENTAIRE D'INGRÉDIENT. "nom" ne contient que l'ingrédient (« Beurre », « Farine T55 ») ; la précision écrite à côté (« mou », « tamisée », « à température ambiante », « 35 % MG ») va dans "commentaire", recopiée telle quelle. Sans précision, OMETS la clé.
 
 Si le contenu comporte des marqueurs « --- page N --- », renseigne "page" avec le numéro de la page où commence chaque étape. Sinon, mets "page": null.
 
@@ -250,9 +270,11 @@ export function cleanPivotRecette(r: RecetteIA): void {
   (r.etapes || []).forEach((e) => {
     if (typeof e.nom_etape === 'string') e.nom_etape = ligatureOeuf(e.nom_etape).trim();
     if (typeof e.conseils_etape === 'string') e.conseils_etape = ligatureOeuf(e.conseils_etape).trim() || null;
+    if (typeof e.precisions_avance === 'string') e.precisions_avance = ligatureOeuf(e.precisions_avance).trim() || null;
     e.instructions = textes(e.instructions);
     (e.ingredients || []).forEach((ing) => {
       if (typeof ing.nom === 'string') ing.nom = capitalize(ligatureOeuf(ing.nom).trim());
+      if (typeof ing.commentaire === 'string') ing.commentaire = ligatureOeuf(ing.commentaire).trim() || null;
     });
   });
 }
@@ -368,6 +390,10 @@ export function toPivotInterne(r: RecetteIA, unitsDisponibles: UniteRef[]): Pivo
         cuisson_min: Number(e.temps_cuisson_minutes) || null,
       },
       temperature_c: Number(e.temperature_cuisson_celsius) || null,
+      // Seul `true` coche la case ; les précisions ne valent que si elle l'est
+      // (même règle que la relecture et `/creer`).
+      avance: e.peut_preparer_avance === true,
+      avance_note: e.peut_preparer_avance === true ? noteAvance(e.precisions_avance) : null,
       ingredients: (e.ingredients || []).map((ing) => {
         const { quantite, unite } = normaliseUnite(ing.quantite, ing.unite, unitsDisponibles);
         return {
@@ -377,7 +403,7 @@ export function toPivotInterne(r: RecetteIA, unitsDisponibles: UniteRef[]): Pivo
           // `texte_original` est reconstitué par l'éditeur depuis quantité +
           // unité + nom quand il est absent : inutile de le faire générer.
           texte_original: null,
-          note: null,
+          note: typeof ing.commentaire === 'string' ? ing.commentaire.trim() || null : null,
           scaling: deduireScaling(ing.nom || ''),
         };
       }),

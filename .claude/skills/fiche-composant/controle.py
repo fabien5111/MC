@@ -13,6 +13,8 @@ CLES = {'titre', 'auteur_origine', 'video_url', 'description', 'rendement', 'ust
 CLES_ETAPE = {'nom_etape', 'page', 'temps_preparation_minutes', 'temps_attente_minutes',
               'temps_cuisson_minutes', 'temperature_cuisson_celsius', 'anticipation_jours',
               'ingredients', 'instructions', 'conseils_etape'}
+# Clés facultatives d'une étape (JEP-19) : omises quand l'étape n'est pas concernée.
+CLES_ETAPE_FACULTATIVES = {'peut_preparer_avance', 'precisions_avance'}
 NOMBRE = r'(\d+(?:[.,]\d+)?)'
 
 
@@ -33,8 +35,14 @@ def controler(d):
         err.append(f"Étape unique : nom_etape « {etapes[0].get('nom_etape')} » doit être égal au titre « {d.get('titre')} »")
     total = 0.0
     for n, e in enumerate(etapes, 1):
-        if set(e) != CLES_ETAPE:
-            err.append(f'Étape {n} clés : en trop {set(e) - CLES_ETAPE}, manquantes {CLES_ETAPE - set(e)}')
+        if not CLES_ETAPE <= set(e) or set(e) - CLES_ETAPE - CLES_ETAPE_FACULTATIVES:
+            err.append(f'Étape {n} clés : en trop {set(e) - CLES_ETAPE - CLES_ETAPE_FACULTATIVES}, manquantes {CLES_ETAPE - set(e)}')
+        if e.get('peut_preparer_avance') not in (None, True):
+            err.append(f'Étape {n} : peut_preparer_avance vaut true ou est omis')
+        if e.get('precisions_avance') and not e.get('peut_preparer_avance'):
+            err.append(f'Étape {n} : precisions_avance sans peut_preparer_avance')
+        if len(e.get('precisions_avance') or '') > 200:
+            err.append(f'Étape {n} : precisions_avance dépasse 200 caractères')
         ni = len(e.get('instructions', []))
         if not 3 <= ni <= 8:
             err.append(f'Étape {n} : {ni} instructions (3 à 8)')
@@ -42,7 +50,7 @@ def controler(d):
         if not (isinstance(e.get('conseils_etape'), str) and e['conseils_etape'].strip()):
             err.append(f'Étape {n} : conseils_etape vide (points critiques de réussite attendus)')
         for i in e.get('ingredients', []):
-            if set(i) != {'nom', 'quantite', 'unite'}:
+            if not {'nom', 'quantite', 'unite'} <= set(i) or set(i) - {'nom', 'quantite', 'unite', 'commentaire'}:
                 err.append(f'Ingrédient mal formé : {i}')
             if i.get('unite') != 'g':
                 err.append(f"Unité non g : {i.get('nom')}")
