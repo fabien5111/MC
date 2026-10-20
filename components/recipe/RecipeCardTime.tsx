@@ -18,7 +18,7 @@ export function RecipeCardTime({ recipe }: { recipe: Recette }) {
           serrée (difficulté, type, temps). */}
       {avance && (
         <span
-          className="material-symbols-outlined text-[16px] text-primary"
+          className="material-symbols-outlined text-[13px] leading-none text-primary"
           title="Certaines étapes peuvent être préparées à l'avance"
           aria-label="Certaines étapes peuvent être préparées à l'avance"
           role="img"
