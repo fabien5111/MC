@@ -9,6 +9,7 @@
 // dans un mode la coche instantanément dans l'autre, il n'y a plus de
 // session séparée à garder synchronisée — voir CLAUDE.md « Fournées ».
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { coefficientRetouche, lireAjustementIA } from '@/lib/batch-ai';
 import Link from 'next/link';
 import { RetourContextuel } from '@/components/RetourContextuel';
 import { useRouter } from 'next/navigation';
@@ -620,6 +621,7 @@ function PreparerView({
   droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean };
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
+  const [iaOpen, setIaOpen] = useState(false);
   // Étape en cours de remplacement par une recette (fenêtre ouverte) — même
   // motif que `expanding` dans BatchStepIngredients.
   const [replacingStep, setReplacingStep] = useState<BatchStepRow | null>(null);
@@ -633,6 +635,9 @@ function PreparerView({
   const { refresh: refreshExpand } = useMutation();
   const yInfo = batchYieldInfo(batch);
   const factor = batchFactor(batch);
+  // Détail de l'ajustement par IA conservé au lancement (cf. lib/batch-ai.ts) :
+  // colonne posée à la main, absente des types générés.
+  const ajustementIA = lireAjustementIA((batch as { adjust_ai?: unknown }).adjust_ai);
   const adjustedYield = ((): string | null => {
     if (batch.measure_type === 'units' && batch.yield_qty) {
       if (factor === 1) return null;
@@ -851,6 +856,12 @@ function PreparerView({
                 <span className={`${LBL_CLS} print-fs-9`}>{yInfo.label}</span>
                 <span className="print-yield-value font-headline-md text-headline-md text-primary">{adjustedYield || yInfo.value}</span>
                 {adjustedYield && <span className="print-fs-9 font-body-md text-[12px] text-on-surface-variant">Recette de base : {yInfo.value}</span>}
+                {factor !== 1 && (
+                  <span className="print-fs-9 font-body-md text-[12px] text-on-surface-variant">
+                    Coefficient appliqué : ×{fmtNum(factor)}
+                    {ajustementIA && coefficientRetouche(ajustementIA, factor) && ` (proposé par l’IA : ×${fmtNum(ajustementIA.coefficient)})`}
+                  </span>
+                )}
               </div>
             )}
             {batch.difficulty_name && (
@@ -894,6 +905,50 @@ function PreparerView({
             </button>
             {notesOpen && (
               <p className="mt-2 font-body-md text-sm italic text-on-surface-variant whitespace-pre-line">{batch.yield_notes}</p>
+            )}
+          </div>
+        )}
+        {ajustementIA && (
+          <div className="no-print">
+            <button
+              type="button"
+              onClick={() => setIaOpen((v) => !v)}
+              aria-expanded={iaOpen}
+              className="flex items-center gap-1.5 font-label-md text-[12px] text-on-surface-variant hover:text-primary"
+            >
+              <span className="material-symbols-outlined text-[16px]">{iaOpen ? 'expand_less' : 'expand_more'}</span>
+              Ajustement par l&apos;IA
+            </button>
+            {iaOpen && (
+              <div className="mt-2 flex flex-col gap-2 font-body-md text-sm text-on-surface">
+                {ajustementIA.demande && (
+                  <p>
+                    <span className="font-semibold">Votre demande :</span> « {ajustementIA.demande} »
+                  </p>
+                )}
+                {ajustementIA.explication && <p>{ajustementIA.explication}</p>}
+                {ajustementIA.propositions.length === 1 && (
+                  <p>
+                    <span className="font-semibold">Quantité produite ajustée :</span> {ajustementIA.propositions[0]}
+                  </p>
+                )}
+                {ajustementIA.propositions.length > 1 && (
+                  <div>
+                    <span className="font-semibold">Quantité produite ajustée, au choix :</span>
+                    <ul className="list-disc pl-5">
+                      {ajustementIA.propositions.map((p) => (
+                        <li key={p}>{p}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {ajustementIA.complement && <p className="italic text-on-surface-variant">{ajustementIA.complement}</p>}
+                {coefficientRetouche(ajustementIA, factor) && (
+                  <p className="text-xs text-on-surface-variant">
+                    Calculé pour le coefficient ×{fmtNum(ajustementIA.coefficient)} proposé par l&apos;IA ; la fournée applique ×{fmtNum(factor)}.
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}

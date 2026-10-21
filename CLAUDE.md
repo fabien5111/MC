@@ -1031,6 +1031,19 @@ directes :
   déroulante la remplit (`xl:w-full` sur elle ET sur son conteneur — plus
   étroite, elle doublait l'espace avant le commentaire : 31 px au lieu de 16),
   commentaire plus large que le nom (`flex-[3]` contre `flex-[2]`).
+- **Le détail d'un ajustement par IA est conservé sur la fournée**
+  (`batches.adjust_ai`, jsonb, `lib/batch-ai.ts`) : demande, coefficient
+  **proposé**, explication, propositions de quantité produite, complément —
+  sans quoi ils n'existaient qu'à l'écran de lancement. Affichage seul : les
+  quantités ne lisent que `factor`. `BatchView` affiche « Coefficient appliqué
+  ×N » sous la quantité produite de toute fournée ajustée (avec le coefficient
+  proposé par l'IA s'il a été retouché) et un volet repliable « Ajustement par
+  l'IA ». Écrit par `BatchWidget` **après** la création (et à la modification
+  d'un ajustement : réécrit, ou effacé si le nouveau mode n'est plus l'IA),
+  recopié par « Refaire », **toujours à part et échec ignoré** : colonne posée
+  à la main (DDL par `psql`, nœud 216075), absente des types générés, lue par
+  le `select('*')` de `BATCH_FULL_SELECT` — sans elle la fournée se crée quand
+  même, sans détail. Les fournées antérieures n'ont que le coefficient.
 - **`batches.user_note` et `batches.notes` ne sont pas la même chose** :
   la première est la note personnelle de la fournée (éditée en Préparer par
   `BatchNotes`), la seconde le commentaire saisi au lancement dans

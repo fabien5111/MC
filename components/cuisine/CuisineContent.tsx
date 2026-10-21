@@ -270,6 +270,15 @@ export function CuisineContent({
         .single();
       if (insErr || !newBatch) throw insErr || new Error('Fournée non créée');
       const batchId = newBatch.id;
+      // Détail de l'ajustement par IA (cf. lib/batch-ai.ts) : colonne posée à
+      // la main, absente des types générés — recopiée à part, échec ignoré.
+      const adjustAi = (source as { adjust_ai?: unknown }).adjust_ai;
+      if (adjustAi != null) {
+        await supabase
+          .from('batches')
+          .update({ adjust_ai: adjustAi } as never)
+          .eq('id', batchId);
+      }
 
       const sortedSteps = [...source.batch_steps].sort((a, b) => a.order_index - b.order_index);
       const { data: stepRows, error: stepErr } = await supabase
