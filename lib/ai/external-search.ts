@@ -73,7 +73,7 @@ export function buildExternalSearchSystemPrompt(): string {
 Fais UNE seule recherche web par phrase fournie (recherche exacte, entre guillemets), et pas davantage : ton budget de recherches est strictement limité au nombre de phrases. Ne reformule pas une recherche qui n'a rien donné — passe à la phrase suivante, ou conclus. Ignore les résultats provenant du site lui-même. Pour chaque correspondance sérieuse trouvée (pas une simple recette similaire du même plat — une formulation reconnaissable), indique :
 - l'URL de la page,
 - le titre de la page,
-- un niveau de confiance : "exacte" (le texte apparaît mot pour mot ou presque), "proche" (reformulation reconnaissable), "faible" (ressemblance ténue, à vérifier),
+- un niveau de confiance : "exacte" (le texte apparaît mot pour mot, à l'identique ou à une variation triviale près — jamais une simple reformulation), "proche" (reformulation reconnaissable : mêmes idées, phrases réécrites — la réécriture d'une recette est légale, ne la traite jamais comme une copie), "faible" (ressemblance ténue, à vérifier),
 - un extrait de la page qui justifie ce niveau.
 
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte ni balises autour :
