@@ -1,0 +1,81 @@
+{
+  "ticket": "local-mousse-chocolat-au-lait",
+  "recette": {
+    "titre": "Mousse chocolat au lait",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse aérienne et fondante sur base de ganache au chocolat au lait, au goût lacté et caramélisé. Légèrement gélifiée pour compenser le faible taux de cacao, elle tient parfaitement en entremets ou en bûche et supporte très bien la congélation.",
+    "rendement": "1 cercle Ø 20 cm, 4 cm de hauteur — environ 755 g de mousse",
+    "ustensiles": [
+      "Casserole",
+      "Saladier",
+      "Bol",
+      "Micro-ondes",
+      "Mixeur plongeant",
+      "Thermomètre",
+      "Batteur électrique",
+      "Fouet",
+      "Maryse",
+      "Cercle Ø 20 cm",
+      "Rhodoïd",
+      "Plaque",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Mousse",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait 35-40 %",
+            "quantite": 260,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (ganache)",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (mousse)",
+            "quantite": 340,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réhydrater la gélatine 10 minutes dans un grand volume d'eau très froide.",
+          "Fondre le chocolat au bain-marie ou au micro-ondes jusqu'à 45 °C, dans un bol.",
+          "Porter la crème de la ganache à ébullition, puis y dissoudre hors du feu la gélatine bien essorée.",
+          "Verser la crème chaude en trois fois sur le chocolat en émulsionnant, puis mixer au mixeur plongeant jusqu'à une ganache lisse et brillante.",
+          "Laisser redescendre la ganache à 35-40 °C en surveillant au thermomètre ; pendant ce temps, chemiser le cercle de rhodoïd et le poser sur une plaque recouverte de film alimentaire.",
+          "Monter la crème très froide au batteur en texture souple, type mousse à raser : elle doit tenir au fouet sans être ferme.",
+          "Incorporer un tiers de la crème montée au fouet dans la ganache, puis le reste délicatement à la maryse.",
+          "Couler aussitôt dans le cercle, lisser et congeler au moins 4 heures."
+        ],
+        "conseils_etape": "La température de la ganache au moment du mélange est décisive : au-dessus de 40 °C la crème montée retombe, en dessous de 30 °C la gélatine prend trop tôt et la mousse devient granuleuse."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, 4 cm de hauteur : ≈ 485 g de mousse, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, 4 cm de hauteur : ≈ 755 g de mousse, soit ×1 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 4 cm de hauteur : ≈ 1085 g de mousse, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 4 cm de hauteur : ≈ 90 g de mousse par pièce, soit environ 8 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, mousse en enveloppe (insert et biscuit occupant environ un tiers du volume) : ≈ 155 g de mousse, soit ×0,21 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, mousse en enveloppe (insert et biscuit occupant environ un tiers du volume) : ≈ 300 g de mousse, soit ×0,4 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 2 cm d'épaisseur : ≈ 390 g de mousse, soit ×0,52 de la recette.",
+      "Astuce — La gélatine (environ 0,5 % de la masse) apporte la tenue que le chocolat au lait, moins riche en beurre de cacao qu'un noir, ne donne pas seul : ne pas la supprimer pour un entremets démoulé.",
+      "Astuce — Variante : infuser la crème de la ganache avec une gousse de vanille, du café en grains ou une demi-fève tonka, puis la repeser et compléter à 150 g."
+    ],
+    "conseils_conservation": "48 heures au réfrigérateur, filmée au contact. Jusqu'à 3 mois au congélateur, démoulée et emballée hermétiquement. Démouler et glacer la pièce encore congelée, puis décongeler 6 à 8 heures au réfrigérateur avant dégustation. Couler la mousse la veille du montage final pour laisser le temps à la congélation."
+  }
+}
