@@ -100,6 +100,9 @@ export function BatchWidget({
   // infobulle plutôt qu'un message qui n'apparaîtrait qu'après un clic dans
   // le vide.
   const iaEpuise = peutAjusterIA && quotaIA != null && !quotaIA.allowed;
+  // Dimensions libres : l'IA n'est proposée qu'avec le droit et du quota ; sinon
+  // seul le coefficient manuel reste. Avec les deux, le membre choisit (radios).
+  const dimensionsIADispo = peutAjusterIA && !iaEpuise;
   // JEP-130 : le mode IA est désormais listé même sans le droit — il ne
   // l'était que quota épuisé, si bien qu'une formule sans ajustement par IA
   // ne voyait jamais que cette fonctionnalité existe. Deux motifs distincts,
@@ -163,6 +166,9 @@ export function BatchWidget({
 
   // Mode « moule » (avec, pour les administrateurs, un sous-mode IA en texte libre)
   const [mMode, setMMode] = useState<'mold' | 'ia'>('mold');
+  // Recette en dimensions libres : coefficient saisi à la main ou calculé par l'IA.
+  const [dMode, setDMode] = useState<'manuel' | 'ia'>('ia');
+  const dimensionsParIA = dimensionsIADispo && dMode === 'ia';
   const [moldCount, setMoldCount] = useState(String(parseInt(recipe.yield_qty || '', 10) > 0 ? parseInt(recipe.yield_qty!, 10) : 1));
   const [targetType, setTargetType] = useState(''); // '' = moule de la recette
   const [dims, setDims] = useState<Record<string, string>>({});
@@ -289,13 +295,13 @@ export function BatchWidget({
       label = `Moule : ${tgtCount > 1 ? tgtCount + ' × ' : ''}${tname}${dimTxt ? ' — ' + dimTxt + ' cm' : ''}`;
     } else if (recipe.measure_type === 'dimensions') {
       const c = num(aiCoef);
-      if (aiPrompt.trim() && !(c && c > 0)) {
+      if (dimensionsParIA && aiPrompt.trim() && !(c && c > 0)) {
         dialog.alert("Cliquez d'abord sur « Calculer le coefficient avec l'IA ».");
         return null;
       }
       if (c && c > 0) {
         factor = c;
-        label = aiPrompt.trim() ? `IA : ${aiPrompt.trim().slice(0, 60)}` : `Coefficient : ×${fr(c)}`;
+        label = dimensionsParIA && aiPrompt.trim() ? `IA : ${aiPrompt.trim().slice(0, 60)}` : `Coefficient : ×${fr(c)}`;
       }
     }
 
@@ -314,7 +320,7 @@ export function BatchWidget({
     if (res.factor === 1 && !res.moldCoefs) return null;
     if (recipe.measure_type === 'units') return uMode === 'ing' ? 'ingredient' : uMode === 'ia' ? 'ia' : 'quantite';
     if (recipe.measure_type === 'mold') return mMode === 'ia' ? 'ia' : 'moule';
-    if (recipe.measure_type === 'dimensions') return 'ia';
+    if (recipe.measure_type === 'dimensions') return dimensionsParIA ? 'ia' : 'quantite';
     return null;
   }
 
@@ -693,17 +699,27 @@ export function BatchWidget({
 
         {recipe.measure_type === 'dimensions' && (
           <div className="flex flex-col gap-4">
-            {peutAjusterIA && !iaEpuise ? (
+            {dimensionsIADispo && (
+              <div className="flex flex-wrap gap-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="dmode" checked={dMode === 'manuel'} onChange={() => setDMode('manuel')} /> Ajustement manuel
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="dmode" checked={dMode === 'ia'} onChange={() => setDMode('ia')} />
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
+                    Ajustement par IA
+                  </span>
+                </label>
+              </div>
+            )}
+            {dimensionsParIA ? (
               aiBlock
             ) : (
-              // Sans le droit, ou le droit mais quota épuisé, l'IA reste le
-              // seul mode d'ajustement proposé aux autres formules — mais
-              // c'est aussi le SEUL mode d'ajustement de ce type de recette :
-              // le retirer entièrement laisserait ces membres sans aucun
-              // moyen d'ajuster une recette en dimensions libres. Un
-              // coefficient manuel préserve l'existant (§9,
-              // docs/abonnements.md), l'IA restant réservée à qui y a droit
-              // et n'a pas épuisé son quota du mois.
+              // Sans le droit, ou le droit mais quota épuisé, le coefficient
+              // manuel est le SEUL mode d'ajustement de ce type de recette
+              // (§9, docs/abonnements.md) ; avec le droit, c'est le choix
+              // « manuel » du radio.
               <div className="flex flex-col gap-3" style={{ maxWidth: '28rem' }}>
                 <div className="flex items-end gap-3">
                   <div className="flex flex-col gap-2">
@@ -712,19 +728,21 @@ export function BatchWidget({
                   </div>
                   <span className="text-xs text-on-surface-variant pb-2">Laissez vide pour garder la recette telle quelle.</span>
                 </div>
-                <p className="text-xs text-on-surface-variant">
-                  {iaEpuise ? (
-                    <>Quota d&apos;ajustements par IA atteint ce mois-ci ({quotaIA?.usage ?? quotaIA?.limit}/{quotaIA?.limit}) — le crédit se renouvelle à la prochaine période.</>
-                  ) : (
-                    <>
-                      Ajustement automatique par IA non inclus dans votre formule —{' '}
-                      <Link href="/plans" className="text-primary underline">
-                        voir les formules
-                      </Link>
-                      .
-                    </>
-                  )}
-                </p>
+                {!dimensionsIADispo && (
+                  <p className="text-xs text-on-surface-variant">
+                    {iaEpuise ? (
+                      <>Quota d&apos;ajustements par IA atteint ce mois-ci ({quotaIA?.usage ?? quotaIA?.limit}/{quotaIA?.limit}) — le crédit se renouvelle à la prochaine période.</>
+                    ) : (
+                      <>
+                        Ajustement automatique par IA non inclus dans votre formule —{' '}
+                        <Link href="/plans" className="text-primary underline">
+                          voir les formules
+                        </Link>
+                        .
+                      </>
+                    )}
+                  </p>
+                )}
               </div>
             )}
           </div>
