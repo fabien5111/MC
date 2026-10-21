@@ -856,13 +856,26 @@ function PreparerView({
             {yInfo && (
               <div className={`flex flex-col gap-1 ${ajustementIA ? 'items-start text-left flex-1 min-w-0 max-w-2xl' : 'items-center text-center'}`}>
                 <span className={`${LBL_CLS} print-fs-9`}>{yInfo.label}</span>
+                {/* Coefficient appliqué : tout en haut du bloc, en gras et en plus
+                    gros — c'est ce qui multiplie les quantités. */}
+                {factor !== 1 && (
+                  <span className="print-fs-9 font-body-md text-lg font-bold text-primary">
+                    Coefficient appliqué : ×{fmtNum(factor)}
+                    {ajustementIA && coefficientRetouche(ajustementIA, factor) && (
+                      <span className="text-xs font-normal text-on-surface-variant">{` (proposé par l’IA : ×${fmtNum(ajustementIA.coefficient)})`}</span>
+                    )}
+                  </span>
+                )}
                 {/* Ajustement par IA : ce que l'IA a proposé prend la place du
                     libellé « IA : <demande> » (cf. lib/batch-ai.ts). */}
                 {ajustementIA && ajustementIA.propositions.length === 1 ? (
-                  <span className="print-yield-value font-headline-md text-headline-md text-primary">{ajustementIA.propositions[0]}</span>
+                  <div className="flex flex-col gap-1">
+                    <span className="print-fs-9 font-body-md text-sm text-on-surface-variant">Permet de faire :</span>
+                    <span className="print-yield-value font-headline-md text-headline-md text-primary">{ajustementIA.propositions[0]}</span>
+                  </div>
                 ) : ajustementIA && ajustementIA.propositions.length > 1 ? (
                   <div className="flex flex-col gap-1">
-                    <span className="print-fs-9 font-body-md text-sm text-on-surface-variant">Au choix :</span>
+                    <span className="print-fs-9 font-body-md text-sm text-on-surface-variant">Permet de faire, au choix :</span>
                     <ul className="list-disc pl-5 font-headline-md text-lg text-primary print-fs-9">
                       {ajustementIA.propositions.map((p) => (
                         <li key={p}>{p}</li>
@@ -905,12 +918,6 @@ function PreparerView({
                   </div>
                 )}
                 {adjustedYield && <span className="print-fs-9 font-body-md text-[12px] text-on-surface-variant">Recette de base : {yInfo.value}</span>}
-                {factor !== 1 && (
-                  <span className="print-fs-9 font-body-md text-[12px] text-on-surface-variant">
-                    Coefficient appliqué : ×{fmtNum(factor)}
-                    {ajustementIA && coefficientRetouche(ajustementIA, factor) && ` (proposé par l’IA : ×${fmtNum(ajustementIA.coefficient)})`}
-                  </span>
-                )}
               </div>
             )}
             {batch.difficulty_name && (
