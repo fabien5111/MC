@@ -57,6 +57,7 @@ const tailleLisible = (octets: number): string =>
 
 export function ImporterForm({
   quotaImport = null,
+  quotaMessage: quotaMessageServeur = null,
 }: {
   // État du quota `import_ia_mensuel` (`mc_check_quota`, affichage seulement
   // — le vrai refus reste porté par `mc_consume` dans /api/import-url) :
@@ -65,6 +66,9 @@ export function ImporterForm({
   // fois le quota mensuel épuisé, plutôt que de laisser découvrir le refus
   // après une tentative (JEP-77, même motif que BatchWidget).
   quotaImport?: { allowed: boolean; limit?: number; usage?: number } | null;
+  // Texte composé côté serveur (JEP-76 : essai ou abonnement, date de
+  // recharge). Absent : repli générique ci-dessous.
+  quotaMessage?: string | null;
 } = {}) {
   const router = useRouter();
   const dialog = useDialog();
@@ -85,7 +89,8 @@ export function ImporterForm({
   // peu fiable sur un bouton `disabled`) à la bulle de `LockedHint`. Motif
   // « quota » et non « plan » : le droit existe, seul le crédit du mois est
   // consommé — aucun renvoi vers /plans, il se renouvelle tout seul.
-  const quotaMessage = `Quota d'imports par IA atteint ce mois-ci (${quotaImport?.usage ?? quotaImport?.limit}/${quotaImport?.limit}). Le crédit se renouvelle à la prochaine période.`;
+  const quotaMessage =
+    quotaMessageServeur ?? "Vous avez utilisé tous vos imports par IA. Votre crédit se renouvelle à la prochaine échéance de votre abonnement.";
 
   // Écriture des photos extraites dans le brouillon, une fois celui-ci créé.
   // Elle passe par Supabase (RLS) plutôt que par la route : des data-URL

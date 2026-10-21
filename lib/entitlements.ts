@@ -436,15 +436,92 @@ export function blockingMessage(
     };
   }
 
-  const plafond = v.limite === null ? '' : ` (${v.limite})`;
+  const court = libelleCourt(label);
+  const inclus = v.limite === null ? null : quantiteEnPhrase(v.limite, feature?.unit ?? null);
+  const debut = inclus
+    ? `Votre formule inclut ${inclus} : vous avez atteint cette limite.`
+    : `Vous avez atteint la limite de votre formule pour « ${court} ».`;
   return {
-    titre: `Vous avez atteint votre limite${plafond}`,
+    titre: 'Vous avez atteint la limite de votre formule',
     corps: suggestion
-      ? `Vous utilisez ${v.usage} sur ${v.limite} pour « ${label} ». ${suggestion.planLabel} vous en accorde : ${suggestion.value.toLowerCase()}.`
-      : `Vous utilisez ${v.usage} sur ${v.limite} pour « ${label} ».`,
+      ? `${debut} La formule ${suggestion.planLabel} va plus loin : ${valeurEnPhrase(suggestion.value)}.`
+      : debut,
     alternative: freeAlternative(featureKey),
     suggestion,
   };
+}
+
+/**
+ * Libellé de la grille sans sa précision entre parenthèses : « Import de
+ * recettes par IA (texte, PDF, photo) » devient « Import de recettes par IA ».
+ * Déduit du libellé, jamais saisi à part : la grille reste la seule source.
+ */
+function libelleCourt(label: string): string {
+  return label.replace(/\s*\([^)]*\)\s*$/, '').trim() || label;
+}
+
+/**
+ * « 10 import(s) / mois » en toutes lettres : `10 imports par mois`, accord
+ * du pluriel fait. Texte qui ne suit pas la forme de `formatRight`
+ * (« Illimité », « Inclus ») : rendu tel quel, en minuscules.
+ */
+function quantiteEnToutesLettres(texte: string): { n: number; texte: string } | null {
+  const m = texte.match(/^(\d+) (.+?)\(s\)(.*)$/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  const mot = n > 1 ? `${m[2]}s` : m[2];
+  return { n, texte: `${n} ${mot}${m[3].replace(' / mois', ' par mois')}` };
+}
+
+/** Plafond chiffré d'une fonctionnalité, selon son unité (« 3 imports par mois »). */
+function quantiteEnPhrase(limite: number, unit: string | null): string | null {
+  if (!unit) return null;
+  return quantiteEnToutesLettres(`${limite} ${withPluralHint(unit)}`)?.texte ?? null;
+}
+
+/** Ce qu'un plan accorde, pour une phrase : « jusqu'à 10 imports par mois ». */
+function valeurEnPhrase(value: string): string {
+  const q = quantiteEnToutesLettres(value);
+  if (q) return `jusqu'à ${q.texte}`;
+  return value === 'Illimité' ? 'sans limite' : value.toLowerCase();
+}
+
+/**
+ * Message du quota d'imports par IA épuisé (JEP-76). Seul message écrit pour
+ * UNE fonctionnalité : l'import est l'écran où le refus se rencontre le plus
+ * souvent, et son issue dépend du cas — un essai ne se renouvelle pas, un
+ * abonnement se recharge à date fixe. Le reste passe par `blockingMessage`.
+ *
+ * `rechargeLe` : date déjà formatée, `null` quand elle est inconnue.
+ */
+export function importEpuiseMessage(args: {
+  limite: number | null;
+  essai: boolean;
+  rechargeLe: string | null;
+  suggestion: UpgradeSuggestion | null;
+}): { titre: string; corps: string } {
+  const { limite, essai, rechargeLe, suggestion } = args;
+  const periode = essai ? "d'essai" : 'du mois';
+  const titre =
+    limite === null
+      ? `Vous avez utilisé vos imports ${periode}`
+      : limite === 1
+        ? `Vous avez utilisé votre import ${periode}`
+        : `Vous avez utilisé vos ${limite} imports ${periode}`;
+
+  const plus = suggestion ? `la formule ${suggestion.planLabel} : ${valeurEnPhrase(suggestion.value)}` : null;
+  if (essai) {
+    return {
+      titre,
+      corps: plus
+        ? `Pour continuer à importer des recettes par IA, passez à ${plus}.`
+        : "Votre crédit d'essai est épuisé.",
+    };
+  }
+  const recharge = rechargeLe
+    ? `Votre crédit se renouvelle le ${rechargeLe}.`
+    : 'Votre crédit se renouvelle à la prochaine échéance de votre abonnement.';
+  return { titre, corps: plus ? `${recharge} Envie d'aller plus loin ? Avec ${plus}.` : recharge };
 }
 
 /**

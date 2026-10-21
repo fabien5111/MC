@@ -18,6 +18,7 @@ import {
   getCurrentPlan,
   getEntitlements,
   getGrid,
+  messageImportEpuise,
   refundQuota,
 } from '@/lib/entitlements-data';
 
@@ -32,6 +33,13 @@ import {
  * n'afficherait rien.
  */
 export async function messageQuota(userId: string, key: string, echec: QuotaFailure): Promise<string> {
+  // JEP-76 : le refus d'un import a son propre texte (essai ou abonnement, date
+  // de recharge) — seule exception au texte déduit de la grille.
+  if (key === 'import_ia_mensuel' && echec.code === 'EXCEEDED') {
+    const m = await messageImportEpuise(userId, echec.limit);
+    return `${m.titre}. ${m.corps}`;
+  }
+
   const [grille, plan] = await Promise.all([getGrid(), getCurrentPlan(userId)]);
 
   const verdict: Verdict =
