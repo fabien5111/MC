@@ -64,13 +64,27 @@ produire (taille du moule à prévoir, nombre de pièces, de personnes, poids…
   défaut, applique la même règle de √coefficient sur le moule.
 - Si l'arrondi à une taille du commerce change sensiblement l'épaisseur obtenue,
   ajoute-le en quelques mots (ex. « un peu plus épais en 22 cm »).
+- PLUSIEURS PROPOSITIONS quand le rendement associe un nombre de pièces ET une
+  dimension de moule (ex. « 1 brownie de 16 cm de diamètre ») : il y a alors
+  plusieurs façons d'atteindre la quantité, donne-les dans "propositions", de la
+  plus naturelle à la moins naturelle :
+  1. même nombre de pièces, moule agrandi (règle √coefficient ci-dessus) —
+     ex. « 1 brownie de 22 à 24 cm de diamètre (≈ 22,6 cm) » ;
+  2. même moule, nombre de pièces × coefficient — SEULEMENT si le résultat est un
+     entier ou très proche (ex. « 2 brownies de 16 cm de diamètre ») ;
+  3. facultatif, une autre combinaison réaliste (ex. un cadre carré équivalent,
+     ou 2 moules plus petits), seulement si elle apporte vraiment quelque chose.
+  Si la demande impose un moule ou un nombre de moules, UNE seule proposition qui
+  le reprend. Sans dimension de moule dans le rendement, UNE seule proposition.
+  Au plus 3 propositions ; le complément est commun à toutes.
 - N'invente RIEN : une partie absente de l'original, ou qui ne contient aucun
-  élément chiffré à adapter, vaut null. Si le coefficient est null, les deux valent null.
+  élément chiffré à adapter, vaut null (propositions : liste vide). Si le
+  coefficient est null, tout vaut null.
 
 Calcule d'abord, dans le champ "calcul", les surfaces ou volumes chiffrés de départ
 et cible ET leur rapport ; déduis-en SEULEMENT ENSUITE le coefficient.
 Réponds UNIQUEMENT par un objet JSON valide, sans texte ni balises autour :
-{"calcul": "<surfaces/volumes chiffrés de départ et cible + le rapport, en une ligne>", "coefficient": <nombre ou null>, "explication": "<une phrase claire en français pour l'utilisateur, mentionnant la méthode employée>", "rendement_ajuste": {"quantite": "<rendement actuel réécrit, ou null>", "complement": "<complément d'informations réécrit, ou null>"}}`;
+{"calcul": "<surfaces/volumes chiffrés de départ et cible + le rapport, en une ligne>", "coefficient": <nombre ou null>, "explication": "<une phrase claire en français pour l'utilisateur, mentionnant la méthode employée>", "rendement_ajuste": {"propositions": ["<rendement actuel réécrit, une entrée par proposition>"], "complement": "<complément d'informations réécrit, ou null>"}}`;
 
 type Ingredient = { nom?: string; name?: string; quantite?: unknown; quantity?: unknown; unite?: string; unit?: string };
 type Recette = { titre?: string; title?: string; rendement?: unknown; yield_notes?: string | null; ingredients?: Ingredient[] };
@@ -106,7 +120,9 @@ Demande de l'utilisateur : "${String(prompt).slice(0, 1000)}"`;
 // d'informations) réécrit par l'IA pour le coefficient proposé : ce que
 // l'utilisateur va réellement produire (taille de moule, pièces, personnes…).
 // Affichage seul, jamais enregistré.
-export type RendementAjuste = { quantite: string | null; complement: string | null };
+// Plusieurs `propositions` quand le rendement porte à la fois un nombre de
+// pièces et une dimension de moule (moule agrandi OU moules multipliés).
+export type RendementAjuste = { propositions: string[]; complement: string | null };
 
 export type ResultatAjustement = {
   coefficient: number | null;
@@ -122,9 +138,13 @@ function texteCourt(v: unknown): string | null {
 }
 
 function normaliseRendement(v: any): RendementAjuste | null {
-  const quantite = texteCourt(v?.quantite);
+  // `quantite` (texte seul) : format de la première version, encore accepté.
+  const brutes: unknown[] = Array.isArray(v?.propositions) ? v.propositions : [v?.quantite];
+  const propositions = [
+    ...new Set(brutes.map(texteCourt).filter((t): t is string => t !== null)),
+  ].slice(0, 3);
   const complement = texteCourt(v?.complement);
-  return quantite || complement ? { quantite, complement } : null;
+  return propositions.length || complement ? { propositions, complement } : null;
 }
 
 export function normaliseResultat(obj: any): ResultatAjustement {
