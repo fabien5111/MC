@@ -1,0 +1,86 @@
+{
+  "ticket": "local-mousse-chocolat-lait-caramel",
+  "recette": {
+    "titre": "Mousse chocolat au lait caramel (pâte à bombe)",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse aérienne au chocolat au lait, montée sur une pâte à bombe parfumée par un caramel à sec décuit à la crème, qui remplace le sirop de sucre classique. Texture fondante, goût de caramel salé et de lait, rôle de crémeux léger au cœur ou en couche principale d'un entremets.",
+    "rendement": "1 cercle Ø 20 cm, 3,4 cm de hauteur — environ 645 g de mousse utilisable (731 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Casserole à fond épais",
+      "Casserole pour le bain-marie",
+      "Thermomètre de cuisson",
+      "Robot pâtissier avec fouet",
+      "Cul-de-poule",
+      "Fouet",
+      "Maryse",
+      "Cercle à entremets"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Mousse chocolat au lait caramel (pâte à bombe)",
+        "page": null,
+        "temps_preparation_minutes": 40,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait 40 %",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (décuisson)",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (montée)",
+            "quantite": 300,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hacher le chocolat au lait et le fondre au bain-marie à 40-45 °C maximum, puis le garder dans un cul-de-poule tiède.",
+          "Cuire le sucre à sec en deux ou trois fois dans la casserole à fond épais, sans remuer, jusqu'à un caramel ambré foncé (≈ 180 °C).",
+          "Chauffer la crème de décuisson à 70 °C, la verser en trois fois sur le caramel hors du feu, ajouter la fleur de sel, puis remettre sur feu moyen jusqu'à 108 °C au thermomètre pour obtenir un caramel décuit lisse.",
+          "Verser le caramel décuit en filet sur les jaunes dans la cuve du robot en fouettant, puis cuire au bain-marie en fouettant sans cesse jusqu'à 84 °C.",
+          "Monter cette pâte à bombe au robot, à grande vitesse, jusqu'à complet refroidissement (≈ 30 °C) et texture de ruban épais.",
+          "Incorporer la pâte à bombe au chocolat fondu en trois fois à la maryse, jusqu'à une base lisse et brillante à 35-40 °C.",
+          "Monter la crème liquide froide en chantilly souple (bec d'oiseau mou), incorporer un tiers à la base au fouet, puis le reste à la maryse sans la faire retomber.",
+          "Utiliser aussitôt : couler en cercle ou en moule, puis réserver au froid jusqu'à prise."
+        ],
+        "conseils_etape": "La fluidité se joue sur les températures : la base chocolat et pâte à bombe doit être à 35-40 °C quand on y plie la crème. En dessous de 30 °C le chocolat cristallise en grains, au-dessus de 45 °C il fait fondre la crème et la mousse reste liquide ; si la base refroidit trop vite, la réchauffer au bain-marie à 38 °C en remuant. Le caramel décuit apporte sucre et matière grasse qui assouplissent la mousse : bien refroidir la pâte à bombe avant de l'incorporer et ne pas monter la crème en chantilly ferme, qui se granulerait au contact du chocolat."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, couche de mousse de 3 cm : ≈ 360 g de mousse, soit ×0,56 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, couche de mousse de 3 cm : ≈ 565 g de mousse, soit ×0,88 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche de mousse de 3 cm : ≈ 815 g de mousse, soit ×1,26 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 4 cm de hauteur : ≈ 90 g de mousse par pièce, soit 7 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, en enveloppe, gouttière remplie sans insert (retrancher le volume de l'insert) : ≈ 230 g de mousse, soit ×0,36 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, en enveloppe, gouttière remplie sans insert (retrancher le volume de l'insert) : ≈ 450 g de mousse, soit ×0,70 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de mousse de 3 cm : ≈ 585 g de mousse, soit ×0,91 de la recette.",
+      "Variante — Version plus ferme pour un entremets démoulé ou une tranche haute : ajouter 3 g de gélatine en feuilles ramollies à l'eau froide, essorées et fondues dans la pâte à bombe chaude en fin de cuisson (84 °C).",
+      "Variante — Version plus intense et plus ferme : remplacer la moitié du chocolat au lait par du chocolat noir 55 %."
+    ],
+    "conseils_conservation": "Mousse prise : 3 jours au réfrigérateur sous film au contact, ou 1 mois au congélateur une fois montée dans l'entremets ; décongeler 6 à 8 heures au réfrigérateur, sans recongeler. À couler dans les 15 à 20 minutes qui suivent le mélange, avant que la base ne cristallise."
+  }
+}
