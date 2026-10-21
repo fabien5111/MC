@@ -1036,10 +1036,11 @@ directes :
   **proposé**, explication, propositions de quantité produite, complément —
   sans quoi ils n'existaient qu'à l'écran de lancement. Affichage seul : les
   quantités ne lisent que `factor`. `BatchView` affiche « Coefficient appliqué
-  ×N » sous la quantité produite de toute fournée ajustée (avec le coefficient
-  proposé par l'IA s'il a été retouché). Avec un détail IA, le bloc « Quantité
-  produite » montre **les propositions à la place du libellé « IA : … »**
-  (titre pour une seule, liste « au choix » sinon), le complément, puis la
+  ×N » **juste sous le libellé « Quantité produite »**, en gras et en gros, pour
+  toute fournée ajustée (avec le coefficient proposé par l'IA s'il a été
+  retouché). Avec un détail IA, le bloc montre ensuite **les propositions à la
+  place du libellé « IA : … »**, introduites par « Permet de faire : » (une
+  seule) ou « Permet de faire, au choix : » (liste), puis le complément, la
   demande et l'explication : toujours affichées dès 1024 px et à l'impression,
   dans un volet **ouvert par défaut** en dessous (bouton + classes `hidden` /
   `lg:flex`, jamais un `<details>`, dont l'état fermé masquerait aussi le
