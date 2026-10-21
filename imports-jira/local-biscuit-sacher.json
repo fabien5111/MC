@@ -1,0 +1,91 @@
+{
+  "ticket": "local-biscuit-sacher",
+  "recette": {
+    "titre": "Biscuit Sacher",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Biscuit au chocolat noir moelleux et dense, à la mie fine et légèrement humide, avec une vraie profondeur de cacao. Il sert de fond ou de couches dans un entremets au chocolat (Sacher, entremets chocolat-abricot ou chocolat-framboise) et supporte très bien l'imbibage.",
+    "rendement": "1 cercle Ø 20 cm, appareil sur 3 cm de hauteur — environ 720 g de pâte utilisable (800 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Cercle à pâtisserie Ø 20 cm",
+      "Plaque de cuisson",
+      "Papier cuisson",
+      "Casserole et cul-de-poule (bain-marie)",
+      "Robot pâtissier avec fouet",
+      "Maryse",
+      "Tamis",
+      "Couteau d'office",
+      "Grille de refroidissement"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Appareil à biscuit Sacher",
+        "page": null,
+        "temps_preparation_minutes": 35,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 40,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir 66 %",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 180,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 170 °C en chaleur tournante, poser le cercle Ø 20 cm sur une plaque chemisée de papier cuisson et chemiser l'intérieur du cercle de papier cuisson.",
+          "Faire fondre le chocolat avec le beurre au bain-marie, sans dépasser 50 °C, puis lisser à la maryse.",
+          "Incorporer le sucre glace tamisé puis les jaunes un par un, en mélangeant jusqu'à un appareil lisse et brillant.",
+          "Monter les blancs au robot, puis ajouter le sucre semoule en trois fois et fouetter jusqu'à une meringue ferme au bec d'oiseau.",
+          "Incorporer un tiers de la meringue à l'appareil chocolaté, à la maryse, pour le détendre.",
+          "Tamiser la farine sur l'appareil, puis ajouter le reste de la meringue en soulevant la masse, sans la faire retomber.",
+          "Verser dans le cercle sur environ 3 cm de hauteur et lisser le dessus.",
+          "Cuire 40 minutes jusqu'à ce que la pointe d'un couteau ressorte presque sèche, puis laisser tiédir 10 minutes, démouler et refroidir complètement sur grille."
+        ],
+        "conseils_etape": "Le chocolat fondu ne doit pas dépasser 50 °C, sinon il cuit les jaunes ; trop refroidi (sous 35 °C), il fige au contact de la meringue froide. Incorporer la meringue en deux temps et sans insister : un appareil trop mélangé retombe et donne une mie compacte. Ne pas ouvrir le four avant 30 minutes."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 20 cm, fond de 1 cm : ≈ 240 g de pâte, soit ×0,33 de la recette.",
+      "Utilisation — Entremets rond Ø 16 cm, fond de 1 cm : ≈ 155 g de pâte, soit ×0,22 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 1 cm : ≈ 345 g de pâte, soit ×0,48 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 1 cm : ≈ 30 g de pâte par pièce, soit environ 24 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, fond de 1 cm : ≈ 105 g de pâte, soit ×0,15 de la recette (30 x 8 cm : ≈ 185 g, ×0,26).",
+      "Utilisation — Cadre carré 18 x 18 cm, 1 cm d'épaisseur : ≈ 250 g de pâte, soit ×0,35 de la recette (24 x 24 cm : ≈ 440 g, ×0,61).",
+      "Utilisation — Sacher classique entier, cercle Ø 20 cm sur 3 cm de hauteur, à trancher en deux ou trois disques : la recette entière, soit ×1.",
+      "Variante — Sacher aux amandes : remplacer 30 g de farine T55 par 30 g de poudre d'amande."
+    ],
+    "conseils_conservation": "3 jours au réfrigérateur sous film, 3 mois au congélateur bien emballé. Décongeler au réfrigérateur et utiliser le biscuit froid, plus facile à trancher et à imbiber ; l'idéal est de le monter après une nuit de repos, quand la mie s'est stabilisée."
+  }
+}
