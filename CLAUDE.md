@@ -1037,8 +1037,13 @@ directes :
   sans quoi ils n'existaient qu'à l'écran de lancement. Affichage seul : les
   quantités ne lisent que `factor`. `BatchView` affiche « Coefficient appliqué
   ×N » sous la quantité produite de toute fournée ajustée (avec le coefficient
-  proposé par l'IA s'il a été retouché) et un volet repliable « Ajustement par
-  l'IA ». Écrit par `BatchWidget` **après** la création (et à la modification
+  proposé par l'IA s'il a été retouché). Avec un détail IA, le bloc « Quantité
+  produite » montre **les propositions à la place du libellé « IA : … »**
+  (titre pour une seule, liste « au choix » sinon), le complément, puis la
+  demande et l'explication : toujours affichées dès 1024 px et à l'impression,
+  dans un volet **ouvert par défaut** en dessous (bouton + classes `hidden` /
+  `lg:flex`, jamais un `<details>`, dont l'état fermé masquerait aussi le
+  contenu sur grand écran). Écrit par `BatchWidget` **après** la création (et à la modification
   d'un ajustement : réécrit, ou effacé si le nouveau mode n'est plus l'IA),
   recopié par « Refaire », **toujours à part et échec ignoré** : colonne posée
   à la main (DDL par `psql`, nœud 216075), absente des types générés, lue par
