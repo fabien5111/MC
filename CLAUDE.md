@@ -2571,14 +2571,18 @@ principales :
   `/api/import-url`. `maxDuration = 60 s`.
 - `POST /api/scale-recipe` — calcule un coefficient d'ajustement des
   quantités (changement de moule/dimensions). `maxDuration = 30 s`. Rend aussi
-  `rendement_ajuste` (`quantite`, `complement`) : la quantité produite et le
+  `rendement_ajuste` (`propositions`, `complement`) : la quantité produite et le
   complément d'informations de la recette d'origine **réécrits pour ce
   coefficient** (taille de moule, pièces, personnes), affichés sous
   l'explication dans « Lancer une fournée » (`BatchWidget`), jamais
   enregistrés. Rien n'est demandé de plus à l'utilisateur. Une dimension de
   moule rempli à hauteur constante suit **√coefficient** (surface), arrondie à
   une taille du commerce, valeur calculée entre parenthèses ; une partie sans
-  élément chiffré vaut `null` (l'IA n'invente rien). Le mode projet ignore ce
+  élément chiffré vaut `null` (l'IA n'invente rien). **Jusqu'à 3 propositions**
+  quand le rendement associe un nombre de pièces et une dimension de moule :
+  même nombre dans un moule agrandi, même moule en plus grand nombre (si le
+  nombre tombe juste), éventuellement une autre combinaison — affichées « au
+  choix » ; le complément reste unique. Le mode projet ignore ce
   champ. Retoucher le coefficient à la main laisse le texte affiché, avec la
   mention du coefficient pour lequel il a été calculé.
 - `POST /api/projet/structure` — déduit d'une intention en texte libre le

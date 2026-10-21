@@ -174,7 +174,7 @@ export function BatchWidget({
   // Rendement d'origine réécrit par l'IA pour SON coefficient (affichage seul) :
   // le coefficient est mémorisé avec, pour signaler qu'il ne vaut plus si
   // l'utilisateur retouche le coefficient proposé.
-  const [aiRendement, setAiRendement] = useState<{ coef: number; quantite: string | null; complement: string | null } | null>(null);
+  const [aiRendement, setAiRendement] = useState<{ coef: number; propositions: string[]; complement: string | null } | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
 
   async function askAi() {
@@ -206,7 +206,8 @@ export function BatchWidget({
       if (data.coefficient != null && data.coefficient > 0) {
         setAiCoef(String(data.coefficient));
         const r = data.rendement_ajuste;
-        if (r && (r.quantite || r.complement)) setAiRendement({ coef: data.coefficient, quantite: r.quantite ?? null, complement: r.complement ?? null });
+        const propositions: string[] = Array.isArray(r?.propositions) ? r.propositions : [];
+        if (propositions.length || r?.complement) setAiRendement({ coef: data.coefficient, propositions, complement: r?.complement ?? null });
       }
     } catch (e) {
       setAiMsg((e as Error).message);
@@ -459,10 +460,20 @@ export function BatchWidget({
           <p className="font-body-md text-on-surface">{aiMsg}</p>
           {aiRendement && (
             <div className="flex flex-col gap-1">
-              {aiRendement.quantite && (
+              {aiRendement.propositions.length === 1 && (
                 <span className="font-body-md text-on-surface">
-                  <span className={LBL}>Quantité produite ajustée </span> {aiRendement.quantite}
+                  <span className={LBL}>Quantité produite ajustée </span> {aiRendement.propositions[0]}
                 </span>
+              )}
+              {aiRendement.propositions.length > 1 && (
+                <>
+                  <span className={LBL}>Quantité produite ajustée, au choix :</span>
+                  <ul className="list-disc pl-5 font-body-md text-on-surface">
+                    {aiRendement.propositions.map((p) => (
+                      <li key={p}>{p}</li>
+                    ))}
+                  </ul>
+                </>
               )}
               {aiRendement.complement && <p className="font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{aiRendement.complement}</p>}
               {num(aiCoef) !== aiRendement.coef && (
