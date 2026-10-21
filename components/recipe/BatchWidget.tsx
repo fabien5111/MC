@@ -539,6 +539,9 @@ export function BatchWidget({
           <input id="plan-date" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} className={INPUT} style={{ width: '10rem' }} />
         </div>
 
+        {/* Rappel de la production d'origine, au-dessus du choix d'ajustement */}
+        {((recipe.measure_type === 'units' && (num(recipe.yield_qty) || 0) > 0) || recipe.measure_type === 'mold' || recipe.measure_type === 'dimensions') && qtyInfoBlock}
+
         {/* Ajustement selon le type de mesure */}
         {recipe.measure_type === 'units' && (num(recipe.yield_qty) || 0) > 0 && (
           <div className="flex flex-col gap-4">
@@ -610,7 +613,6 @@ export function BatchWidget({
                 <span className="font-body-md text-on-surface-variant pb-2">{numeric[ingIdx]?.unit || ''}</span>
               </div>
             )}
-            {qtyInfoBlock}
           </div>
         )}
 
@@ -686,7 +688,6 @@ export function BatchWidget({
                 </p>
               </div>
             )}
-            {qtyInfoBlock}
           </div>
         )}
 
@@ -726,7 +727,6 @@ export function BatchWidget({
                 </p>
               </div>
             )}
-            {qtyInfoBlock}
           </div>
         )}
 
