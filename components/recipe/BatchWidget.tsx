@@ -36,6 +36,7 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import { connexionHref } from '@/lib/nav';
 import { trackEvent } from '@/lib/analytics';
 import { LockedAction, LockedHint } from '@/components/LockedAction';
+import type { AjustementIA } from '@/lib/batch-ai';
 
 const num = (v: string | number | null | undefined): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -137,7 +138,7 @@ export function BatchWidget({
     setAiPrompt('');
     setAiCoef('');
     setAiMsg(null);
-    setAiRendement(null);
+    setAiDetail(null);
     if (editMode && existingBatch) {
       setDate(existingBatch.planned_date || today);
       setNotes(existingBatch.notes || '');
@@ -171,10 +172,11 @@ export function BatchWidget({
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiCoef, setAiCoef] = useState('');
   const [aiMsg, setAiMsg] = useState<string | null>(null);
-  // Rendement d'origine réécrit par l'IA pour SON coefficient (affichage seul) :
-  // le coefficient est mémorisé avec, pour signaler qu'il ne vaut plus si
-  // l'utilisateur retouche le coefficient proposé.
-  const [aiRendement, setAiRendement] = useState<{ coef: number; propositions: string[]; complement: string | null } | null>(null);
+  // Réponse de l'IA (demande, coefficient PROPOSÉ, explication, rendement
+  // d'origine réécrit) : affichée ici, puis conservée sur la fournée
+  // (`batches.adjust_ai`) pour être relue après le lancement. Le coefficient
+  // proposé est gardé à part du champ, que l'utilisateur peut retoucher.
+  const [aiDetail, setAiDetail] = useState<AjustementIA | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
 
   async function askAi() {
@@ -184,7 +186,7 @@ export function BatchWidget({
     }
     setAiBusy(true);
     setAiMsg(null);
-    setAiRendement(null);
+    setAiDetail(null);
     try {
       const resp = await fetch('/api/scale-recipe', {
         method: 'POST',
@@ -207,7 +209,13 @@ export function BatchWidget({
         setAiCoef(String(data.coefficient));
         const r = data.rendement_ajuste;
         const propositions: string[] = Array.isArray(r?.propositions) ? r.propositions : [];
-        if (propositions.length || r?.complement) setAiRendement({ coef: data.coefficient, propositions, complement: r?.complement ?? null });
+        setAiDetail({
+          demande: aiPrompt.trim(),
+          coefficient: data.coefficient,
+          explication: data.explication || '',
+          propositions,
+          complement: r?.complement ?? null,
+        });
       }
     } catch (e) {
       setAiMsg((e as Error).message);
@@ -310,6 +318,12 @@ export function BatchWidget({
     return null;
   }
 
+  // Détail IA à conserver sur la fournée : seulement si l'ajustement appliqué
+  // est bien celui de l'IA (un autre mode choisi après coup n'en garde rien).
+  function detailIAApplique(res: { factor: number; moldCoefs: unknown }): AjustementIA | null {
+    return aiDetail && modeAjustement(res) === 'ia' ? aiDetail : null;
+  }
+
   async function validate() {
     if (!writeGuard('Création d’une fournée')) return;
     if (!date) {
@@ -348,6 +362,12 @@ export function BatchWidget({
         return;
       }
       if (adjustmentChanged) {
+        // À part de la mise à jour principale, échec ignoré : la colonne est
+        // posée à la main et peut manquer (cf. lib/batch-ai.ts).
+        await supabase
+          .from('batches')
+          .update({ adjust_ai: detailIAApplique(res) } as never)
+          .eq('id', existingBatch.id);
         try {
           await rescaleBatchIngredients(supabase, existingBatch, res.factor, res.moldCoefs);
         } catch (e) {
@@ -402,6 +422,15 @@ export function BatchWidget({
       dialog.alert('Erreur lors de la création de la fournée : ' + (e as Error).message);
       setBusy(false);
       return;
+    }
+    const detailIA = detailIAApplique(res);
+    if (detailIA) {
+      // Écrit après la création, échec ignoré (cf. lib/batch-ai.ts) : sans la
+      // colonne, la fournée existe quand même, simplement sans ce détail.
+      await supabase
+        .from('batches')
+        .update({ adjust_ai: detailIA } as never)
+        .eq('id', batchRow.id);
     }
     trackEvent('creer_fournee', { recipe_id: recipe.id });
     const modeCreation = modeAjustement(res);
@@ -458,26 +487,26 @@ export function BatchWidget({
       {aiMsg != null && (
         <div className="border border-secondary rounded-xl bg-white p-4 flex flex-col gap-3">
           <p className="font-body-md text-on-surface">{aiMsg}</p>
-          {aiRendement && (
+          {aiDetail && (aiDetail.propositions.length > 0 || aiDetail.complement) && (
             <div className="flex flex-col gap-1">
-              {aiRendement.propositions.length === 1 && (
+              {aiDetail.propositions.length === 1 && (
                 <span className="font-body-md text-on-surface">
-                  <span className={LBL}>Quantité produite ajustée </span> {aiRendement.propositions[0]}
+                  <span className={LBL}>Quantité produite ajustée </span> {aiDetail.propositions[0]}
                 </span>
               )}
-              {aiRendement.propositions.length > 1 && (
+              {aiDetail.propositions.length > 1 && (
                 <>
                   <span className={LBL}>Quantité produite ajustée, au choix :</span>
                   <ul className="list-disc pl-5 font-body-md text-on-surface">
-                    {aiRendement.propositions.map((p) => (
+                    {aiDetail.propositions.map((p) => (
                       <li key={p}>{p}</li>
                     ))}
                   </ul>
                 </>
               )}
-              {aiRendement.complement && <p className="font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{aiRendement.complement}</p>}
-              {num(aiCoef) !== aiRendement.coef && (
-                <span className="text-xs text-on-surface-variant">Calculé pour le coefficient ×{fr(aiRendement.coef)} proposé par l&apos;IA.</span>
+              {aiDetail.complement && <p className="font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{aiDetail.complement}</p>}
+              {num(aiCoef) !== aiDetail.coefficient && (
+                <span className="text-xs text-on-surface-variant">Calculé pour le coefficient ×{fr(aiDetail.coefficient)} proposé par l&apos;IA.</span>
               )}
             </div>
           )}
