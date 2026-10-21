@@ -460,7 +460,7 @@ export function BatchWidget({
     <div className="flex flex-col gap-1">
       {yInfo?.value && (
         <span className="font-body-md text-on-surface">
-          <span className={LBL}>Quantité produite </span> {yInfo.value}
+          <span className={LBL}>Quantité produite par la recette d&apos;origine : </span> {yInfo.value}
         </span>
       )}
       {recipe.yield_notes && <p className="font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{recipe.yield_notes}</p>}
@@ -572,7 +572,6 @@ export function BatchWidget({
                 </LockedHint>
               )}
             </div>
-            {qtyInfoBlock}
             {uMode === 'ia' ? (
               aiBlock
             ) : uMode === 'qty' ? (
@@ -611,6 +610,7 @@ export function BatchWidget({
                 <span className="font-body-md text-on-surface-variant pb-2">{numeric[ingIdx]?.unit || ''}</span>
               </div>
             )}
+            {qtyInfoBlock}
           </div>
         )}
 
@@ -642,7 +642,6 @@ export function BatchWidget({
                 </LockedHint>
               )}
             </div>
-            {qtyInfoBlock}
             {mMode === 'ia' ? (
               aiBlock
             ) : (
@@ -687,12 +686,12 @@ export function BatchWidget({
                 </p>
               </div>
             )}
+            {qtyInfoBlock}
           </div>
         )}
 
         {recipe.measure_type === 'dimensions' && (
           <div className="flex flex-col gap-4">
-            {qtyInfoBlock}
             {peutAjusterIA && !iaEpuise ? (
               aiBlock
             ) : (
@@ -727,6 +726,7 @@ export function BatchWidget({
                 </p>
               </div>
             )}
+            {qtyInfoBlock}
           </div>
         )}
 
