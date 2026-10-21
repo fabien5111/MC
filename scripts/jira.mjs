@@ -1,7 +1,7 @@
 // Accès Jira en ligne de commande, pour lire une spec ou un bug depuis
 // Claude Code (lot 1 de l'outillage Jira — cf. `docs/outillage-jira.md`).
 //
-// Six verbes : `lire`, `chercher`, `commenter`, et trois verbes de
+// Huit verbes : `lire`, `chercher`, `commenter`, `creer`, `modifier`, et trois verbes de
 // transition étroitement bornés, `demarrer`, `envoyer-en-test` et
 // `a-deployer`. Toujours pas de passe-plat REST générique : un besoin
 // nouveau s'ajoute au script, avec son garde-fou, plutôt que de se
@@ -98,6 +98,54 @@ export function texteVersAdf(texte) {
   return { type: 'doc', version: 1, content: paragraphes };
 }
 
+/**
+ * Markdown restreint → ADF, pour la description d'un ticket créé par
+ * `creer` : un pas-à-pas illisible en un seul bloc de paragraphes perdrait
+ * tout l'intérêt d'être dans Jira. Volontairement minimal — titres (`## `,
+ * `### `), listes à puces (`- `) et numérotées (`1. `), paragraphes ; aucune
+ * mise en forme en ligne. Une ligne qui ne correspond à rien reste du texte.
+ */
+export function markdownLegerVersAdf(texte) {
+  const blocs = [];
+  let paragraphe = [];
+  let liste = null;
+
+  const texteNoeud = (t) => ({ type: 'text', text: t });
+  const clore = () => {
+    if (paragraphe.length > 0) blocs.push({ type: 'paragraph', content: paragraphe });
+    paragraphe = [];
+    if (liste) blocs.push(liste);
+    liste = null;
+  };
+
+  for (const brute of texte.split('\n')) {
+    const ligne = brute.trimEnd();
+    const titre = /^(#{2,3}) (.+)$/.exec(ligne);
+    const puce = /^- (.+)$/.exec(ligne);
+    const numero = /^\d+\. (.+)$/.exec(ligne);
+
+    if (ligne === '') {
+      clore();
+    } else if (titre) {
+      clore();
+      blocs.push({ type: 'heading', attrs: { level: titre[1].length }, content: [texteNoeud(titre[2])] });
+    } else if (puce || numero) {
+      const type = puce ? 'bulletList' : 'orderedList';
+      if (paragraphe.length > 0 || (liste && liste.type !== type)) clore();
+      if (!liste) liste = { type, content: [] };
+      liste.content.push({ type: 'listItem', content: [{ type: 'paragraph', content: [texteNoeud((puce ?? numero)[1])] }] });
+    } else {
+      if (liste) clore();
+      if (paragraphe.length > 0) paragraphe.push({ type: 'hardBreak' });
+      paragraphe.push(texteNoeud(ligne));
+    }
+  }
+  clore();
+
+  if (blocs.length === 0) blocs.push({ type: 'paragraph', content: [texteNoeud('—')] });
+  return { type: 'doc', version: 1, content: blocs };
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Verbes
 // ─────────────────────────────────────────────────────────────────────────
@@ -188,6 +236,54 @@ async function commenter(cle, texte) {
   if (!texte.trim()) echouer('Commentaire vide : rien à publier.');
   await appelJira(config, `/rest/api/3/issue/${encodeURIComponent(cle)}/comment`, 'POST', { body: texteVersAdf(texte) });
   console.log(`Commentaire publié sur ${cle} — ${config.baseUrl}/browse/${cle}`);
+}
+
+/**
+ * Crée un ticket. Jamais de statut ni de transition ici : un ticket naît
+ * dans le statut initial du workflow, ce qui laisse intact le garde-fou des
+ * verbes de transition. La priorité n'est pas sur l'écran de création des
+ * tâches du projet : si Jira la refuse, elle est posée par une mise à jour
+ * séparée, et un échec de cette seconde étape est signalé sans défaire le
+ * ticket déjà créé.
+ */
+async function creer(options, description) {
+  const config = lireConfig();
+  if (!options.titre?.trim()) echouer('--titre manquant.');
+  if (!description.trim()) echouer('Description vide : rien à créer.');
+
+  const champs = {
+    project: { key: options.projet },
+    issuetype: { name: options.type },
+    summary: options.titre.trim(),
+    description: markdownLegerVersAdf(description),
+  };
+  if (options.labels.length > 0) champs.labels = options.labels;
+
+  const cree = await appelJira(config, '/rest/api/3/issue', 'POST', { fields: champs });
+  const url = `${config.baseUrl}/browse/${cree.key}`;
+
+  if (options.priorite) {
+    try {
+      await appelJira(config, `/rest/api/3/issue/${cree.key}`, 'PUT', { fields: { priority: { name: options.priorite } } });
+    } catch (e) {
+      console.error(`${cree.key} créé, mais priorité « ${options.priorite} » non posée : ${e?.message ?? e}`);
+    }
+  }
+  console.log(`${cree.key} créé — ${url}`);
+}
+
+/**
+ * Remplace la description d'un ticket existant (et, si fourni, son titre),
+ * avec le même markdown restreint que `creer`. Ne touche ni au statut ni aux
+ * autres champs : corriger une spec rédigée ne doit rien faire avancer.
+ */
+async function modifier(cle, titre, description) {
+  const config = lireConfig();
+  if (!description.trim()) echouer('Description vide : rien à écrire.');
+  const champs = { description: markdownLegerVersAdf(description) };
+  if (titre?.trim()) champs.summary = titre.trim();
+  await appelJira(config, `/rest/api/3/issue/${encodeURIComponent(cle)}`, 'PUT', { fields: champs });
+  console.log(`${cle} modifié — ${config.baseUrl}/browse/${cle}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -294,6 +390,10 @@ const USAGE = `Usage :
   node scripts/jira.mjs demarrer <CLE>                (→ JIRA_STATUS_IN_PROGRESS, défaut « En cours »)
   node scripts/jira.mjs envoyer-en-test <CLE>         (→ JIRA_STATUS_IN_TEST, défaut « Revue en cours »)
   node scripts/jira.mjs a-deployer <CLE>              (→ JIRA_STATUS_TO_DEPLOY, défaut « A déployer »)
+  node scripts/jira.mjs creer --titre "<résumé>" <fichier|-> [--projet JEP] [--type Tâche] [--priorite Medium] [--label L]...
+                                                      (description en markdown restreint : ##, ###, -, 1.)
+  node scripts/jira.mjs modifier <CLE> <fichier|-> [--titre "<résumé>"]
+                                                      (remplace la description, même format que creer)
 
 Variables requises : JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN.
 
@@ -376,6 +476,39 @@ async function main(argv) {
     const cle = args[0];
     if (!cle) echouer(`Clé de ticket manquante.\n\n${USAGE}`);
     await aDeployer(cle);
+    return;
+  }
+
+  if (verbe === 'creer') {
+    const options = { projet: 'JEP', type: 'Tâche', priorite: null, titre: null, labels: [] };
+    const positionnels = [];
+    for (let i = 0; i < args.length; i++) {
+      const a = args[i];
+      if (a === '--titre') options.titre = args[++i];
+      else if (a === '--projet') options.projet = args[++i];
+      else if (a === '--type') options.type = args[++i];
+      else if (a === '--priorite') options.priorite = args[++i];
+      else if (a === '--label') options.labels.push(args[++i]);
+      else positionnels.push(a);
+    }
+    const source = positionnels[0];
+    if (!source) echouer(`Fichier de description manquant (ou "-" pour l'entrée standard).\n\n${USAGE}`);
+    const { readFile } = await import('node:fs/promises');
+    await creer(options, source === '-' ? await lireEntreeStandard() : await readFile(source, 'utf8'));
+    return;
+  }
+
+  if (verbe === 'modifier') {
+    let titre = null;
+    const positionnels = [];
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] === '--titre') titre = args[++i];
+      else positionnels.push(args[i]);
+    }
+    const [cle, source] = positionnels;
+    if (!cle || !source) echouer(`Clé de ticket ou fichier de description manquant.\n\n${USAGE}`);
+    const { readFile } = await import('node:fs/promises');
+    await modifier(cle, titre, source === '-' ? await lireEntreeStandard() : await readFile(source, 'utf8'));
     return;
   }
 
