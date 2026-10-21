@@ -876,7 +876,7 @@ function PreparerView({
                 ) : ajustementIA && ajustementIA.propositions.length > 1 ? (
                   <div className="flex flex-col gap-1">
                     <span className="print-fs-9 font-body-md text-sm text-on-surface-variant">Permet de faire, au choix :</span>
-                    <ul className="list-disc pl-5 font-headline-md text-lg text-primary print-fs-9">
+                    <ul className="list-disc pl-5 font-headline-md text-sm text-primary print-fs-9">
                       {ajustementIA.propositions.map((p) => (
                         <li key={p}>{p}</li>
                       ))}
