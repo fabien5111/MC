@@ -621,7 +621,9 @@ function PreparerView({
   droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean };
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
-  const [iaOpen, setIaOpen] = useState(false);
+  // Volet « Ajustement par l'IA » sous 1024 px : ouvert par défaut. Au-dessus
+  // (et à l'impression), le détail est toujours affiché, sans volet.
+  const [iaOpen, setIaOpen] = useState(true);
   // Étape en cours de remplacement par une recette (fenêtre ouverte) — même
   // motif que `expanding` dans BatchStepIngredients.
   const [replacingStep, setReplacingStep] = useState<BatchStepRow | null>(null);
@@ -852,9 +854,56 @@ function PreparerView({
         <div className="print:flex print:flex-nowrap print:items-center print:justify-center print:gap-x-6 space-y-6 print:space-y-0">
           <div className="flex flex-wrap print:flex-nowrap justify-evenly items-start print:items-center gap-y-6 gap-x-4 print:gap-x-6">
             {yInfo && (
-              <div className="flex flex-col gap-1 items-center text-center">
+              <div className={`flex flex-col gap-1 ${ajustementIA ? 'items-start text-left flex-1 min-w-0 max-w-2xl' : 'items-center text-center'}`}>
                 <span className={`${LBL_CLS} print-fs-9`}>{yInfo.label}</span>
-                <span className="print-yield-value font-headline-md text-headline-md text-primary">{adjustedYield || yInfo.value}</span>
+                {/* Ajustement par IA : ce que l'IA a proposé prend la place du
+                    libellé « IA : <demande> » (cf. lib/batch-ai.ts). */}
+                {ajustementIA && ajustementIA.propositions.length === 1 ? (
+                  <span className="print-yield-value font-headline-md text-headline-md text-primary">{ajustementIA.propositions[0]}</span>
+                ) : ajustementIA && ajustementIA.propositions.length > 1 ? (
+                  <div className="flex flex-col gap-1">
+                    <span className="print-fs-9 font-body-md text-sm text-on-surface-variant">Au choix :</span>
+                    <ul className="list-disc pl-5 font-headline-md text-lg text-primary print-fs-9">
+                      {ajustementIA.propositions.map((p) => (
+                        <li key={p}>{p}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <span className="print-yield-value font-headline-md text-headline-md text-primary">{adjustedYield || yInfo.value}</span>
+                )}
+                {ajustementIA?.complement && (
+                  <span className="print-fs-9 font-body-md text-body-md italic text-on-surface-variant">{ajustementIA.complement}</span>
+                )}
+                {ajustementIA && (ajustementIA.demande || ajustementIA.explication || coefficientRetouche(ajustementIA, factor)) && (
+                  <div className="w-full mt-2 lg:mt-1">
+                    {/* Volet seulement sous 1024 px ; au-dessus (et à l'impression),
+                        le contenu reste affiché quel que soit l'état du volet — un
+                        <details> fermé le masquerait aussi sur grand écran. */}
+                    <button
+                      type="button"
+                      onClick={() => setIaOpen((v) => !v)}
+                      aria-expanded={iaOpen}
+                      className="lg:hidden print:hidden flex items-center gap-1.5 font-label-md text-[12px] text-on-surface-variant hover:text-primary"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">{iaOpen ? 'expand_less' : 'expand_more'}</span>
+                      Ajustement par l&apos;IA
+                    </button>
+                    <div className={`${iaOpen ? 'flex' : 'hidden'} lg:flex print:flex mt-2 lg:mt-0 flex-col gap-2 font-body-md text-sm text-on-surface print-fs-9`}>
+                      {ajustementIA.demande && (
+                        <p>
+                          <span className="font-semibold">Votre demande :</span> « {ajustementIA.demande} »
+                        </p>
+                      )}
+                      {ajustementIA.explication && <p>{ajustementIA.explication}</p>}
+                      {coefficientRetouche(ajustementIA, factor) && (
+                        <p className="text-xs text-on-surface-variant">
+                          Calculé pour le coefficient ×{fmtNum(ajustementIA.coefficient)} proposé par l&apos;IA ; la fournée applique ×{fmtNum(factor)}.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {adjustedYield && <span className="print-fs-9 font-body-md text-[12px] text-on-surface-variant">Recette de base : {yInfo.value}</span>}
                 {factor !== 1 && (
                   <span className="print-fs-9 font-body-md text-[12px] text-on-surface-variant">
@@ -905,50 +954,6 @@ function PreparerView({
             </button>
             {notesOpen && (
               <p className="mt-2 font-body-md text-sm italic text-on-surface-variant whitespace-pre-line">{batch.yield_notes}</p>
-            )}
-          </div>
-        )}
-        {ajustementIA && (
-          <div className="no-print">
-            <button
-              type="button"
-              onClick={() => setIaOpen((v) => !v)}
-              aria-expanded={iaOpen}
-              className="flex items-center gap-1.5 font-label-md text-[12px] text-on-surface-variant hover:text-primary"
-            >
-              <span className="material-symbols-outlined text-[16px]">{iaOpen ? 'expand_less' : 'expand_more'}</span>
-              Ajustement par l&apos;IA
-            </button>
-            {iaOpen && (
-              <div className="mt-2 flex flex-col gap-2 font-body-md text-sm text-on-surface">
-                {ajustementIA.demande && (
-                  <p>
-                    <span className="font-semibold">Votre demande :</span> « {ajustementIA.demande} »
-                  </p>
-                )}
-                {ajustementIA.explication && <p>{ajustementIA.explication}</p>}
-                {ajustementIA.propositions.length === 1 && (
-                  <p>
-                    <span className="font-semibold">Quantité produite ajustée :</span> {ajustementIA.propositions[0]}
-                  </p>
-                )}
-                {ajustementIA.propositions.length > 1 && (
-                  <div>
-                    <span className="font-semibold">Quantité produite ajustée, au choix :</span>
-                    <ul className="list-disc pl-5">
-                      {ajustementIA.propositions.map((p) => (
-                        <li key={p}>{p}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {ajustementIA.complement && <p className="italic text-on-surface-variant">{ajustementIA.complement}</p>}
-                {coefficientRetouche(ajustementIA, factor) && (
-                  <p className="text-xs text-on-surface-variant">
-                    Calculé pour le coefficient ×{fmtNum(ajustementIA.coefficient)} proposé par l&apos;IA ; la fournée applique ×{fmtNum(factor)}.
-                  </p>
-                )}
-              </div>
             )}
           </div>
         )}
