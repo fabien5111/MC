@@ -137,6 +137,7 @@ export function BatchWidget({
     setAiPrompt('');
     setAiCoef('');
     setAiMsg(null);
+    setAiRendement(null);
     if (editMode && existingBatch) {
       setDate(existingBatch.planned_date || today);
       setNotes(existingBatch.notes || '');
@@ -170,6 +171,10 @@ export function BatchWidget({
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiCoef, setAiCoef] = useState('');
   const [aiMsg, setAiMsg] = useState<string | null>(null);
+  // Rendement d'origine réécrit par l'IA pour SON coefficient (affichage seul) :
+  // le coefficient est mémorisé avec, pour signaler qu'il ne vaut plus si
+  // l'utilisateur retouche le coefficient proposé.
+  const [aiRendement, setAiRendement] = useState<{ coef: number; quantite: string | null; complement: string | null } | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
 
   async function askAi() {
@@ -179,6 +184,7 @@ export function BatchWidget({
     }
     setAiBusy(true);
     setAiMsg(null);
+    setAiRendement(null);
     try {
       const resp = await fetch('/api/scale-recipe', {
         method: 'POST',
@@ -197,7 +203,11 @@ export function BatchWidget({
       const data = await resp.json().catch(() => ({ erreur: `HTTP ${resp.status}` }));
       if (!resp.ok) throw new Error(data.erreur || `Erreur ${resp.status}`);
       setAiMsg(data.explication || '');
-      if (data.coefficient != null && data.coefficient > 0) setAiCoef(String(data.coefficient));
+      if (data.coefficient != null && data.coefficient > 0) {
+        setAiCoef(String(data.coefficient));
+        const r = data.rendement_ajuste;
+        if (r && (r.quantite || r.complement)) setAiRendement({ coef: data.coefficient, quantite: r.quantite ?? null, complement: r.complement ?? null });
+      }
     } catch (e) {
       setAiMsg((e as Error).message);
     } finally {
@@ -447,6 +457,19 @@ export function BatchWidget({
       {aiMsg != null && (
         <div className="border border-secondary rounded-xl bg-white p-4 flex flex-col gap-3">
           <p className="font-body-md text-on-surface">{aiMsg}</p>
+          {aiRendement && (
+            <div className="flex flex-col gap-1">
+              {aiRendement.quantite && (
+                <span className="font-body-md text-on-surface">
+                  <span className={LBL}>Quantité produite ajustée </span> {aiRendement.quantite}
+                </span>
+              )}
+              {aiRendement.complement && <p className="font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{aiRendement.complement}</p>}
+              {num(aiCoef) !== aiRendement.coef && (
+                <span className="text-xs text-on-surface-variant">Calculé pour le coefficient ×{fr(aiRendement.coef)} proposé par l&apos;IA.</span>
+              )}
+            </div>
+          )}
           {aiCoef && (
             <div className="flex items-end gap-3">
               <div className="flex flex-col gap-2">
