@@ -720,13 +720,13 @@ export function BatchWidget({
               // manuel est le SEUL mode d'ajustement de ce type de recette
               // (§9, docs/abonnements.md) ; avec le droit, c'est le choix
               // « manuel » du radio.
-              <div className="flex flex-col gap-3" style={{ maxWidth: '28rem' }}>
-                <div className="flex items-end gap-3">
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-end gap-3">
                   <div className="flex flex-col gap-2">
-                    <label className={LBL}>Coefficient d&apos;ajustement</label>
+                    <label className={`${LBL} whitespace-nowrap`}>Coefficient d&apos;ajustement</label>
                     <input type="number" min={0} step="any" value={aiCoef} onChange={(e) => setAiCoef(e.target.value)} className={INPUT} style={{ width: '8rem' }} />
                   </div>
-                  <span className="text-xs text-on-surface-variant pb-2">Laissez vide pour garder la recette telle quelle.</span>
+                  <span className="text-xs text-on-surface-variant pb-2 whitespace-nowrap">Laissez vide pour garder la recette telle quelle.</span>
                 </div>
                 {!dimensionsIADispo && (
                   <p className="text-xs text-on-surface-variant">
