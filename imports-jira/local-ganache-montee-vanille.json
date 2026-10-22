@@ -1,0 +1,106 @@
+{
+  "ticket": "local-ganache-montee-vanille",
+  "recette": {
+    "titre": "Ganache montée vanille",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Ganache au chocolat blanc infusée à la vanille, montée après une nuit au froid : texture aérienne et fondante, goût de vanille franc. Légèrement gélifiée, elle tient en insert congelé comme en garniture pochée d'entremets, de bûche ou de tartelette.",
+    "rendement": "1 cercle Ø 20 cm, 3 cm de hauteur — environ 570 g de ganache montée utilisable (632 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Mixeur plongeant",
+      "Maryse",
+      "Film alimentaire",
+      "Batteur électrique",
+      "Couteau d'office",
+      "Poche à douille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache infusée",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 740,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 24,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (infusion)",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Vanille en gousse",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 130,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (complément)",
+            "quantite": 310,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans l'eau froide pendant 10 minutes.",
+          "Fendre la gousse de vanille, gratter les graines et les ajouter avec la gousse à la crème d'infusion dans la casserole.",
+          "Porter la crème à frémissement, puis couvrir hors du feu et laisser infuser 20 minutes.",
+          "Retirer la gousse et réchauffer la crème jusqu'au frémissement.",
+          "Ajouter la gélatine hydratée à la crème chaude et mélanger jusqu'à dissolution complète.",
+          "Verser la crème chaude en trois fois sur le chocolat blanc haché dans le cul-de-poule, en mélangeant à la maryse du centre vers l'extérieur pour former une émulsion lisse et brillante.",
+          "Ajouter la crème de complément bien froide, puis mixer au mixeur plongeant, tête immergée, sans incorporer d'air.",
+          "Filmer au contact et réserver au réfrigérateur 12 heures au minimum."
+        ],
+        "conseils_etape": "L'émulsion doit être lisse et brillante avant l'ajout de la crème froide : une ganache granuleuse montera mal. Le repos de 12 heures est indispensable, la cristallisation du beurre de cacao et la prise de la gélatine donnent sa tenue à la ganache montée.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 48 heures au réfrigérateur, filmée au contact, avant d'être montée."
+      },
+      {
+        "nom_etape": "Montage de la ganache",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Lisser la ganache froide à la maryse pour la détendre, sans la sortir du réfrigérateur plus de quelques minutes.",
+          "Monter la ganache au batteur électrique à vitesse moyenne jusqu'à une texture souple qui marque le fouet, comme une chantilly.",
+          "Arrêter dès que la ganache forme un bec d'oiseau souple, sans chercher à la serrer davantage.",
+          "Utiliser aussitôt, avant que la gélatine ne la fige : la pocher ou la couler selon l'usage, puis lisser à la maryse."
+        ],
+        "conseils_etape": "Monter une ganache bien froide (4 °C) et l'arrêter à texture souple : trop montée, elle tranche et devient granuleuse, sans rattrapage possible. Elle se travaille immédiatement, car la gélatine la fige en quelques minutes."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert d'entremets Ø 16 cm, 2 cm de hauteur : ≈ 245 g de ganache montée, soit ×0,43 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, couche de 2 cm : ≈ 380 g de ganache montée, soit ×0,67 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche de 2 cm : ≈ 545 g de ganache montée, soit ×0,96 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 2 cm de hauteur : ≈ 45 g par pièce, soit 12 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert de 20 x 4 cm sur 2 cm : ≈ 95 g de ganache montée, soit ×0,17 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert de 30 x 5 cm sur 2 cm : ≈ 180 g de ganache montée, soit ×0,32 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 2 cm : ≈ 390 g de ganache montée, soit ×0,68 de la recette.",
+      "Utilisation — Tartelettes Ø 8 cm, ganache pochée sur 1,5 cm : ≈ 45 g par tartelette, soit ×0,08 de la recette.",
+      "Variante — Ganache prise vanille : mêmes ingrédients, même infusion et même quantité de gélatine (4 g) ; couler la ganache encore tiède (30 °C) directement dans le moule à insert, sans repos ni montage, et congeler. Plus dense (≈ 1 g/cm³), elle donne un insert fondant et crémeux plutôt qu'aérien.",
+      "Variante — Vanille et fève tonka : ajouter 1 g de fève tonka râpée à l'infusion."
+    ],
+    "conseils_conservation": "Ganache non montée : 48 heures au réfrigérateur, filmée au contact. Ganache montée : à utiliser immédiatement. Insert : congeler au moins 4 heures avant de l'intégrer au montage. Insert ou entremets congelé : 2 mois au congélateur, sous film ou en boîte hermétique ; décongeler l'entremets assemblé 6 à 8 heures au réfrigérateur, jamais à température ambiante."
+  }
+}
