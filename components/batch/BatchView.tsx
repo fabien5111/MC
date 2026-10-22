@@ -35,7 +35,7 @@ import { PrintButton } from '@/components/recipe/PrintButton';
 import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe/RecipeToc';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { formatTime, formatDate } from '@/lib/format';
-import { UNITS_LBL, matchAllergenPictos } from '@/lib/recipe-view';
+import { UNITS_LBL, matchAllergenPictos, tempsCarte } from '@/lib/recipe-view';
 import { ingredientConversionText, shortUnitLbl, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { groupWithTotal } from '@/lib/ingredients-recap';
@@ -90,6 +90,13 @@ const stepDur = (s: BatchStepRow) => {
   return (t.prep_time || 0) + (t.wait_time || 0) + (t.cook_time || 0);
 };
 const jalonDur = (j: BatchJalon) => j.steps.reduce((n, s) => n + stepDur(s), 0);
+// Récapitulatif d'un jour : préparation, total entre parenthèses quand il
+// diffère — la présentation des cartes recette (`tempsCarte`).
+const jalonTemps = (j: BatchJalon) => {
+  const prep = j.steps.reduce((n, s) => n + (remainingStepTimes(s).prep_time || 0), 0);
+  const t = tempsCarte({ prep, total: jalonDur(j) });
+  return t ? (prep ? `Préparation ${t.texte}` : `Total ${t.texte}`) : '';
+};
 const jalonLabel = (j: BatchJalon) => (j.offset > 0 ? `Jour J − ${j.offset}` : 'Jour J');
 const jalonAnchorId = (ji: number) => `sec-jalon-${ji}`;
 const LBL_CLS = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant';
@@ -1771,7 +1778,7 @@ function PatisserBody({
                 </span>
                 <span className="text-[12px] text-on-surface-variant">
                   {target ? `À démarrer vers ${fmtHeure(target)} · ` : ''}
-                  {formatTime(jalonDur(j))} de travail · {j.steps.filter((s) => s.done).length}/{j.steps.length} étape{j.steps.length > 1 ? 's' : ''}
+                  {jalonTemps(j) ? `${jalonTemps(j)} · ` : ''}{j.steps.filter((s) => s.done).length}/{j.steps.length} étape{j.steps.length > 1 ? 's' : ''}
                 </span>
               </span>
               {jNotes && (
