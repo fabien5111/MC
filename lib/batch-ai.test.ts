@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { coefficientRetouche, lireAjustementIA } from './batch-ai';
+import { coefficientRetouche, libelleAjustement, lireAjustementIA, lireAjustementIngredient } from './batch-ai';
 
 const DETAIL = {
   demande: 'pour 12 personnes',
@@ -41,5 +41,18 @@ describe('coefficientRetouche', () => {
     expect(coefficientRetouche(ai, 2)).toBe(false);
     expect(coefficientRetouche(ai, 2.000001)).toBe(false);
     expect(coefficientRetouche(ai, 1.8)).toBe(true);
+  });
+});
+
+describe('libelleAjustement / lireAjustementIngredient', () => {
+  it('traduit l\'ancien préfixe « Base »', () => {
+    expect(libelleAjustement('Base Levain : 350 g')).toBe('Ajustement Levain : 350 g');
+    expect(libelleAjustement('Moule : Cercle — Ø 20 cm')).toBe('Moule : Cercle — Ø 20 cm');
+    expect(libelleAjustement(null)).toBeNull();
+  });
+  it('relit l\'ingrédient et la quantité', () => {
+    expect(lireAjustementIngredient('Base Levain : 350 g')).toEqual({ nom: 'Levain', quantite: '350' });
+    expect(lireAjustementIngredient('Ajustement Jaune d\'œuf : 4')).toEqual({ nom: 'Jaune d\'œuf', quantite: '4' });
+    expect(lireAjustementIngredient('IA : pour 12 personnes')).toBeNull();
   });
 });

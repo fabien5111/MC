@@ -10,11 +10,12 @@
 // accessible). Une fois créée, la fournée vit sur son propre écran
 // (`/fournee/[id]`) — cette fiche n'en garde aucune trace.
 //
-// En mode édition (crayon du bandeau d'une fournée), modifie l'entrée
-// existante à la place d'en créer une nouvelle. Le pré-remplissage se limite
-// à la date et, pour le mode « unités », à la quantité ; les modes
-// moule/IA repartent d'un formulaire vierge (édition fine du libellé non
-// reconstituée). Un changement d'ajustement en édition réapplique le nouveau
+// En mode édition (bouton « Modifier l'ajustement » de la fournée, où
+// `recipe` est reconstituée depuis la fournée elle-même), modifie l'entrée
+// existante à la place d'en créer une nouvelle. Pré-remplissage : date,
+// commentaire, quantité (mode « unités »), ingrédient de référence (relu dans
+// `adjust_label`), demande et coefficient de l'IA, coefficient manuel ; le
+// mode moule repart d'un formulaire vierge (dimensions non reconstituées). Un changement d'ajustement en édition réapplique le nouveau
 // facteur à toutes les lignes issues de la recette (base_quantity connu) —
 // les quantités individuellement modifiées dans l'éditeur d'ingrédients sont
 // alors réinitialisées, faute de distinguer un ajustement automatique d'une
@@ -36,7 +37,7 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import { connexionHref } from '@/lib/nav';
 import { trackEvent } from '@/lib/analytics';
 import { LockedAction, LockedHint } from '@/components/LockedAction';
-import type { AjustementIA } from '@/lib/batch-ai';
+import { libelleAjustement, lireAjustementIA, lireAjustementIngredient, type AjustementIA } from '@/lib/batch-ai';
 
 const num = (v: string | number | null | undefined): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -138,6 +139,7 @@ export function BatchWidget({
     // ouverture — la reconstitution fine du mode IA n'est pas gérée en édition.
     setUMode('qty');
     setMMode('mold');
+    setDMode('ia');
     setAiPrompt('');
     setAiCoef('');
     setAiMsg(null);
@@ -145,9 +147,31 @@ export function BatchWidget({
     if (editMode && existingBatch) {
       setDate(existingBatch.planned_date || today);
       setNotes(existingBatch.notes || '');
+      const facteur = Number(existingBatch.factor) || 1;
       if (recipe.measure_type === 'units') {
         const y = num(recipe.yield_qty);
-        if (y) setQty(String(Math.round(y * (existingBatch.factor || 1) * 100) / 100));
+        if (y) setQty(String(Math.round(y * facteur * 100) / 100));
+      }
+      // Reprend le mode d'origine de l'ajustement, d'après son libellé.
+      const label = existingBatch.adjust_label || '';
+      const parIngredient = lireAjustementIngredient(label);
+      const idx = parIngredient ? numeric.findIndex((m) => m.name.trim() === parIngredient.nom) : -1;
+      if (recipe.measure_type === 'units' && parIngredient && idx >= 0) {
+        setUMode('ing');
+        setIngIdx(idx);
+        setIngQty(parIngredient.quantite.replace(',', '.'));
+      } else if (label.startsWith('IA :')) {
+        const detail = lireAjustementIA((existingBatch as { adjust_ai?: unknown }).adjust_ai);
+        if (recipe.measure_type === 'units') setUMode('ia');
+        else if (recipe.measure_type === 'mold') setMMode('ia');
+        else setDMode('ia');
+        setAiPrompt(detail?.demande || label.slice(4).trim());
+        setAiCoef(fr(facteur));
+        setAiDetail(detail);
+        setAiMsg(detail?.explication || '');
+      } else if (recipe.measure_type === 'dimensions' && facteur !== 1) {
+        setDMode('manuel');
+        setAiCoef(fr(facteur));
       }
     } else if (!editMode) {
       setDate(today);
@@ -184,6 +208,9 @@ export function BatchWidget({
   // proposé est gardé à part du champ, que l'utilisateur peut retoucher.
   const [aiDetail, setAiDetail] = useState<AjustementIA | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
+  // Étapes déjà cochées de la fournée modifiée : un nouvel ajustement recalcule
+  // aussi leurs ingrédients — signalé dans le panneau et à la confirmation.
+  const etapesCochees = editMode && existingBatch ? existingBatch.batch_steps.filter((st) => st.done).length : 0;
 
   async function askAi() {
     if (aiPrompt.trim().length < 3) {
@@ -246,7 +273,7 @@ export function BatchWidget({
           return null;
         }
         factor = want / base;
-        label = `Base ${m.name} : ${want} ${m.unit || ''}`.trim();
+        label = `Ajustement ${m.name} : ${want} ${m.unit || ''}`.trim();
       } else if (uMode === 'ia') {
         const c = num(aiCoef);
         if (!(c && c > 0)) {
@@ -345,13 +372,15 @@ export function BatchWidget({
     const editing = editMode && existingBatch;
     // Rien à réajuster si l'ajustement n'a pas changé — évite d'écraser
     // pour rien les quantités individuellement modifiées dans l'éditeur.
-    const adjustmentChanged = !!editing && (res.factor !== (existingBatch.factor ?? 1) || res.label !== existingBatch.adjust_label);
+    const adjustmentChanged = !!editing && (res.factor !== (existingBatch.factor ?? 1) || libelleAjustement(res.label) !== libelleAjustement(existingBatch.adjust_label));
 
     const dateTxt = new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const lines = [editing ? `Modifier cette fournée de « ${recipe.title} » pour le ${dateTxt} ?` : `Lancer une fournée de « ${recipe.title} » pour le ${dateTxt} ?`];
     if (res.label) lines.push(res.label);
     if (res.factor !== 1) lines.push(`Les quantités seront multipliées par ${fr(res.factor)}.`);
     if (adjustmentChanged) lines.push('Les quantités individuellement modifiées dans le détail des ingrédients seront réinitialisées selon ce nouvel ajustement.');
+    if (adjustmentChanged && etapesCochees > 0)
+      lines.push(`Attention : ${etapesCochees} étape${etapesCochees > 1 ? 's sont déjà cochées' : ' est déjà cochée'} — les quantités de leurs ingrédients seront recalculées elles aussi.`);
     if (!(await dialog.confirm(lines.join('\n')))) return;
 
     setBusy(true);
@@ -535,8 +564,17 @@ export function BatchWidget({
       <LoadingOverlay visible={busy} label="Enregistrement de la fournée…" />
       <h3 className="font-headline-md text-headline-md text-primary mb-6 flex items-center gap-3">
         <span className="material-symbols-outlined">calendar_month</span>
-        {editMode && existingBatch ? 'Modifier la fournée' : 'Lancer une fournée'}
+        {editMode && existingBatch ? "Modifier l'ajustement de la fournée" : 'Lancer une fournée'}
       </h3>
+      {etapesCochees > 0 && (
+        <p className="mb-6 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 font-body-md text-sm text-on-surface">
+          <span className="material-symbols-outlined text-[18px] text-amber-700">warning</span>
+          <span>
+            {etapesCochees} étape{etapesCochees > 1 ? 's sont déjà cochées' : ' est déjà cochée'} dans cette fournée. Changer l&apos;ajustement
+            recalcule aussi les quantités de leurs ingrédients.
+          </span>
+        </p>
+      )}
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-3">
           <label className={LBL} htmlFor="plan-date">

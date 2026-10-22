@@ -1050,6 +1050,18 @@ directes :
   à la main (DDL par `psql`, nœud 216075), absente des types générés, lue par
   le `select('*')` de `BATCH_FULL_SELECT` — sans elle la fournée se crée quand
   même, sans détail. Les fournées antérieures n'ont que le coefficient.
+- **L'ajustement d'une fournée se modifie après coup** (« Modifier
+  l'ajustement », bloc « Quantité produite » du mode Préparer, fournée non
+  close) : le panneau de lancement (`BatchWidget`) rouvert en édition, avec une
+  recette **reconstituée depuis la fournée** (`recetteDeLaFournee`,
+  `ingredientsDeBase` sur `base_quantity` — jamais relue sur la recette de
+  base). Le mode d'origine est repris depuis `adjust_label` (ingrédient de
+  référence, demande IA, coefficient manuel ; le moule repart vierge). Un
+  nouvel ajustement recalcule toutes les lignes issues de la recette
+  (`rescaleBatchIngredients`), y compris celles d'étapes déjà cochées : un
+  avertissement le dit, sans refuser. Le libellé par ingrédient s'écrit
+  « Ajustement X : 350 g » ; l'ancien « Base X : … » est traduit à la lecture
+  (`libelleAjustement`, `lib/batch-ai.ts`), sans migration.
 - **`batches.user_note` et `batches.notes` ne sont pas la même chose** :
   la première est la note personnelle de la fournée (éditée en Préparer par
   `BatchNotes`), la seconde le commentaire saisi au lancement dans

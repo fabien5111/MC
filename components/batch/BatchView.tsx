@@ -9,7 +9,11 @@
 // dans un mode la coche instantanément dans l'autre, il n'y a plus de
 // session séparée à garder synchronisée — voir CLAUDE.md « Fournées ».
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
-import { coefficientRetouche, lireAjustementIA } from '@/lib/batch-ai';
+import { coefficientRetouche, libelleAjustement, lireAjustementIA } from '@/lib/batch-ai';
+import { BatchWidget } from '@/components/recipe/BatchWidget';
+import { PlanProvider, usePlanCtx } from '@/components/recipe/PlanContext';
+import type { RecipeFull } from '@/lib/recipes';
+import type { MergedIngredient } from '@/lib/recipe-view';
 import Link from 'next/link';
 import { RetourContextuel } from '@/components/RetourContextuel';
 import { useRouter } from 'next/navigation';
@@ -97,6 +101,52 @@ const jalonTemps = (j: BatchJalon) => {
   const t = tempsCarte({ prep, total: jalonDur(j) });
   return t ? (prep ? `Préparation ${t.texte}` : `Total ${t.texte}`) : '';
 };
+// « Modifier l'ajustement » : le panneau de lancement (`BatchWidget`) attend
+// une recette. Elle est reconstituée depuis la fournée — rendement, moule et
+// quantités de base (`base_quantity`) y sont copiés à la création —, jamais
+// relue sur la recette de base, qui a pu changer ou disparaître depuis.
+function recetteDeLaFournee(b: BatchFull): RecipeFull {
+  return {
+    id: b.recipe_id,
+    title: b.recipe_title,
+    measure_type: b.measure_type,
+    yield_qty: b.yield_qty,
+    yield_unit: b.yield_unit,
+    yield_desc: b.yield_desc,
+    yield_notes: b.yield_notes,
+    mold_dims: b.mold_dims,
+    mold_types: b.mold_type_name || b.mold_forme ? { name: b.mold_type_name, forme: b.mold_forme } : null,
+  } as unknown as RecipeFull;
+}
+// Ingrédients de la recette d'origine (quantités de base, avant ajustement),
+// fusionnés par nom et unité : référence de l'ajustement par ingrédient.
+function ingredientsDeBase(b: BatchFull): MergedIngredient[] {
+  const parCle = new Map<string, MergedIngredient & { total: number }>();
+  for (const it of b.batch_ingredients) {
+    if (it.added || it.removed || !(Number(it.base_quantity) > 0)) continue;
+    const cle = `${ingredientKey(it.name)}|${it.unit || ''}`;
+    const deja = parCle.get(cle);
+    if (deja) deja.total += Number(it.base_quantity);
+    else parCle.set(cle, { name: it.name, qty: '', unit: it.unit || '', comment: null, ref_id: it.ref_id, url: null, allergen: null, total: Number(it.base_quantity) });
+  }
+  return [...parCle.values()].map(({ total, ...m }) => ({ ...m, qty: String(Math.round(total * 1000) / 1000) }));
+}
+
+function BoutonModifierAjustement() {
+  const { open, openEdit } = usePlanCtx();
+  if (open) return null;
+  return (
+    <button
+      type="button"
+      onClick={openEdit}
+      className="no-print mt-1 flex items-center gap-1.5 font-label-md text-[12px] text-primary hover:text-secondary underline underline-offset-2"
+    >
+      <span className="material-symbols-outlined text-[16px]">tune</span>
+      Modifier l&apos;ajustement
+    </button>
+  );
+}
+
 const jalonLabel = (j: BatchJalon) => (j.offset > 0 ? `Jour J − ${j.offset}` : 'Jour J');
 const jalonAnchorId = (ji: number) => `sec-jalon-${ji}`;
 const LBL_CLS = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant';
@@ -158,7 +208,16 @@ export function BatchView({
   myReview,
   essaiProjet = false,
   droits,
+  ajustement,
 }: {
+  // « Modifier l'ajustement » : ce que le panneau de lancement lit sur la fiche
+  // recette (référentiel des moules, droit et quota d'ajustement par IA).
+  // Absent : pas de bouton.
+  ajustement?: {
+    moldTypes: { id: number; name: string; forme: string | null }[];
+    peutAjusterIA: boolean;
+    quotaIA: { allowed: boolean; limit?: number; usage?: number } | null;
+  };
   batch: BatchFull;
   baseRecipe: BaseRecipeInfo;
   units: Unit[];
@@ -221,6 +280,22 @@ export function BatchView({
   const [lectureMode, setLectureMode] = useState(lecture);
   useEffect(() => setLectureMode(lecture), [lecture]);
   const readOnly = batch.status !== 'planifiee' || lectureMode || impersonationReadOnly;
+  // Ajustement modifiable tant que la fournée n'est pas close (étapes déjà
+  // cochées : avertissement dans le panneau, jamais un refus).
+  const ajustementModifiable = !readOnly && !!ajustement;
+  const recetteAjustement = useMemo(() => recetteDeLaFournee(batch), [batch]);
+  const ingredientsAjustement = useMemo(() => ingredientsDeBase(batch), [batch]);
+  const panneauAjustement =
+    ajustementModifiable && ajustement ? (
+      <BatchWidget
+        recipe={recetteAjustement}
+        ingredients={ingredientsAjustement}
+        existingBatch={batch}
+        moldTypes={ajustement.moldTypes}
+        peutAjusterIA={ajustement.peutAjusterIA}
+        quotaIA={ajustement.quotaIA}
+      />
+    ) : null;
   // Avis sur la recette d'origine. Volontairement indépendant de `readOnly`
   // ET de `lecture` : une fournée terminée est toujours en lecture seule pour
   // ses étapes, et « Fournées terminées » (/en-cuisine) l'ouvre justement en
@@ -463,7 +538,7 @@ export function BatchView({
         <p className="text-on-surface-variant text-sm mb-4">
           {[
             dateTxt ? `Fournée du ${dateTxt}` : '',
-            mode === 'preparer' ? (batch.factor && Number(batch.factor) !== 1 ? `× ${String(batch.factor).replace('.', ',')}` : batch.adjust_label || '') : '',
+            mode === 'preparer' ? (batch.factor && Number(batch.factor) !== 1 ? `× ${String(batch.factor).replace('.', ',')}` : libelleAjustement(batch.adjust_label) || '') : '',
           ]
             .filter(Boolean)
             .join(' — ')}
@@ -573,6 +648,7 @@ export function BatchView({
             onSwitchMode={switchMode}
             onMarkTerminee={markTerminee}
             droits={droits}
+            panneauAjustement={panneauAjustement}
           />
         ) : (
           <PatisserView
@@ -610,6 +686,7 @@ function PreparerView({
   onSwitchMode,
   onMarkTerminee,
   droits,
+  panneauAjustement,
 }: {
   batch: BatchFull;
   baseRecipe: BaseRecipeInfo;
@@ -626,6 +703,9 @@ function PreparerView({
   onSwitchMode: (m: 'preparer' | 'patisser') => void;
   onMarkTerminee: () => void;
   droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean };
+  // Panneau « Modifier l'ajustement » (BatchWidget en édition), ouvert par le
+  // bouton du bloc « Quantité produite » ; absent sur une fournée close.
+  panneauAjustement: React.ReactNode;
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   // Volet « Ajustement par l'IA » sous 1024 px : ouvert par défaut. Au-dessus
@@ -655,7 +735,7 @@ function PreparerView({
       const u = UNITS_LBL[batch.yield_unit || ''] || batch.yield_unit || '';
       return `${fmtNum(q * factor)} ${u}`.trim();
     }
-    return batch.adjust_label || null;
+    return libelleAjustement(batch.adjust_label);
   })();
 
   const sortedSteps = [...batch.batch_steps].sort((a, b) => a.order_index - b.order_index);
@@ -857,6 +937,7 @@ function PreparerView({
           toucher à la structure ni aux classes de chaque bloc à l'écran :
           `AllergenPictosView` garde son propre séparateur (bordure du haut) à
           l'écran, simplement neutralisé à l'impression (`print:border-0`). */}
+      <PlanProvider>
       <div id="sec-technique" className="scroll-mt-28 bg-surface-container-low p-6 rounded-xl space-y-6">
         <div className="print:flex print:flex-nowrap print:items-center print:justify-center print:gap-x-6 space-y-6 print:space-y-0">
           <div className="flex flex-wrap print:flex-nowrap justify-evenly items-start print:items-center gap-y-6 gap-x-4 print:gap-x-6">
@@ -877,7 +958,7 @@ function PreparerView({
                     moule…) : `adjust_label`, posé au lancement. Absent quand le
                     détail IA le remplace ou quand il ne répéterait que le coefficient. */}
                 {factor !== 1 && !ajustementIA && batch.adjust_label && !batch.adjust_label.startsWith('Coefficient :') && (
-                  <span className="print-fs-9 font-body-md text-sm text-on-surface-variant">{batch.adjust_label}</span>
+                  <span className="print-fs-9 font-body-md text-sm text-on-surface-variant">{libelleAjustement(batch.adjust_label)}</span>
                 )}
                 {/* Ajustement par IA : ce que l'IA a proposé prend la place du
                     libellé « IA : <demande> » (cf. lib/batch-ai.ts). */}
@@ -931,6 +1012,7 @@ function PreparerView({
                   </div>
                 )}
                 {adjustedYield && <span className="print-fs-9 font-body-md text-[12px] text-on-surface-variant">Recette de base : {yInfo.value}</span>}
+                {panneauAjustement && <BoutonModifierAjustement />}
               </div>
             )}
             {batch.difficulty_name && (
@@ -978,6 +1060,8 @@ function PreparerView({
           </div>
         )}
       </div>
+      {panneauAjustement}
+      </PlanProvider>
 
       {/* Planning de préparation — sans intérêt à l'impression quand toutes
           les étapes tombent le même jour (un seul jalon à afficher) : masqué
