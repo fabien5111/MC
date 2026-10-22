@@ -1,0 +1,228 @@
+{
+  "ticket": "JEP-107",
+  "recette": {
+    "titre": "Cookies 100% Noisette",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=sNWJroiSJy4",
+    "description": "Une revisite gourmande du cookie traditionnel, axée à 200 % sur la noisette. Il se compose d'une pâte à cookie parfumée au sucre de coco et à la noisette, renfermant un cœur coulant de praliné pur noisette congelé à cœur, surmonté d'un caramel onctueux à la noisette et de noisettes torréfiées croquantes.",
+    "rendement": "15 cookies",
+    "ustensiles": [
+      "Robot pâtissier muni de la feuille (ou batteur/spatule)",
+      "Robot coupe / mixeur puissant (pour le praliné)",
+      "Mixeur plongeant",
+      "Moule en silicone demi-sphères (empreintes adaptées pour inserts)",
+      "Casseroles",
+      "Couvercle de casserole",
+      "Tapis de cuisson en silicone (ou papier cuisson)",
+      "Rouleau à pâtisserie avec guides d'épaisseur (roulettes 1 cm)",
+      "Emporte-pièce de 5 cm de diamètre",
+      "Emporte-pièce de 6 cm de diamètre",
+      "Cercles de cuisson de 7 cm de diamètre",
+      "Spatule coudée ou palette",
+      "Maryse",
+      "Poche à douille munie d'une douille unie de 4 mm",
+      "Plaques de cuisson",
+      "Film étirable alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Praliné noisette",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 35,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Noisettes torréfiées (150 °C pendant 30 minutes au four)",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 75,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser le sucre semoule dans une casserole et le faire fondre à feu doux pour obtenir un caramel ambré.",
+          "Mélanger délicatement uniquement aux endroits où le caramel est déjà liquide pour incorporer le reste du sucre sans masser.",
+          "Couler immédiatement le caramel bien ambré sur un tapis en silicone et le laisser refroidir entièrement.",
+          "Placer les noisettes préalablement torréfiées et le caramel cassé en morceaux dans la cuve d'un robot coupe.",
+          "Mixer jusqu'à l'obtention d'une texture de praliné très lisse et liquide.",
+          "Couler le praliné dans des moules demi-sphères.",
+          "Placer au congélateur pour 1 nuit afin d'obtenir des inserts parfaitement durs."
+        ],
+        "conseils_etape": "Ne pas remuer le sucre au début pour éviter la cristallisation ; laisser fondre doucement. La congélation totale est indispensable pour manipuler le praliné sans qu'il ne s'étale lors du montage."
+      },
+      {
+        "nom_etape": "Pâte à cookies",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (légèrement pommade)",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre de coco",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de noisette",
+            "quantite": 7,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf (à température ambiante)",
+            "quantite": 38,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Bicarbonate de soude",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes torréfiées (concassées)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisettes",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Déposer dans la cuve du robot muni de la feuille le beurre légèrement pommade, la cassonade, le sucre semoule, le sucre de coco et la pâte de noisette.",
+          "Mélanger en vitesse lente (1 ou 2) jusqu'à obtention d'une texture crémeuse et homogène.",
+          "Ajouter l'œuf tempéré et mélanger brièvement à vitesse 1.",
+          "Incorporer la farine et le bicarbonate de soude, puis amalgamer sans corser la pâte.",
+          "Ajouter la poudre de noisettes, la fleur de sel et les noisettes concassées.",
+          "Mélanger très brièvement à la feuille, juste assez pour répartir les inclusions.",
+          "Placer l'appareil entre deux feuilles de papier cuisson ou tapis silicone, puis étaler au rouleau sur une épaisseur uniforme de 1 cm.",
+          "Réserver la plaque de pâte au réfrigérateur pendant au moins 2 heures pour la raffermir."
+        ],
+        "conseils_etape": "Ne pas trop travailler la pâte après incorporation de la farine pour préserver une texture fondante et éviter le développement du réseau de gluten. L'utilisation de guides d'épaisseur garantit une cuisson parfaitement homogène."
+      },
+      {
+        "nom_etape": "Caramel onctueux à la noisette",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 67,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux (à température ambiante)",
+            "quantite": 27,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière (30 % MG minimum)",
+            "quantite": 133,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 0.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de noisette",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de vanille",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire chauffer dans une première casserole la crème liquide avec la poudre de vanille et la pâte de noisette jusqu'à frémissement, puis couvrir pour conserver la chaleur.",
+          "Verser le sucre semoule dans une seconde casserole et le faire caraméliser à sec sur feu doux sans y toucher jusqu'à liquéfaction.",
+          "Dès que le caramel est bien doré, stopper la cuisson en incorporant le beurre tempéré hors du feu ou sur feu très doux.",
+          "Verser la crème chaude parfumée en deux ou trois fois sur le caramel en remuant vivement pour éviter les projections.",
+          "Porter le mélange à ébullition continue pendant 3 minutes pour faire réduire et épaissir l'appareil.",
+          "Débarrasser le caramel dans un récipient haut et le mixer à l'aide d'un mixeur plongeant pour affiner l'émulsion.",
+          "Transvaser dans un plat large, incorporer la fleur de sel délicatement à la maryse, filmer au contact et placer au réfrigérateur pendant 1 heure."
+        ],
+        "conseils_etape": "La crème doit être impérativement très chaude lors du décuisage pour limiter les chocs thermiques et les éclaboussures de sucre brûlant. Mixer au plongeant garantit un nappage soyeux sans grains."
+      },
+      {
+        "nom_etape": "Façonnage, cuisson et décor",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 10,
+        "temps_cuisson_minutes": 13,
+        "temperature_cuisson_celsius": 165,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Noisettes torréfiées (quelques-unes, pour le décor)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Fleur de sel (pour le décor)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 165 °C (chaleur tournante).",
+          "Décoller la pâte bien froide et détailler 15 disques à l'emporte-pièce de 5 cm de diamètre, puis 15 disques à l'emporte-pièce de 6 cm de diamètre.",
+          "Démouler les demi-sphères de praliné congelé et en poser une au centre de chaque disque de pâte de 5 cm.",
+          "Recouvrir chaque ensemble avec un disque de pâte de 6 cm, puis souder soigneusement les bords avec les doigts afin d'enfermer hermétiquement l'insert.",
+          "Disposer les pièces sur une plaque recouverte de papier cuisson ou toile silicone, cerclées dans des anneaux de 7 cm pour une épaisseur régulière (ou sans cercle pour un cookie plus étalé et croustillant).",
+          "Enfourner à 165 °C pendant 12 à 13 minutes.",
+          "Laisser tiédir une dizaine de minutes sur plaque avant d'ôter les cercles.",
+          "Garnir le dessus de chaque cookie tiède de pointes de caramel noisette à l'aide d'une poche munie d'une douille de 4 mm.",
+          "Parsemer d'éclats de noisettes torréfiées et d'une légère touche de fleur de sel."
+        ],
+        "conseils_etape": "La soudure entre les disques doit être irréprochable : la moindre fissure laissera s'échapper le praliné à la cuisson. Ne pas manipuler les cookies à la sortie immédiate du four, ils se raffermissent en tiédissant."
+      }
+    ],
+    "astuces_recette": [
+      "Substitutions de fruits à coque : la recette fonctionne selon le même ratio avec de la pistache, de l'amande, de la noix de pécan ou de la cacahuète (en adaptant purée, poudre et fruits torréfiés).",
+      "Remplacement du sucre de coco : si vous n'avez pas de sucre de coco, remplacez-le à poids égal par de la cassonade ou du sucre vergeoise brune.",
+      "Cuisson avec ou sans cercle : l'usage du cercle de 7 cm concentre le moelleux et l'épaisseur ; sans cercle, le biscuit s'étale davantage et développe des bordures plus croustillantes."
+    ],
+    "conseils_conservation": "À déguster idéalement tièdes, environ 15 à 20 minutes après la sortie du four, pour profiter du cœur de praliné parfaitement coulant. Se conservent 48 à 72 heures dans une boîte métallique hermétique à température ambiante. Pour retrouver le coulant du cœur, passez-les 30 secondes au four doux (140 °C) avant dégustation. Les disques garnis de praliné crus et soudés peuvent se congeler crus sur plaque : il suffit ensuite de les enfourner directement congelés en prolongeant la cuisson de 2 à 3 minutes."
+  }
+}

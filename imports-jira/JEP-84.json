@@ -1,0 +1,200 @@
+{
+  "ticket": "JEP-84",
+  "recette": {
+    "titre": "Cake façon Ferrero Rocher",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un cake ultra gourmand façon snack industriel inspiré du Ferrero Rocher, associant un appareil à cake cacao-noisette, un cœur fondant de pâte à tartiner maison, un glaçage rocher croustillant et une touche de poudre d'or.",
+    "rendement": "1 cake (environ 6 à 8 parts)",
+    "ustensiles": [
+      "Robot coupe / mixeur",
+      "Casserole à fond large",
+      "Cul-de-poule / bols",
+      "Fouet",
+      "Moule à cake perforé (20x8x8 cm)",
+      "Couteau",
+      "Pinceau de cuisine",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Confection de la pâte à tartiner",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de noisette",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Torréfier les noisettes à 150°C pendant 30 minutes puis les laisser refroidir.",
+          "Placer les noisettes refroidies dans le bol du robot coupe.",
+          "Ajouter le chocolat au lait fondu et mixer le tout jusqu'à l'obtention d'une texture la plus lisse possible.",
+          "Ajouter la crème liquide chaude, le miel et l'huile de noisette.",
+          "Mixer à nouveau pour émulsionner l'ensemble comme une ganache jusqu'à obtenir une pâte à tartiner lisse et brillante.",
+          "Verser dans un récipient, filmer au contact pour éviter qu'une peau ne se forme, et laisser à température ambiante."
+        ],
+        "conseils_etape": "Ne pas mettre la pâte à tartiner au réfrigérateur pour qu'elle garde une consistance souple et facile à pocher."
+      },
+      {
+        "nom_etape": "Beurre noisette et appareil à cake",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 50,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de noisette",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre cassonade",
+            "quantite": 130,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisette",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes entières torréfiées et concassées (quantité selon convenance)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Faire fondre le beurre dans une casserole à fond large et le laisser cuire à feu doux à moyen jusqu'à l'obtention d'une couleur et d'une odeur de noisette (beurre noisette).",
+          "Dans un cul-de-poule, fouetter vivement les jaunes d'œufs avec la cassonade.",
+          "Ajouter la crème liquide et fouetter.",
+          "Incorporer la farine et le cacao en poudre tamisés.",
+          "Ajouter la poudre de noisette, la levure chimique et les noisettes concassées, puis mélanger.",
+          "Verser l'huile de noisette et terminer en incorporant le beurre noisette tiédi.",
+          "Verser la préparation dans le moule à cake préalablement beurré et fariné, en veillant à ne pas remplir trop haut car le cake va gonfler. Secouer pour homogénéiser.",
+          "Enfourner à 150°C pendant 50 minutes. Vérifier la cuisson en plantant la lame d'un couteau.",
+          "Démouler le cake après cuisson et le laisser revenir à température ambiante."
+        ],
+        "conseils_etape": "Bien surveiller la cuisson du beurre noisette pour ne pas le brûler et vérifier la cuisson du cake avec la lame d'un couteau."
+      },
+      {
+        "nom_etape": "Fourrage du cake",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Creuser ou percer délicatement le dessous du cake.",
+          "Fourrer généreusement l'intérieur du cake avec la pâte à tartiner (qui doit être assez souple et non figée).",
+          "Tenir fermement le cake par le dessous pour éviter qu'il ne se déchire lors du remplissage.",
+          "Réserver le cake garni."
+        ],
+        "conseils_etape": "S'assurer que la pâte à tartiner est à bonne température (température ambiante) pour ne pas détruire la structure du cake lors du pochage."
+      },
+      {
+        "nom_etape": "Glaçage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Noisettes torréfiées et concassées",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 225,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de noisettes",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'or (optionnel)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Dans un cul-de-poule, mélanger le chocolat au lait préalablement fondu avec les noisettes torréfiées concassées et l'huile de noisette jusqu'à obtenir un glaçage rocher homogène.",
+          "Glacer généreusement le cake sur toutes ses faces avec le glaçage rocher, puis racler légèrement le dessous pour enlever l'excédent.",
+          "Laisser figer le glaçage à température ambiante.",
+          "À l'aide d'un pinceau, saupoudrer généreusement le cake de poudre d'or pour imiter l'emballage du Ferrero Rocher."
+        ],
+        "conseils_etape": "Racler le dessous du cake permet d'éviter une surépaisseur disgracieuse de chocolat figé."
+      }
+    ],
+    "astuces_recette": [
+      "Utiliser des produits de qualité (notamment un bon chocolat au lait et des noisettes fraîches) pour garantir le goût intense de noisette.",
+      "Conserver le surplus de pâte à tartiner pour l'utiliser en tartine ou l'accompagner avec le reste du cake."
+    ],
+    "conseils_conservation": "Attendre que le cake soit revenu à une bonne température ambiante avant de le découper pour profiter pleinement de la texture du cœur fondant et du craquant du glaçage. Conserver à température ambiante, bien emballé pour préserver le croustillant du glaçage et le moelleux de la mie."
+  }
+}

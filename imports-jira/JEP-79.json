@@ -1,0 +1,154 @@
+{
+  "ticket": "JEP-79",
+  "recette": {
+    "titre": "Cake Citron Vert-Menthe façon Mojito de Yann Couvreur",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Cake moelleux et ultra frais aux notes de citron vert et de menthe, surmonté d'un glaçage croquant et d'une poudre de zeste séché.",
+    "rendement": "Un cake pour 6 à 8 personnes (moule 18 x 8,5 x 7 cm)",
+    "ustensiles": [
+      "Robot coupe",
+      "Plaque de cuisson",
+      "Four",
+      "Mixeur",
+      "Tamis",
+      "Grand cul de poule",
+      "Fouet",
+      "Maryse",
+      "Moule à cake (8,5 cm de large, 18 cm de long et 7 cm de hauteur)",
+      "Pinceau"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Poudre de citron vert",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 60,
+        "temperature_cuisson_celsius": 70,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Zestes de 2 citrons verts",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Disposer les zestes de citron vert sur une plaque de cuisson.",
+          "Enfourner pendant 1 heure à 70°C pour les faire sécher.",
+          "Mixer les zestes séchés au mixeur pour obtenir une poudre grossière.",
+          "Passer la poudre au tamis pour l'affiner et obtenir une poudre de citron vert très fine."
+        ],
+        "conseils_etape": "Peut être réalisée en amont (la poudre se conserve facilement). Veiller à ce que les zestes soient parfaitement déshydratés avant de les mixer."
+      },
+      {
+        "nom_etape": "Confection et cuisson du cake",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 40,
+        "temps_cuisson_minutes": 50,
+        "temperature_cuisson_celsius": 145,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 170,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Zestes de 2 citrons verts",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Oeuf",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Farine",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 15,
+            "unite": "cl"
+          },
+          {
+            "nom": "Feuilles de menthe",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron vert",
+            "quantite": 5,
+            "unite": "cl"
+          }
+        ],
+        "instructions": [
+          "Mixer au robot coupe les feuilles de menthe avec les zestes de 2 citrons verts pour obtenir une poudre parfumée.",
+          "Dans un grand cul de poule, mélanger le beurre pommade avec le sucre semoule, le sel fin, les zestes de citron vert et la menthe mixée, puis fouetter le tout.",
+          "Ajouter l'œuf à température ambiante et fouetter à nouveau pour homogénéiser.",
+          "Tamiser ensemble la farine et la levure chimique, puis les incorporer en pluie dans le saladier en mélangeant.",
+          "Verser la crème liquide en dernier tout doucement et mélanger délicatement pour obtenir un appareil à cake souple et homogène.",
+          "Verser la préparation dans un moule à cake préalablement beurré et fariné.",
+          "Enfourner pour 50 minutes à 145°C.",
+          "À la sortie du four, retirer immédiatement le cake de la plaque de cuisson et le laisser reposer 10 minutes avant de le démouler.",
+          "Imbiber tous les bords du cake à l'aide d'un pinceau trempé dans 5cL de jus de citron vert.",
+          "Filmer le cake au contact et le placer 30 minutes au congélateur pour le refroidir rapidement."
+        ],
+        "conseils_etape": "Ne pas sauter l'étape de l'imbibition au jus de citron vert pour garantir le moelleux et l'acidité."
+      },
+      {
+        "nom_etape": "Glaçage et finition",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre glace",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron vert",
+            "quantite": 2,
+            "unite": "cl"
+          }
+        ],
+        "instructions": [
+          "Mélanger le sucre glace et 2cL de jus de citron vert jusqu'à l'obtention d'une pâte légèrement blanchâtre.",
+          "À l'aide d'un pinceau, badigeonner généreusement le sirop sur le cake bien froid.",
+          "Saupoudrer la surface avec un peu de poudre de citron vert préparée à la première étape.",
+          "Enfourner le cake glacé pendant 2 minutes à 170°C pour fixer le glaçage."
+        ],
+        "conseils_etape": "Surveiller de très près la cuisson du glaçage au four pour ne pas cuire ou fondre le gâteau."
+      }
+    ],
+    "astuces_recette": [
+      "Utiliser un moule aux dimensions adaptées (environ 18 x 8,5 x 7 cm) pour obtenir un cake bien proportionné et voluptueux.",
+      "Le gâteau gagne énormément en saveur et en maturation lorsqu'il est préparé 2 à 3 jours avant d'être consommé, les arômes de menthe et de citron vert se développant magnifiquement avec le temps."
+    ],
+    "conseils_conservation": "Conserver le cake emballé au frais. Laisser à température ambiante quelques minutes avant la dégustation pour profiter pleinement de la texture moelleuse et des arômes."
+  }
+}

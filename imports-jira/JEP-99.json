@@ -1,0 +1,197 @@
+{
+  "ticket": "JEP-99",
+  "recette": {
+    "titre": "Cinnamon rolls",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=4B8sM0LwK38",
+    "description": "Brioches roulées ultra moelleuses garnies d'un mélange de beurre, de cassonade et de cannelle, cuites en cercles individuels caramélisés puis nappées d'un glaçage parfumé à la sortie du four.",
+    "rendement": "6 à 8 pièces individuelles (6 à 8 personnes)",
+    "ustensiles": [
+      "Robot pâtissier avec crochet pétrisseur",
+      "Balance de précision",
+      "Cul-de-poule ou bol",
+      "Spatule ou maryse",
+      "Rouleau à pâtisserie",
+      "Couteau de chef bien aiguisé",
+      "Pinceau à pâtisserie",
+      "Fouet",
+      "Plaques de cuisson",
+      "Cercles individuels à tarte ou entremets (6 à 8 selon le diamètre)",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Pâte à brioche",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Levure boulangère fraîche",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T45",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 112,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 37.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux (à température ambiante)",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile neutre (quelques gouttes, pour le récipient)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Émietter la levure au fond de la cuve du robot.",
+          "Recouvrir avec la farine, puis déposer le sucre semoule et le sel (en évitant le contact direct du sel avec la levure).",
+          "Verser les œufs entiers et le lait entier.",
+          "Pétrir en première vitesse avec le crochet jusqu'à obtention d'un mélange homogène.",
+          "Incorporer le beurre tempéré coupé en morceaux en première vitesse jusqu'à assimilation complète.",
+          "Augmenter la vitesse du robot et pétrir pendant environ 10 minutes pour développer un réseau de gluten bien élastique (la pâte doit claquer et se décoller des parois).",
+          "Débarrasser le pâton dans un cul-de-poule légèrement huilé avec une huile neutre.",
+          "Filmer au contact et placer au réfrigérateur pendant toute une nuit."
+        ],
+        "conseils_etape": "Le beurre doit impérativement être tempéré (souple mais non fondu) pour s'incorporer correctement sans liquéfier la pâte."
+      },
+      {
+        "nom_etape": "Garniture à la cannelle",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (pommade)",
+            "quantite": 37,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Cannelle en poudre",
+            "quantite": 5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Placer le beurre pommade dans un bol.",
+          "Ajouter la cassonade et la cannelle en poudre.",
+          "Travailler le tout à la spatule jusqu'à obtenir une pâte homogène et tartinable."
+        ],
+        "conseils_etape": "Travailler avec un beurre bien pommade pour faciliter l'étalage sans déchirer le pâton de brioche. À réaliser juste avant l'abaisse de la pâte."
+      },
+      {
+        "nom_etape": "Glaçage à la cannelle",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre glace",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (quantité suffisante pour une consistance fluide nappante)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Cannelle en poudre",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser le sucre glace et la cannelle dans un récipient.",
+          "Ajouter l'eau progressivement tout en fouettant jusqu'à l'obtention d'un sirop lisse, homogène et fluide."
+        ],
+        "conseils_etape": "Inutile de chauffer ; l'eau froide ou tempérée suffit à dissoudre le sucre glace. À réaliser pendant la pousse ou la cuisson des brioches."
+      },
+      {
+        "nom_etape": "Façonnage, apprêt et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 200,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Farine (pour le plan de travail)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Beurre fondu ou bombe de graisse (pour graisser plaque et cercles)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Cassonade (pour chemiser les cercles)",
+            "quantite": 30,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Sortir le pâton bien froid du réfrigérateur et le bouler brièvement sur un plan de travail légèrement fariné.",
+          "Étaler la pâte au rouleau sur une épaisseur de 5 mm en formant un rectangle régulier.",
+          "Aplatir finement au rouleau l'une des bordures longitudinales du rectangle (qui servira de fermeture).",
+          "Étaler uniformément la garniture cannelle sur toute la surface de la pâte en laissant libre la bordure aplatie.",
+          "Rouler la pâte sur elle-même de manière bien serrée en partant du côté garni pour terminer sur la bordure aplatie.",
+          "Déposer le boudin sur une plaque et bloquer au congélateur pendant au moins 30 minutes pour raffermir le rouleau.",
+          "Graisser l'intérieur des cercles de cuisson et les passer dans de la cassonade pour en tapisser les parois. Graisser également la plaque de cuisson.",
+          "Sortir le rouleau raffermi et tailler des tronçons réguliers de 2 cm d'épaisseur à l'aide d'un couteau bien tranchant.",
+          "Placer chaque tronçon à plat au centre d'un cercle posé sur la plaque graissée.",
+          "Laisser pousser pendant 1 h 30 à 27 °C (dans une étuve ou un four éteint avec un bol d'eau chaude).",
+          "Enfourner à 200 °C pendant 15 à 20 minutes jusqu'à belle coloration dorée.",
+          "Décercler à chaud, poser les rouleaux sur une grille ou plaque, puis appliquer aussitôt le glaçage cannelle au pinceau ou à la cuillère."
+        ],
+        "conseils_etape": "Si la pâte se réchauffe pendant l'étalage, la replacer quelques minutes au congélateur avant de la rouler. Le passage au froid avant la découpe est impératif pour obtenir des tranches nettes sans écraser le feuilletage. À réaliser 2 h 30 à 3 h avant le service."
+      }
+    ],
+    "astuces_recette": [
+      "Le secret du moelleux réside dans le long pétrissage créant un réseau de gluten solide, suivi du pointage long au réfrigérateur.",
+      "La cassonade appliquée sur les parois intérieures des cercles fond à la cuisson et crée une croûte caramélisée très croustillante sur les bords.",
+      "Utiliser un couteau lisse très affûté ou un fil dentaire neutre pour couper les rouleaux sans affaisser la pâte."
+    ],
+    "conseils_conservation": "À consommer de préférence tiède, quelques minutes après l'application du glaçage. Se conservent 24 heures sous cloche ou dans une boîte hermétique. Il suffit de les passer 15 à 20 secondes au micro-ondes ou 5 minutes à 150 °C pour leur redonner tout leur moelleux. Possibilité de congeler les rouleaux crus juste après façonnage et tronçonnage ; il faudra alors les décongeler et faire pousser avant cuisson."
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "ticket": "JEP-85",
+  "recette": {
+    "titre": "Le cake marbré de Cyril Lignac",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un cake marbré ultra moelleux alternant des couches nature et cacao, dressé sur un croustillant praliné à la feuilletine et entièrement enrobé d'un glaçage rocher au chocolat et aux amandes torréfiées.",
+    "rendement": "1 cake (6 à 8 personnes)",
+    "ustensiles": [
+      "Cul-de-poule",
+      "Fouet",
+      "Maryse",
+      "Moule à cake (de préférence en inox) de 16 cm de long, 8 cm de large et 7 cm de haut",
+      "Poches à douille (optionnel)",
+      "Palette à pâtisserie",
+      "Couteau",
+      "Papier cuisson ou deux feuilles en silicone",
+      "Pichet",
+      "Spatule",
+      "Grille de glaçage"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Appareil à cake nature",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 130,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30 %",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 2,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans un cul-de-poule, mélanger les jaunes d'œufs avec le sucre semoule et fouetter vivement pendant une vingtaine de secondes pour blanchir les jaunes et éviter que le sucre ne les cuise.",
+          "Ajouter la crème liquide et mélanger bien au fouet.",
+          "Incorporer la farine et la levure chimique en mélangeant pour obtenir une texture homogène.",
+          "Ajouter le beurre fondu revenu à température ambiante et mélanger."
+        ],
+        "conseils_etape": "Veiller à ce que le beurre soit fondu mais revenu à température ambiante pour ne pas cuire les œufs."
+      },
+      {
+        "nom_etape": "Appareil à cake cacao et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 45,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30 %",
+            "quantite": 60,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans un cul-de-poule, mélanger les jaunes d'œufs avec le sucre semoule jusqu'à obtention d'un mélange homogène.",
+          "Ajouter la crème liquide, puis la levure, la farine et le cacao en poudre, et mélanger soigneusement pour éviter les grumeaux.",
+          "Ajouter le beurre doux fondu et revenu à température ambiante pour finaliser l'appareil.",
+          "Couler un tiers de la hauteur de l'appareil nature dans un moule préalablement graissé et fariné.",
+          "Verser la totalité de l'appareil au cacao par-dessus, éventuellement à l'aide d'une poche à douille, puis étaler avec une palette.",
+          "Recouvrir avec le reste de l'appareil nature pour atteindre les deux tiers ou trois quarts de la hauteur du moule.",
+          "Réaliser le marbrage à l'aide d'une maryse en suivant la technique spécifique.",
+          "Enfourner pour 35 à 45 minutes à 160°C, vérifier la cuisson avec un couteau, puis démouler une fois tiède."
+        ],
+        "conseils_etape": "Utiliser un moule en inox plutôt qu'en silicone pour favoriser la transmission de la chaleur, obtenir un meilleur choc thermique et maximiser le développement du volume à la cuisson."
+      },
+      {
+        "nom_etape": "Feuilletine pralinée",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné noisette",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuilletine",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans un cul-de-poule, mélanger le chocolat au lait préalablement fondu avec le beurre doux, le praliné noisette et la feuilletine.",
+          "Étaler cette préparation en une fine couche entre deux feuilles de papier cuisson ou deux feuilles en silicone, en adaptant la taille pour qu'elle corresponde à la base du cake.",
+          "Placer au congélateur."
+        ],
+        "conseils_etape": "L'épaisseur de la couche doit être fine pour s'ajuster proprement sous le gâteau lors de la découpe."
+      },
+      {
+        "nom_etape": "Enrobage et montage",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Amandes hachées",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 225,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de pépins de raisin",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Torréfier les amandes coupées finement ou légèrement hachées pendant 30 minutes à 150°C, puis les laisser revenir à température ambiante.",
+          "Verser l'huile de pépins de raisin et les amandes torréfiées refroidies dans le chocolat au lait fondu, puis mélanger à la maryse.",
+          "Transvaser le mélange dans un pichet.",
+          "Déposer le cake bien froid sur le croustillant praliné durci, découper à la taille parfaite à l'aide d'un couteau et retirer l'excédent.",
+          "Transférer le cake sur une grille de glaçage à l'aide d'une spatule.",
+          "Verser le glaçage (aux alentours de 30°C) sur le cake à température ambiante pour le napper entièrement.",
+          "Placer quelques minutes au réfrigérateur pour figer le tout."
+        ],
+        "conseils_etape": "Veiller à ce que la température du glaçage soit bien contrôlée autour de 30°C pour obtenir un enrobage optimal sans faire fondre le beurre du cake."
+      }
+    ],
+    "astuces_recette": [
+      "Respecter l'utilisation de températures ambiantes pour les ajouts de beurre fondu afin d'éviter les chocs thermiques indésirables dans les appareils à cake.",
+      "Le choix du matériel (moule en inox) est déterminant pour la levée du cake au four."
+    ],
+    "conseils_conservation": "Stocker le cake à température ambiante après la courte période de réfrigération nécessaire pour figer le glaçage. Consommer à température ambiante pour apprécier pleinement le fondant des appareils, le craquant de la feuilletine et le glaçage rocher."
+  }
+}

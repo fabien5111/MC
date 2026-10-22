@@ -1,0 +1,214 @@
+{
+  "ticket": "JEP-48",
+  "recette": {
+    "titre": "Brioche perdue façon Cyril Lignac",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une brioche maison moelleuse, longuement imbibée dans un appareil vanillé puis caramélisée à la poêle, servie avec une crème glacée artisanale à la pistache et des framboises fraîches.",
+    "rendement": "30 toasts",
+    "ustensiles": [
+      "Robot pâtissier",
+      "Bols et culs-de-poule",
+      "Fouet",
+      "Casserole",
+      "Mixeur plongeant (optionnel)",
+      "Maryse",
+      "Récipients à fond large",
+      "Film alimentaire",
+      "Boîtes de conserve vides et propres",
+      "Sorbetière ou turbine à glace",
+      "Poêle",
+      "Papier essuie-tout"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "La Brioche",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 840,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 165,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Farine T45",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure fraîche",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeuf",
+            "quantite": 150,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans le bol du robot, placer la fleur de sel et le sucre semoule, puis recouvrir avec la farine froide.",
+          "Ajouter la levure fraîche.",
+          "Mélanger à petite vitesse pendant 5 à 10 minutes jusqu'à l'obtention d'un mélange homogène, en veillant à ne pas dépasser 24°C.",
+          "Incorporer le beurre progressivement (ajouter le beurre froid si le mélange approche les 24°C, ou pommade si la pâte est bien froide).",
+          "Pétrir à vitesse moyenne pendant une dizaine de minutes pour développer un beau réseau de gluten.",
+          "Débarrasser la pâte dans un récipient, la filmer au contact et la laisser pousser 1 heure à température ambiante (pointage).",
+          "Dégazer la pâte en vérifiant sa souplesse, puis effectuer quelques rabats (tirer la pâte par l'extérieur pour la ramener vers le centre) afin de lui donner du corps.",
+          "Filmer à nouveau et laisser reposer au minimum 4 heures, idéalement toute une nuit au réfrigérateur.",
+          "Récupérer la pâte froide, la déposer sur un plan de travail bien fariné et effectuer de nouveaux rabats.",
+          "Bouler la pâte et façonner des petites boules remplissant environ un tiers de chaque boîte de conserve (préalablement beurrée).",
+          "Laisser pousser 1 heure à température ambiante.",
+          "Cuire environ 30 minutes à 165°C."
+        ],
+        "conseils_etape": "Travailler avec des ingrédients froids est primordial pour que la friction du pétrissage ne fasse pas dépasser les 24°C à la pâte, ce qui altérerait l'action de la levure."
+      },
+      {
+        "nom_etape": "La Glace Pistache",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 300,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 84,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 333,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière",
+            "quantite": 66,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de pistache (magasin bio)",
+            "quantite": 66,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 16,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'oeuf",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 66,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans un cul-de-poule, mélanger les jaunes d'oeufs avec le sucre semoule et fouetter immédiatement.",
+          "Dans une casserole, verser le glucose, le lait entier, la crème liquide et la pâte de pistache.",
+          "Chauffer doucement sur feu doux pour faire fondre la pâte de pistache (utiliser un mixeur plongeant si elle ne se dissout pas correctement).",
+          "Chauffer jusqu'à ce que le liquide soit bien fumant.",
+          "Verser la moitié de ce liquide chaud sur le mélange jaunes/sucre et fouetter énergiquement pour homogénéiser.",
+          "Reverser l'ensemble dans la casserole.",
+          "Cuire la crème anglaise à feu doux sans dépasser 84°C, en remuant continuellement le fond avec une maryse.",
+          "Débarrasser la préparation dans un récipient à fond large, filmer au contact et placer au réfrigérateur 4 heures minimum, idéalement une nuit.",
+          "Verser l'appareil froid dans le bol de la turbine à glace et turbiner jusqu'à obtenir une belle consistance (environ 1 heure)."
+        ],
+        "conseils_etape": "Fouetter immédiatement les jaunes et le sucre évite que le sucre ne \"cuise\" les jaunes. Utiliser une pure pâte de pistache 100% sans colorant garantit un goût brut et une couleur naturelle."
+      },
+      {
+        "nom_etape": "L'appareil à pain perdu et la cuisson",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 6,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeuf",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de vanille",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre (quantité suffisante pour la poêle)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Sucre cassonade (quantité suffisante pour la poêle)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Démouler la brioche cuite et froide, puis la découper en tranches de 2 centimètres d'épaisseur.",
+          "Dans un bol, mélanger les oeufs entiers avec le sucre semoule et fouetter immédiatement.",
+          "Ajouter le lait et la poudre de vanille, puis mélanger.",
+          "Plonger les tranches de brioche dans l'appareil et les laisser s'imbiber à coeur pendant au moins 1 heure.",
+          "Dans une poêle sur feu moyen, faire fondre une noisette de beurre et saupoudrer d'un filet de sucre cassonade.",
+          "Lorsque le sucre caramélise, égoutter légèrement une tranche de brioche sur du papier essuie-tout et la déposer dans la poêle.",
+          "Caraméliser environ 2 à 3 minutes sur chaque face."
+        ],
+        "conseils_etape": "L'appareil peut être personnalisé avec d'autres épices comme la cannelle. N'hésitez pas à réduire légèrement la quantité de sucre de l'appareil si vous craignez que l'ensemble ne soit trop sucré."
+      },
+      {
+        "nom_etape": "Le montage et la décoration",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Framboises fraîches",
+            "quantite": 250,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Déposer la brioche toastée bien chaude dans une assiette.",
+          "Disposer des framboises fraîches autour et sur le dessus.",
+          "Réaliser une quenelle de glace à la pistache à l'aide d'une cuillère.",
+          "Déposer la quenelle directement sur la brioche chaude et servir."
+        ],
+        "conseils_etape": "Ne pas attendre avant de servir pour profiter au maximum de l'odeur du caramel et du contraste des températures."
+      }
+    ],
+    "astuces_recette": [
+      "Pour gagner du temps, la recette fonctionne parfaitement avec une brioche artisanale ou industrielle déjà prête, ce qui supprime l'intégralité de l'étape 1.",
+      "Les auteurs précisent que le résultat final peut sembler très sucré : il est recommandé de désucrer légèrement l'appareil à pain perdu selon votre palais."
+    ],
+    "conseils_conservation": "Ce dessert se déguste obligatoirement minute pour bénéficier du contraste chaud/froid. Les restes de brioche non imbibée se conservent très bien 2 à 3 jours enveloppés dans un linge ou une boîte hermétique, et peuvent être congelés. La glace à la pistache maison se conservera environ un mois dans une boîte hermétique au congélateur."
+  }
+}

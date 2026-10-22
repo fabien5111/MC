@@ -1,0 +1,217 @@
+{
+  "ticket": "JEP-80",
+  "recette": {
+    "titre": "Cake Coco-Noisette de Philippe Conticini",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un cake de voyage haut de gamme signé Philippe Conticini, composé d'un biscuit moelleux et dense coco-noisette, d'une fine couche de crème de coco et d'un glaçage délicat.",
+    "rendement": "1 cake de 24 cm x 8 cm (ajusté ensuite à 20 cm x 7 cm après parage)",
+    "ustensiles": [
+      "Robot pâtissier équipé d'une feuille et d'un fouet",
+      "Cul de poule",
+      "Spatule maryse",
+      "Moule à cake",
+      "Micro-ondes",
+      "Planche à découper",
+      "Couteau",
+      "Plaque de cuisson",
+      "Économe"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Le biscuit coco-noisette",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 35,
+        "temperature_cuisson_celsius": 165,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Poudre de noisettes",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noix de coco",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte d'amandes 50%",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre de coco (pour l'appareil)",
+            "quantite": 147,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre de coco (pour les blancs)",
+            "quantite": 32,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeufs entiers",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 2.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Malibu",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile neutre (tournesol ou pépins de raisin)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'oeufs",
+            "quantite": 170,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Placer dans le bol du robot le beurre pommade, l'huile, le Malibu, le miel, les oeufs préalablement battus, la pâte d'amandes (préalablement réchauffée au micro-ondes), la poudre de noix de coco, le sucre de coco, la poudre de noisettes et la fleur de sel.",
+          "Mélanger à l'aide de la feuille pour obtenir un appareil bien homogène.",
+          "Ajouter la farine et la levure chimique, puis mélanger à faible vitesse pour que les poudres ne s'envolent pas.",
+          "Débarrasser la pâte à biscuit dans un cul de poule dès qu'elle est homogène.",
+          "Monter les blancs d'oeufs en neige en incorporant progressivement les 32 g de sucre de coco en plusieurs fois et en augmentant la vitesse du fouet progressivement jusqu'à l'obtention d'un bec d'oiseau.",
+          "Ajouter un tiers des blancs montés au fouet dans la préparation précédente pour l'alléger.",
+          "Incorporer délicatement le reste des blancs à la spatule maryse en effectuant un mouvement du centre vers la périphérie tout en tournant le cul de poule d'un quart de tour à chaque fois.",
+          "Verser la pâte dans un moule à cake préalablement beurré et fariné sur environ 4 cm d'épaisseur, puis homogénéiser.",
+          "Enfourner à 165 °C pendant 35 minutes.",
+          "À la sortie du four, retourner directement le cake sur une planche à découper et le laisser refroidir."
+        ],
+        "conseils_etape": "Assurez-vous que le beurre soit bien pommade et réchauffez légèrement la pâte d'amandes au micro-ondes pour faciliter l'incorporation sans grumeaux."
+      },
+      {
+        "nom_etape": "La crème de coco",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Pâte d'amandes 50%",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Coco râpée",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Malibu",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Placer dans le bol du robot le beurre bien pommade, la pâte d'amandes légèrement réchauffée au micro-ondes, le Malibu et la coco râpée.",
+          "Mélanger à l'aide de la feuille jusqu'à l'obtention d'une crème dense ayant presque la texture d'une pâte.",
+          "Découper transversalement le biscuit refroidi en deux couches les plus droites possible.",
+          "Étaler une fine couche de crème de coco sur la totalité du biscuit inférieur.",
+          "Poser la couche supérieure de biscuit par-dessus.",
+          "Placer l'ensemble 1 heure au réfrigérateur."
+        ],
+        "conseils_etape": "Essayez d'obtenir une coupe horizontale la plus régulière possible pour garantir l'esthétique de la coupe finale."
+      },
+      {
+        "nom_etape": "Le glaçage et les finitions",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 1,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Malibu",
+            "quantite": 13,
+            "unite": "g"
+          },
+          {
+            "nom": "Coco râpée",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de coco (décoration)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Copeaux de noix de coco frais (décoration)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Noisettes torréfiées (décoration)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Mélanger dans le bol du robot la coco râpée, le sucre glace, l'eau et le Malibu à l'aide de la feuille pour obtenir un glaçage bien homogène.",
+          "Récupérer le cake et le parer en coupant les bords pour obtenir des dimensions nettes de 20 cm de long sur 7 cm de large.",
+          "Déposer le cake sur une plaque de cuisson et napper toute la partie supérieure d'une couche fine de glaçage.",
+          "Enfourner pour 1 minute à 150 °C afin de faire sécher le glaçage.",
+          "Confectionner les copeaux en tapant une noix de coco entière avec le plat d'un couteau pour l'ouvrir, puis en prélevant des lamelles à l'aide d'un économe.",
+          "Disposer sur le dessus du cake un peu de coco râpée, les lamelles de noix de coco ondulées et quelques éclats de noisettes torréfiées."
+        ],
+        "conseils_etape": "Le passage éclair au four à 150 °C permet de figer et sécher parfaitement le glaçage sans cuire davantage le gâteau."
+      }
+    ],
+    "astuces_recette": [
+      "Ce type de biscuit recherche la densité, l'humidité et la mâche caractéristiques des créations de Philippe Conticini tout en restant léger grâce à la bonne incorporation des blancs en neige.",
+      "L'utilisation de sucres non raffinés comme le sucre de coco apporte une rondeur aromatique unique sans alourdir le profil sucré du gâteau."
+    ],
+    "conseils_conservation": "Conserver le cake entouré d'un film alimentaire ou dans une boîte hermétique au frais, et le sortir environ 20 à 30 minutes avant la dégustation pour apprécier pleinement le moelleux du biscuit et la texture de la crème."
+  }
+}
