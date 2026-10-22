@@ -2347,6 +2347,37 @@ défaut, pour ne pas payer le coût visuel d'un bloc vide à chaque visite.
   un auteur sans aucune note affiche une moyenne de 0/5, indiscernable d'une
   vraie mauvaise moyenne.
 
+## Réseaux sociaux de l'en-tête (JEP-15)
+
+Raccourcis vers Instagram, TikTok, YouTube, Pinterest et Facebook, gérés depuis
+**Admin → Réseaux sociaux** (`/admin/reseaux`, admin complet — `requireFullAdmin`).
+
+- **Table `social_links`** (`network` clé primaire, `url`, `is_visible`,
+  `position`, `updated_at`) : cinq lignes posées par la migration, **jamais
+  créées ni supprimées par l'application** (l'écran ne fait que des `update`).
+  Lecture publique, écriture admin (RLS) ; DDL par `psql` sur le nœud 216075.
+  **La table doit exister avant le déploiement** — sinon la lecture échoue et
+  l'en-tête n'affiche simplement rien (jamais d'erreur).
+- **Règle d'affichage unique** : `liensAffichables` (`lib/social-links.ts`, pur
+  et testé) — adresse non vide ET `is_visible`, ordre fixe, sans trou. Liste
+  vide : ni ronds, ni filet, ni bande mobile.
+- **Lecture en cache** : `getSocialLinks` (`lib/data/reference.ts`, étiquette
+  `reference:social_links`), invalidée à l'enregistrement par
+  `revalidateReference('social_links')` AVANT `router.refresh()`.
+- **Validation** (`erreurUrlReseau`) : `https://` obligatoire, nom d'hôte égal au
+  domaine ou sous-domaine (jamais une sous-chaîne : `instagram.com.evil.fr`
+  refusé). Espaces de bord retirés à l'enregistrement.
+- **Deux présentations, une liste** (`components/SocialLinks.tsx`) : ronds entre
+  la cloche et l'avatar dès 768 px (30 px bureau / 28 px tablette), bande
+  « Suivre » bordeaux sous 768 px. La bande se replie en **remontant l'en-tête**
+  (`header.has-social-strip`, `top` négatif, `globals.css`) plutôt qu'en
+  translatant la bande seule, qui laisserait un vide ; l'attribut `data-bande`
+  de `<html>` est posé par le composant. `prefers-reduced-motion` : sans
+  transition.
+- **Glyphes** : tracés de simple-icons (CC0) recopiés dans `lib/social-icons.ts`,
+  pas de dépendance. Monochromes (`currentColor`), jamais les couleurs des marques.
+- **Mesure** : `social_click` (`network`, `placement` : `header` | `mobile_strip`).
+
 ## Partage du carnet par lien (JEP-21)
 
 Deux partages externes, à côté du partage nominatif (`ShareBookButton`,

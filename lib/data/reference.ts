@@ -55,6 +55,7 @@ import { createPublicClient } from '@/lib/supabase/public';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
 import type { ConversionRef, IngredientRefOption } from '@/lib/ingredient-conversions';
+import { liensAffichables, type LienSocial } from '@/lib/social-links';
 import { ingredientKey, type NomsAccordables, type NomsReference } from '@/lib/ingredient-name';
 
 type Client = SupabaseClient<Database>;
@@ -390,6 +391,34 @@ export const getPublicSiteSettings = async (): Promise<Record<string, string>> =
 // fiche recette) quand l'auteur n'a fourni aucune photo.
 export const getRecipeDefaultPhoto = async (): Promise<string | null> =>
   (await getPublicSiteSettings()).recipe_default_photo || null;
+
+// ---------------------------------------------------------------------------
+// social_links — réseaux sociaux de l'en-tête (JEP-15)
+// ---------------------------------------------------------------------------
+//
+// Cinq lignes seedées, jamais créées ni supprimées par l'application : une
+// lecture vide n'est donc pas un état normal... mais elle l'est avant la
+// migration (table absente → la lecture lève, le repli aussi, `[]`). Dans les
+// deux cas l'en-tête n'affiche simplement rien (`liensAffichables([])`).
+// `allowEmpty` : ne pas relire à chaque page une table vide en repli.
+// Table absente de `database.types.ts` jusqu'à la régénération : accès non typé.
+const lireLiensSociaux = referenceAccessor<LienSocial>({
+  table: 'social_links',
+  revalidate: JOUR,
+  allowEmpty: true,
+  query: async (sb) =>
+    lignes(
+      await (sb.from('social_links' as never) as unknown as {
+        select: (c: string) => Promise<{ data: LienSocial[] | null; error: { message: string } | null }>;
+      }).select('network, url, is_visible'),
+    ),
+});
+
+/** Liens à afficher dans l'en-tête, dans l'ordre fixe, sans trou. */
+export const getSocialLinks = async () => liensAffichables(await lireLiensSociaux());
+
+/** Les cinq lignes telles qu'en base — pour l'écran d'administration (cache invalidé à l'enregistrement). */
+export const getSocialLinksRows = lireLiensSociaux;
 
 // ---------------------------------------------------------------------------
 // Grille des abonnements — quatre lectures, une seule forme composée ailleurs
