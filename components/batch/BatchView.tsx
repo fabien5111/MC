@@ -1656,7 +1656,10 @@ function PatisserView({
     if (ji === -1) return;
     expandJalon(ji);
     setHashStepId(stepId);
-    setTimeout(() => document.getElementById(`etape-${stepId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    // Début de l'étape en haut (`scroll-mt-28` réserve la place de l'en-tête) :
+    // une étape dépliée dépasse souvent l'écran, centrée on arrivait en son
+    // milieu. Double rAF : on attend que le dépliage soit rendu.
+    requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(`etape-${stepId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
