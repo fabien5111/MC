@@ -873,6 +873,12 @@ function PreparerView({
                     )}
                   </span>
                 )}
+                {/* Ce sur quoi l'ajustement s'est fait (ingrédient de référence,
+                    moule…) : `adjust_label`, posé au lancement. Absent quand le
+                    détail IA le remplace ou quand il ne répéterait que le coefficient. */}
+                {factor !== 1 && !ajustementIA && batch.adjust_label && !batch.adjust_label.startsWith('Coefficient :') && (
+                  <span className="print-fs-9 font-body-md text-sm text-on-surface-variant">{batch.adjust_label}</span>
+                )}
                 {/* Ajustement par IA : ce que l'IA a proposé prend la place du
                     libellé « IA : <demande> » (cf. lib/batch-ai.ts). */}
                 {ajustementIA && ajustementIA.propositions.length === 1 ? (
