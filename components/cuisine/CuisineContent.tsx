@@ -20,6 +20,7 @@
 // cochables sur place (PlanningDayView), c'est elle qui répond à « qu'est-ce
 // que je fais aujourd'hui, toutes fournées confondues ? » — la vue par
 // fournée reste à un clic.
+import { libelleAjustement } from '@/lib/batch-ai';
 import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -450,7 +451,7 @@ export function CuisineContent({
                 p.planned_date
                   ? 'Prévu pour ' + new Date(p.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
                   : '',
-                [p.adjust_label || '', durationTxt].filter(Boolean).join(' — '),
+                [libelleAjustement(p.adjust_label) || '', durationTxt].filter(Boolean).join(' — '),
                 p.factor && Number(p.factor) !== 1 ? '× ' + String(Number(p.factor)).replace('.', ',') : '',
               ]
                 .filter(Boolean)

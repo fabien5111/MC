@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { canAccess } from '@/lib/entitlements';
-import { getEntitlements } from '@/lib/entitlements-data';
+import { getEntitlements, checkQuota } from '@/lib/entitlements-data';
+import { getMoldTypes } from '@/lib/admin';
 import { getBatch, getUnits, getShoppingLists } from '@/lib/profile';
 import { getIngredientConversions, getIngredientDensities, getAllergensWithPicto, getIngredientRefsList } from '@/lib/recipes';
 import { getIngredientRefAllergens } from '@/lib/imports';
@@ -80,7 +81,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
   const batch = Number.isFinite(batchId) ? await getBatch(batchId) : null;
   if (!batch) notFound();
 
-  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements, essaiProjet, ingredientRefs, refAllergens] =
+  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements, essaiProjet, ingredientRefs, refAllergens, moldTypes] =
     await Promise.all([
       getUnits(),
       getIngredientConversions(),
@@ -93,6 +94,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
       recetteEstProjetEnCours(batch.recipe_id),
       getIngredientRefsList(),
       getIngredientRefAllergens(),
+      getMoldTypes(),
     ]);
   // Droits d'abonnement (§4 « Lancer une fournée ») : calculés une fois ici,
   // jamais recalculés plus bas dans l'arbre de composants.
@@ -101,6 +103,10 @@ export default async function FourneePage({ params, searchParams }: Params) {
     notesPersonnelles: canAccess(entitlements, 'notes_personnelles'),
     sousEtapes: canAccess(entitlements, 'sous_etapes_sequencement'),
   };
+  // « Modifier l'ajustement » : mêmes données que le panneau de la fiche
+  // recette. Quota lu seulement si le droit existe (affichage, cf. BatchWidget).
+  const peutAjusterIA = canAccess(entitlements, 'ajustement_ia_mensuel');
+  const quotaIA = peutAjusterIA ? await checkQuota(user.id, 'ajustement_ia_mensuel') : null;
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
     if (u.tooltip) unitTips[String(u.name).toLowerCase().trim()] = u.tooltip;
@@ -140,6 +146,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
           myReview={myReview}
           essaiProjet={essaiProjet}
           droits={droits}
+          ajustement={{ moldTypes, peutAjusterIA, quotaIA }}
         />
       </main>
       <div className="no-print">

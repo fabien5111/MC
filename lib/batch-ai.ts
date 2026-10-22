@@ -49,3 +49,19 @@ export function lireAjustementIA(v: unknown): AjustementIA | null {
 export function coefficientRetouche(ai: AjustementIA, applique: number): boolean {
   return Math.round(applique * 100) !== Math.round(ai.coefficient * 100);
 }
+
+// Libellé d'ajustement (`batches.adjust_label`) tel qu'affiché : les fournées
+// lancées par ingrédient avant le 22/10/2026 portent « Base <ingrédient> : … »,
+// devenu « Ajustement <ingrédient> : … ». Traduit à la lecture, sans migration.
+export function libelleAjustement(label: string | null | undefined): string | null {
+  if (!label) return null;
+  return label.replace(/^Base /, 'Ajustement ');
+}
+
+// Ajustement par ingrédient relu depuis son libellé (« Ajustement Levain :
+// 350 g ») pour pré-remplir la modification d'une fournée. `null` pour tout
+// autre libellé.
+export function lireAjustementIngredient(label: string | null | undefined): { nom: string; quantite: string } | null {
+  const m = /^(?:Base|Ajustement) (.+) : ([\d.,]+)(?:\s.*)?$/.exec(libelleAjustement(label) ?? '');
+  return m ? { nom: m[1].trim(), quantite: m[2] } : null;
+}
