@@ -1,0 +1,113 @@
+{
+  "ticket": "local-mousse-caramel-cafe",
+  "recette": {
+    "titre": "Mousse caramel-café",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse légère et fondante au caramel décuit à la crème infusée au café, à l'amertume torréfiée équilibrée par une pointe de fleur de sel. Collée à la gélatine, elle se démoule nette en entremets, en individuel ou en bûche, et s'associe naturellement au chocolat au lait et à la noisette.",
+    "rendement": "1 cercle Ø 20 cm, hauteur 3 cm — environ 570 g de mousse utilisable (688 g d'ingrédients, perte ≈ 17 %)",
+    "ustensiles": [
+      "Casserole",
+      "Casserole à fond épais",
+      "Chinois",
+      "Bol",
+      "Thermomètre",
+      "Cul-de-poule",
+      "Batteur électrique",
+      "Fouet",
+      "Maryse",
+      "Film alimentaire",
+      "Cercle Ø 20 cm",
+      "Rhodoïd"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Caramel au café",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 35,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 220,
+            "unite": "g",
+            "commentaire": "pour l'infusion"
+          },
+          {
+            "nom": "Café en grains",
+            "quantite": 20,
+            "unite": "g",
+            "commentaire": "concassés"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 7,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Porter la crème à ébullition, y ajouter les grains de café concassés, couvrir et laisser infuser 20 minutes hors du feu.",
+          "Filtrer la crème au chinois en pressant les grains, puis la réchauffer jusqu'à frémissement.",
+          "Réhydrater la gélatine 10 minutes dans un bol d'eau très froide.",
+          "Cuire le sucre à sec en trois fois dans la casserole à fond épais jusqu'à un caramel ambré foncé (environ 180 °C).",
+          "Décuire hors du feu en versant la crème chaude en trois fois, en mélangeant à la maryse, puis remettre 1 minute sur feu doux pour dissoudre les éventuels morceaux de caramel.",
+          "Ajouter la fleur de sel puis la gélatine essorée lorsque le caramel est descendu vers 60 °C.",
+          "Laisser refroidir à 30-35 °C en remuant de temps en temps."
+        ],
+        "conseils_etape": "Pousser le caramel jusqu'à l'ambré foncé : trop clair, il disparaît derrière la crème et le café ; trop brun, il devient amer. La crème doit être chaude au décuisage pour éviter les projections et la prise en bloc du caramel."
+      },
+      {
+        "nom_etape": "Mousse",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 330,
+            "unite": "g",
+            "commentaire": "à fouetter, bien froide"
+          }
+        ],
+        "instructions": [
+          "Monter la crème très froide au batteur électrique dans un cul-de-poule, jusqu'à une texture souple (bec d'oiseau qui retombe).",
+          "Vérifier que le caramel au café est entre 30 et 35 °C.",
+          "Détendre le caramel avec un tiers de la crème montée en fouettant vivement.",
+          "Incorporer le reste de la crème montée en deux fois à la maryse, en soulevant délicatement.",
+          "Couler aussitôt dans le cercle chemisé de rhodoïd, ou dans le moule choisi, et lisser.",
+          "Filmer au contact et laisser prendre au moins 4 heures au réfrigérateur, ou congeler pour un démoulage net."
+        ],
+        "conseils_etape": "La température du caramel est le point critique : au-dessus de 35 °C il fait retomber la crème, en dessous de 25 °C la gélatine commence à prendre et forme des grains. Une crème montée trop ferme donne une mousse granuleuse : l'arrêter souple."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, hauteur 3 cm : ≈ 365 g de mousse, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, hauteur 3 cm : ≈ 570 g de mousse, soit ×1 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, hauteur 3 cm : ≈ 820 g de mousse, soit ×1,44 de la recette.",
+      "Utilisation — Insert Ø 16 cm, hauteur 1,5 cm, pour un entremets Ø 20 cm à enveloppe chocolat au lait : ≈ 180 g de mousse, soit ×0,32 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, hauteur 4 cm : ≈ 95 g de mousse par pièce, soit 6 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, en enveloppe (≈ 2/3 de la gouttière, le reste pour l'insert et le biscuit) : ≈ 155 g de mousse, soit ×0,27 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, en enveloppe (≈ 2/3 de la gouttière) : ≈ 305 g de mousse, soit ×0,54 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, hauteur 2 cm : ≈ 390 g de mousse, soit ×0,68 de la recette.",
+      "Variante — Caramel-café chocolat au lait : verser le caramel décuit sur 60 g de chocolat au lait 35 % et réduire la gélatine à 6 g.",
+      "Variante — Caramel-café noisette : ajouter 40 g de praliné noisette 50 % au caramel tiède, avant la crème montée."
+    ],
+    "conseils_conservation": "Se garde 48 heures au réfrigérateur, filmée au contact. Se congèle jusqu'à 1 mois dans son moule ou son cercle, bien filmée ; démouler encore congelée et décongeler 6 à 8 heures au réfrigérateur. À couler dès sa réalisation : la gélatine ne laisse pas attendre la mousse."
+  }
+}
