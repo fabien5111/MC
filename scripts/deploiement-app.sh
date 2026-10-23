@@ -7,24 +7,48 @@
 # version déployée est toujours celle du commit déployé — sans jamais avoir à
 # être copié ni maintenu à la main sur le nœud.
 #
-# Il reprend VERBATIM la commande canonique de DEPLOY.md :
+# Il reprend la commande canonique de DEPLOY.md, à une différence près — le
+# build se fait À CÔTÉ de celui qui est en service (JEP-299) :
 #
-#     npm ci --include=dev && rm -rf .next && NODE_ENV=production npm run build
+#     npm ci --include=dev && NEXT_DIST_DIR=.next-construction NODE_ENV=production npm run build
 #
-# et ses trois pièges (chacun a coûté une panne) : `--include=dev` obligatoire
-# sans quoi `typescript` manque et les alias `@/…` ne résolvent plus ;
-# `NODE_ENV=production` obligatoire sans quoi la génération de `/404` échoue
-# sur un message trompeur ; `ecosystem.config.js` pilote le démarrage, jamais
-# `scripts.start`.
+# puis bascule par deux renommages. Ses trois pièges restent (chacun a coûté
+# une panne) : `--include=dev` obligatoire sans quoi `typescript` manque et les
+# alias `@/…` ne résolvent plus ; `NODE_ENV=production` obligatoire sans quoi
+# la génération de `/404` échoue sur un message trompeur ;
+# `ecosystem.config.js` pilote le démarrage, jamais `scripts.start`.
 #
-# LA FENÊTRE À CONNAÎTRE. `rm -rf .next` précède la construction : entre les
-# deux, le site n'a plus de build. Une construction qui échoue ici laisse donc
-# l'application en panne jusqu'à correction. C'est précisément la raison
-# d'être du travail `controle` du workflow appelant, qui rejoue `typecheck`,
-# `build` et la suite de tests sur le runner AVANT d'ouvrir cette connexion :
-# un commit qui ne compile pas n'atteint jamais le nœud. On garde malgré tout
-# l'ordre documenté plutôt que de l'improviser ici — c'est la procédure
-# éprouvée, et la barrière amont est le bon endroit pour couvrir son défaut.
+# POURQUOI CONSTRUIRE À CÔTÉ. Jusqu'au 04/10/2026, le script faisait
+# `rm -rf .next` AVANT de construire. Ce soir-là, la construction a échoué sur
+# le nœud alors que le contrôle du runner était vert (téléchargement d'une
+# police chez Google — depuis supprimé, cf. `app/fonts.ts`) : pm2 tournait
+# encore sur l'ancienne version en mémoire, mais les fichiers JavaScript
+# qu'elle référençait avaient disparu du disque — `ChunkLoadError` et écran
+# d'erreur sur tout ce qui charge du code à la demande, une demi-heure durant.
+# Désormais le `.next` servi n'est touché qu'une fois la construction RÉUSSIE :
+#
+#     .next               → .next-precedent   (version en service, gardée)
+#     .next-construction  → .next             (nouvelle version)
+#
+# puis `pm2 restart`. Une construction qui échoue laisse `.next` intact, le
+# site continue de servir la version précédente, et le script sort en erreur
+# (workflow au rouge, comme avant).
+#
+# Ce qui a été vérifié avant d'adopter le renommage : Next inscrit le nom du
+# dossier de build dans les modules compilés (`distDir:".next-construction"`),
+# mais `next start` — lancé sans `NEXT_DIST_DIR`, donc sur `.next` — sert
+# pages, chunks et caches depuis `.next` sans jamais recréer ni lire
+# `.next-construction`. Contrôlé sur un build complet renommé (pages
+# dynamiques, statiques, chunks JS, sitemap, image OG : tout en 200).
+#
+# Entre les deux renommages, il n'existe aucun `.next` pendant quelques
+# microsecondes : une requête qui tomberait exactement là chercherait un
+# fichier absent. Assumé — contre une demi-heure de panne auparavant.
+#
+# Espace disque : deux builds coexistent pendant la construction (le servi et
+# celui de travail), puis le précédent est gardé jusqu'au déploiement
+# suivant, qui le supprime avant de construire. Il permet de revenir en
+# arrière à la main (DEPLOY.md, « Revenir à la version précédente »).
 #
 # Aucun argument n'est deviné : tout arrive en positionnel, parce que les
 # variables d'environnement ne traversent pas SSH sans `SendEnv`/`AcceptEnv`
@@ -102,9 +126,34 @@ git --no-pager log -1 --format='   %h %s (%an, %ad)' --date=short
 echo "→ Installation des dépendances"
 npm ci --include=dev
 
-echo "→ Construction"
-rm -rf .next
-NODE_ENV=production npm run build
+# Le précédent d'avant n'a plus d'usage : on rend sa place sur le disque AVANT
+# de construire, pour ne jamais avoir trois builds à la fois. Le dossier de
+# travail d'une tentative avortée (script interrompu) part avec.
+echo "→ Construction (à côté du build en service)"
+rm -rf .next-precedent .next-construction
+if ! NEXT_DIST_DIR=.next-construction NODE_ENV=production npm run build; then
+  rm -rf .next-construction
+  # Next réécrit `tsconfig.json` pour y inclure les types du dossier de build ;
+  # on remet le fichier versionné, sans attendre le prochain `git reset`.
+  git checkout -- tsconfig.json 2>/dev/null || true
+  echouer "La construction a échoué. Le build en service (.next) n'a pas été touché : le site continue de servir la version précédente, sans redémarrage."
+fi
+git checkout -- tsconfig.json 2>/dev/null || true
+
+# Sans `BUILD_ID`, `next start` refuse de démarrer : un build sans lui n'est
+# pas complet, on ne bascule pas dessus.
+[ -f .next-construction/BUILD_ID ] || echouer "La construction a rendu la main sans produire .next-construction/BUILD_ID. Le build en service n'a pas été touché."
+
+echo "→ Bascule sur le nouveau build"
+if [ -d .next ]; then
+  mv .next .next-precedent
+fi
+if ! mv .next-construction .next; then
+  # Ne jamais rester sans `.next` : on remet la version précédente en place.
+  [ -d .next-precedent ] && mv .next-precedent .next
+  echouer "Le renommage .next-construction → .next a échoué. La version précédente a été remise en place ; aucun redémarrage n'a eu lieu."
+fi
+echo "   build en service : $(cat .next/BUILD_ID) (précédent gardé dans .next-precedent)"
 
 # pm2 n'est pas forcément dans le PATH d'une session SSH non interactive : la
 # pile Node.js de la plateforme l'installe hors des chemins standards selon

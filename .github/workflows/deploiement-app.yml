@@ -20,10 +20,11 @@ name: Déploiement — application
 # TROIS GARDE-FOUS, dans cet ordre :
 #
 #  1. BARRIÈRE AVANT LE NŒUD. `typecheck`, `build` et la suite de tests
-#     tournent d'abord sur le runner. Ce n'est pas du zèle : la procédure du
-#     nœud fait `rm -rf .next` AVANT de construire, donc une construction qui
-#     échoue là-bas laisse le site sans build. Un commit qui ne compile pas ne
-#     doit jamais atteindre cette fenêtre.
+#     tournent d'abord sur le runner : un commit qui ne compile pas n'atteint
+#     jamais le nœud. Ce n'est plus la seule protection — depuis JEP-299, le
+#     nœud construit à côté du build en service et ne bascule qu'une fois la
+#     construction réussie (scripts/deploiement-app.sh) : une construction qui
+#     échoue là-bas (réseau, disque) laisse le site sur la version précédente.
 #  2. DÉSARMÉ PAR DÉFAUT. Sans la variable de dépôt `DEPLOIEMENT_ACTIF` à
 #     « true », le workflow va au bout mais ne touche jamais le nœud : il
 #     journalise ce qu'il aurait fait. Même doctrine que `JIRA_DEPLOY_ACTIF`

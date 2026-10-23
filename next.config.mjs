@@ -39,6 +39,14 @@ function identifiantDeBuild() {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Dossier de build, `.next` par défaut. `NEXT_DIST_DIR` n'est posée QUE par
+  // `scripts/deploiement-app.sh`, le temps de construire à côté du build en
+  // service (JEP-299) : le dossier est ensuite renommé en `.next`, et
+  // `next start`, lancé sans la variable, lit `.next`. Ne jamais la poser sur
+  // le processus pm2 ni dans le panneau Virtuozzo — le serveur chercherait
+  // alors un build qui n'existe plus sous ce nom.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+
   // Inlinée au build, côté serveur comme côté navigateur. Ne pas la préfixer
   // `NEXT_PUBLIC_` : ces variables-là restent relues à l'exécution par le code
   // serveur, ce qui rouvrirait la porte à une valeur qui ne change plus

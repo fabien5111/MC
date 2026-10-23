@@ -2812,6 +2812,14 @@ Historique de la migration depuis Vercel + Supabase :
   déployé et vérifié le HTTP 200 avant même la fin de la réponse. La procédure
   manuelle décrite plus bas reste la porte de sortie si le workflow est
   désarmé ou échoue, jamais la première hypothèse.
+- **Le nœud construit à côté du build en service** (JEP-299,
+  `scripts/deploiement-app.sh`) : build dans `.next-construction`
+  (`NEXT_DIST_DIR`, lu par `next.config.mjs` au seul build), puis, seulement
+  s'il réussit, `.next` → `.next-precedent` et `.next-construction` → `.next`,
+  puis `pm2 restart`. Une construction échouée laisse le site sur la version
+  précédente (fini le `rm -rf .next` préalable et ses `ChunkLoadError`). Ne
+  jamais poser `NEXT_DIST_DIR` sur le processus ni dans le panneau : `next
+  start` doit lire `.next`. Retour arrière d'un cran : `DEPLOY.md`.
 - **`pm2` ne lit jamais `scripts.start`** : c'est `ecosystem.config.js` qui
   pilote le démarrage, avec `instances: 1`. Ce n'est pas un réglage de charge
   mais une **contrainte de justesse** — `unstable_cache` et `revalidateTag`

@@ -60,14 +60,17 @@ qu'il aurait fait. Même doctrine que `JIRA_DEPLOY_ACTIF`.
 ### Ce qu'il fait, dans l'ordre
 
 1. **Barrière sur le runner** : `npm ci`, `typecheck`, `lint`, la suite de
-   tests, puis `build`. Ce n'est pas du zèle — la procédure du nœud fait
-   `rm -rf .next` **avant** de construire : une construction qui échoue
-   là-bas laisse le site sans build. Un commit qui ne compile pas ne doit
-   jamais atteindre cette fenêtre.
+   tests, puis `build`. Un commit qui ne compile pas n'atteint jamais le
+   nœud. Ce n'est plus la seule protection : depuis JEP-299, le nœud
+   **construit à côté** du build en service (`.next-construction`) et ne
+   bascule qu'après une construction réussie — une construction qui échoue
+   sur le nœud (réseau, disque…) laisse le site sur la version précédente,
+   sans redémarrage, et le workflow passe au rouge. Cf. « Construire et
+   déployer l'application (à la main) ».
 2. **Déploiement** : `scripts/deploiement-app.sh` est envoyé au nœud par
    l'entrée standard (la version exécutée est donc toujours celle du commit
    déployé), qui fait `git fetch` + `git reset --hard <sha>`, la commande
-   canonique de construction, puis `pm2 restart`.
+   canonique de construction, la bascule par renommage, puis `pm2 restart`.
 3. **Vérification fonctionnelle** : le déploiement n'est réussi qu'après un
    HTTP 200 réellement obtenu. Un `pm2 restart` qui rend la main ne prouve
    pas qu'une page s'affiche.
@@ -338,8 +341,43 @@ Le code est déployé depuis Git, puis **construit sur le nœud**.
 **Où :** Web SSH du nœud **216658**.
 
 ```bash
-cd /home/jelastic/ROOT && npm ci --include=dev && rm -rf .next && NODE_ENV=production npm run build
+cd /home/jelastic/ROOT && npm ci --include=dev && rm -rf .next-precedent .next-construction && NEXT_DIST_DIR=.next-construction NODE_ENV=production npm run build && git checkout -- tsconfig.json && mv .next .next-precedent && mv .next-construction .next && pm2 restart je-patisse
 ```
+
+**Construire à côté, basculer ensuite (JEP-299).** Le build se fait dans
+`.next-construction`, sans toucher au `.next` que sert l'application. Ce
+n'est qu'une fois la construction réussie que deux renommages basculent
+(`.next` → `.next-precedent`, `.next-construction` → `.next`), suivis du
+`pm2 restart`. Les `&&` font le travail : une construction qui échoue
+arrête la ligne avant tout renommage, le site reste sur la version en
+service. L'ancienne commande commençait par `rm -rf .next` : une
+construction échouée laissait l'application tourner sur un build effacé du
+disque — `ChunkLoadError` et écran « Cette page n'a pas pu s'afficher » sur
+tout ce qui charge du code à la demande (panne du 04/10/2026, ~30 min).
+`scripts/deploiement-app.sh` (déploiement automatique) fait exactement la
+même chose, avec des messages d'erreur.
+
+- **`NEXT_DIST_DIR` ne se pose QUE sur la commande de construction**, jamais
+  dans le panneau de variables ni sur le processus pm2 : `next start` doit
+  lire `.next`. Le nom `.next-construction` reste inscrit dans le code
+  compilé, sans effet (vérifié : rien n'est lu ni écrit sous ce nom une fois
+  renommé).
+- **`git checkout -- tsconfig.json`** : Next réécrit ce fichier pour y
+  inclure les types du dossier de build ; on remet la version du dépôt.
+- **Disque** : deux builds coexistent pendant la construction, et le
+  précédent reste sur le disque jusqu'au déploiement suivant, qui le
+  supprime avant de construire.
+
+**Revenir à la version précédente** (le build qui vient de basculer se
+révèle mauvais) — **Où :** Web SSH du nœud **216658** :
+
+```bash
+cd /home/jelastic/ROOT && test -f .next-precedent/BUILD_ID && mv .next .next-mauvais && mv .next-precedent .next && pm2 restart je-patisse && rm -rf .next-mauvais
+```
+
+Ne revient que d'un cran, et seulement pour le build : le code sur disque
+reste celui du dernier commit déployé (sans effet sur `next start`, qui ne
+lit que `.next`). Le déploiement suivant repart proprement.
 
 Trois détails qui ont chacun coûté une panne :
 
