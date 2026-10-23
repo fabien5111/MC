@@ -8,7 +8,8 @@
 //     dans le moteur. Le navigateur ne fournit jamais lui-même une
 //     notification : rien à falsifier.
 //  2. `envoyerRecapitulatifs` — un seul e-mail par membre et par passe, qui
-//     rassemble ce que `notifier` a mis en file.
+//     rassemble ce que `notifier` a mis en file, rappels de fournée de la
+//     passe quotidienne compris (JEP-375), en sections par type d'information.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmailBestEffort } from '@/lib/email';
 import { enFile } from '@/lib/en-file';
@@ -191,13 +192,20 @@ export async function envoyerRecapitulatifs(
       prenom: (profil.full_name as string | null)?.split(' ')[0] ?? null,
       rythme: aHebdo && !retenues.some((l) => l.rhythm === 'daily') ? 'hebdo' : 'quotidien',
       urlSite: url,
-      lignes: retenues.map<LigneRecap>((l) => ({ categorie: l.category, titre: l.title, corps: l.body, lien: l.link })),
+      lignes: retenues.map<LigneRecap>((l) => ({
+        categorie: l.category,
+        rubrique: definitionEvenement(l.event)?.rubrique ?? null,
+        titre: l.title,
+        corps: l.body,
+        lien: l.link,
+      })),
     });
     const ok = await sendEmailBestEffort({
       to: profil.email as string,
       subject: mail.sujet,
       html: mail.html,
       text: mail.texte,
+      pied: 'preferences',
       headers: enTetesDesinscription(`${url}${CHEMIN_PREFERENCES}`),
     });
     if (ok) {

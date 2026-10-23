@@ -164,6 +164,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       subject: mail.sujet,
       text: mail.texte,
       html: mail.html,
+      pied: 'obligatoire',
       replyTo: process.env.EMAIL_REPLY_TO || undefined,
     });
   } catch (e) {

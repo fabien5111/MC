@@ -236,3 +236,15 @@ describe('pushEffectif (canal « sur le téléphone »)', () => {
     expect(pushEffectif({}, 'inconnue')).toBe(false);
   });
 });
+
+describe('rappel de la veille (JEP-375)', () => {
+  const def = definitionEvenement('rappel_veille')!;
+  it('« commence demain » seulement si rien n’a encore commencé', () => {
+    expect(composerNotification(def, { titre: 'Tarte', dejaCommencee: false }).corps).toContain('commence demain');
+  });
+  it('fournée déjà commencée : jour J demain, jamais « commence »', () => {
+    const g = composerNotification(def, { titre: 'Tarte', dejaCommencee: true });
+    expect(g.titre).toBe('Jour J demain');
+    expect(g.corps).not.toContain('commence');
+  });
+});

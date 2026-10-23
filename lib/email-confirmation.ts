@@ -89,6 +89,8 @@ export function lienConfirmation(origine: string, jeton: string, type: string): 
   return `${origine}/auth/callback?token_hash=${encodeURIComponent(jeton)}&type=${encodeURIComponent(type)}&next=%2F`;
 }
 
+import { boutonEmail } from '@/lib/email-gabarit';
+
 const echapper = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** Sujet, texte et HTML du mail de confirmation. `pseudo` : facultatif, pour la formule d'appel. */
@@ -99,17 +101,16 @@ export function composerEmailConfirmation({ lien, pseudo }: { lien: string; pseu
   const duree =
     "Ce lien ne fonctionne qu'une seule fois et pendant une durée limitée ; il vous connecte directement à votre compte.";
   const ignorer = "Si vous n'êtes pas à l'origine de cette inscription, ignorez simplement ce message.";
-  const signature = "À bientôt,\nL'équipe Je pâtisse !";
-
-  const texte = [salutation, intro, `${bouton} :\n${lien}`, duree, ignorer, signature].join('\n\n');
+  // Signature, en-tête et pied : gabarit unique des e-mails (JEP-277).
+  const texte = [salutation, intro, `${bouton} :\n${lien}`, duree, ignorer].join('\n\n');
+  const p = (contenu: string) => `<p style="margin:0 0 14px;">${contenu}</p>`;
   const html = [
-    `<p>${echapper(salutation)}</p>`,
-    `<p>${echapper(intro)}</p>`,
-    `<p><a href="${echapper(lien)}">${bouton}</a></p>`,
-    `<p>Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :<br>${echapper(lien)}</p>`,
-    `<p>${echapper(duree)}</p>`,
-    `<p>${echapper(ignorer)}</p>`,
-    `<p>${echapper(signature).replace(/\n/g, '<br>')}</p>`,
+    p(echapper(salutation)),
+    p(echapper(intro)),
+    boutonEmail(lien, bouton),
+    p(`Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :<br>${echapper(lien)}`),
+    p(echapper(duree)),
+    p(echapper(ignorer)),
   ].join('');
   return { sujet: 'Confirmez votre adresse e-mail — Je pâtisse !', texte, html };
 }

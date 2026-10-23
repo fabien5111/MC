@@ -48,7 +48,6 @@ import { lireLigneModeration } from '@/lib/moderation-data';
 import { invaliderBlocage } from '@/lib/moderation-garde';
 import { appliquerActionAbonnement, lireAbonnementModere, recalculerNotesDuMembre } from '@/lib/moderation-actions';
 import { notifier } from '@/lib/notifier';
-import { texteVersHtml } from '@/lib/billing';
 import { siteUrl } from '@/lib/site-url';
 
 type Contexte = { userId: string; admin: ReturnType<typeof createAdminClient> };
@@ -182,7 +181,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       emailPrecompose: {
         sujet: mail.sujet,
         texte: mail.texte,
-        html: texteVersHtml(mail.texte),
         replyTo: process.env.EMAIL_REPLY_TO || undefined,
       },
     });

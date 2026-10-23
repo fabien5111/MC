@@ -321,6 +321,7 @@ export async function notifierAdmin(
     subject,
     text,
     html,
+    pied: 'interne',
     // Confort : un administrateur qui répond directement depuis son client
     // de messagerie atteint le demandeur, sans ouvrir le back-office. Ne
     // remplace pas §10.2 (c'est la route qui journalise la réponse) — un
