@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isAdmin } from '@/lib/auth';
 import { createAdminClient, MissingServiceKeyError } from '@/lib/supabase/admin';
+import { supprimerCompteMembre } from '@/lib/member-delete-data';
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -43,25 +44,10 @@ export async function POST(req: Request) {
   }
 
   if (profileId) {
-    // Compte d'authentification d'abord : s'il subsiste, le membre peut encore
-    // se reconnecter. Un 404 signale un compte déjà absent (suppression
-    // partielle antérieure) — ce n'est pas une erreur, on poursuit le ménage.
-    const { error } = await admin.auth.admin.deleteUser(profileId);
-    if (error && error.status !== 404) {
-      return NextResponse.json(
-        { erreur: `Suppression du compte de connexion impossible : ${error.message}` },
-        { status: 502 },
-      );
-    }
-
-    // Profil applicatif : sans effet si la contrainte de clé étrangère l'a déjà
-    // supprimé en cascade avec le compte d'authentification.
-    const { error: profileError } = await admin.from('profiles').delete().eq('id', profileId);
-    if (profileError) {
-      return NextResponse.json(
-        { erreur: `Suppression du profil impossible : ${profileError.message}` },
-        { status: 500 },
-      );
+    // Chemin partagé avec la purge des comptes non confirmés (JEP-262).
+    const suppression = await supprimerCompteMembre(admin, profileId);
+    if (!suppression.ok) {
+      return NextResponse.json({ erreur: suppression.erreur }, { status: suppression.status });
     }
   }
 

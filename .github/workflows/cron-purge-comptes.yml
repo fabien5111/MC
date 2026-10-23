@@ -1,0 +1,92 @@
+name: Cron — purge des comptes non confirmés
+
+# JEP-262, lot 4. Supprime les comptes inscrits mais jamais confirmés depuis
+# plus de N jours (`UNCONFIRMED_ACCOUNT_TTL_DAYS`, défaut 30, plancher 7).
+#
+# **RAPPORT SEUL PAR DÉFAUT** : tant que la variable de dépôt
+# `PURGE_COMPTES_ACTIVE` n'est pas `true` (Settings > Secrets and variables >
+# Actions > Variables), la route ne supprime rien et ce workflow imprime la liste
+# des comptes qui le seraient — même doctrine que `DEPLOIEMENT_ACTIF`. La
+# suppression est irréversible : observer plusieurs jours avant d'armer.
+#
+# Un lancement manuel ne supprime que si, en plus de la variable, la case
+# « appliquer » est cochée.
+#
+# **À 3 h UTC, après les autres crons** (abonnements, Jira à 2 h 30) : l'application
+# tourne en `instances: 1`, deux requêtes superposées se partageraient le processus.
+# L'heure est en **UTC**.
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      appliquer:
+        description: "Supprimer réellement (exige aussi PURGE_COMPTES_ACTIVE=true)"
+        type: boolean
+        default: false
+
+jobs:
+  purge-comptes:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://www.jepatisse.com
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      PURGE_ACTIVE: ${{ vars.PURGE_COMPTES_ACTIVE }}
+      EVENEMENT: ${{ github.event_name }}
+      CASE_APPLIQUER: ${{ inputs.appliquer }}
+    steps:
+      - name: Vérifier que le secret est posé
+        run: |
+          set -euo pipefail
+          [ -n "$CRON_SECRET" ] || {
+            echo "::error::Le secret CRON_SECRET est absent côté GitHub."
+            echo "Settings > Secrets and variables > Actions — même valeur que sur le nœud applicatif."
+            exit 1
+          }
+
+      - name: Appeler /api/cron/purge-comptes-non-confirmes
+        run: |
+          set -euo pipefail
+
+          # Suppression réelle seulement si la variable est armée ET, pour un
+          # lancement manuel, si la case est cochée.
+          appliquer=0
+          if [ "$PURGE_ACTIVE" = "true" ]; then
+            if [ "$EVENEMENT" != "workflow_dispatch" ] || [ "$CASE_APPLIQUER" = "true" ]; then
+              appliquer=1
+            fi
+          fi
+          if [ "$appliquer" = "1" ]; then
+            echo "::warning::Mode SUPPRESSION (PURGE_COMPTES_ACTIVE=true)."
+          else
+            echo "::notice::Mode RAPPORT SEUL — rien ne sera supprimé."
+          fi
+
+          code=$(curl -sS -o reponse.json -w '%{http_code}' \
+            --max-time 120 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$BASE_URL/api/cron/purge-comptes-non-confirmes?appliquer=$appliquer")
+
+          echo "HTTP $code"
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            detail=$(jq -r '.erreur // empty' reponse.json 2>/dev/null || true)
+            echo "::error::La route a répondu $code — ${detail:-corps non JSON}"
+            exit 1
+          fi
+          if [ "$(jq -r '.ok // false' reponse.json)" != "true" ]; then
+            echo "::error::Réponse 2xx mais « ok » absent ou faux."
+            exit 1
+          fi
+
+          jq -r '"Mode \(.mode) — seuil \(.ttlJours) jours — \(.examines) compte(s) examiné(s)"' reponse.json
+          echo "Exclus : $(jq -c '.exclus' reponse.json)"
+          echo "Candidats ($(jq '.candidats | length' reponse.json)) :"
+          jq -r '.candidats[] | "  \(.id)  \(.email)  créé le \(.creeLe)  (\(.ageJours) j)"' reponse.json
+          echo "Supprimés : $(jq -r '.supprimes' reponse.json)"
+          if [ "$(jq -r '.plafonne' reponse.json)" = "true" ]; then
+            echo "::warning::Plafond atteint : le reste sera traité aux passages suivants."
+          fi
+          if [ "$(jq '.echecs | length' reponse.json)" -gt 0 ]; then
+            jq -r '.echecs[] | "::error::Échec \(.id) : \(.erreur)"' reponse.json
+            exit 1
+          fi

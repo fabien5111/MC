@@ -647,7 +647,27 @@ migration. Logique pure : `lib/email-confirmation.ts`.
   illisible = relance refusée. GoTrue a aussi sa propre limite (~1 min par adresse).
   **Migration préalable** : la contrainte CHECK de `action` doit accepter
   `relance_confirmation` (comme `confirmation_email`).
-- Reste hors de ce lot : purge automatique (lot 4, rapport seul d'abord, seuil 30 jours).
+- **Purge des comptes jamais confirmés** (lot 4) : `GET /api/cron/purge-comptes-non-confirmes`
+  (`CRON_SECRET`, `lib/purge-comptes.ts` pur et testé / `lib/purge-comptes-data.ts`),
+  portée par `.github/workflows/cron-purge-comptes.yml` à 3 h UTC. **Rapport seul par
+  défaut** : sans `?appliquer=1` rien n'est supprimé, la route liste les candidats (adresses
+  masquées, identifiants abrégés, dans les journaux GitHub Actions). Le workflow n'ajoute
+  `appliquer=1` que si la **variable de dépôt `PURGE_COMPTES_ACTIVE`** vaut `true` (même
+  doctrine que `DEPLOIEMENT_ACTIF`) ; un lancement manuel exige en plus la case « appliquer ».
+  Seuil `UNCONFIRMED_ACCOUNT_TTL_DAYS` (**défaut 30 jours, plancher 7**), au plus **20
+  suppressions par passage**. **Candidat = jamais confirmé, plus vieux que le seuil, membre
+  ordinaire (jamais admin ni gestionnaire), statut actif (jamais suspendu ou désactivé),
+  AUCUNE trace d'usage** (recettes, fournées, abonnements, avis, idées, listes de courses,
+  imports). **Dans le doute on garde** : date illisible, profil absent, lecture d'une table
+  en échec ou GoTrue muet = aucune suppression (la passe échoue en 502, celle du lendemain
+  reprend du même état). La suppression passe par `supprimerCompteMembre`
+  (`lib/member-delete-data.ts`), **chemin unique** partagé avec « Supprimer » de la fiche
+  membre : compte GoTrue d'abord, puis profil. Une ligne `allowlist` (invitation) reste :
+  l'adresse peut se réinscrire. La seule trace d'une purge est le journal du workflow (le
+  journal de modération part avec le membre). **Armer** : observer plusieurs rapports, puis
+  poser `PURGE_COMPTES_ACTIVE=true` (Settings > Secrets and variables > Actions > Variables) ;
+  poser `UNCONFIRMED_ACCOUNT_TTL_DAYS` sur le nœud 216658 seulement pour changer le seuil
+  (lue à l'exécution : un redémarrage suffit, à vérifier par `pm2 env 0`).
 
 ### Connexion « en tant que » (impersonation)
 
@@ -2795,6 +2815,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `VAPID_SUBJECT` | Contact déclaré aux services de push (`mailto:…`, optionnel, défaut `mailto:noreply@jepatisse.com`) | Serveur uniquement |
 | `OUTBOX_BOUCLE` | `true` démarre, au lancement du processus, la boucle interne qui vide la file de notifications chaque minute (`instrumentation.ts`, `lib/outbox-boucle.ts`). **Opt-in strict, à poser sur le seul nœud de production** : sur l'aperçu de PR (même base), la file serait vidée en double. Lue à l'exécution : un redémarrage du nœud suffit, sans reconstruction. Absente : seul le cron GitHub vide la file, avec ses retards | Serveur uniquement |
 | `NEXT_PUBLIC_STRIPE_PORTAIL_CONNEXION_URL` | Page de connexion au portail client Stripe, proposée aux comptes suspendus ou désactivés (JEP-272). Optionnelle ; URL `test_` en test, à remplacer en production | Publique (inlinée au build) |
+| `UNCONFIRMED_ACCOUNT_TTL_DAYS` | Âge (en jours) à partir duquel un compte jamais confirmé est candidat à la purge (JEP-262, lot 4). Optionnelle : défaut 30, plancher 7, valeur illisible = défaut. Lue à l'exécution. La suppression elle-même n'est armée que par la variable de **dépôt GitHub** `PURGE_COMPTES_ACTIVE` | Serveur uniquement |
 | `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Variable lue côté serveur à l'exécution, pas au build : un changement prend effet au redémarrage du nœud, sans reconstruction. | Serveur uniquement |
 
 Modèle local : `.env.local.example` → `.env.local`.
