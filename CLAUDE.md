@@ -606,6 +606,36 @@ Toujours par `POST /api/admin/membres/[id]/moderation` (admin complet,
   le formulaire de contact.
 - Lot 3 (restrictions partielles, déconnexion forcée, RGPD) : à venir.
 
+### E-mail non confirmé (JEP-262, lots 1 et 3)
+
+`profiles.status` ne dit rien de la confirmation d'adresse : `handle_new_user`
+crée le profil dès l'inscription, un compte non confirmé apparaît donc « Actif ».
+La seule vérité est `auth.users.email_confirmed_at`, que ni pgweb ni PostgREST
+n'atteignent — **seule l'API d'administration GoTrue la lit** (`auth.admin.listUsers`
+/ `getUserById`, clé service_role, `lib/email-confirmation-data.ts`), sans
+migration. Logique pure : `lib/email-confirmation.ts`.
+
+- **`Member.emailConfirmed`** : `true` / `false`, ou `null` = inconnu (invitation
+  sans compte, GoTrue injoignable ou clé absente — lecture best-effort, la liste
+  s'affiche alors sans badge ni filtre plutôt que de casser). Liste paginée par
+  1 000 (`PAGES_MAX` : garde-fou). Badge « E-mail non confirmé », **distinct** du
+  badge de statut, dans `MembersManager` et `MemberDetail` ; filtre « Non
+  confirmés » (`emailConfirmed === false` exactement).
+- **Forcer la confirmation** : `POST /api/admin/membres/[id]/confirmer-email`
+  (admin complet, `getVerifiedUser`, refusée en session « en tant que » lecture
+  seule), bouton « Confirmer manuellement » de la fiche, avec `dialog.confirm`.
+  C'est un contournement de sécurité : aucun e-mail n'est envoyé. **Sans trace,
+  pas de geste** — le journal (`member_moderation_events`, action
+  `confirmation_email`) est écrit **avant** `updateUserById({ email_confirm: true })`,
+  l'inverse de la modération ; si GoTrue refuse, la ligne est retirée. Un compte
+  déjà confirmé est refusé (409, relu chez GoTrue). Affiché dans le journal du
+  bloc « Modération ».
+- **Migration préalable** : si la colonne `member_moderation_events.action` porte
+  une contrainte CHECK, elle doit accepter `confirmation_email` (DDL par `psql`,
+  nœud 216075). Sans elle, la route refuse le geste avec ce message.
+- Reste hors de ce lot : relance du mail (lot 2, dépend du SMTP de GoTrue) et
+  purge automatique (lot 4, rapport seul d'abord, seuil 30 jours).
+
 ### Connexion « en tant que » (impersonation)
 
 - **Niveau d'accès hérité**, jamais choisi au clic : `profiles.impersonation_access`

@@ -78,6 +78,7 @@ export function MemberDetail({
   const [deleting, setDeleting] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [changingEmail, setChangingEmail] = useState(false);
+  const [confirmingEmail, setConfirmingEmail] = useState(false);
 
   const initials = member.fullName
     ? member.fullName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
@@ -151,6 +152,32 @@ export function MemberDetail({
     }
   }
 
+  // JEP-262, lot 3 : contournement de sécurité, d'où la confirmation explicite
+  // et la trace au journal de modération (écrite par la route, avant le geste).
+  async function confirmerEmailManuellement() {
+    if (!member.profileId) return;
+    const ok = await dialog.confirm(
+      `Confirmer manuellement l'adresse e-mail de « ${member.fullName || member.email} » ?\n\n` +
+        "Le membre n'aura rien vérifié : vous attestez à sa place que cette adresse est la sienne. " +
+        "Aucun e-mail n'est envoyé. Le geste est inscrit au journal de modération, à votre nom.",
+    );
+    if (!ok) return;
+    setConfirmingEmail(true);
+    try {
+      const res = await fetch(`/api/admin/membres/${member.profileId}/confirmer-email`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        dialog.alert(data?.erreur || 'Confirmation impossible');
+        return;
+      }
+      router.refresh();
+    } catch (e) {
+      dialog.alert('Erreur réseau : ' + ((e as Error).message || 'confirmation impossible'));
+    } finally {
+      setConfirmingEmail(false);
+    }
+  }
+
   async function supprimer() {
     const ok = await dialog.confirm(
       `Supprimer « ${member.fullName || member.email} » ?\n\n` +
@@ -179,7 +206,7 @@ export function MemberDetail({
 
   return (
     <main className="flex-1 p-margin-mobile md:p-margin-desktop max-w-[900px] w-full space-y-6">
-      <LoadingOverlay visible={impBusy || deleting || changingEmail} />
+      <LoadingOverlay visible={impBusy || deleting || changingEmail || confirmingEmail} />
 
       {/* En-tête : identité + lien vers la vitrine publique */}
       <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 flex items-center gap-4">
@@ -225,6 +252,27 @@ export function MemberDetail({
           )}
         </div>
       </div>
+
+      {/* Adresse e-mail non confirmée (JEP-262) : `null` = inconnu, rien d'affiché. */}
+      {member.profileId && member.emailConfirmed === false && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-5 flex flex-wrap items-center gap-4">
+          <span className="material-symbols-outlined text-amber-800">mark_email_unread</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-amber-900">E-mail non confirmé</p>
+            <p className="text-xs text-amber-900/80">
+              Le compte existe, mais le membre n&apos;a pas encore confirmé son adresse. Son statut « {member.status === 'active' ? 'Actif' : member.status} » n&apos;en dit rien.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={confirmerEmailManuellement}
+            disabled={confirmingEmail}
+            className="shrink-0 rounded-pill border border-amber-700 px-4 py-2 text-[12.5px] font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+          >
+            Confirmer manuellement
+          </button>
+        </div>
+      )}
 
       {/* Statistiques */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

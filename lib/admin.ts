@@ -1,4 +1,5 @@
 // Chargeurs de données admin, typés — portés de db.js (getMolds, getMoldTypes).
+import { lireConfirmationEmail, lireConfirmationsEmail } from '@/lib/email-confirmation-data';
 import { createClient } from '@/lib/supabase/server';
 import { TAUX_EUR_AFFICHE } from '@/lib/ai/cost';
 import {
@@ -534,11 +535,15 @@ export type Member = {
   // qui signifierait « a consommé, pour un coût nul ».
   coutIaMois: number | null;
   coutIaTotal: number | null;
+  // Adresse e-mail confirmée (`auth.users.email_confirmed_at`, JEP-262), lue
+  // par l'API d'administration GoTrue. `null` = inconnu : invitation sans
+  // compte, ou GoTrue injoignable — ni badge ni filtre dans ce cas.
+  emailConfirmed: boolean | null;
 };
 
 export async function getAllowlistMembers(): Promise<Member[]> {
   const supabase = withImpersonationSchema(await createClient());
-  const [{ data: profiles }, { data: allowlist }, { data: recipes }, coutsIa, subscriptions, moderations] = await Promise.all([
+  const [{ data: profiles }, { data: allowlist }, { data: recipes }, coutsIa, subscriptions, moderations, confirmations] = await Promise.all([
     supabase
       .from('profiles')
       .select(
@@ -550,6 +555,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
     getAiUsageParMembre(),
     getMembersSubscriptionSummaries(),
     lireModerationMembres(supabase),
+    lireConfirmationsEmail(),
   ]);
 
   const recipeMap: Record<string, number> = {};
@@ -589,6 +595,7 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       impersonationAccess: isImpersonationMode(p.impersonation_access) ? p.impersonation_access : 'read_only',
       coutIaMois: coutsIa.get(p.id)?.coutMois ?? null,
       coutIaTotal: coutsIa.get(p.id)?.coutTotal ?? null,
+      emailConfirmed: confirmations?.get(p.id) ?? null,
     };
   });
 
@@ -618,6 +625,8 @@ export async function getAllowlistMembers(): Promise<Member[]> {
       // Pas encore de compte : aucun appel IA possible.
       coutIaMois: null,
       coutIaTotal: null,
+      // Pas encore de compte : rien à confirmer.
+      emailConfirmed: null,
     }));
 
   return [...registered, ...pending];
@@ -661,12 +670,13 @@ export async function getMemberById(id: string): Promise<Member | null> {
       .maybeSingle();
     if (!p) return null;
     const emailKey = (p.email || '').toLowerCase();
-    const [{ data: al }, { count: recipeCount }, coutIa] = await Promise.all([
+    const [{ data: al }, { count: recipeCount }, coutIa, emailConfirmed] = await Promise.all([
       emailKey
         ? supabase.from('allowlist').select('*').ilike('email', emailKey).maybeSingle()
         : Promise.resolve({ data: null }),
       supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('author_id', profileId),
       getAiUsageForMember(profileId),
+      lireConfirmationEmail(profileId),
     ]);
     // Motif et date de fin lus à part, seulement pour un compte marqué
     // (colonnes absentes avant la migration, cf. `lib/moderation-data.ts`).
@@ -698,6 +708,7 @@ export async function getMemberById(id: string): Promise<Member | null> {
       impersonationAccess: isImpersonationMode(p.impersonation_access) ? p.impersonation_access : 'read_only',
       coutIaMois: coutIa?.coutMois ?? null,
       coutIaTotal: coutIa?.coutTotal ?? null,
+      emailConfirmed,
     };
   }
 
@@ -727,6 +738,7 @@ export async function getMemberById(id: string): Promise<Member | null> {
       impersonationAccess: 'read_only',
       coutIaMois: null,
       coutIaTotal: null,
+      emailConfirmed: null,
     };
   }
 
