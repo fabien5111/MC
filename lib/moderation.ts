@@ -96,6 +96,8 @@ export const LIBELLE_ACTION_JOURNAL: Record<string, string> = {
   suspension: 'Suspension',
   desactivation: 'Désactivation',
   levee: 'Levée',
+  // JEP-262 : forçage de la confirmation d'e-mail, tracé dans le même journal.
+  confirmation_email: "Confirmation d'e-mail forcée",
 };
 
 export type DemandeModeration = {

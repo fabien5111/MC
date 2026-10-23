@@ -22,7 +22,9 @@ import { matchesSearch } from '@/lib/text-search';
 
 // 'trial' : essai en cours (§8.3, filtre par essai) — distinct de `demo`
 // (compte de démonstration), qui n'a rien à voir avec l'abonnement.
-type Filter = 'all' | 'active' | 'pending' | 'suspended' | 'disabled' | 'demo' | 'trial';
+// 'unconfirmed' : compte inscrit dont l'adresse e-mail n'est pas confirmée
+// (JEP-262) — dimension distincte du statut, d'où son propre filtre.
+type Filter = 'all' | 'active' | 'pending' | 'suspended' | 'disabled' | 'demo' | 'trial' | 'unconfirmed';
 
 function inviteLinkFor(email: string): string {
   return `${window.location.origin}/connexion?invite=${encodeURIComponent(email)}`;
@@ -71,6 +73,7 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
       .filter((m) => {
         if (filter === 'demo') return m.is_demo;
         if (filter === 'trial') return m.subscription?.type === 'TRIAL';
+        if (filter === 'unconfirmed') return m.emailConfirmed === false;
         if (filter === 'all') return true;
         return m.status === filter;
       })
@@ -191,6 +194,7 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
           {chip('disabled', 'Désactivés')}
           {chip('demo', 'Démo')}
           {chip('trial', 'Essai en cours')}
+          {chip('unconfirmed', 'Non confirmés')}
         </div>
         <div className="relative">
           <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
@@ -282,6 +286,9 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
                                   : 'Suspendu',
                               )
                             : badge('bg-error-container text-on-error-container', 'Désactivé')}
+                      {m.emailConfirmed === false && (
+                        <span className="ml-1">{badge('bg-amber-100 text-amber-900', 'E-mail non confirmé')}</span>
+                      )}
                       {m.is_demo && <span className="ml-1">{badge('bg-tertiary-fixed text-on-tertiary-fixed', 'Démo')}</span>}
                     </td>
                     <td className="px-6 py-4">{accessCell(m)}</td>
