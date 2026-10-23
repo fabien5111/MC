@@ -1,30 +1,45 @@
 // Route Handler — renvoi du mail de confirmation d'adresse à un membre
 // (JEP-262, lot 2). Réservée à l'admin complet, comme toute la fiche membre.
 //
-// Le mail n'est pas envoyé par l'application mais par GoTrue (`auth.resend`,
-// type `signup`), avec sa PROPRE configuration SMTP (nœud 216114), distincte de
-// `SMTP_*` / Brevo. Un succès de cette route dit que GoTrue a accepté la
-// demande, pas que le message est arrivé : sans SMTP valide côté GoTrue, la
-// demande peut aboutir sans qu'aucun mail ne parte.
+// **Le mail est composé et envoyé par l'application** (Brevo, `lib/email.ts`),
+// pas par GoTrue. Première version : `auth.resend` — le mail partait, mais son
+// lien repassait par GoTrue (`/verify`) puis revenait sur `/auth/callback` avec
+// la session dans la partie `#…` de l'adresse, que le callback ne sait pas
+// lire : le compte était bien confirmé, le membre atterrissait sur « La
+// connexion a échoué » sans session ni pseudo, et un second clic donnait
+// `otp_expired`. Désormais le jeton vient de `admin.generateLink` (comme
+// « Connexion en tant que ») et le lien pointe directement vers
+// `/auth/callback?token_hash=…&type=…`, que le callback échange par
+// `verifyOtp` : un seul clic confirme, connecte et finalise le pseudo. Plus de
+// dépendance au SMTP de GoTrue ni à `GOTRUE_URI_ALLOW_LIST`.
+//
+// **Le lien n'est JAMAIS rendu à l'admin** : il connecte celui qui le suit au
+// compte du membre. Il ne sort que par le mail, à l'adresse du membre.
 //
 // Anti-abus : une relance par membre et par 5 minutes, comptée dans le journal
 // (`member_moderation_events`, action `relance_confirmation`) — pas de table de
 // plus, et la relance laisse sa trace comme le forçage manuel. La ligne est
 // écrite AVANT l'envoi (réserver plutôt que constater : un second clic
-// immédiat la trouve) et retirée si GoTrue refuse, pour qu'une demande
-// échouée ne coûte pas le délai. GoTrue a de toute façon sa propre limite
-// (~1 min par adresse) : son refus est rendu tel quel.
+// immédiat la trouve) et retirée si la génération ou l'envoi échoue, pour
+// qu'une demande échouée ne coûte pas le délai. Chaque relance annule le lien
+// du mail précédent. L'envoi ne passe pas par `notifier()` (pas de préférences
+// ni de cloche pour un geste d'admin) : il ne réserve donc pas le quota Brevo
+// (300/jour), sans conséquence à la cadence d'une relance manuelle.
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getVerifiedUser, isAdmin } from '@/lib/auth';
 import { createAdminClient, MissingServiceKeyError } from '@/lib/supabase/admin';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { siteUrl } from '@/lib/site-url';
+import { sendEmail } from '@/lib/email';
 import {
   ACTION_RELANCE_CONFIRMATION,
   MOTIF_RELANCE_CONFIRMATION,
+  composerEmailConfirmation,
   confirmationDe,
   libelleAttente,
+  lienConfirmation,
+  origineValide,
   relanceAutorisee,
 } from '@/lib/email-confirmation';
 
@@ -115,19 +130,46 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  // Le lien du mail ramène sur le domaine d'où l'admin agit (doit figurer dans
-  // `GOTRUE_URI_ALLOW_LIST`, comme pour l'inscription).
-  const origine = req.headers.get('origin') || siteUrl();
-  const { error } = await admin.auth.resend({
-    type: 'signup',
-    email,
-    options: { emailRedirectTo: `${origine}/auth/callback` },
-  });
-  if (error) {
-    console.error('relancer-confirmation: refus de GoTrue :', error.message);
+  // La ligne de journal est retirée si la suite échoue : une demande qui n'a
+  // rien envoyé ne doit pas coûter le délai.
+  const annuler = async () => {
     const { error: retrait } = await db.from('member_moderation_events').delete().eq('id', ligne.id);
     if (retrait) console.error('relancer-confirmation: ligne de journal non retirée :', retrait.message);
-    return NextResponse.json({ erreur: `Envoi impossible : ${error.message}` }, { status: error.status === 429 ? 429 : 502 });
+  };
+
+  // Jeton à usage unique (le précédent est invalidé), jamais rendu à l'admin.
+  const { data: genere, error: erreurLien } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
+  const jeton = genere?.properties?.hashed_token;
+  const typeJeton = genere?.properties?.verification_type;
+  if (erreurLien || !jeton || !typeJeton) {
+    console.error('relancer-confirmation: génération du lien impossible :', erreurLien?.message);
+    await annuler();
+    return NextResponse.json(
+      { erreur: `Génération du lien impossible : ${erreurLien?.message ?? 'jeton absent'}` },
+      { status: 502 },
+    );
+  }
+
+  // Le lien ramène sur le domaine d'où l'admin agit (aperçu, dev, www), sinon
+  // sur l'adresse du site.
+  const origine = origineValide(req.headers.get('origin')) ?? siteUrl();
+  const meta = (lu.user.user_metadata ?? {}) as { pseudo?: string; full_name?: string };
+  const mail = composerEmailConfirmation({
+    lien: lienConfirmation(origine, jeton, typeJeton),
+    pseudo: meta.pseudo ?? meta.full_name ?? null,
+  });
+  try {
+    await sendEmail({
+      to: email,
+      subject: mail.sujet,
+      text: mail.texte,
+      html: mail.html,
+      replyTo: process.env.EMAIL_REPLY_TO || undefined,
+    });
+  } catch (e) {
+    console.error('relancer-confirmation: envoi impossible :', (e as Error).message);
+    await annuler();
+    return NextResponse.json({ erreur: `Envoi du mail impossible : ${(e as Error).message}` }, { status: 502 });
   }
 
   return NextResponse.json({ ok: true, email });

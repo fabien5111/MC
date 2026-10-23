@@ -635,16 +635,26 @@ migration. Logique pure : `lib/email-confirmation.ts`.
   nœud 216075). Sans elle, la route refuse le geste avec ce message.
 - **Relancer le mail** (lot 2) : `POST /api/admin/membres/[id]/relancer-confirmation`
   (mêmes gardes que le forçage), bouton « Renvoyer le mail de confirmation » à côté
-  de « Confirmer manuellement ». C'est **GoTrue** qui envoie (`auth.resend`, type
-  `signup`), avec **sa propre configuration SMTP** (nœud 216114), distincte de
-  `SMTP_*` / Brevo : un succès dit que GoTrue a accepté la demande, **pas que le
-  mail est arrivé** — l'écran le dit. Le lien du mail ramène sur le domaine d'où
-  l'admin agit (en-tête `Origin`, à défaut `siteUrl()`), qui doit figurer dans
-  `GOTRUE_URI_ALLOW_LIST`. **Une relance par membre et par 5 minutes**, comptée
-  dans le journal (`member_moderation_events`, action `relance_confirmation`, lue
-  par `relanceAutorisee`) : ligne écrite AVANT l'envoi (un second clic la trouve),
-  retirée si GoTrue refuse (une demande échouée ne coûte pas le délai) ; journal
-  illisible = relance refusée. GoTrue a aussi sa propre limite (~1 min par adresse).
+  de « Confirmer manuellement ». **Le mail est composé et envoyé par l'application**
+  (Brevo, `lib/email.ts`, `composerEmailConfirmation`), **pas par GoTrue**. Première
+  version, abandonnée : `auth.resend` — le mail partait, mais son lien repassait par
+  GoTrue (`/verify`) et revenait sur `/auth/callback` avec la session dans la partie
+  `#…` de l'adresse, que le callback ne lit pas : compte confirmé, mais « La connexion
+  a échoué », ni session ni pseudo, et `otp_expired` au second clic. Désormais le jeton
+  vient de `admin.generateLink` (`type: 'magiclink'`, comme « Connexion en tant que ») et
+  le lien est `/auth/callback?token_hash=…&type=<verification_type rendu par GoTrue>`,
+  échangé par `verifyOtp` : **un seul clic confirme, connecte et finalise le pseudo**,
+  sans PKCE ni état local, depuis n'importe quel client mail. Plus de dépendance au SMTP
+  de GoTrue (nœud 216114) ni à `GOTRUE_URI_ALLOW_LIST`. **Le lien n'est jamais rendu à
+  l'admin** (il connecte celui qui le suit au compte du membre) : il ne sort que par le
+  mail, à l'adresse du membre. Le lien ramène sur l'origine d'où l'admin agit (en-tête
+  `Origin`, `origineValide`, à défaut `siteUrl()`) ; chaque relance annule le lien du mail
+  précédent. **Une relance par membre et par 5 minutes**, comptée dans le journal
+  (`member_moderation_events`, action `relance_confirmation`, lue par `relanceAutorisee`) :
+  ligne écrite AVANT l'envoi (un second clic la trouve), retirée si la génération ou
+  l'envoi échoue ; journal illisible = relance refusée. L'envoi ne passe pas par
+  `notifier()` (geste d'admin : ni préférences ni cloche) et ne réserve pas le quota Brevo
+  (300/jour), sans conséquence à la cadence d'une relance manuelle.
   **Migration préalable** : la contrainte CHECK de `action` doit accepter
   `relance_confirmation` (comme `confirmation_email`).
 - **Purge des comptes jamais confirmés** (lot 4) : `GET /api/cron/purge-comptes-non-confirmes`

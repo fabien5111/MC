@@ -153,10 +153,9 @@ export function MemberDetail({
     }
   }
 
-  // JEP-262, lot 2 : renvoi du mail de confirmation par GoTrue. Un succès dit
-  // que GoTrue a accepté la demande — pas que le message est arrivé (SMTP propre
-  // à GoTrue), d'où la formulation du retour. Pas de confirmation préalable :
-  // le geste est sans danger, et la route tient le délai de 5 minutes.
+  // JEP-262, lot 2 : renvoi du mail de confirmation, composé et envoyé par
+  // l'application (Brevo). Pas de confirmation préalable : le geste est sans
+  // danger, et la route tient le délai de 5 minutes.
   async function relancerConfirmation() {
     if (!member.profileId) return;
     setResendingEmail(true);
@@ -168,8 +167,8 @@ export function MemberDetail({
         return;
       }
       dialog.alert(
-        `Demande d'envoi transmise pour ${data?.email || member.email}.\n\n` +
-          "Si le mail n'arrive pas (spams compris), la configuration d'envoi du serveur d'authentification est à vérifier.",
+        `Mail de confirmation envoyé à ${data?.email || member.email}.\n\n` +
+          "Le lien ne sert qu'une fois et annule celui du mail précédent. S'il n'arrive pas, vérifiez les courriers indésirables.",
       );
       router.refresh();
     } catch (e) {
