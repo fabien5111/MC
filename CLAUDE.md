@@ -704,6 +704,11 @@ migration. Logique pure : `lib/email-confirmation.ts`.
   toute écriture — sur n'importe quel appareil. Ligne sans `auth_session_id`
   (antérieure à la migration) : ancien comportement. Colonne ajoutée par
   `psql` (nœud 216075) ; lue en `select('*')`, écrite à part, échec ignoré.
+  **Fermer l'onglet ne termine pas la session** (cookies persistants) :
+  revenir sur le site, c'est retrouver la connexion « en tant que » elle-même,
+  bandeau compris — c'est voulu. `/connexion` ne renvoie donc plus vers le site
+  dans ce cas : elle affiche `ImpersonationEnCours`, qui termine la session par
+  `/api/impersonation/end` (comme « Quitter ») puis rend le formulaire.
 - **Cookie témoin `mc_imp`** (`IMPERSONATION_COOKIE`) : posé par
   `/auth/impersonation`, retiré par `/api/impersonation/end`, calé sur
   `expires_at`. **Indice d'aiguillage négatif, jamais source de vérité** :
