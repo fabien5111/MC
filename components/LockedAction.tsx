@@ -135,7 +135,17 @@ export function LockedAction({
 
 // ── LockedHint ──────────────────────────────────────────────────────────
 
-type Position = { top: number; left: number };
+/**
+ * `alignRight` : la bulle s'étend vers la gauche depuis le bord droit du
+ * repère (cas d'un repère en fin de ligne). Sinon elle part du bord gauche du
+ * repère et s'étend vers la droite. `maxWidth` borne dans les deux cas la
+ * largeur à la place réellement disponible dans la fenêtre (JEP-76).
+ */
+type Position = { top: number; left: number; alignRight: boolean; maxWidth: number };
+
+/** 17 rem : largeur maximale de la bulle, plafonnée à 70 % de la fenêtre. */
+const LARGEUR_BULLE = 272;
+const MARGE_BULLE = 8;
 
 /**
  * Bulle explicative de `LockedHint` — hover/focus, jamais interactive
@@ -148,7 +158,21 @@ function useBulle() {
 
   const montrer = useCallback((el: HTMLElement) => {
     const r = el.getBoundingClientRect();
-    setPos({ top: r.bottom + 6, left: r.right });
+    const cap = Math.min(LARGEUR_BULLE, window.innerWidth * 0.7);
+    // Alignée à droite tant qu'elle tient à gauche du repère. Un repère au
+    // bord gauche de l'écran (les boutons « Importer » sur mobile) la
+    // ferait sortir de la fenêtre, où elle est rognée.
+    if (r.right - MARGE_BULLE >= cap) {
+      setPos({ top: r.bottom + 6, left: r.right, alignRight: true, maxWidth: cap });
+      return;
+    }
+    const left = Math.max(MARGE_BULLE, r.left);
+    setPos({
+      top: r.bottom + 6,
+      left,
+      alignRight: false,
+      maxWidth: Math.min(LARGEUR_BULLE, window.innerWidth - left - MARGE_BULLE),
+    });
   }, []);
 
   const cacher = useCallback(() => setPos(null), []);
@@ -170,8 +194,8 @@ function Bulle({ message, pos }: { message: string; pos: Position }) {
   return createPortal(
     <span
       role="tooltip"
-      className="pointer-events-none fixed z-[60] w-max max-w-[min(17rem,70vw)] -translate-x-full whitespace-normal rounded bg-primary px-3 py-2 text-left font-body-md text-[12px] leading-snug text-white shadow-lg"
-      style={{ top: pos.top, left: pos.left }}
+      className={`pointer-events-none fixed z-[60] w-max whitespace-normal rounded bg-primary px-3 py-2 text-left font-body-md text-[12px] leading-snug text-white shadow-lg ${pos.alignRight ? '-translate-x-full' : ''}`}
+      style={{ top: pos.top, left: pos.left, maxWidth: pos.maxWidth }}
     >
       {message}
     </span>,

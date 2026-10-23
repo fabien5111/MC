@@ -25,7 +25,8 @@ import {
   getFeatureRows,
   getPlanRows,
 } from '@/lib/data/reference';
-import { quotaFailure, type QuotaFailure } from '@/lib/entitlements';
+import { importEpuiseMessage, quotaFailure, upgradeSuggestion, type QuotaFailure } from '@/lib/entitlements';
+import { formatDate } from '@/lib/format';
 import type {
   Entitlements,
   Grid,
@@ -396,3 +397,25 @@ export const checkQuota = cache(async (userId: string, key: string): Promise<Quo
   const d = data as { allowed?: boolean; limit?: number; usage?: number } | null;
   return { allowed: d?.allowed ?? true, limit: d?.limit, usage: d?.usage };
 });
+
+/**
+ * Texte du quota d'imports par IA épuisé (JEP-76), avec la date exacte de
+ * recharge. `mc_usage_report` vaut cinq comptages : on ne le lit qu'ici, au
+ * moment du refus ou pour griser le bouton d'un membre déjà à sec — jamais
+ * pour un contrôle d'accès. Lecture en échec : message sans date.
+ */
+export async function messageImportEpuise(
+  userId: string,
+  limite: number | null,
+): Promise<{ titre: string; corps: string }> {
+  const [grille, plan] = await Promise.all([getGrid(), getCurrentPlan(userId)]);
+  const essai = plan?.type === 'TRIAL';
+  const rapport = essai ? [] : await getUsageReport(userId);
+  const fin = rapport.find((l) => l.featureKey === 'import_ia_mensuel')?.periodEnd ?? null;
+  return importEpuiseMessage({
+    limite,
+    essai,
+    rechargeLe: fin ? formatDate(fin) : null,
+    suggestion: upgradeSuggestion(grille, 'import_ia_mensuel', plan?.code ?? ''),
+  });
+}

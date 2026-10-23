@@ -9,7 +9,7 @@ import { ImporterForm } from '@/components/ImporterForm';
 import { ImporterList } from '@/components/ImporterList';
 import Link from 'next/link';
 import { canAccess } from '@/lib/entitlements';
-import { getCurrentPlan, getEntitlements, checkQuota } from '@/lib/entitlements-data';
+import { getCurrentPlan, getEntitlements, checkQuota, messageImportEpuise } from '@/lib/entitlements-data';
 
 export const metadata: Metadata = { title: 'Importer une recette | Je pâtisse !' };
 
@@ -42,6 +42,13 @@ export default async function ImporterPage() {
   // épuisé, plutôt que de laisser découvrir le refus après une tentative.
   // Seulement quand l'écran est déjà accessible.
   const quotaImport = peutImporter ? await checkQuota(user.id, 'import_ia_mensuel') : null;
+
+  // JEP-76 : même texte que le refus de la route, pour l'infobulle des boutons
+  // grisés (date de recharge exacte comprise).
+  const messageQuotaImport =
+    quotaImport && !quotaImport.allowed
+      ? await messageImportEpuise(user.id, quotaImport.limit ?? null)
+      : null;
 
   // JEP-56 : le nombre d'imports RÉALISÉS DANS LA FORMULE remplace l'ancien
   // compteur du jour (`IMPORT_DAILY_QUOTA`, technique et sans rapport avec le
@@ -80,7 +87,10 @@ export default async function ImporterPage() {
         </p>
 
         {peutImporter ? (
-          <ImporterForm quotaImport={quotaImport} />
+          <ImporterForm
+            quotaImport={quotaImport}
+            quotaMessage={messageQuotaImport ? `${messageQuotaImport.titre}. ${messageQuotaImport.corps}` : null}
+          />
         ) : (
           <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
             <p className="font-label-md text-[15px]">Importer une nouvelle recette n&apos;est pas inclus dans votre formule</p>

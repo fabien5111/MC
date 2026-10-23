@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import {
   annualSaving,
   blockingMessage,
+  importEpuiseMessage,
   canAccess,
   coherenceIssues,
   diffRights,
@@ -254,9 +255,47 @@ describe('blocage éducatif', () => {
       limite: 2,
       usage: 2,
     });
-    expect(m?.corps).toContain('2 sur 2');
-    expect(m?.corps).toContain('15 fournée(s)');
+    expect(m?.titre).toBe('Vous avez atteint la limite de votre formule');
+    expect(m?.corps).toContain('Votre formule inclut 2 fournées');
+    expect(m?.corps).toContain('La formule PLUS va plus loin : jusqu\'à 15 fournées.');
     expect(m?.alternative).toContain('Terminez');
+  });
+
+  it('JEP-76 : garde le message lisible, sans code ni libellé technique', () => {
+    const m = blockingMessage(grille, 'import_ia_mensuel', 'PLUS', {
+      autorise: false,
+      raison: 'LIMITE_ATTEINTE',
+      limite: 20,
+      usage: 20,
+    });
+    expect(m?.titre).not.toMatch(/\(\d+\)/);
+    expect(m?.corps).toBe(
+      'Votre formule inclut 20 imports par mois : vous avez atteint cette limite. La formule PRO va plus loin : jusqu\'à 100 imports par mois.',
+    );
+  });
+
+  it('JEP-76 : import épuisé en essai — pas de renouvellement, on propose la formule', () => {
+    const suggestion = { planCode: 'PLUS', planLabel: 'Plus', value: '10 import(s) / mois' };
+    expect(importEpuiseMessage({ limite: 3, essai: true, rechargeLe: null, suggestion })).toEqual({
+      titre: "Vous avez utilisé vos 3 imports d'essai",
+      corps: "Pour continuer à importer des recettes par IA, passez à la formule Plus : jusqu'à 10 imports par mois.",
+    });
+  });
+
+  it('JEP-76 : import épuisé en abonnement — date exacte de recharge', () => {
+    const suggestion = { planCode: 'PRO', planLabel: 'Pro', value: '100 import(s) / mois' };
+    expect(importEpuiseMessage({ limite: 10, essai: false, rechargeLe: '21 novembre 2026', suggestion })).toEqual({
+      titre: 'Vous avez utilisé vos 10 imports du mois',
+      corps:
+        "Votre crédit se renouvelle le 21 novembre 2026. Envie d'aller plus loin ? Avec la formule Pro : jusqu'à 100 imports par mois.",
+    });
+  });
+
+  it('JEP-76 : import épuisé sans date ni formule supérieure', () => {
+    expect(importEpuiseMessage({ limite: 1, essai: false, rechargeLe: null, suggestion: null })).toEqual({
+      titre: 'Vous avez utilisé votre import du mois',
+      corps: "Votre crédit se renouvelle à la prochaine échéance de votre abonnement.",
+    });
   });
 
   it('n’invente pas d’alternative gratuite quand il n’y en a pas', () => {
