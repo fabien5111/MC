@@ -694,6 +694,16 @@ migration. Logique pure : `lib/email-confirmation.ts`.
   C'est la table qui décide, jamais le navigateur, et la même condition est
   réutilisée en SQL par `public.is_read_only_session()` dans les policies RLS
   d'écriture — c'est là qu'est la garantie réelle.
+- **La session vise une CONNEXION, pas seulement un membre** (JEP-27) :
+  `/auth/impersonation` enregistre la claim `session_id` du JWT ouvert par le
+  lien dans `impersonation_sessions.auth_session_id`, et la lecture
+  (`sessionImpersonationConcerne`, `lib/impersonation-types.ts`) comme la RLS
+  (`is_read_only_session()`) l'exigent. Sans ça, un onglet fermé sans
+  « Quitter » laissait la ligne active une heure : le membre qui se connectait
+  lui-même héritait du bandeau, de l'audit et, en lecture seule, du refus de
+  toute écriture — sur n'importe quel appareil. Ligne sans `auth_session_id`
+  (antérieure à la migration) : ancien comportement. Colonne ajoutée par
+  `psql` (nœud 216075) ; lue en `select('*')`, écrite à part, échec ignoré.
 - **Cookie témoin `mc_imp`** (`IMPERSONATION_COOKIE`) : posé par
   `/auth/impersonation`, retiré par `/api/impersonation/end`, calé sur
   `expires_at`. **Indice d'aiguillage négatif, jamais source de vérité** :

@@ -22,6 +22,12 @@ export type SessionUser = {
   user_metadata: Record<string, unknown>;
   /** `provider` sert à tracer l'origine du compte (`profiles.provider`). */
   app_metadata: Record<string, unknown>;
+  /**
+   * Identifiant de la connexion GoTrue (claim `session_id` du JWT) : une
+   * connexion « en tant que » et une vraie connexion du même membre en ont
+   * chacune un. Absent de `getVerifiedUser` (non utilisé par ses appelants).
+   */
+  sessionId?: string | null;
 };
 
 // Utilisateur courant, ou null. Ne redirige pas.
@@ -52,6 +58,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     email: typeof claims.email === 'string' ? claims.email : null,
     user_metadata: (claims.user_metadata ?? {}) as Record<string, unknown>,
     app_metadata: (claims.app_metadata ?? {}) as Record<string, unknown>,
+    sessionId: typeof claims.session_id === 'string' ? claims.session_id : null,
   };
 });
 

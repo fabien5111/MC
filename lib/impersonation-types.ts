@@ -63,6 +63,8 @@ export type ImpersonationSessionRow = {
   ended_at: string | null;
   ended_reason: string | null;
   expires_at: string;
+  /** Connexion GoTrue ouverte par le lien (JEP-27) — absente avant la migration. */
+  auth_session_id?: string | null;
 };
 
 type ImpersonationSessionInsert = {
@@ -78,6 +80,7 @@ type ImpersonationSessionInsert = {
   ended_at?: string | null;
   ended_reason?: string | null;
   expires_at: string;
+  auth_session_id?: string | null;
 };
 
 type ImpersonationSessionUpdate = Partial<ImpersonationSessionInsert>;
@@ -133,6 +136,26 @@ export type ImpersonationDatabase = Omit<Database, 'public'> & {
     };
   };
 };
+
+// Une ligne `impersonation_sessions` vaut-elle pour CETTE connexion ? (JEP-27)
+//
+// La ligne vise un membre, mais le membre peut aussi se connecter lui-même,
+// sur le même navigateur ou ailleurs, pendant que la session « en tant que »
+// court encore (onglet fermé sans « Quitter ») : sans ce test, sa vraie
+// connexion héritait du bandeau, de l'audit, et — en lecture seule — du refus
+// de toute écriture. Seule la connexion ouverte par le lien (`auth_session_id`,
+// claim `session_id` du JWT) est une session « en tant que ».
+//
+// Ligne sans `auth_session_id` (ouverte avant la migration, ou écriture de la
+// colonne en échec) : traitée comme avant, par le seul membre visé. Même
+// règle que `public.is_read_only_session()`, à garder alignées.
+export function sessionImpersonationConcerne(
+  ligne: { auth_session_id?: string | null },
+  sessionId: string | null | undefined,
+): boolean {
+  if (!ligne.auth_session_id) return true;
+  return !!sessionId && ligne.auth_session_id === sessionId;
+}
 
 export type ImpersonationClient = SupabaseClient<ImpersonationDatabase>;
 

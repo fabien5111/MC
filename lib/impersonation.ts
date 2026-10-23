@@ -22,6 +22,7 @@ import { getCurrentUser, getProfile } from '@/lib/auth';
 import {
   IMPERSONATION_COOKIE,
   isImpersonationMode,
+  sessionImpersonationConcerne,
   withImpersonationSchema,
   type ImpersonationMode,
   type ImpersonationSessionRow,
@@ -61,17 +62,21 @@ export const getImpersonationContext = cache(async (): Promise<ImpersonationCont
   if (!user) return null;
 
   const supabase = withImpersonationSchema(await createClient());
-  const { data, error } = await supabase
+  // `select('*')` : `auth_session_id` est ajoutée à la main (DDL par `psql`),
+  // la nommer ferait échouer la lecture avant la migration.
+  const { data: lignes, error } = await supabase
     .from('impersonation_sessions')
-    .select('id, mode, admin_email, target_name, target_email, expires_at')
+    .select('*')
     .eq('target_user_id', user.id)
     .not('started_at', 'is', null)
     .is('ended_at', null)
     .gt('expires_at', new Date().toISOString())
     .order('started_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(5);
 
+  // Seule la connexion ouverte par le lien est « en tant que » (JEP-27) : le
+  // membre qui se connecte lui-même ne voit ni bandeau ni bridage.
+  const data = (lignes ?? []).find((l) => sessionImpersonationConcerne(l, user.sessionId));
   if (error || !data) return null;
 
   return {
