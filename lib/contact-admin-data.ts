@@ -404,6 +404,7 @@ async function composerEtEnvoyer(
     subject,
     html,
     text,
+    pied: 'obligatoire',
   });
 
   return { delivered, error: delivered ? null : `Envoi à ${message.email} échoué.` };

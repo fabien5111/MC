@@ -16,6 +16,9 @@
 // suite ne relance aucune passe côté base (les lignes déjà EXPIRE ne sont
 // plus sélectionnées par la passe 1) et ne renvoie aucun e-mail ni
 // notification en double (passes 2 et 3, bloquées par la réservation).
+// **Échec d'e-mail (JEP-277)** : tracé sur `notifications_sent`
+// (`email_status = 'failed'`, `email_error`) et l'e-mail seul est retenté aux
+// passages suivants (3 essais au plus), sans doubler la cloche.
 //
 // **Fenêtres bornées** : les passes 2 et 3 ne relisent pas la table entière,
 // seulement les sept derniers jours (expiration) ou les trois prochains
@@ -41,7 +44,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGrid, getRightsForVersion } from '@/lib/entitlements-data';
-import { claimNotification } from '@/lib/notifications-data';
+import { claimNotification, noterEnvoiNotification } from '@/lib/notifications-data';
 import { notifier } from '@/lib/notifier';
 import { lostFeatureLabels, reducedFeatureLabels } from '@/lib/entitlements';
 import { composeNotification, type NotificationType } from '@/lib/notification-content';
@@ -84,8 +87,8 @@ async function envoyer(
   lost: string[],
   reduced: string[],
 ): Promise<void> {
-  const claimed = await claimNotification(admin, ligne.user_id, ligne.id, type);
-  if (!claimed) return;
+  const reservation = await claimNotification(admin, ligne.user_id, ligne.id, type);
+  if (reservation.etat === 'deja') return;
 
   const { data: profil } = await (admin.from('profiles' as never) as unknown as ProfilesSelect)
     .select('email, full_name')
@@ -105,13 +108,22 @@ async function envoyer(
   // ci-dessus — il part à l'identique. La cloche d'expiration reste affichée
   // quoi qu'il arrive (catégorie « abonnement », site verrouillé) ; seul l'e-mail
   // dépend de la préférence.
-  await notifier(admin, {
+  //
+  // Échec SMTP (JEP-277) : tracé sur `notifications_sent` et retenté au
+  // passage suivant, l'e-mail seul (`sansCloche`) — la cloche est déjà là.
+  const r = await notifier(admin, {
     userId: ligne.user_id,
     evenement: type,
     donnees: { titre: content.title, detail: content.body, lien: '/plans' },
     emailPrecompose: profil?.email
       ? { sujet: content.emailSubject, html: content.emailHtml, texte: content.emailText }
       : undefined,
+    sansCloche: reservation.etat === 'a_renvoyer',
+  });
+  await noterEnvoiNotification(admin, ligne.id, type, {
+    statut: r.email === 'envoye' ? 'sent' : r.email === 'echec' ? 'failed' : 'skipped',
+    erreur: r.emailErreur,
+    essais: reservation.etat === 'a_renvoyer' ? reservation.essais : 0,
   });
 }
 

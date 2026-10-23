@@ -35,6 +35,15 @@ export function etapesACommencer(etapes: EtapeRappel[], plannedDate: string, auj
   return etapes.filter((e) => !e.done && jourDEtape(plannedDate, e.day_offset) === aujourdhui).map((e) => e.title);
 }
 
+/**
+ * La fournée a-t-elle déjà commencé ? Vrai si l'une de ses étapes (faite ou
+ * non) tombe aujourd'hui ou avant : le rappel de la veille ne peut plus dire
+ * « commence demain » (JEP-375).
+ */
+export function fourneeDejaCommencee(etapes: EtapeRappel[], plannedDate: string, aujourdhui: string): boolean {
+  return etapes.some((e) => jourDEtape(plannedDate, e.day_offset) <= aujourdhui);
+}
+
 /** Heure UTC (minutes depuis minuit) du créneau quotidien : 05:30, cf. cron-notifications.yml. */
 const MINUTE_QUOTIDIEN_UTC = 5 * 60 + 30;
 
@@ -46,7 +55,14 @@ const MINUTE_QUOTIDIEN_UTC = 5 * 60 + 30;
  * créneau peut donc jouer la quotidienne du jour, une fois (cf.
  * `reserverQuotidien`). Avant 05:30 UTC, on ne devance pas l'horaire normal.
  */
+//
+// **Le créneau se compare au jour de Zurich, pas au jour UTC** (JEP-375) :
+// comparer les seules minutes UTC laissait passer 22:00-23:59 UTC, où il est
+// déjà le lendemain à Zurich — la passe du lendemain partait à 00:02, heure
+// suisse, et annonçait « demain » une fournée du jour.
 export function quotidienARattraper(maintenant: Date): string | null {
-  const minutes = maintenant.getUTCHours() * 60 + maintenant.getUTCMinutes();
-  return minutes >= MINUTE_QUOTIDIEN_UTC ? dateZurich(maintenant) : null;
+  const jour = dateZurich(maintenant);
+  const [a, m, j] = jour.split('-').map(Number);
+  const creneau = Date.UTC(a, m - 1, j, 0, MINUTE_QUOTIDIEN_UTC);
+  return maintenant.getTime() >= creneau ? jour : null;
 }

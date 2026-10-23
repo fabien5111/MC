@@ -378,7 +378,6 @@ export function emailConfirmationSouscription(p: {
     'Vous pouvez résilier à tout moment depuis Réglages → Mon forfait → « Résilier mon abonnement ». La résiliation prend effet à la fin de la période en cours.',
     '',
     'Merci de votre confiance, et bonne pâtisserie !',
-    'L’équipe « Je pâtisse ! »',
   ];
   return { sujet: `Confirmation de votre abonnement ${p.planLabel}`, texte: lignes.join('\n') };
 }
@@ -409,10 +408,22 @@ export function emailConfirmationResiliation(p: {
     'Vos recettes, votre carnet et vos fournées sont conservés : seules les fonctionnalités réservées aux formules payantes ne seront plus accessibles.',
     '',
     `Vous changez d’avis ? Vous pouvez vous réabonner à tout moment depuis ${p.urlSite}/plans.`,
-    '',
-    'L’équipe « Je pâtisse ! »',
   ];
   return { sujet: `Résiliation de votre abonnement ${p.planLabel}`, texte: lignes.join('\n') };
+}
+
+/**
+ * Texte de l'e-mail d'échec de prélèvement (JEP-277) : le message de la cloche,
+ * plus ce qu'il lui manquait — où mettre à jour son moyen de paiement (Mon
+ * forfait, et le portail client Stripe s'il est configuré) et les formules.
+ */
+export function emailEchecPaiement(p: { corps: string; urlSite: string; urlPortail: string | null }): string {
+  const liens = [
+    `Mettre à jour mon moyen de paiement (Réglages → Mon forfait) : ${p.urlSite}/reglages`,
+    ...(p.urlPortail ? [`Ou directement sur le portail de paiement sécurisé : ${p.urlPortail}`] : []),
+    `Voir les formules : ${p.urlSite}/plans`,
+  ];
+  return `${p.corps}\n\n${liens.join('\n')}`;
 }
 
 /** Texte brut → HTML minimal (paragraphes, retours à la ligne), échappé. */

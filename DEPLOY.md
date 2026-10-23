@@ -737,3 +737,35 @@ des déploiements réussis, et plus un seul ticket transitionné. Depuis
 `deploiement-app.yml` (voir « Déployer `main` automatiquement »), la chaîne ne
 dépend plus d'eux : **la phase 4 peut être close une fois ce workflow armé et
 observé sur un vrai déploiement.**
+
+## Modèles d'e-mails GoTrue (JEP-276)
+
+GoTrue (nœud **216114**) envoie lui-même trois e-mails : confirmation
+d'inscription, mot de passe oublié, changement d'adresse. Leurs modèles sont
+servis par l'application (`app/api/gotrue-modeles/*`, contenu dans
+`lib/gotrue-modeles.ts`, même gabarit que les autres e-mails) et GoTrue va les
+chercher à l'envoi. Liens en `token_hash` (jamais `?code=`) : ils fonctionnent
+quel que soit l'appareil qui ouvre le lien. `/api/*` n'est pas concerné par
+`COMING_SOON` : les URL peuvent viser `www`.
+
+**Où :** console Infomaniak → `jepatisse-bdd` → nœud **216114** (GoTrue) →
+variables d'environnement, **seulement une fois le code en production** :
+
+| Variable | Valeur |
+|---|---|
+| `GOTRUE_MAILER_TEMPLATES_CONFIRMATION` | `https://www.jepatisse.com/api/gotrue-modeles/confirmation-inscription` |
+| `GOTRUE_MAILER_TEMPLATES_RECOVERY` | `https://www.jepatisse.com/api/gotrue-modeles/mot-de-passe-oublie` |
+| `GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE` | `https://www.jepatisse.com/api/gotrue-modeles/changement-email` (ne plus viser `jepatisse-preview`) |
+| `GOTRUE_MAILER_SUBJECTS_CONFIRMATION` | `Confirmez votre adresse e-mail — Je pâtisse !` |
+| `GOTRUE_MAILER_SUBJECTS_RECOVERY` | `Réinitialisez votre mot de passe — Je pâtisse !` |
+| `GOTRUE_MAILER_SUBJECTS_EMAIL_CHANGE` | `Confirmez votre nouvelle adresse e-mail — Je pâtisse !` |
+| `GOTRUE_SMTP_SENDER_NAME` | `Je pâtisse !` (JEP-377, même nom que les e-mails de l'application) |
+
+Puis redémarrer le nœud 216114 et contrôler **le processus**, pas le panneau
+(Web SSH du nœud, une ligne) :
+`cat /proc/$(pgrep -f 'auth' | head -1)/environ | tr '\0' '\n' | grep -E 'MAILER_(TEMPLATES|SUBJECTS)|SENDER_NAME'`
+
+Avant de poser les variables, vérifier qu'une URL répond :
+`curl -s https://www.jepatisse.com/api/gotrue-modeles/confirmation-inscription | head -c 300`.
+Point à contrôler sur un vrai e-mail : si `GOTRUE_SITE_URL` se termine par `/`,
+le lien devient `…com//auth/callback` — retirer la barre finale.

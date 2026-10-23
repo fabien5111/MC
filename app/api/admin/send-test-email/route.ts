@@ -27,7 +27,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    await sendEmail({ to: email, subject: objet, text: corps });
+    // Le gabarit unique s'applique aussi au test : c'est ce qu'un membre recevra.
+    await sendEmail({ to: email, subject: objet, text: corps, pied: 'interne' });
   } catch (e) {
     if (e instanceof MissingSmtpConfigError) {
       return NextResponse.json({ erreur: e.message }, { status: 503 });

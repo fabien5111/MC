@@ -22,7 +22,7 @@
 // lecture seule avant même que le trigger ne parte. Un appelant serveur qui
 // agit pour le compte d'une session doit tester `isReadOnlySession()` lui-même.
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { sendEmailBestEffort } from '@/lib/email';
+import { sendEmailResultat } from '@/lib/email';
 import { envoyerPush } from '@/lib/push-data';
 import { composerMessagePush } from '@/lib/push';
 import { membreBloque } from '@/lib/moderation-lecture';
@@ -59,6 +59,8 @@ export type ResultatNotifier = {
   /** Notification écrite dans la cloche (ou regroupée dans une existante). */
   cloche: 'ecrite' | 'regroupee' | 'aucune';
   email: 'envoye' | 'file' | 'aucun' | 'echec';
+  /** Message de l'échec SMTP, quand `email` vaut `echec` (tracé par l'appelant, JEP-277). */
+  emailErreur?: string;
   /** Nombre d'appareils atteints par la notification push (0 si aucun ou canal coupé). */
   push?: number;
   /** Pourquoi rien n'est parti, le cas échéant. */
@@ -74,16 +76,30 @@ export type ParamsNotifier = {
   /** Unicité par membre : un second appel avec la même clé ne produit rien. */
   cleDedoublonnage?: string;
   /**
-   * E-mail déjà composé par l'appelant (abonnement, contact, Stripe) : il doit
-   * partir À L'IDENTIQUE, sans gabarit ni pied de page du moteur.
+   * E-mail déjà composé par l'appelant (abonnement, contact, Stripe) : son
+   * texte part à l'identique, dans le gabarit unique (JEP-277) — `html` n'est
+   * que le corps, sans signature ni pied.
    */
-  emailPrecompose?: { sujet: string; html: string; texte: string; replyTo?: string };
+  emailPrecompose?: { sujet: string; html?: string; texte: string; replyTo?: string };
   /**
    * La cloche seulement : l'e-mail de ce flux est déjà envoyé par l'appelant,
    * qui en suit l'état (ex. `contact_messages.deploy_email_status`, dont
    * l'idempotence repose sur une réservation en base). Le moteur ne le double pas.
    */
   sansEmail?: boolean;
+  /**
+   * L'e-mail seulement, ni cloche ni push : nouvel essai d'un e-mail dont
+   * l'envoi a échoué alors que la cloche, elle, est déjà écrite (cron
+   * d'abonnements, JEP-277). Sans lui, chaque nouvel essai doublerait la cloche.
+   */
+  sansCloche?: boolean;
+  /**
+   * Un e-mail « immédiat » rejoint la file du récapitulatif quotidien au lieu
+   * de partir seul (JEP-375) : la passe quotidienne génère ses rappels puis
+   * envoie aussitôt les récapitulatifs — le membre reçoit UN e-mail, en
+   * sections, au lieu d'un par rappel.
+   */
+  regrouperEmail?: boolean;
 };
 
 type LignePrefs = { category: Categorie; in_app: boolean; email: boolean; rhythm: string; push?: boolean | null };
@@ -227,14 +243,14 @@ async function notifierInterne(db: Db, p: ParamsNotifier): Promise<ResultatNotif
   const g = composerNotification(def, { ...donnees, nombre: donnees.nombre ?? 1 });
 
   let cloche: ResultatNotifier['cloche'] = 'aucune';
-  if (canaux.site) {
+  if (canaux.site && !p.sansCloche) {
     const r = await ecrireCloche(db, p, g.titre, g.corps, lien, groupe, donnees, def.categorie);
     cloche = r === 'erreur' ? 'aucune' : r;
   }
 
   // Push : indépendant de la cloche (on peut vouloir l'un sans l'autre), et
   // sans effet tant que le membre n'a activé aucun appareil.
-  const push = avecPush ? await envoyerPush(db, p.userId, composerMessagePush(g.titre, g.corps, lien)) : 0;
+  const push = avecPush && !p.sansCloche ? await envoyerPush(db, p.userId, composerMessagePush(g.titre, g.corps, lien)) : 0;
   const resultat = await envoyerEmail(db, p, def, canaux.email, g, lien, cloche);
   return { ...resultat, push };
 }
@@ -250,7 +266,7 @@ async function envoyerEmail(
 ): Promise<ResultatNotifier> {
   if (canalEmail === 'aucun' || p.sansEmail) return { cloche, email: 'aucun' };
 
-  if (canalEmail !== 'immediat') {
+  if (canalEmail !== 'immediat' || (p.regrouperEmail && !def.verrouille)) {
     await db.from('email_digest_queue').insert({
       user_id: p.userId,
       category: def.categorie,
@@ -258,7 +274,7 @@ async function envoyerEmail(
       title: g.titre,
       body: g.corps,
       link: lien,
-      rhythm: RYTHME_VERS_BASE[canalEmail],
+      rhythm: RYTHME_VERS_BASE[canalEmail === 'immediat' ? 'quotidien' : canalEmail],
     });
     return { cloche, email: 'file' };
   }
@@ -283,24 +299,21 @@ async function envoyerEmail(
 
   const url = siteUrl();
   const prenom = (profil.full_name as string | null)?.split(' ')[0] ?? null;
-  const envoye = p.emailPrecompose
-    ? await sendEmailBestEffort({
-        to: profil.email as string,
-        subject: p.emailPrecompose.sujet,
-        html: p.emailPrecompose.html,
-        text: p.emailPrecompose.texte,
-        replyTo: p.emailPrecompose.replyTo,
-      })
-    : await (async () => {
-        const mail = composerEmailNotification({ prenom, titre: g.titre, corps: g.corps, urlSite: url, lien });
-        return sendEmailBestEffort({
-          to: profil.email as string,
-          subject: mail.sujet,
-          html: mail.html,
-          text: mail.texte,
-          // Un e-mail verrouillé ne se désinscrit pas : pas d'en-tête trompeur.
-          headers: def.verrouille ? undefined : enTetesDesinscription(`${url}${CHEMIN_PREFERENCES}`),
-        });
-      })();
-  return { cloche, email: envoye ? 'envoye' : 'echec' };
+  // Un e-mail verrouillé ne se désactive pas : pied « obligatoire », et pas
+  // d'en-tête de désinscription trompeur.
+  const pied = def.verrouille ? 'obligatoire' : 'preferences';
+  const headers = def.verrouille ? undefined : enTetesDesinscription(`${url}${CHEMIN_PREFERENCES}`);
+  const mail = p.emailPrecompose
+    ? { sujet: p.emailPrecompose.sujet, html: p.emailPrecompose.html, texte: p.emailPrecompose.texte }
+    : composerEmailNotification({ prenom, titre: g.titre, corps: g.corps, urlSite: url, lien });
+  const r = await sendEmailResultat({
+    to: profil.email as string,
+    subject: mail.sujet,
+    html: mail.html,
+    text: mail.texte,
+    pied,
+    replyTo: p.emailPrecompose?.replyTo,
+    headers,
+  });
+  return r.ok ? { cloche, email: 'envoye' } : { cloche, email: 'echec', emailErreur: r.erreur };
 }

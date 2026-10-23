@@ -199,5 +199,5 @@ async function notifierAdminNouvelleReponse(reference: string, subject: string, 
     body,
     adminUrl: `${siteUrl()}/admin/contact/${reference}`,
   });
-  await sendEmailBestEffort({ to: destinataire, subject: emailSubject, html, text });
+  await sendEmailBestEffort({ to: destinataire, subject: emailSubject, html, text, pied: 'interne' });
 }

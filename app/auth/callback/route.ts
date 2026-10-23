@@ -26,6 +26,7 @@ import { aChoisiSonPseudo, enregistrerPseudo, pseudoDisponible } from '@/lib/pse
 import { validerPseudo } from '@/lib/pseudo';
 import { syncProfileEmail } from '@/lib/auth';
 import { avecMarqueInscription, methodeInscription } from '@/lib/inscription';
+import { nextDepuisSuite } from '@/lib/gotrue-modeles';
 
 function safeNext(next: string | null): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
@@ -85,7 +86,9 @@ export async function GET(request: Request) {
   const code = searchParams.get('code');
   const tokenHash = searchParams.get('token_hash');
   const type = commeTypeOtp(searchParams.get('type'));
-  const next = safeNext(searchParams.get('next'));
+  // Confirmation d'inscription (modèle GoTrue, JEP-276) : le `next` du
+  // formulaire voyage dans `suite` (le `RedirectTo` de GoTrue).
+  const next = safeNext(searchParams.get('next') ?? nextDepuisSuite(searchParams.get('suite')));
 
   // Connexion Google d'un compte banni (JEP-272) : GoTrue revient ici sans
   // code, avec `error_code=user_banned` — un message dédié plutôt que

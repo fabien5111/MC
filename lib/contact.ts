@@ -9,6 +9,7 @@
 //
 // Décisions de conception et écarts assumés vis-à-vis de la spécification :
 // `docs/contact-jira.md`.
+import { texteVersParagraphes } from '@/lib/email-gabarit';
 import { formatDateHeure } from '@/lib/format';
 import { USAGES, estDataUrlImage, estUrlDuConteneur } from '@/lib/storage';
 
@@ -809,19 +810,20 @@ export function composeEmailDeploiement(ctx: ContexteEmailDeploiement): EmailDep
     `Si le problème persiste, nous rouvrirons le sujet. ${consigne}`,
     '',
     'Merci de nous avoir aidés à améliorer Je pâtisse !',
-    '',
-    'L’équipe Je pâtisse !',
   ].join('\n');
 
   const echappe = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const html = `
-    <p>${salutation}</p>
-    <p>La correction du problème que vous nous aviez signalé est maintenant en ligne :</p>
-    <p>« ${echappe(ctx.subject)} »</p>
-    <p>Vous pouvez retourner sur le site pour en profiter. Pensez à rafraîchir la page si vous aviez le site déjà ouvert.</p>
-    <p>Si le problème persiste, nous rouvrirons le sujet. ${echappe(consigne)}</p>
-    <p>Merci de nous avoir aidés à améliorer Je pâtisse !</p>
-    <p>L’équipe Je pâtisse !</p>`;
+  // Signature, en-tête et pied : gabarit unique des e-mails (JEP-277).
+  const html = [
+    salutation,
+    'La correction du problème que vous nous aviez signalé est maintenant en ligne :',
+    `« ${echappe(ctx.subject)} »`,
+    'Vous pouvez retourner sur le site pour en profiter. Pensez à rafraîchir la page si vous aviez le site déjà ouvert.',
+    `Si le problème persiste, nous rouvrirons le sujet. ${echappe(consigne)}`,
+    'Merci de nous avoir aidés à améliorer Je pâtisse !',
+  ]
+    .map((l) => `<p style="margin:0 0 14px;">${l}</p>`)
+    .join('');
 
   return { subject, html, text };
 }
@@ -896,11 +898,8 @@ export function composeNotificationAdmin(ctx: ContexteNotificationAdmin): Notifi
   lignes.push('', `→ Ouvrir dans l'administration : ${ctx.adminUrl}`);
 
   const text = lignes.join('\n');
-  const html = `<pre style="font:14px/1.5 -apple-system,sans-serif;white-space:pre-wrap;">${lignes
-    .map((l) =>
-      l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
-    )
-    .join('\n')}</pre>`;
+  // Plus de `<pre>` : mise en page du gabarit unique (JEP-277).
+  const html = texteVersParagraphes(text);
 
   return { subject, html, text };
 }
@@ -980,8 +979,6 @@ export function composeReponseAdmin(ctx: ContexteReponseAdmin): ReponseAdminComp
     '',
     `Votre message initial du ${date} :`,
     `> ${citation}`,
-    '',
-    'L’équipe Je pâtisse !',
   ].join('\n');
 
   const echappe = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -992,8 +989,7 @@ export function composeReponseAdmin(ctx: ContexteReponseAdmin): ReponseAdminComp
     <hr>
     <p>${echappe(consigneReponse(ctx))}</p>
     <p>Votre message initial du ${date} :<br>
-    <em>${echappe(citation).replace(/\n/g, '<br>')}</em></p>
-    <p>L’équipe Je pâtisse !</p>`;
+    <em>${echappe(citation).replace(/\n/g, '<br>')}</em></p>`;
 
   return { subject, html, text };
 }
@@ -1051,9 +1047,7 @@ export function composeNotificationReponseMembre(ctx: ContexteNotificationRepons
     `→ Ouvrir dans l'administration : ${ctx.adminUrl}`,
   ];
   const text = lignes.join('\n');
-  const html = `<pre style="font:14px/1.5 -apple-system,sans-serif;white-space:pre-wrap;">${lignes
-    .map((l) => l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
-    .join('\n')}</pre>`;
+  const html = texteVersParagraphes(text);
   return { subject, html, text };
 }
 

@@ -494,10 +494,18 @@ export const EVENEMENTS = {
     rubrique: 'fournees.veille',
     lien: (d) => `/fournee/${d.batchId}`,
     priorite: 2,
-    gabarit: (d) => ({
-      titre: 'C’est demain !',
-      corps: `Votre fournée « ${t(d.titre, 'votre fournée')} » est prévue demain.`,
-    }),
+    // `dejaCommencee` (JEP-375) : une étape est déjà tombée, demain n'est pas
+    // le début de la fournée mais son jour J. Absent (ancienne ligne) : jour J.
+    gabarit: (d) =>
+      d.dejaCommencee === false
+        ? {
+            titre: 'C’est demain !',
+            corps: `Votre fournée « ${t(d.titre, 'votre fournée')} » commence demain.`,
+          }
+        : {
+            titre: 'Jour J demain',
+            corps: `Votre fournée « ${t(d.titre, 'votre fournée')} » arrive demain à son jour J : c’est le jour prévu pour la terminer.`,
+          },
   },
   invitation_avis: {
     categorie: 'fournees',

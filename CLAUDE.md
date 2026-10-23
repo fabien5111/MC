@@ -2265,6 +2265,57 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
     priorité normale (le défaut d'`envoyerPush`) : une priorité haute coûte de
     la batterie et n'a de sens que pour un geste fait les yeux sur l'écran.
 
+## E-mails : gabarit unique, expéditeur, signature (JEP-277, 377, 378, 375, 276)
+
+- **Un seul gabarit** (`habillerEmail`, `lib/email-gabarit.ts`, pur) : en-tête
+  de marque, corps, signature « L'équipe de Je pâtisse ! », photo de signature,
+  pied. Appliqué par `sendEmail` (`lib/email.ts`) à **tout** envoi : un
+  composeur ne produit que le CORPS (`html` facultatif, sinon le texte est mis
+  en paragraphes) et **ne signe jamais lui-même** (la signature serait doublée ;
+  `sansSignature` rattrape les anciennes formes). `pied` est obligatoire à
+  chaque envoi : `preferences` (facultatif, lien vers `/reglages#notifications`),
+  `obligatoire` (légal, sécurité, support — `notifier` le déduit de
+  `verrouille`), `interne` (adressé à l'équipe).
+- **Expéditeur affiché « Je pâtisse ! »** (`expediteur`, `EMAIL_SENDER_NAME`
+  pour le changer) : Gmail affichait la partie locale de l'adresse, « noreply ».
+  Les e-mails de GoTrue ont leur propre nom (`GOTRUE_SMTP_SENDER_NAME`, nœud 216114).
+- **Photo de signature** : Admin → Photos du site → « Signature des e-mails »
+  (`EmailSignaturePhotoManager`), **1600 × 320 px** imposés (recadrage 5:1 à
+  l'ouverture, une image d'un autre format n'est pas enregistrée), JPEG
+  (Outlook n'affiche pas le WebP), `site_settings.email_signature_photo`. Lue
+  par `photoSignatureEmail` avec un cache de 5 minutes par processus. Absente :
+  rien d'affiché.
+- **Passe quotidienne = un seul e-mail par membre** (JEP-375) : les rappels
+  (étapes du jour, veille, invitation à l'avis, mise en avant) passent par
+  `notifier` avec `regrouperEmail` — leur e-mail rejoint la file du
+  récapitulatif quotidien, envoyée juste après par la même passe. Le
+  récapitulatif est découpé **en sections par rubrique** (`sectionsRecap`),
+  rappels de fournée en tête. Cloche et téléphone restent un par rappel. Les
+  e-mails immédiats (hors passe quotidienne) ne sont pas regroupés (arbitrage
+  du 23/10/2026).
+- **La passe quotidienne attend 05:30 UTC DU JOUR DE ZURICH**
+  (`quotidienARattraper`) : comparer les seules minutes UTC la faisait partir à
+  00:02 heure suisse (22:02 UTC, déjà le lendemain à Zurich), avec un rappel
+  « demain » faux d'un jour. Le rappel de la veille dit « commence demain »
+  seulement si aucune étape n'est encore tombée (`fourneeDejaCommencee`),
+  sinon « Jour J demain ».
+- **Échec d'un e-mail d'abonnement tracé et retenté** (cron d'abonnements) :
+  `notifications_sent.email_status` (`sent` / `failed` / `skipped` / `pending`),
+  `email_error`, `email_attempts`. Un `failed` est repris au passage suivant
+  (3 essais au plus), **e-mail seul** (`notifier` avec `sansCloche`) : la cloche
+  n'est jamais doublée. Colonnes posées par `psql` (nœud 216075) ; absentes,
+  l'ancien comportement reste (échec perdu), rien ne casse.
+- **Échec de prélèvement** : l'e-mail porte les liens vers Mon forfait, le
+  portail Stripe (si `NEXT_PUBLIC_STRIPE_PORTAIL_CONNEXION_URL`) et `/plans`
+  (`emailEchecPaiement`, `lib/billing.ts`).
+- **Modèles GoTrue en français** (JEP-276) : confirmation d'inscription, mot de
+  passe oublié, changement d'adresse, servis par `app/api/gotrue-modeles/*`
+  (`lib/gotrue-modeles.ts`), même gabarit, liens en `token_hash`. L'inscription
+  transmet `{{ .RedirectTo }}` en `suite`, dont `/auth/callback` extrait le
+  `next` (`nextDepuisSuite`) — sans quoi un lien de partage de carnet (JEP-21)
+  serait perdu à la confirmation. Variables du nœud 216114 : `DEPLOY.md`
+  § « Modèles d'e-mails GoTrue ».
+
 ## Contact et suivi Jira
 
 Formulaire de contact public (`/contact`), notification de l'administrateur,
@@ -2824,6 +2875,7 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `MAINTENANCE_FREEZE` | `true` bloque **tout** le site par un 503, les deux domaines compris — fenêtre de bascule uniquement, à retirer après. Contrairement à `COMING_SOON`, n'exempte pas `dev.jepatisse.com` ; ne couvre ni `/api/*` ni les écritures directes du navigateur vers Supabase (cf. en-tête de `middleware.ts`) | Serveur uniquement |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` | Client SMTP unique (`lib/email.ts`) — Brevo depuis la migration Infomaniak | Serveur uniquement |
 | `EMAIL_SENDER` | Adresse d'expédition des e-mails applicatifs (`noreply@jepatisse.com`) | Serveur uniquement |
+| `EMAIL_SENDER_NAME` | Nom affiché de l'expéditeur (optionnel, défaut « Je pâtisse ! », JEP-377) | Serveur uniquement |
 | `CONTACT_NOTIFICATION_TO` | Destinataire de la notification à chaque nouvelle demande de contact | Serveur uniquement |
 | `EMAIL_REPLY_TO` | Adresse « répondre à » des e-mails transactionnels du module contact | Serveur uniquement |
 | `CONTACT_FORM_SECRET` | Signe le jeton anti-robot du formulaire de contact (délai minimum) — absent : dégradé, jamais bloquant | Serveur uniquement |
