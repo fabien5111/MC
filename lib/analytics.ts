@@ -33,7 +33,7 @@ export type EvenementsAudience = {
   /** Compte dont l'inscription vient de se terminer (cf. lib/inscription.ts). */
   sign_up: { method: 'email' | 'google' };
   /** Clic sur un réseau social de Je pâtisse ! (JEP-15) : le réseau et l'emplacement. */
-  social_click: { network: string; placement: 'header' | 'mobile_strip' };
+  social_click: { network: string; placement: 'header' | 'mobile_strip' | 'footer' };
 };
 
 export type NomEvenementAudience = keyof EvenementsAudience;

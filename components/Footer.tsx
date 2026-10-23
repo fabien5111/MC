@@ -2,8 +2,13 @@
 import Link from 'next/link';
 import { ShareSiteButton } from '@/components/share/ShareSiteButton';
 import { GererCookiesButton } from '@/components/CookieConsent';
+import { SocialRondsFooter } from '@/components/SocialLinks';
+import { getSocialLinks } from '@/lib/data/reference';
 
-export function Footer() {
+export async function Footer() {
+  // Réseaux sociaux (JEP-15) : même lecture en cache que l'en-tête de la page,
+  // donc aucune requête de plus. Liste vide : le bloc n'est pas rendu.
+  const liensSociaux = await getSocialLinks();
   return (
     <footer className="bg-surface-container-high w-full py-16 px-margin-mobile md:px-margin-desktop mt-20 border-t border-outline-variant/30">
       <div className="max-w-[1200px] mx-auto">
@@ -16,6 +21,7 @@ export function Footer() {
               L&apos;excellence de la pâtisserie française partagée avec passion. Rejoignez notre
               communauté de gourmets et apprenez les techniques des chefs.
             </p>
+            {liensSociaux.length > 0 && <SocialRondsFooter liens={liensSociaux} />}
           </div>
           <div className="grid grid-cols-2 gap-x-16 gap-y-10">
             <div className="flex flex-col gap-4">

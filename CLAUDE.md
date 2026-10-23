@@ -2367,6 +2367,11 @@ Raccourcis vers Instagram, TikTok, YouTube, Pinterest et Facebook, gérés depui
 - **Validation** (`erreurUrlReseau`) : `https://` obligatoire, nom d'hôte égal au
   domaine ou sous-domaine (jamais une sous-chaîne : `instagram.com.evil.fr`
   refusé). Espaces de bord retirés à l'enregistrement.
+- **Pied de page** (`SocialRondsFooter`, `components/Footer.tsx`) : bloc
+  « Suivre Je pâtisse ! » sous le texte de présentation, mêmes ronds (36 px) sur
+  tous les écrans. `Footer` est un composant serveur asynchrone : il relit
+  `getSocialLinks`, déjà en cache et déjà lu par l'en-tête de la page — aucune
+  requête de plus. Ne jamais l'importer depuis un Client Component.
 - **Deux présentations, une liste** (`components/SocialLinks.tsx`) : ronds entre
   la cloche et l'avatar dès 768 px (30 px bureau / 28 px tablette), bande
   « Suivre » bordeaux sous 768 px. La bande se replie en **remontant l'en-tête**
@@ -2376,7 +2381,7 @@ Raccourcis vers Instagram, TikTok, YouTube, Pinterest et Facebook, gérés depui
   transition.
 - **Glyphes** : tracés de simple-icons (CC0) recopiés dans `lib/social-icons.ts`,
   pas de dépendance. Monochromes (`currentColor`), jamais les couleurs des marques.
-- **Mesure** : `social_click` (`network`, `placement` : `header` | `mobile_strip`).
+- **Mesure** : `social_click` (`network`, `placement` : `header` | `mobile_strip` | `footer`).
 
 ## Partage du carnet par lien (JEP-21)
 

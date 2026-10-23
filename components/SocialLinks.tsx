@@ -7,7 +7,8 @@
 //  - `SocialRondsHeader` — bureau et tablette (≥ 768 px) : ronds entre la
 //    cloche et l'avatar (maquette 5a / 7a) ;
 //  - `SocialBandeMobile` — mobile (< 768 px) : bande bordeaux au-dessus de
-//    l'en-tête (7c), repliée au défilement vers le bas.
+//    l'en-tête (7c), repliée au défilement vers le bas ;
+//  - `SocialRondsFooter` — pied de page, sur tous les écrans.
 // Le parent ne les rend QUE si la liste n'est pas vide : ni groupe, ni filet,
 // ni bande sans lien (`liensAffichables`).
 //
@@ -68,6 +69,31 @@ export function SocialRondsHeader({ liens }: { liens: Lien[] }) {
               <span className="hidden lg:flex">
                 <Glyphe reseau={l.network} taille={13} />
               </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/** Bloc « Suivre Je pâtisse ! » du pied de page : mêmes ronds, sur tous les écrans. */
+export function SocialRondsFooter({ liens }: { liens: Lien[] }) {
+  return (
+    <nav aria-label="Réseaux sociaux de Je pâtisse !" className="flex flex-col gap-3">
+      <span className="font-label-md text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+        Suivre Je pâtisse !
+      </span>
+      <ul className="flex items-center gap-2.5">
+        {liens.map((l) => (
+          <li key={l.network}>
+            <a
+              {...attrsLien(l)}
+              title={NOM_RESEAU[l.network]}
+              onClick={() => trackEvent('social_click', { network: l.network, placement: 'footer' })}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#d6c2c3] bg-transparent text-[#300a12] transition-colors duration-150 hover:border-[#300a12] hover:bg-[#300a12] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#300a12]"
+            >
+              <Glyphe reseau={l.network} taille={15} />
             </a>
           </li>
         ))}
