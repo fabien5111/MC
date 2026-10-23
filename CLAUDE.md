@@ -633,8 +633,21 @@ migration. Logique pure : `lib/email-confirmation.ts`.
 - **Migration préalable** : si la colonne `member_moderation_events.action` porte
   une contrainte CHECK, elle doit accepter `confirmation_email` (DDL par `psql`,
   nœud 216075). Sans elle, la route refuse le geste avec ce message.
-- Reste hors de ce lot : relance du mail (lot 2, dépend du SMTP de GoTrue) et
-  purge automatique (lot 4, rapport seul d'abord, seuil 30 jours).
+- **Relancer le mail** (lot 2) : `POST /api/admin/membres/[id]/relancer-confirmation`
+  (mêmes gardes que le forçage), bouton « Renvoyer le mail de confirmation » à côté
+  de « Confirmer manuellement ». C'est **GoTrue** qui envoie (`auth.resend`, type
+  `signup`), avec **sa propre configuration SMTP** (nœud 216114), distincte de
+  `SMTP_*` / Brevo : un succès dit que GoTrue a accepté la demande, **pas que le
+  mail est arrivé** — l'écran le dit. Le lien du mail ramène sur le domaine d'où
+  l'admin agit (en-tête `Origin`, à défaut `siteUrl()`), qui doit figurer dans
+  `GOTRUE_URI_ALLOW_LIST`. **Une relance par membre et par 5 minutes**, comptée
+  dans le journal (`member_moderation_events`, action `relance_confirmation`, lue
+  par `relanceAutorisee`) : ligne écrite AVANT l'envoi (un second clic la trouve),
+  retirée si GoTrue refuse (une demande échouée ne coûte pas le délai) ; journal
+  illisible = relance refusée. GoTrue a aussi sa propre limite (~1 min par adresse).
+  **Migration préalable** : la contrainte CHECK de `action` doit accepter
+  `relance_confirmation` (comme `confirmation_email`).
+- Reste hors de ce lot : purge automatique (lot 4, rapport seul d'abord, seuil 30 jours).
 
 ### Connexion « en tant que » (impersonation)
 

@@ -79,6 +79,7 @@ export function MemberDetail({
   const [newEmail, setNewEmail] = useState('');
   const [changingEmail, setChangingEmail] = useState(false);
   const [confirmingEmail, setConfirmingEmail] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
 
   const initials = member.fullName
     ? member.fullName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
@@ -152,6 +153,32 @@ export function MemberDetail({
     }
   }
 
+  // JEP-262, lot 2 : renvoi du mail de confirmation par GoTrue. Un succès dit
+  // que GoTrue a accepté la demande — pas que le message est arrivé (SMTP propre
+  // à GoTrue), d'où la formulation du retour. Pas de confirmation préalable :
+  // le geste est sans danger, et la route tient le délai de 5 minutes.
+  async function relancerConfirmation() {
+    if (!member.profileId) return;
+    setResendingEmail(true);
+    try {
+      const res = await fetch(`/api/admin/membres/${member.profileId}/relancer-confirmation`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        dialog.alert(data?.erreur || 'Relance impossible');
+        return;
+      }
+      dialog.alert(
+        `Demande d'envoi transmise pour ${data?.email || member.email}.\n\n` +
+          "Si le mail n'arrive pas (spams compris), la configuration d'envoi du serveur d'authentification est à vérifier.",
+      );
+      router.refresh();
+    } catch (e) {
+      dialog.alert('Erreur réseau : ' + ((e as Error).message || 'relance impossible'));
+    } finally {
+      setResendingEmail(false);
+    }
+  }
+
   // JEP-262, lot 3 : contournement de sécurité, d'où la confirmation explicite
   // et la trace au journal de modération (écrite par la route, avant le geste).
   async function confirmerEmailManuellement() {
@@ -206,7 +233,7 @@ export function MemberDetail({
 
   return (
     <main className="flex-1 p-margin-mobile md:p-margin-desktop max-w-[900px] w-full space-y-6">
-      <LoadingOverlay visible={impBusy || deleting || changingEmail || confirmingEmail} />
+      <LoadingOverlay visible={impBusy || deleting || changingEmail || confirmingEmail || resendingEmail} />
 
       {/* En-tête : identité + lien vers la vitrine publique */}
       <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 flex items-center gap-4">
@@ -263,14 +290,24 @@ export function MemberDetail({
               Le compte existe, mais le membre n&apos;a pas encore confirmé son adresse. Son statut « {member.status === 'active' ? 'Actif' : member.status} » n&apos;en dit rien.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={confirmerEmailManuellement}
-            disabled={confirmingEmail}
-            className="shrink-0 rounded-pill border border-amber-700 px-4 py-2 text-[12.5px] font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
-          >
-            Confirmer manuellement
-          </button>
+          <div className="shrink-0 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={relancerConfirmation}
+              disabled={resendingEmail || confirmingEmail}
+              className="rounded-pill border border-amber-700 px-4 py-2 text-[12.5px] font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+            >
+              Renvoyer le mail de confirmation
+            </button>
+            <button
+              type="button"
+              onClick={confirmerEmailManuellement}
+              disabled={confirmingEmail || resendingEmail}
+              className="rounded-pill border border-amber-700 px-4 py-2 text-[12.5px] font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+            >
+              Confirmer manuellement
+            </button>
+          </div>
         </div>
       )}
 
