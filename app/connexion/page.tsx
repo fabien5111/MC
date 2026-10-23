@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { LoginForm } from '@/components/LoginForm';
 import { AuthShell } from '@/components/AuthShell';
+import { ImpersonationEnCours } from '@/components/ImpersonationEnCours';
+import { getImpersonationContext } from '@/lib/impersonation';
 import { urlConnexionPortail } from '@/lib/moderation';
 
 // Destination de retour après connexion (paramètre ?next=), bornée aux
@@ -48,6 +50,18 @@ export default async function ConnexionPage({
                 </>
               )
             : null;
+
+  // Session « en tant que » encore ouverte (onglet fermé sans « Quitter ») :
+  // on ne renvoie pas vers le site sous l'identité du membre, on propose de la
+  // terminer pour se connecter vraiment (JEP-27).
+  const impersonation = await getImpersonationContext();
+  if (impersonation) {
+    return (
+      <AuthShell>
+        <ImpersonationEnCours targetName={impersonation.targetName} />
+      </AuthShell>
+    );
+  }
 
   // Déjà connecté : inutile de rester sur la page de connexion.
   if (await getCurrentUser()) redirect(dest);

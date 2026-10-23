@@ -10,6 +10,19 @@ import { createAdminClient, MissingServiceKeyError } from '@/lib/supabase/admin'
 import { IMPERSONATION_COOKIE, modeLabel } from '@/lib/impersonation-types';
 import { redirigerVers } from '@/lib/redirection';
 
+// Claim `session_id` d'un jeton d'accès Supabase, sans vérification de
+// signature : le jeton vient d'être rendu par `verifyOtp`, côté serveur.
+function sessionIdDuJeton(accessToken: string | null | undefined): string | null {
+  const partie = accessToken?.split('.')[1];
+  if (!partie) return null;
+  try {
+    const claims = JSON.parse(Buffer.from(partie, 'base64url').toString('utf8')) as { session_id?: unknown };
+    return typeof claims.session_id === 'string' ? claims.session_id : null;
+  } catch {
+    return null;
+  }
+}
+
 function fail(motif: string) {
   return redirigerVers(`/connexion?error=${motif}`);
 }
@@ -71,6 +84,16 @@ export async function GET(request: Request) {
     .is('ended_at', null);
 
   await admin.from('impersonation_sessions').update({ started_at: now, ended_at: null }).eq('id', session.id);
+
+  // Rattache la ligne à LA connexion que ce lien vient d'ouvrir (JEP-27) :
+  // une vraie connexion du membre, pendant que cette session court encore,
+  // aura un autre `session_id` et ne sera ni bridée ni bandée. Écriture à part,
+  // échec ignoré : colonne absente (migration pas jouée), la session
+  // fonctionne comme avant, rattachée au seul membre.
+  const authSessionId = sessionIdDuJeton(verified.session?.access_token);
+  if (authSessionId) {
+    await admin.from('impersonation_sessions').update({ auth_session_id: authSessionId }).eq('id', session.id);
+  }
 
   await admin.from('impersonation_events').insert({
     session_id: session.id,
