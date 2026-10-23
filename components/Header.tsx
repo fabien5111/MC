@@ -20,6 +20,8 @@ import { AccountMenuButton } from '@/components/account/AccountMenuButton';
 import { NotificationBell } from '@/components/NotificationBell';
 import { countUnreadNotifications, getRecentNotifications } from '@/lib/notifications-data';
 import { getHomeCategories } from '@/lib/taxonomy';
+import { getSocialLinks } from '@/lib/data/reference';
+import { SocialBandeMobile, SocialRondsHeader } from '@/components/SocialLinks';
 import { DESTINATIONS, type NavKey } from '@/lib/nav';
 
 export async function Header({ current, className }: { current?: NavKey; className?: string }) {
@@ -29,7 +31,11 @@ export async function Header({ current, className }: { current?: NavKey; classNa
   //
   // Les catégories ne dépendent pas de la session : elles partent avec la
   // recherche de l'utilisateur, pas après.
-  const [user, homeCategories] = await Promise.all([getCurrentUser(), getHomeCategories()]);
+  const [user, homeCategories, liensSociaux] = await Promise.all([
+    getCurrentUser(),
+    getHomeCategories(),
+    getSocialLinks(),
+  ]);
 
   // Seconde vague : tout ce qui a besoin de `user.id`. `isManager` dérive du
   // profil depuis le chantier 3 et `getProfile` est mémoïsé par requête — les
@@ -61,8 +67,11 @@ export async function Header({ current, className }: { current?: NavKey; classNa
     // bottom-0`), qui reste l'unique navigation persistante en bas d'écran —
     // celui-ci ne fait que garder le logo/la recherche visibles en haut.
     <header
-      className={`bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50${className ? ` ${className}` : ''}`}
+      className={`bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 sticky top-0 z-50${liensSociaux.length ? ' has-social-strip' : ''}${className ? ` ${className}` : ''}`}
     >
+      {/* Bande « Suivre » (mobile, JEP-15) : au-dessus de l'en-tête, dans la zone
+          collante. Rien du tout quand aucun lien n'est affichable. */}
+      {liensSociaux.length > 0 && <SocialBandeMobile liens={liensSociaux} />}
       <div className="max-w-[1200px] mx-auto flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4">
         <div className="flex items-center gap-6 xl:gap-10 min-w-0">
           <Link className="maryse-logo-font text-4xl text-primary leading-none whitespace-nowrap shrink-0" href="/">
@@ -110,6 +119,8 @@ export async function Header({ current, className }: { current?: NavKey; classNa
             </ShareSiteButton>
           </span>
           {user && <NotificationBell userId={user.id} notifications={notifications} nonLuesTotal={nonLuesTotal} />}
+          {/* Réseaux sociaux (JEP-15) : entre la cloche et l'avatar, dès 768 px. */}
+          {liensSociaux.length > 0 && <SocialRondsHeader liens={liensSociaux} />}
           {user ? (
             <AccountMenuButton
               className="hidden lg:block"

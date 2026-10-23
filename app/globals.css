@@ -1193,3 +1193,21 @@ body[data-impersonation] {
     print-color-adjust: exact;
   }
 }
+
+/* Bande « Suivre » mobile (JEP-15). L'en-tête est `sticky top-0` ; pour replier
+   la bande (32 px + zone de sécurité) sans laisser de vide, l'en-tête remonte de
+   cette hauteur : la bande sort de l'écran, le reste de l'en-tête reste collé.
+   L'attribut `data-bande` de <html> est posé par `SocialBandeMobile`. */
+@media (max-width: 767px) {
+  header.has-social-strip {
+    transition: top 200ms ease;
+  }
+  html[data-bande='repliee'] header.has-social-strip {
+    top: calc(-1 * (32px + env(safe-area-inset-top)));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  header.has-social-strip {
+    transition: none;
+  }
+}

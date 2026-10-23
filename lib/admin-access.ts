@@ -41,5 +41,6 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin/partenaires', label: 'Publicités', icon: 'campaign' },
   { href: '/admin/recette-a-la-une', label: 'Recette à la une', icon: 'star' },
   { href: '/admin/recettes', label: 'Recettes', icon: 'menu_book', manager: true },
+  { href: '/admin/reseaux', label: 'Réseaux sociaux', icon: 'share' },
   { href: '/admin/test-email', label: 'Test e-mail', icon: 'forward_to_inbox' },
 ];
