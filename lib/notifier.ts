@@ -249,8 +249,14 @@ async function notifierInterne(db: Db, p: ParamsNotifier): Promise<ResultatNotif
   }
 
   // Push : indépendant de la cloche (on peut vouloir l'un sans l'autre), et
-  // sans effet tant que le membre n'a activé aucun appareil.
-  const push = avecPush && !p.sansCloche ? await envoyerPush(db, p.userId, composerMessagePush(g.titre, g.corps, lien)) : 0;
+  // sans effet tant que le membre n'a activé aucun appareil. Priorité haute :
+  // en priorité normale, un Android en veille retenait la notification — l'essai
+  // arrivait, les vrais événements non (relevé du 24/10/2026). Le volume (quelques
+  // push par jour au plus, le récapitulatif n'en émet aucun) rend le coût en
+  // batterie négligeable.
+  const push = avecPush && !p.sansCloche
+    ? await envoyerPush(db, p.userId, composerMessagePush(g.titre, g.corps, lien), { urgence: 'high' })
+    : 0;
   const resultat = await envoyerEmail(db, p, def, canaux.email, g, lien, cloche);
   return { ...resultat, push };
 }

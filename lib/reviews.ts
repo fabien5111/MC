@@ -12,6 +12,8 @@ export const REVIEW_RATING_MIN = 1;
 export const REVIEW_RATING_MAX = 5;
 export const REVIEW_COMMENT_MAX = 1000;
 
+import { estDataUrlImage, estUrlDuConteneur } from '@/lib/storage';
+
 // Photos jointes à l'avis (format paysage, compressées comme la photo
 // principale d'une recette — cf. `resizeImageToDataUrl` via `ImageSlot`).
 // Chacune porte son propre flag IA, même principe qu'une ligne
@@ -75,7 +77,20 @@ export function validateReview(rating: number, comment: string, photos: ReviewPh
   if (photos.length > REVIEW_PHOTOS_MAX) {
     return { ok: false, message: `${REVIEW_PHOTOS_MAX} photos maximum.` };
   }
-  if (photos.some((p) => !p || typeof p.url !== 'string' || !p.url.startsWith('data:image/') || typeof p.ai_retouched !== 'boolean')) {
+  // Une photo est soit un dépôt frais (data-URL, validé côté navigateur avant
+  // le téléversement), soit déjà sur Swift (`jp-photos/avis/`) : le navigateur
+  // dépose AVANT d'appeler la route, qui ne reçoit donc que des URL de
+  // stockage. Jamais une URL externe quelconque (pixel de suivi chargé dans la
+  // page de modération).
+  if (
+    photos.some(
+      (p) =>
+        !p ||
+        typeof p.url !== 'string' ||
+        !(estDataUrlImage(p.url) || estUrlDuConteneur('photos', 'avis', p.url)) ||
+        typeof p.ai_retouched !== 'boolean',
+    )
+  ) {
     return { ok: false, message: 'Photo invalide.' };
   }
   return { ok: true };
