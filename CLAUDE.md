@@ -2203,7 +2203,9 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
   - Un tour lent n'empile pas les suivants, un échec n'arrête pas la boucle (même
     message d'erreur journalisé une seule fois). Absente de `next build`.
   - **Elle joue aussi la passe quotidienne** (rappels de fournée,
-    récapitulatifs), dès 05:30 UTC et une fois par jour de Zurich
+    récapitulatifs), dès 05:30 UTC et une fois par jour de Zurich, **jamais entre 22 h / 23 h et
+    minuit UTC** (Zurich y est déjà au lendemain : la passe partait à 0 h 02
+    heure suisse jusqu'au 24/10/2026, `quotidienARattraper`)
     (`rattraperQuotidienne`, `lib/notification-quotidien-data.ts`, code partagé
     avec la route cron). Le jour est réservé en base (`reserverQuotidien`) :
     aucun doublon avec la tâche GitHub, qui reste le filet de sécurité. Mémoire
@@ -2259,11 +2261,13 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
     compris sur un navigateur qui n'est pas abonné (« Envoyer un essai à mes
     appareils ») : c'est ainsi qu'on teste un téléphone depuis un autre écran —
     il n'existait auparavant que sur un navigateur déjà activé, ce qui rendait
-    impossible un essai « téléphone fermé » depuis l'ordinateur. **L'essai part
-    en priorité haute** (`urgence: 'high'`, en-tête `Urgency`) pour traverser
-    l'économie d'énergie du téléphone ; les vraies notifications restent en
-    priorité normale (le défaut d'`envoyerPush`) : une priorité haute coûte de
-    la batterie et n'a de sens que pour un geste fait les yeux sur l'écran.
+    impossible un essai « téléphone fermé » depuis l'ordinateur. **L'essai et les
+    vraies notifications partent en priorité haute** (`urgence: 'high'`, en-tête
+    `Urgency`, passée par `notifier()`) pour traverser l'économie d'énergie du
+    téléphone. Jusqu'au 24/10/2026, seules les notifications d'essai l'avaient :
+    l'essai arrivait, les favoris et rappels restaient bloqués sur un Android en
+    veille. Le coût en batterie est négligeable à quelques push par jour ;
+    `normal` reste le défaut d'`envoyerPush`, pour un éventuel envoi de masse.
 
 ## Contact et suivi Jira
 
