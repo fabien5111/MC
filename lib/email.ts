@@ -33,7 +33,7 @@
 import nodemailer from 'nodemailer';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { siteUrl } from '@/lib/site-url';
-import { CLE_PHOTO_SIGNATURE, habillerEmail, type PiedEmail } from '@/lib/email-gabarit';
+import { CLE_LIEN_SIGNATURE, CLE_PHOTO_SIGNATURE, habillerEmail, lienSignatureValide, type PiedEmail } from '@/lib/email-gabarit';
 
 export class MissingSmtpConfigError extends Error {
   constructor() {
@@ -72,41 +72,48 @@ export type EmailAEnvoyer = {
   headers?: Record<string, string>;
 };
 
-// Photo de signature : lue au plus toutes les 5 minutes par processus (un
-// récapitulatif peut partir vers des dizaines de membres d'affilée). Une
-// lecture impossible vaut « pas de photo » : jamais un e-mail bloqué pour ça.
+// Photo de signature et son lien (JEP-378) : lus au plus toutes les 5 minutes
+// par processus (un récapitulatif peut partir vers des dizaines de membres
+// d'affilée). Une lecture impossible vaut « pas de photo » : jamais un e-mail
+// bloqué pour ça.
 const DUREE_CACHE_PHOTO_MS = 5 * 60_000;
-const cachePhoto = globalThis as typeof globalThis & { __mcPhotoSignature?: { url: string | null; jusqua: number } };
+export type SignatureEmail = { photo: string | null; lien: string | null };
+const cachePhoto = globalThis as typeof globalThis & { __mcSignatureEmail?: SignatureEmail & { jusqua: number } };
 
-export async function photoSignatureEmail(): Promise<string | null> {
-  const c = cachePhoto.__mcPhotoSignature;
-  if (c && c.jusqua > Date.now()) return c.url;
-  let url: string | null = null;
+export async function signatureEmail(): Promise<SignatureEmail> {
+  const c = cachePhoto.__mcSignatureEmail;
+  if (c && c.jusqua > Date.now()) return { photo: c.photo, lien: c.lien };
+  let signature: SignatureEmail = { photo: null, lien: null };
   try {
     const { data } = await createAdminClient()
       .from('site_settings' as never)
-      .select('value')
-      .eq('key', CLE_PHOTO_SIGNATURE)
-      .maybeSingle();
-    const v = (data as { value?: unknown } | null)?.value;
-    url = typeof v === 'string' && /^https:\/\//.test(v) ? v : null;
+      .select('key, value')
+      .in('key', [CLE_PHOTO_SIGNATURE, CLE_LIEN_SIGNATURE]);
+    const valeur = (cle: string) => ((data ?? []) as { key: string; value: unknown }[]).find((l) => l.key === cle)?.value;
+    const photo = valeur(CLE_PHOTO_SIGNATURE);
+    signature = {
+      photo: typeof photo === 'string' && /^https:\/\//.test(photo) ? photo : null,
+      lien: lienSignatureValide(valeur(CLE_LIEN_SIGNATURE)),
+    };
   } catch {
-    url = null;
+    signature = { photo: null, lien: null };
   }
-  cachePhoto.__mcPhotoSignature = { url, jusqua: Date.now() + DUREE_CACHE_PHOTO_MS };
-  return url;
+  cachePhoto.__mcSignatureEmail = { ...signature, jusqua: Date.now() + DUREE_CACHE_PHOTO_MS };
+  return signature;
 }
 
 export async function sendEmail({ to, subject, text, html, pied, replyTo, headers }: EmailAEnvoyer): Promise<void> {
   const { SMTP_HOST: host, SMTP_PORT: port, SMTP_USER: user, SMTP_PASSWORD: pass, EMAIL_SENDER: from } = process.env;
   if (!host || !port || !user || !pass || !from) throw new MissingSmtpConfigError();
 
+  const signature = await signatureEmail();
   const habille = habillerEmail({
     texte: text,
     contenuHtml: html,
     pied,
     urlSite: siteUrl(),
-    photoSignature: await photoSignatureEmail(),
+    photoSignature: signature.photo,
+    lienSignature: signature.lien,
   });
 
   const transport = nodemailer.createTransport({

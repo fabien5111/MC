@@ -62,7 +62,10 @@ const CONTENUS: Record<ModeleGoTrue, { texte: string; html: (lien: string) => st
 };
 
 /** Page HTML complète du modèle, à servir telle quelle à GoTrue. */
-export function modeleGoTrue(modele: ModeleGoTrue, opts: { urlSite: string; photoSignature: string | null }): string {
+export function modeleGoTrue(
+  modele: ModeleGoTrue,
+  opts: { urlSite: string; photoSignature: string | null; lienSignature?: string | null },
+): string {
   const c = CONTENUS[modele];
   return habillerEmail({
     texte: c.texte,
@@ -70,6 +73,7 @@ export function modeleGoTrue(modele: ModeleGoTrue, opts: { urlSite: string; phot
     pied: 'obligatoire',
     urlSite: opts.urlSite,
     photoSignature: opts.photoSignature,
+    lienSignature: opts.lienSignature,
   }).html;
 }
 

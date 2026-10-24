@@ -2283,8 +2283,10 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
   (`EmailSignaturePhotoManager`), **1600 × 320 px** imposés (recadrage 5:1 à
   l'ouverture, une image d'un autre format n'est pas enregistrée), JPEG
   (Outlook n'affiche pas le WebP), `site_settings.email_signature_photo`. Lue
-  par `photoSignatureEmail` avec un cache de 5 minutes par processus. Absente :
-  rien d'affiché.
+  par `signatureEmail` avec un cache de 5 minutes par processus. Absente :
+  rien d'affiché. **Lien facultatif** (`site_settings.email_signature_link`,
+  même écran) : un clic sur la photo ouvre cette adresse ; `https://` seulement
+  (`lienSignatureValide`), revérifié à l'envoi. Vide : photo non cliquable.
 - **Passe quotidienne = un seul e-mail par membre** (JEP-375) : les rappels
   (étapes du jour, veille, invitation à l'avis, mise en avant) passent par
   `notifier` avec `regrouperEmail` — leur e-mail rejoint la file du

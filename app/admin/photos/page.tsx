@@ -4,7 +4,7 @@ import { getSiteSettings } from '@/lib/site';
 import { BannerManager } from '@/components/admin/BannerManager';
 import { RecipeDefaultPhotoManager } from '@/components/admin/RecipeDefaultPhotoManager';
 import { EmailSignaturePhotoManager } from '@/components/admin/EmailSignaturePhotoManager';
-import { CLE_PHOTO_SIGNATURE } from '@/lib/email-gabarit';
+import { CLE_LIEN_SIGNATURE, CLE_PHOTO_SIGNATURE } from '@/lib/email-gabarit';
 import { RecipeImageBackfill } from '@/components/admin/RecipeImageBackfill';
 import { StorageBackfillManager } from '@/components/admin/StorageBackfillManager';
 
@@ -18,6 +18,7 @@ export default async function AdminPhotosPage() {
     'banner_home_mobile',
     'recipe_default_photo',
     CLE_PHOTO_SIGNATURE,
+    CLE_LIEN_SIGNATURE,
   ]);
 
   return (
@@ -47,9 +48,13 @@ export default async function AdminPhotosPage() {
           <p className="text-on-surface-variant mb-8">
             Photo affichée sous « L&apos;équipe de Je pâtisse ! » en bas de tous les e-mails envoyés
             par le site, au format 1600 × 320 px (le recadrage s&apos;ouvre au dépôt). Sans photo,
-            les e-mails partent avec la seule signature.
+            les e-mails partent avec la seule signature. Un lien facultatif rend la photo
+            cliquable.
           </p>
-          <EmailSignaturePhotoManager initialUrl={settings[CLE_PHOTO_SIGNATURE] || null} />
+          <EmailSignaturePhotoManager
+            initialUrl={settings[CLE_PHOTO_SIGNATURE] || null}
+            initialLien={settings[CLE_LIEN_SIGNATURE] || ''}
+          />
         </section>
         <section className="mb-12 max-w-4xl">
           <RecipeImageBackfill

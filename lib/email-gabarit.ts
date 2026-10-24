@@ -31,6 +31,23 @@ export const CLE_PHOTO_SIGNATURE = 'email_signature_photo';
 /** Format imposé de la photo de signature : 1600 × 320 px (ratio 5:1). */
 export const PHOTO_SIGNATURE_LARGEUR = 1600;
 export const PHOTO_SIGNATURE_HAUTEUR = 320;
+/** Clé `site_settings` du lien ouvert par un clic sur la photo de signature. */
+export const CLE_LIEN_SIGNATURE = 'email_signature_link';
+
+/**
+ * Lien de la photo de signature, ou `null` s'il n'est pas utilisable : seule
+ * une adresse `https://` lisible est acceptée — revérifié à l'envoi, pas
+ * seulement à la saisie, puisque la valeur vient de la base.
+ */
+export function lienSignatureValide(brut: unknown): string | null {
+  if (typeof brut !== 'string' || !brut.trim()) return null;
+  try {
+    const u = new URL(brut.trim());
+    return u.protocol === 'https:' && u.hostname ? u.href : null;
+  } catch {
+    return null;
+  }
+}
 
 const COULEUR_MARQUE = '#300a12';
 const COULEUR_FOND = '#fff8f7';
@@ -98,13 +115,21 @@ export function habillerEmail(opts: {
   pied: PiedEmail;
   urlSite: string;
   photoSignature?: string | null;
+  /** Clic sur la photo : ouvre cette adresse (absent ou invalide : photo non cliquable). */
+  lienSignature?: string | null;
 }): EmailHabille {
   const texte = sansSignature(opts.texte);
   const corps = opts.contenuHtml ?? texteVersParagraphes(texte);
   const photo = opts.photoSignature?.trim();
+  const lien = lienSignatureValide(opts.lienSignature);
+  const image = photo
+    ? `<img src="${echapperHtml(photo)}" width="536" alt="${lien ? 'Je pâtisse !' : ''}" ` +
+      `style="display:block;width:100%;max-width:536px;height:auto;border:0;border-radius:8px;">`
+    : '';
   const blocPhoto = photo
-    ? `<tr><td style="padding:0 32px 8px;"><img src="${echapperHtml(photo)}" width="536" alt="" ` +
-      `style="display:block;width:100%;max-width:536px;height:auto;border:0;border-radius:8px;"></td></tr>`
+    ? `<tr><td style="padding:0 32px 8px;">` +
+      (lien ? `<a href="${echapperHtml(lien)}" target="_blank" style="display:block;">${image}</a>` : image) +
+      `</td></tr>`
     : '';
   const html =
     `<!doctype html><html lang="fr"><head><meta charset="utf-8">` +

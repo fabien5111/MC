@@ -1,6 +1,6 @@
 // Gabarit unique des e-mails (JEP-277, JEP-378) et modèles GoTrue (JEP-276).
 import { describe, expect, it } from 'vitest';
-import { habillerEmail, sansSignature, SIGNATURE_EMAIL } from '@/lib/email-gabarit';
+import { habillerEmail, lienSignatureValide, sansSignature, SIGNATURE_EMAIL } from '@/lib/email-gabarit';
 import { LIENS_GOTRUE, modeleGoTrue, nextDepuisSuite } from '@/lib/gotrue-modeles';
 import { composerRecapitulatif, sectionsRecap } from '@/lib/notification-email';
 
@@ -80,5 +80,22 @@ describe('modèles GoTrue (JEP-276)', () => {
     expect(nextDepuisSuite('https://dev.jepatisse.com')).toBeNull();
     expect(nextDepuisSuite('n’importe quoi')).toBeNull();
     expect(nextDepuisSuite(null)).toBeNull();
+  });
+});
+
+describe('lien de la photo de signature', () => {
+  it('rend la photo cliquable vers une adresse https', () => {
+    const m = habillerEmail({ texte: 'x', pied: 'interne', urlSite: URL_SITE, photoSignature: 'https://s/p.jpg', lienSignature: 'https://www.jepatisse.com/blog' });
+    expect(m.html).toContain('<a href="https://www.jepatisse.com/blog" target="_blank"');
+    expect(m.html.indexOf('<a href="https://www.jepatisse.com/blog"')).toBeLessThan(m.html.indexOf('<img src="https://s/p.jpg"'));
+  });
+  it('refuse tout ce qui n’est pas https, et ne fait rien sans photo', () => {
+    for (const l of ['http://x.fr', 'javascript:alert(1)', 'pas une adresse', '']) {
+      expect(lienSignatureValide(l)).toBeNull();
+      const m = habillerEmail({ texte: 'x', pied: 'interne', urlSite: URL_SITE, photoSignature: 'https://s/p.jpg', lienSignature: l });
+      expect(m.html).not.toContain('target="_blank"');
+    }
+    const sansPhoto = habillerEmail({ texte: 'x', pied: 'interne', urlSite: URL_SITE, lienSignature: 'https://x.fr' });
+    expect(sansPhoto.html).not.toContain('https://x.fr');
   });
 });
