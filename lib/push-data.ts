@@ -83,10 +83,10 @@ type LigneAbonnement = { id: string; endpoint: string; p256dh: string; auth: str
 /**
  * `high` = priorité haute chez le service de push : le message traverse
  * l'économie d'énergie du téléphone (Doze) au lieu d'attendre une fenêtre de
- * maintenance. Réservé à ce qu'un humain attend les yeux sur l'écran — la
- * notification d'essai. Les vraies notifications restent en `normal` (le
- * défaut) : une priorité haute coûte de la batterie et n'a de sens que pour
- * une action déclenchée à l'instant par le membre.
+ * maintenance. Utilisée par la notification d'essai ET par `notifier()` : en
+ * `normal`, les vraies notifications n'atteignaient pas un Android en veille
+ * alors que l'essai passait (24/10/2026). `normal` reste le défaut pour un
+ * futur envoi de masse, où la batterie compterait.
  */
 export type UrgencePush = 'normal' | 'high';
 

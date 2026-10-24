@@ -45,8 +45,17 @@ const MINUTE_QUOTIDIEN_UTC = 5 * 60 + 30;
  * et la passe de 05:30 UTC jamais. N'importe quelle passe `outbox` passée ce
  * créneau peut donc jouer la quotidienne du jour, une fois (cf.
  * `reserverQuotidien`). Avant 05:30 UTC, on ne devance pas l'horaire normal.
+ *
+ * **Le jour UTC et le jour de Zurich doivent coïncider.** Entre 22 h (été) ou
+ * 23 h (hiver) et minuit UTC, Zurich est déjà au lendemain alors que l'heure
+ * UTC, elle, est bien « après 05:30 » : sans ce garde-fou, la boucle jouait la
+ * passe du lendemain à 0 h 02 heure suisse (relevé du 22 et du 23/10/2026) —
+ * rappels de fournée et leurs push partis en pleine nuit, sur un téléphone en
+ * veille. Le lendemain attend donc son propre créneau de 05:30 UTC.
  */
 export function quotidienARattraper(maintenant: Date): string | null {
   const minutes = maintenant.getUTCHours() * 60 + maintenant.getUTCMinutes();
-  return minutes >= MINUTE_QUOTIDIEN_UTC ? dateZurich(maintenant) : null;
+  if (minutes < MINUTE_QUOTIDIEN_UTC) return null;
+  const jour = dateZurich(maintenant);
+  return jour === maintenant.toISOString().slice(0, 10) ? jour : null;
 }

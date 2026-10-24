@@ -50,7 +50,14 @@ describe('quotidienARattraper', () => {
   });
   it('rend le jour de Zurich une fois le créneau passé', () => {
     expect(quotidienARattraper(new Date('2026-10-04T05:30:00Z'))).toBe('2026-10-04');
-    expect(quotidienARattraper(new Date('2026-10-04T23:59:00Z'))).toBe('2026-10-05'); // 01:59 à Zurich
+    expect(quotidienARattraper(new Date('2026-10-04T21:59:00Z'))).toBe('2026-10-04'); // 23:59 à Zurich
     expect(quotidienARattraper(new Date('2026-12-04T05:30:00Z'))).toBe('2026-12-04'); // heure d'hiver
+    expect(quotidienARattraper(new Date('2026-12-04T22:59:00Z'))).toBe('2026-12-04'); // 23:59 à Zurich, l'hiver
+  });
+  it('ne joue jamais la passe du lendemain à minuit heure suisse', () => {
+    // 22:02 UTC l'été = 00:02 le lendemain à Zurich : relevé réel du 22/10/2026.
+    expect(quotidienARattraper(new Date('2026-10-22T22:02:39Z'))).toBeNull();
+    expect(quotidienARattraper(new Date('2026-10-04T23:59:00Z'))).toBeNull(); // 01:59 à Zurich
+    expect(quotidienARattraper(new Date('2026-12-04T23:00:00Z'))).toBeNull(); // 00:00 à Zurich, l'hiver
   });
 });
