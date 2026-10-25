@@ -1198,7 +1198,7 @@ body[data-impersonation] {
    la bande (32 px + zone de sécurité) sans laisser de vide, l'en-tête remonte de
    cette hauteur : la bande sort de l'écran, le reste de l'en-tête reste collé.
    L'attribut `data-bande` de <html> est posé par `SocialBandeMobile`. */
-@media (max-width: 767px) {
+@media (max-width: 700px) {
   header.has-social-strip {
     transition: top 200ms ease;
   }
