@@ -7,7 +7,7 @@ export function GuestCta() {
   return (
     <section className="mt-20 mb-16">
       <div className="bg-primary text-on-primary rounded-xl px-8 py-14 text-center">
-        <h2 className="font-headline-lg text-[28px] md:text-[34px] font-bold leading-tight mb-4">
+        <h2 className="font-headline-lg text-[28px] rail:text-[34px] font-bold leading-tight mb-4">
           Ouvrez votre carnet
         </h2>
         <p className="text-[16px] opacity-90 mb-8 max-w-[52ch] mx-auto leading-relaxed">

@@ -105,15 +105,15 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
   return (
     <>
       <Header current="carnet" />
-      <main className="mx-auto mb-24 max-w-[1200px] px-margin-mobile md:px-margin-desktop">
+      <main className="mx-auto mb-24 max-w-[1200px] px-margin-mobile rail:px-margin-desktop">
         <div className="flex flex-wrap items-end justify-between gap-5 pb-9 pt-12">
-          <h1 className="font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[38px]">
+          <h1 className="font-headline-lg text-[26px] font-bold leading-tight text-primary rail:text-[38px]">
             Mon carnet de recettes
           </h1>
           {/* Masqué en session « en tant que » lecture seule. Un seul menu
               « Créer » (recette, import, projet) : cf. CreateMenuButton. */}
           {!readOnly && (
-            <div className="flex w-full items-center justify-center gap-3 md:w-auto md:justify-start">
+            <div className="flex w-full items-center justify-center gap-3 rail:w-auto rail:justify-start">
               {/* Masqué ici sous 1024 px : le partage rejoint la feuille de
                   réglages de CarnetToolbar (même instance de composant
                   dupliquée, cf. CarnetFiltersSheet.tsx). */}

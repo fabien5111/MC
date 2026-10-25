@@ -9,7 +9,7 @@ export function GuestIntro() {
         <p className="font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline mb-4">
           Je pâtisse !
         </p>
-        <h2 className="font-headline-lg text-[30px] md:text-[38px] font-bold leading-tight text-primary mb-5">
+        <h2 className="font-headline-lg text-[30px] rail:text-[38px] font-bold leading-tight text-primary mb-5">
           Vos recettes s&apos;adaptent enfin à votre cuisine
         </h2>
         <p className="text-[16px] leading-relaxed text-on-surface-variant">
@@ -17,7 +17,7 @@ export function GuestIntro() {
           préparations sur plusieurs jours et gardez la trace de chaque essai.
         </p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
+      <div className="grid grid-cols-1 rail:grid-cols-3 gap-8 mt-12">
         {POINTS.map((p) => (
           <div key={p.title} className="text-center px-4">
             <span className="material-symbols-outlined text-primary text-[32px] mb-3">{p.icon}</span>

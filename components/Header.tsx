@@ -72,7 +72,7 @@ export async function Header({ current, className }: { current?: NavKey; classNa
       {/* Bande « Suivre » (mobile, JEP-15) : au-dessus de l'en-tête, dans la zone
           collante. Rien du tout quand aucun lien n'est affichable. */}
       {liensSociaux.length > 0 && <SocialBandeMobile liens={liensSociaux} />}
-      <div className="max-w-[1200px] mx-auto flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4">
+      <div className="max-w-[1200px] mx-auto flex justify-between items-center px-margin-mobile rail:px-margin-desktop py-4">
         <div className="flex items-center gap-6 xl:gap-10 min-w-0">
           <Link className="maryse-logo-font text-4xl text-primary leading-none whitespace-nowrap shrink-0" href="/">
             Je pâtisse !

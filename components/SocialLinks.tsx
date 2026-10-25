@@ -4,9 +4,9 @@
 //
 // Deux présentations d'une même liste, choisies par CSS (le rendu serveur ne
 // connaît pas la largeur de l'écran) :
-//  - `SocialRondsHeader` — bureau et tablette (≥ 768 px) : ronds entre la
+//  - `SocialRondsHeader` — bureau et tablette (≥ 701 px) : ronds entre la
 //    cloche et l'avatar (maquette 5a / 7a) ;
-//  - `SocialBandeMobile` — mobile (< 768 px) : bande bordeaux au-dessus de
+//  - `SocialBandeMobile` — mobile (≤ 700 px) : bande bordeaux au-dessus de
 //    l'en-tête (7c), repliée au défilement vers le bas ;
 //  - `SocialRondsFooter` — pied de page, sur tous les écrans.
 // Le parent ne les rend QUE si la liste n'est pas vide : ni groupe, ni filet,
@@ -45,14 +45,14 @@ const attrsLien = (l: Lien) =>
     'aria-label': `Je pâtisse ! sur ${NOM_RESEAU[l.network]}`,
   }) as const;
 
-/** Ronds du bureau et de la tablette : visible dès 768 px. */
+/** Ronds du bureau et de la tablette : visible dès 701 px. */
 export function SocialRondsHeader({ liens }: { liens: Lien[] }) {
   return (
     // Filet séparateur (`#d6c2c3`) : 16 px avant le premier rond (12 px en
     // tablette), 6 px en plus avant l'avatar.
     <nav
       aria-label="Réseaux sociaux de Je pâtisse !"
-      className="hidden md:block border-l border-[#d6c2c3] pl-3 lg:pl-4 mr-1.5"
+      className="hidden rail:block border-l border-[#d6c2c3] pl-3 lg:pl-4 mr-1.5"
     >
       <ul className="flex items-center gap-[5px] lg:gap-1.5">
         {liens.map((l) => (
@@ -140,7 +140,7 @@ export function SocialBandeMobile({ liens }: { liens: Lien[] }) {
 
   return (
     <div
-      className="md:hidden flex items-center justify-between bg-[#300a12] px-margin-mobile"
+      className="rail:hidden flex items-center justify-between bg-[#300a12] px-margin-mobile"
       style={{ minHeight: 'calc(32px + env(safe-area-inset-top))', paddingTop: 'env(safe-area-inset-top)' }}
     >
       <span className="text-[10px] font-semibold uppercase tracking-[.14em] text-[#f5e4e4]">Suivre</span>

@@ -25,13 +25,13 @@ export function HomeBanner({
   // côtés, une image carrée son haut et son bas).
   const cadre = [
     mobile ? '' : 'aspect-[2.5/1] min-h-[420px]',
-    tablette ? 'md:aspect-auto md:min-h-0' : 'md:aspect-[2.5/1] md:min-h-[520px]',
+    tablette ? 'rail:aspect-auto rail:min-h-0' : 'rail:aspect-[2.5/1] rail:min-h-[520px]',
     'lg:aspect-[2.5/1] lg:min-h-[520px]',
   ].join(' ');
   // L'image remplit le cadre imposé, ou garde sa hauteur naturelle sans lui.
   const hauteurImage = [
     mobile ? 'h-auto' : 'h-full',
-    tablette ? 'md:h-auto' : 'md:h-full',
+    tablette ? 'rail:h-auto' : 'rail:h-full',
     'lg:h-full',
   ].join(' ');
 
@@ -44,20 +44,21 @@ export function HomeBanner({
           en page, bien après le premier octet HTML. Next/React hoistent ces
           `<link>` dans le `<head>` où qu'ils soient rendus dans l'arbre. Les
           plages `media` reproduisent celles du `<picture>` ci-dessous (ordre
-          « premier vrai » : web dès 1024px, sinon tablette dès 768px). */}
+          « premier vrai » : web dès 1024px, sinon tablette dès 701px — un iPad mini
+          en portrait fait 744px). */}
       <link rel="preload" as="image" href={webSrc} media="(min-width: 1024px)" fetchPriority="high" />
       <link
         rel="preload"
         as="image"
         href={tabletteSrc}
-        media="(min-width: 768px) and (max-width: 1023px)"
+        media="(min-width: 701px) and (max-width: 1023px)"
         fetchPriority="high"
       />
-      <link rel="preload" as="image" href={mobileSrc} media="(max-width: 767px)" fetchPriority="high" />
+      <link rel="preload" as="image" href={mobileSrc} media="(max-width: 700px)" fetchPriority="high" />
       <div className={`relative w-full overflow-hidden ${cadre}`} style={{ maxWidth: 1983, margin: '0 auto' }}>
         <picture>
           <source media="(min-width: 1024px)" srcSet={webSrc} />
-          <source media="(min-width: 768px)" srcSet={tabletteSrc} />
+          <source media="(min-width: 701px)" srcSet={tabletteSrc} />
           {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
           <img
             src={mobileSrc}

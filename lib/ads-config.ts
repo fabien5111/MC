@@ -35,8 +35,9 @@ export type AdSlotConfig = {
   variantes: Record<AdVariante, AdFormatVisuel>;
 };
 
-// Appareils (JEP-367). Seuils alignés sur ceux de Tailwind (`md` = 768 px,
-// `lg` = 1024 px), qui découpent déjà les pages du site.
+// Appareils (JEP-367). Seuils alignés sur ceux de Tailwind (`rail` = 701 px,
+// `lg` = 1024 px), qui découpent déjà les pages du site : un iPad mini en
+// portrait (744 px) reçoit le visuel tablette.
 export type AdAppareil = 'desktop' | 'tablet' | 'mobile';
 export type AdVariante = Exclude<AdAppareil, 'desktop'>;
 
@@ -44,8 +45,8 @@ export type AdFormatVisuel = { maxWidth: number; hint: string; previewAspect: st
 
 export const AD_APPAREILS: { key: AdAppareil; label: string; icon: string; plage: string }[] = [
   { key: 'desktop', label: 'Ordinateur', icon: 'computer', plage: 'à partir de 1024 px' },
-  { key: 'tablet', label: 'Tablette', icon: 'tablet', plage: 'de 768 à 1023 px' },
-  { key: 'mobile', label: 'Téléphone', icon: 'smartphone', plage: 'moins de 768 px' },
+  { key: 'tablet', label: 'Tablette', icon: 'tablet', plage: 'de 701 à 1023 px' },
+  { key: 'mobile', label: 'Téléphone', icon: 'smartphone', plage: 'moins de 701 px' },
 ];
 
 // Colonne de chaque visuel. Les deux variantes ont été ajoutées à la main

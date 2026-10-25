@@ -80,14 +80,14 @@ function Mention() {
 // aux proportions inattendues. Classes écrites en entier, une par seuil, pour
 // que Tailwind les trouve.
 const PLAFOND: Record<AdSlotConfig['format'], { base: string; md: string; lg: string }> = {
-  bandeau_fin: { base: 'max-h-[160px]', md: 'md:max-h-[160px]', lg: 'lg:max-h-[160px]' },
-  bandeau_large: { base: 'max-h-[260px]', md: 'md:max-h-[260px]', lg: 'lg:max-h-[260px]' },
-  pave: { base: 'max-h-[560px]', md: 'md:max-h-[560px]', lg: 'lg:max-h-[560px]' },
+  bandeau_fin: { base: 'max-h-[160px]', md: 'rail:max-h-[160px]', lg: 'lg:max-h-[160px]' },
+  bandeau_large: { base: 'max-h-[260px]', md: 'rail:max-h-[260px]', lg: 'lg:max-h-[260px]' },
+  pave: { base: 'max-h-[560px]', md: 'rail:max-h-[560px]', lg: 'lg:max-h-[560px]' },
 };
 
 // Visuel fourni par l'annonceur, un par appareil (JEP-367), par `<picture>` :
 // le navigateur ne télécharge que la source retenue. Seuils de Tailwind
-// (`md`, `lg`). Une variante absente vaut le visuel de repli (`adSources`) :
+// (`rail` = 701 px, `lg`). Une variante absente vaut le visuel de repli (`adSources`) :
 // une source égale à la suivante est simplement omise.
 //
 // Le plafond de hauteur (`object-cover`, donc recadrage) ne s'applique qu'au
@@ -99,14 +99,14 @@ function Visual({ ad, cfg, sources }: { ad: Ad; cfg: AdSlotConfig; sources: AdSo
   const plafond = PLAFOND[cfg.format];
   const hauteur = [
     sources.mobile === sources.desktop ? plafond.base : 'max-h-none',
-    sources.tablet === sources.desktop ? plafond.md : 'md:max-h-none',
+    sources.tablet === sources.desktop ? plafond.md : 'rail:max-h-none',
     plafond.lg,
   ].join(' ');
   return (
     <picture>
-      {sources.mobile !== sources.desktop && <source media="(max-width: 767px)" srcSet={sources.mobile} />}
+      {sources.mobile !== sources.desktop && <source media="(max-width: 700px)" srcSet={sources.mobile} />}
       {sources.tablet !== sources.desktop && (
-        <source media="(min-width: 768px) and (max-width: 1023px)" srcSet={sources.tablet} />
+        <source media="(min-width: 701px) and (max-width: 1023px)" srcSet={sources.tablet} />
       )}
       {/* eslint-disable-next-line @next/next/no-img-element -- visuel déposé sur le stockage objet */}
       <img src={sources.desktop} alt={ad.name} className={`block w-full h-auto ${hauteur} object-cover`} />
@@ -139,8 +139,8 @@ function TextCard({ ad, cfg }: { ad: Ad; cfg: AdSlotConfig }) {
   }
 
   return (
-    <div className="min-h-[160px] flex flex-col md:flex-row items-center justify-between gap-6 px-8 py-6">
-      <div className="flex flex-col gap-1 text-center md:text-left">
+    <div className="min-h-[160px] flex flex-col rail:flex-row items-center justify-between gap-6 px-8 py-6">
+      <div className="flex flex-col gap-1 text-center rail:text-left">
         {ad.title && <h3 className="font-headline-md text-headline-md text-primary">{ad.title}</h3>}
         {ad.subtitle && <p className="text-secondary italic">{ad.subtitle}</p>}
       </div>
