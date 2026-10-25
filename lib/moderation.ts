@@ -396,7 +396,7 @@ export function composerEmailModeration(p: {
   if (p.action !== 'lever') {
     blocs.push(`Pour contester cette décision ou poser une question, écrivez-nous depuis la page Contact : ${contact}`);
   }
-  blocs.push('L’équipe Je pâtisse !');
+  // Signature : posée par le gabarit unique des e-mails (JEP-277).
 
   return { evenement, sujet, texte: blocs.join('\n\n'), detail, lien };
 }

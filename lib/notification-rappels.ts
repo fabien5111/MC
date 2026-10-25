@@ -35,6 +35,15 @@ export function etapesACommencer(etapes: EtapeRappel[], plannedDate: string, auj
   return etapes.filter((e) => !e.done && jourDEtape(plannedDate, e.day_offset) === aujourdhui).map((e) => e.title);
 }
 
+/**
+ * La fournée a-t-elle déjà commencé ? Vrai si l'une de ses étapes (faite ou
+ * non) tombe aujourd'hui ou avant : le rappel de la veille ne peut plus dire
+ * « commence demain » (JEP-375).
+ */
+export function fourneeDejaCommencee(etapes: EtapeRappel[], plannedDate: string, aujourdhui: string): boolean {
+  return etapes.some((e) => jourDEtape(plannedDate, e.day_offset) <= aujourdhui);
+}
+
 /** Heure UTC (minutes depuis minuit) du créneau quotidien : 05:30, cf. cron-notifications.yml. */
 const MINUTE_QUOTIDIEN_UTC = 5 * 60 + 30;
 

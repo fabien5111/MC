@@ -137,7 +137,7 @@ async function notifierDeploiement(
         siteUrl: siteUrl(),
         membreConnecte: !!message.user_id,
       });
-      const envoye = await sendEmailBestEffort({ to: message.email as string, subject, html, text });
+      const envoye = await sendEmailBestEffort({ to: message.email as string, subject, html, text, pied: 'obligatoire' });
       if (!envoye) {
         await client
           .from('contact_messages')

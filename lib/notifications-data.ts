@@ -166,6 +166,29 @@ type NotificationsSentUpsert = {
   ) => { select: (cols: string) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }> };
 };
 
+export type TypeNotificationAbonnement = 'TRIAL_J3' | 'TRIAL_J1' | 'SUB_J3' | 'SUB_J1' | 'EXPIRED_J1';
+
+/** Au-delà, un e-mail d'abonnement en échec n'est plus retenté (l'échec reste visible en base). */
+export const ESSAIS_EMAIL_ABONNEMENT_MAX = 3;
+
+/**
+ * Résultat d'une réservation :
+ *  - `nouveau` : première fois — cloche ET e-mail à envoyer ;
+ *  - `a_renvoyer` : la cloche est déjà partie, mais l'e-mail a échoué à une
+ *    passe précédente (JEP-277) — l'e-mail seul est à renvoyer ;
+ *  - `deja` : rien à faire.
+ */
+export type ReservationNotification =
+  | { etat: 'nouveau' }
+  | { etat: 'a_renvoyer'; essais: number }
+  | { etat: 'deja' };
+
+// Client non typé : `email_status` / `email_error` / `email_attempts` sont
+// ajoutées par une migration DDL (psql, nœud 216075) et absentes des types
+// générés. Colonnes absentes : `a_renvoyer` n'arrive jamais, on retombe sur
+// l'ancien comportement (un échec reste perdu), rien ne casse.
+type Db = SupabaseClient;
+
 /**
  * Tente de « réserver » un envoi — vérifie et marque en une seule opération,
  * sous la garantie de l'unicité `(subscription_id, notification_type)` :
@@ -173,15 +196,17 @@ type NotificationsSentUpsert = {
  * un `select` suivi d'un `insert` séparés, qui laisserait une fenêtre entre
  * les deux si le cron était jamais relancé en parallèle.
  *
- * Renvoie `true` si CET appel a obtenu la réservation (donc : envoyer),
- * `false` si elle existait déjà (donc : ne rien faire, déjà notifié).
+ * Un envoi déjà réservé dont l'e-mail a échoué (`email_status = 'failed'`,
+ * moins de `ESSAIS_EMAIL_ABONNEMENT_MAX` essais) est repris : le passage
+ * `failed` → `pending` se fait en une seule instruction filtrée, un seul
+ * appelant l'obtient — pas de doublon, même avec deux crons simultanés.
  */
 export async function claimNotification(
   admin: SupabaseClient<Database>,
   userId: string,
   subscriptionId: number,
-  type: 'TRIAL_J3' | 'TRIAL_J1' | 'SUB_J3' | 'SUB_J1' | 'EXPIRED_J1',
-): Promise<boolean> {
+  type: TypeNotificationAbonnement,
+): Promise<ReservationNotification> {
   const { data, error } = await (
     admin.from('notifications_sent' as never) as unknown as NotificationsSentUpsert
   ).upsert(
@@ -190,7 +215,42 @@ export async function claimNotification(
   ).select('id');
   if (error) {
     console.error(`notifications_sent: réservation échouée (${type}, abonnement ${subscriptionId}) :`, error.message);
-    return false;
+    return { etat: 'deja' };
   }
-  return (data?.length ?? 0) > 0;
+  if ((data?.length ?? 0) > 0) return { etat: 'nouveau' };
+
+  const { data: reprise, error: errReprise } = await (admin as unknown as Db)
+    .from('notifications_sent')
+    .update({ email_status: 'pending' })
+    .eq('subscription_id', subscriptionId)
+    .eq('notification_type', type)
+    .eq('email_status', 'failed')
+    .lt('email_attempts', ESSAIS_EMAIL_ABONNEMENT_MAX)
+    .select('email_attempts');
+  if (errReprise || !reprise?.length) return { etat: 'deja' };
+  return { etat: 'a_renvoyer', essais: (reprise[0].email_attempts as number) ?? 0 };
+}
+
+/**
+ * Trace l'issue de l'e-mail d'une notification d'abonnement (JEP-277) :
+ * `sent`, `failed` (avec le message SMTP, retenté au passage suivant) ou
+ * `skipped` (préférence coupée, pas d'adresse, mis en récapitulatif).
+ * Best-effort : colonnes absentes, l'échec est ignoré.
+ */
+export async function noterEnvoiNotification(
+  admin: SupabaseClient<Database>,
+  subscriptionId: number,
+  type: TypeNotificationAbonnement,
+  issue: { statut: 'sent' | 'failed' | 'skipped'; erreur?: string | null; essais: number },
+): Promise<void> {
+  const { error } = await (admin as unknown as Db)
+    .from('notifications_sent')
+    .update({
+      email_status: issue.statut,
+      email_error: issue.statut === 'failed' ? (issue.erreur ?? 'Échec inconnu').slice(0, 500) : null,
+      email_attempts: issue.statut === 'skipped' ? issue.essais : issue.essais + 1,
+    })
+    .eq('subscription_id', subscriptionId)
+    .eq('notification_type', type);
+  if (error) console.error(`notifications_sent: suivi d'envoi non écrit (${type}, abonnement ${subscriptionId}) :`, error.message);
 }

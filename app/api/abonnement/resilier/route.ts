@@ -30,7 +30,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notifier } from '@/lib/notifier';
 import { formatDate } from '@/lib/format';
 import { siteUrl } from '@/lib/site-url';
-import { cleIdempotence, emailConfirmationResiliation, texteVersHtml } from '@/lib/billing';
+import { cleIdempotence, emailConfirmationResiliation } from '@/lib/billing';
 import { appelStripe, getAbonnementResiliable, MissingStripeConfigError, resoudreLibellePlanParPrix } from '@/lib/billing-data';
 
 export const maxDuration = 15;
@@ -78,7 +78,7 @@ async function envoyerConfirmationResiliation(
         lien: '/reglages',
       },
       emailPrecompose: email
-        ? { sujet, texte, html: texteVersHtml(texte), replyTo: process.env.EMAIL_REPLY_TO || undefined }
+        ? { sujet, texte, replyTo: process.env.EMAIL_REPLY_TO || undefined }
         : undefined,
     });
   } catch (e) {

@@ -8,9 +8,15 @@
 //  - la veille du jour J ;
 //  - l'invitation à donner son avis, le lendemain d'une fournée terminée sans avis ;
 //  - une de ses recettes devient « Recette de la semaine » (début de plage).
+//
+// **Un seul e-mail par membre et par passe (JEP-375)** : chaque rappel est
+// passé avec `regrouperEmail`, son e-mail rejoint la file du récapitulatif
+// quotidien, envoyée juste après par la même passe — deux rappels de fournée
+// ne font plus deux e-mails, mais deux sections d'un même message. La cloche
+// et le téléphone restent immédiats, un par rappel.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { notifier } from '@/lib/notifier';
-import { ajouterJours, dateZurich, etapesACommencer } from '@/lib/notification-rappels';
+import { ajouterJours, dateZurich, etapesACommencer, fourneeDejaCommencee } from '@/lib/notification-rappels';
 
 type Db = SupabaseClient;
 
@@ -52,6 +58,7 @@ export async function genererRappels(
         evenement: 'rappel_etape',
         donnees: { batchId: b.id, titre, detail: aFaire.join(', ') },
         cleDedoublonnage: `rappel_etape:${b.id}:${aujourdhui}`,
+        regrouperEmail: true,
       });
       if (!r.raison) compte.etapes++;
     }
@@ -59,8 +66,12 @@ export async function genererRappels(
       const r = await notifier(db, {
         userId: b.user_id,
         evenement: 'rappel_veille',
-        donnees: { batchId: b.id, titre },
+        // « Commence demain » n'est vrai que si aucune étape n'est déjà tombée :
+        // une fournée dont la première étape était aujourd'hui (J − 1) a déjà
+        // commencé, demain est son jour J (JEP-375).
+        donnees: { batchId: b.id, titre, dejaCommencee: fourneeDejaCommencee(b.batch_steps ?? [], b.planned_date, aujourdhui) },
         cleDedoublonnage: `rappel_veille:${b.id}`,
+        regrouperEmail: true,
       });
       if (!r.raison) compte.veille++;
     }
@@ -95,6 +106,7 @@ export async function genererRappels(
       evenement: 'invitation_avis',
       donnees: { batchId: b.id, titre: b.recipe_title ?? 'la recette' },
       cleDedoublonnage: `invitation_avis:${b.id}`,
+      regrouperEmail: true,
     });
     if (!r.raison) compte.avis++;
   }
@@ -113,6 +125,7 @@ export async function genererRappels(
       evenement: 'recette_mise_en_avant',
       donnees: { recetteId: p.recipe_id, titre: p.recipes.title },
       cleDedoublonnage: `mise_en_avant:${p.id}`,
+      regrouperEmail: true,
     });
     if (!r.raison) compte.miseEnAvant++;
   }

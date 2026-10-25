@@ -37,7 +37,6 @@ export async function POST() {
       ? {
           sujet: 'Votre mot de passe a été modifié',
           texte: corps,
-          html: `<p>${corps.replace(/\n\n/g, '</p><p>')}</p>`,
           replyTo: process.env.EMAIL_REPLY_TO || undefined,
         }
       : undefined,

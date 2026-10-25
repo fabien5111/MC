@@ -27,6 +27,7 @@ import { siteUrl } from '@/lib/site-url';
 import { CGV_CHEMIN, CGV_VERSION, DELAI_RETRACTATION_JOURS } from '@/lib/cgv';
 import {
   emailConfirmationSouscription,
+  emailEchecPaiement,
   isoDepuisUnixStripe,
   lireAbonnementStripe,
   lireDetailsSouscription,
@@ -34,9 +35,9 @@ import {
   lireSessionCheckout,
   messageAbonnementConfirme,
   messageEchecPaiement,
-  texteVersHtml,
   verifierSignatureStripe,
 } from '@/lib/billing';
+import { urlConnexionPortail } from '@/lib/moderation';
 import {
   appliquerAbonnementStripe,
   cloreEvenementStripe,
@@ -207,11 +208,7 @@ async function notifierEchecPaiement(objet: unknown): Promise<void> {
     evenement: 'PAYMENT_FAILED',
     donnees: { titre: titre, detail: corps, lien: '/reglages' },
     emailPrecompose: profil?.email
-      ? {
-          sujet: titre,
-          texte: corps,
-          html: `<p>${corps.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`,
-        }
+      ? { sujet: titre, texte: emailEchecPaiement({ corps, urlSite: siteUrl(), urlPortail: urlConnexionPortail() }) }
       : undefined,
   });
 }
@@ -262,11 +259,7 @@ async function notifierAbonnementConfirme(
     evenement: 'SUBSCRIPTION_CONFIRMED',
     donnees: { titre, detail: corps, lien: '/reglages' },
     emailPrecompose: profil?.email
-      ? {
-          sujet,
-          texte,
-          html: texteVersHtml(texte),
-        }
+      ? { sujet, texte }
       : undefined,
   });
 }

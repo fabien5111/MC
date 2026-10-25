@@ -4,6 +4,7 @@
 // texte de présentation (dates formatées, liens), pas une règle métier.
 import { formatDate } from '@/lib/format';
 import { siteUrl } from '@/lib/site-url';
+import { boutonEmail, texteVersParagraphes } from '@/lib/email-gabarit';
 
 export type NotificationType = 'TRIAL_J3' | 'TRIAL_J1' | 'SUB_J3' | 'SUB_J1' | 'EXPIRED_J1';
 
@@ -44,22 +45,18 @@ function blocRegression(lost: string[], reduced: string[], introPerte: string, i
   return blocs.length ? `\n\n${blocs.join('\n\n')}` : '';
 }
 
+// Corps seulement : en-tête, signature et pied « Gérer mes préférences »
+// (ces e-mails sont désactivables) viennent du gabarit unique (JEP-277).
 function enveloppe(prenom: string, corps: string, lienTexte: string): { emailHtml: string; emailText: string } {
   const lien = `${siteUrl()}/plans`;
-  const html = `
-    <p>Bonjour ${prenom},</p>
-    <p>${corps.replace(/\n/g, '<br>')}</p>
-    <p><a href="${lien}">${lienTexte}</a></p>
-    <p style="color:#888;font-size:12px;margin-top:24px;">
-      Vous recevez cet e-mail car il concerne votre abonnement à Je pâtisse !
-      Désactivable dans vos réglages (les alertes affichées sur le site restent visibles).
-    </p>`;
-  const text = `Bonjour ${prenom},\n\n${corps}\n\n${lienTexte} : ${lien}`;
+  const bonjour = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
+  const html = texteVersParagraphes(`${bonjour}\n\n${corps}`) + boutonEmail(lien, lienTexte);
+  const text = `${bonjour}\n\n${corps}\n\n${lienTexte} : ${lien}`;
   return { emailHtml: html, emailText: text };
 }
 
 export function composeNotification(type: NotificationType, ctx: NotificationContext): ComposedNotification {
-  const prenom = ctx.fullName?.split(' ')[0] || 'bonjour';
+  const prenom = ctx.fullName?.trim().split(' ')[0] || '';
   const date = formatDate(ctx.dateIso);
 
   switch (type) {
