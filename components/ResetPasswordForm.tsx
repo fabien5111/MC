@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { evaluatePassword, PASSWORD_MIN_LENGTH } from '@/lib/password';
 import { PasswordStrengthGauge } from '@/components/PasswordStrengthGauge';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { traduireErreurAuth } from '@/lib/auth-errors';
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -38,7 +39,7 @@ export function ResetPasswordForm() {
     const supabase = createClient();
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      setError(error.message || 'Une erreur est survenue.');
+      setError(traduireErreurAuth(error));
       setBusy(false);
       return;
     }

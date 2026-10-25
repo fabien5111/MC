@@ -25,6 +25,7 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { avecErreurTraduite } from '@/lib/auth-errors';
 import { useMutation } from '@/lib/use-mutation';
 import { SettingsCard } from '@/components/profile/SettingsCard';
 
@@ -52,7 +53,7 @@ export function EmailChangeCard({ email, hasPassword }: { email: string; hasPass
       );
       return;
     }
-    const ok = await mutate(async () => createClient().auth.updateUser({ email: newEmail }), {
+    const ok = await mutate(async () => avecErreurTraduite(await createClient().auth.updateUser({ email: newEmail })), {
       errorLabel: 'Adresse e-mail',
       refresh: false,
     });
