@@ -33,8 +33,10 @@ type AdsQuery = PromiseLike<{ data: unknown[] | null; error: { message: string }
   order: (col: string, opts?: { ascending: boolean }) => AdsQuery;
 };
 
-const PUBLIC_COLS =
-  'id, slot, name, link_url, image_url, title, subtitle, cta_label, start_date, end_date, priority';
+// `*` et non une liste : les visuels tablette et téléphone (JEP-367,
+// `image_url_tablet` / `image_url_mobile`) sont ajoutés à la main par `psql` —
+// les nommer ferait échouer toute lecture des campagnes avant la migration.
+const PUBLIC_COLS = '*';
 const ADMIN_COLS =
   'id, slot, name, link_url, title, subtitle, cta_label, start_date, end_date, active, priority';
 

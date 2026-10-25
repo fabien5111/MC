@@ -303,6 +303,16 @@ instrumentation.ts      Démarrage du serveur : boucle de vidange de la file de 
   campagne programmée n'apparaîtrait qu'à l'expiration du cache et une campagne
   terminée continuerait de s'afficher. Invalidation depuis `/admin/partenaires`
   via `revalidateReference('ads')`.
+- **Un visuel par appareil** (JEP-367) : `ads.image_url` (ordinateur,
+  obligatoire pour un encart illustré), `image_url_tablet` et
+  `image_url_mobile` (facultatifs). Repli calculé par `adSources`
+  (`lib/ads-config.ts`, testé) : téléphone → tablette → ordinateur, tablette →
+  ordinateur. Rendu par `<picture>` (seuils `md` / `lg`) : une seule image
+  téléchargée. Formats conseillés par emplacement dans `AD_SLOTS.variantes`.
+  Colonnes posées par `psql` (nœud 216075) : lues en `select('*')`, écrites
+  seulement si elles changent — avant la migration, tout fonctionne sauf le
+  dépôt d'une variante. Admin → Partenaires : la saisie s'ouvre **sous** le
+  tableau, en pleine largeur (plus de tiroir latéral).
 - Fournisseurs : **e-mail/mot de passe** (avec confirmation par e-mail) et
   **OAuth Google** (callback : `/auth/callback`).
 - `middleware.ts` (runtime **Node.js**) protège `/profil`, `/reglages`,

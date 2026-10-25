@@ -29,6 +29,36 @@ export type AdSlotConfig = {
   previewAspect: string;
   /** Rendu plusieurs fois sur une même page → rotation par index du bandeau. */
   repeated?: boolean;
+  /** Visuels facultatifs propres à la tablette et au téléphone (JEP-367) :
+   *  les champs ci-dessus décrivent le visuel « ordinateur », qui reste
+   *  obligatoire et sert de repli. */
+  variantes: Record<AdVariante, AdFormatVisuel>;
+};
+
+// Appareils (JEP-367). Seuils alignés sur ceux de Tailwind (`md` = 768 px,
+// `lg` = 1024 px), qui découpent déjà les pages du site.
+export type AdAppareil = 'desktop' | 'tablet' | 'mobile';
+export type AdVariante = Exclude<AdAppareil, 'desktop'>;
+
+export type AdFormatVisuel = { maxWidth: number; hint: string; previewAspect: string };
+
+export const AD_APPAREILS: { key: AdAppareil; label: string; icon: string; plage: string }[] = [
+  { key: 'desktop', label: 'Ordinateur', icon: 'computer', plage: 'à partir de 1024 px' },
+  { key: 'tablet', label: 'Tablette', icon: 'tablet', plage: 'de 768 à 1023 px' },
+  { key: 'mobile', label: 'Téléphone', icon: 'smartphone', plage: 'moins de 768 px' },
+];
+
+// Colonne de chaque visuel. Les deux variantes ont été ajoutées à la main
+// (DDL par `psql`) : elles peuvent manquer à la lecture, d'où le `?` de `Ad`.
+export const AD_COLONNE_IMAGE = {
+  desktop: 'image_url',
+  tablet: 'image_url_tablet',
+  mobile: 'image_url_mobile',
+} as const satisfies Record<AdAppareil, string>;
+
+const BANDEAU_VARIANTES: Record<AdVariante, AdFormatVisuel> = {
+  tablet: { maxWidth: 1024, hint: '1024 × 300 px', previewAspect: 'aspect-[1024/300]' },
+  mobile: { maxWidth: 750, hint: '750 × 400 px', previewAspect: 'aspect-[750/400]' },
 };
 
 export const AD_SLOTS: AdSlotConfig[] = [
@@ -41,6 +71,7 @@ export const AD_SLOTS: AdSlotConfig[] = [
     maxWidth: 1600,
     hint: '1600 × 320 px',
     previewAspect: 'aspect-[5/1]',
+    variantes: BANDEAU_VARIANTES,
   },
   {
     key: 'home_mid',
@@ -51,6 +82,7 @@ export const AD_SLOTS: AdSlotConfig[] = [
     maxWidth: 1600,
     hint: '1600 × 320 px',
     previewAspect: 'aspect-[5/1]',
+    variantes: BANDEAU_VARIANTES,
   },
   {
     key: 'search_list',
@@ -62,6 +94,7 @@ export const AD_SLOTS: AdSlotConfig[] = [
     hint: '1600 × 320 px',
     previewAspect: 'aspect-[5/1]',
     repeated: true,
+    variantes: BANDEAU_VARIANTES,
   },
   {
     key: 'recipe_inline',
@@ -72,6 +105,7 @@ export const AD_SLOTS: AdSlotConfig[] = [
     maxWidth: 1400,
     hint: '1400 × 280 px',
     previewAspect: 'aspect-[5/1]',
+    variantes: BANDEAU_VARIANTES,
   },
   {
     key: 'sidebar',
@@ -82,6 +116,12 @@ export const AD_SLOTS: AdSlotConfig[] = [
     maxWidth: 800,
     hint: '800 × 1000 px (format portrait)',
     previewAspect: 'aspect-[4/5]',
+    // Sous 1024 px, la colonne latérale passe sous la fiche, en pleine
+    // largeur : un pavé portrait y occuperait tout l'écran.
+    variantes: {
+      tablet: { maxWidth: 1024, hint: '1024 × 560 px', previewAspect: 'aspect-[1024/560]' },
+      mobile: { maxWidth: 750, hint: '750 × 900 px', previewAspect: 'aspect-[750/900]' },
+    },
   },
 ];
 
@@ -106,9 +146,29 @@ export type AdRow = {
   priority: number;
 };
 
-// Campagne effectivement diffusée : le visuel en plus, `active` implicite
-// (filtré à la lecture).
-export type Ad = Omit<AdRow, 'active'> & { image_url: string | null };
+// Campagne effectivement diffusée : les visuels en plus, `active` implicite
+// (filtré à la lecture). Variantes absentes tant que la migration JEP-367
+// n'est pas passée.
+export type Ad = Omit<AdRow, 'active'> & {
+  image_url: string | null;
+  image_url_tablet?: string | null;
+  image_url_mobile?: string | null;
+};
+
+export type AdSources = { desktop: string; tablet: string; mobile: string };
+
+/**
+ * Visuel servi à chaque appareil, avec repli : le téléphone prend le sien,
+ * sinon celui de la tablette, sinon celui de l'ordinateur ; la tablette le
+ * sien, sinon celui de l'ordinateur. `null` sans visuel « ordinateur » : il
+ * est le seul obligatoire, une variante seule ne fait pas un encart illustré
+ * (l'ordinateur afficherait le repli texte, le téléphone une image).
+ */
+export function adSources(ad: Pick<Ad, 'image_url' | 'image_url_tablet' | 'image_url_mobile'>): AdSources | null {
+  if (!ad.image_url) return null;
+  const tablet = ad.image_url_tablet || ad.image_url;
+  return { desktop: ad.image_url, tablet, mobile: ad.image_url_mobile || tablet };
+}
 
 export type AdsBySlot = Partial<Record<AdSlotKey, Ad[]>>;
 

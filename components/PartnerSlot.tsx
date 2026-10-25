@@ -13,7 +13,7 @@ import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements } from '@/lib/entitlements-data';
 import { PartnerLink } from '@/components/PartnerLink';
-import { adSlotConfig, type AdSlotConfig, type Ad, type AdSlotKey, type AdsBySlot } from '@/lib/ads-config';
+import { adSlotConfig, adSources, type AdSlotConfig, type AdSources, type Ad, type AdSlotKey, type AdsBySlot } from '@/lib/ads-config';
 
 export async function PartnerSlot({
   slot,
@@ -50,9 +50,10 @@ export async function PartnerSlot({
     if (user && canAccess(await getEntitlements(user.id), 'navigation_sans_pub')) return null;
   }
 
-  const inner = ad.image_url ? <Visual ad={ad} cfg={cfg} /> : <TextCard ad={ad} cfg={cfg} />;
-  const box = `encart-partenaire w-full ${cfg.tone === 'gradient' && !ad.image_url ? 'encart-partenaire--decor' : ''} ${
-    cfg.tone === 'plain' && !ad.image_url ? 'bg-surface-container-low border border-outline-variant/30' : ''
+  const sources = adSources(ad);
+  const inner = sources ? <Visual ad={ad} cfg={cfg} sources={sources} /> : <TextCard ad={ad} cfg={cfg} />;
+  const box = `encart-partenaire w-full ${cfg.tone === 'gradient' && !sources ? 'encart-partenaire--decor' : ''} ${
+    cfg.tone === 'plain' && !sources ? 'bg-surface-container-low border border-outline-variant/30' : ''
   }`;
 
   return (
@@ -83,14 +84,25 @@ const VISUAL_MAX_HEIGHT: Record<AdSlotConfig['format'], string> = {
 
 // Visuel fourni par l'annonceur. `object-cover` sous une hauteur plafond : une
 // image aux proportions inattendues est recadrée plutôt que d'étirer la page.
-function Visual({ ad, cfg }: { ad: Ad; cfg: AdSlotConfig }) {
+//
+// Un visuel par appareil (JEP-367), par `<picture>` : le navigateur ne
+// télécharge que la source retenue. Seuils de Tailwind (`md`, `lg`). Une
+// variante absente vaut le visuel de repli (`adSources`) : une source égale
+// à la suivante est simplement omise.
+function Visual({ ad, cfg, sources }: { ad: Ad; cfg: AdSlotConfig; sources: AdSources }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
-    <img
-      src={ad.image_url as string}
-      alt={ad.name}
-      className={`w-full h-auto ${VISUAL_MAX_HEIGHT[cfg.format]} object-cover`}
-    />
+    <picture>
+      {sources.mobile !== sources.desktop && <source media="(max-width: 767px)" srcSet={sources.mobile} />}
+      {sources.tablet !== sources.desktop && (
+        <source media="(min-width: 768px) and (max-width: 1023px)" srcSet={sources.tablet} />
+      )}
+      {/* eslint-disable-next-line @next/next/no-img-element -- visuel déposé sur le stockage objet */}
+      <img
+        src={sources.desktop}
+        alt={ad.name}
+        className={`w-full h-auto ${VISUAL_MAX_HEIGHT[cfg.format]} object-cover`}
+      />
+    </picture>
   );
 }
 
