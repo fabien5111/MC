@@ -165,7 +165,7 @@ export default async function HomePage({ searchParams }: HomeSearchParams) {
         fallback={BANNER_FALLBACK}
       />
 
-      <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-12">
+      <main className="max-w-[1200px] mx-auto px-margin-mobile rail:px-margin-desktop py-12">
         {/* Reprendre là où j'en suis (membre) / présentation du produit
             (visiteur) — les deux occupent le même emplacement, jamais
             ensemble. Un membre sans session en cours n'a rien ici : la page
@@ -186,14 +186,14 @@ export default async function HomePage({ searchParams }: HomeSearchParams) {
             {/* Sur mobile, le libellé sort de la photo et se place au-dessus
                 du bloc : posé en surimpression, il masquait le sujet de
                 l'image sur une largeur d'écran étroite. */}
-            <div className="md:hidden mb-3">
+            <div className="rail:hidden mb-3">
               <span className="inline-block bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">
                 Recette de la Semaine
               </span>
             </div>
             <div className="relative luxury-shadow rounded-xl overflow-hidden bg-surface-container-lowest border border-primary/5 p-3">
-              <div className="grid md:grid-cols-2 gap-0">
-                <div className="relative h-[400px] md:h-auto overflow-hidden">
+              <div className="grid rail:grid-cols-2 gap-0">
+                <div className="relative h-[400px] rail:h-auto overflow-hidden">
                   <div className="w-full h-full bg-surface-container">
                     {featuredSrc ? (
                       // Pleine définition (`hero_image_url`), pas `hero_card_url`
@@ -210,7 +210,7 @@ export default async function HomePage({ searchParams }: HomeSearchParams) {
                       </div>
                     )}
                   </div>
-                  <div className="absolute top-6 left-6 hidden md:block">
+                  <div className="absolute top-6 left-6 hidden rail:block">
                     <span className="bg-primary text-on-primary px-4 py-1.5 font-label-md text-label-md rounded-full shadow-xl">
                       Recette de la Semaine
                     </span>
@@ -242,7 +242,7 @@ export default async function HomePage({ searchParams }: HomeSearchParams) {
                   )}
                 </div>
 
-                <div className="p-8 md:p-16 flex flex-col justify-center bg-surface-container-low">
+                <div className="p-8 rail:p-16 flex flex-col justify-center bg-surface-container-low">
                   <span className="font-label-md text-label-md text-secondary tracking-widest uppercase mb-3">
                     {featured.recipe_types?.name || 'Recette de la communauté'}
                   </span>
@@ -332,7 +332,7 @@ export default async function HomePage({ searchParams }: HomeSearchParams) {
 
         {/* Recherche — redirige vers la page de résultats /recherche */}
         <section className="mb-16">
-          <div className="bg-surface-container-high rounded-xl p-8 md:py-16 flex flex-col items-center text-center">
+          <div className="bg-surface-container-high rounded-xl p-8 rail:py-16 flex flex-col items-center text-center">
             <h2 className="font-headline-lg text-headline-lg text-primary mb-6">
               Que souhaitez-vous préparer aujourd&apos;hui ?
             </h2>
@@ -351,14 +351,14 @@ export default async function HomePage({ searchParams }: HomeSearchParams) {
               Voir tout
             </Link>
           </div>
-          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-10">
+          <div className="grid grid-cols-3 rail:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-10">
             {categories.map((c) => {
               const inner = (
                 <>
-                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-surface-container flex items-center justify-center mb-3 transition-all group-hover:bg-primary-fixed group-hover:shadow-lg overflow-hidden">
+                  <div className="w-20 h-20 rail:w-24 rail:h-24 rounded-full bg-surface-container flex items-center justify-center mb-3 transition-all group-hover:bg-primary-fixed group-hover:shadow-lg overflow-hidden">
                     {c.picto ? (
                       // eslint-disable-next-line @next/next/no-img-element -- data-URL stockée en base
-                      <img src={c.picto} alt="" className="w-12 h-12 md:w-14 md:h-14 object-contain" />
+                      <img src={c.picto} alt="" className="w-12 h-12 rail:w-14 rail:h-14 object-contain" />
                     ) : (
                       <span className="material-symbols-outlined text-4xl text-primary">{c.icon}</span>
                     )}
