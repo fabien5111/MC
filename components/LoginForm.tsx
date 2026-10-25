@@ -32,27 +32,12 @@ import { PasswordStrengthGauge } from '@/components/PasswordStrengthGauge';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import { urlConnexionPortail } from '@/lib/moderation';
+import { COMPTE_BLOQUE, traduireErreurAuth } from '@/lib/auth-errors';
 
-// Traduction des messages d'erreur Supabase Auth les plus courants ; les
-// autres remontent tels quels (anglais) plutôt que d'être masqués.
-// Début du message d'un compte bloqué : l'erreur reste une chaîne dans l'état, la
-// suite et le lien vers /contact se rendent à l'affichage.
-const COMPTE_BLOQUE = 'Ce compte est suspendu ou désactivé.';
-
-const AUTH_ERRORS: Record<string, string> = {
-  'User already registered': 'Un compte existe déjà avec cette adresse e-mail.',
-  'Invalid login credentials': 'Adresse e-mail ou mot de passe incorrect.',
-  'Email not confirmed': "Confirmez votre adresse e-mail avant de vous connecter (lien envoyé à l'inscription).",
-  'Password should be at least 6 characters': 'Le mot de passe doit contenir au moins 6 caractères.',
-  // Compte suspendu ou désactivé depuis le back-office (JEP-272, bannissement
-  // GoTrue). Le motif n'est lisible qu'une fois connecté : on renvoie au contact
-  // (le lien est ajouté à l'affichage, cf. `COMPTE_BLOQUE`).
-  'User is banned': COMPTE_BLOQUE,
-};
-
-function translateAuthError(message: string): string {
-  return AUTH_ERRORS[message] ?? message;
-}
+// Erreurs de GoTrue traduites par `traduireErreurAuth` (`lib/auth-errors.ts`),
+// règle commune à tous les écrans d'authentification. Un compte suspendu ou
+// désactivé rend `COMPTE_BLOQUE` : la suite et le lien vers /contact se rendent
+// à l'affichage.
 
 // Motif `IdeaForm` (`/api/idees/similaires`) : vérification bon marché
 // (unicité, pas d'IA) déclenchée pendant la frappe, débouncée pour ne pas
@@ -175,7 +160,7 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
     if (mode === 'signin') {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        setError(translateAuthError(error.message) || 'Une erreur est survenue.');
+        setError(traduireErreurAuth(error));
         setBusy(false);
         return;
       }
@@ -252,7 +237,7 @@ export function LoginForm({ next, initialMode = 'signin' }: { next: string; init
       setBusy(true);
       router.push('/');
     } catch (err) {
-      setError(translateAuthError((err as Error).message) || 'Une erreur est survenue.');
+      setError(traduireErreurAuth(err as Error));
     } finally {
       if (!redirecting) setBusy(false);
     }

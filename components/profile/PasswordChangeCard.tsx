@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 import { evaluatePassword, PASSWORD_MIN_LENGTH } from '@/lib/password';
 import { PasswordStrengthGauge } from '@/components/PasswordStrengthGauge';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { avecErreurTraduite } from '@/lib/auth-errors';
 import { useMutation } from '@/lib/use-mutation';
 import { SettingsCard } from '@/components/profile/SettingsCard';
 
@@ -30,7 +31,10 @@ export function PasswordChangeCard({ email, hasPassword }: { email: string; hasP
 
   const strength = useMemo(() => evaluatePassword(password), [password]);
   const mismatch = confirm.length > 0 && confirm !== password;
-  const blocked = current.length === 0 || !strength.valid || password !== confirm;
+  // Identique à l'actuel : refusé ici, sans aller-retour (GoTrue le refuserait
+  // aussi, `same_password`, après la réauthentification).
+  const identique = current.length > 0 && password === current;
+  const blocked = current.length === 0 || !strength.valid || password !== confirm || identique;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,6 +46,8 @@ export function PasswordChangeCard({ email, hasPassword }: { email: string; hasP
           ? 'Les deux mots de passe ne correspondent pas.'
           : current.length === 0
             ? 'Saisissez votre mot de passe actuel.'
+            : identique
+              ? 'Le nouveau mot de passe doit être différent de l’actuel.'
             : 'Le nouveau mot de passe ne respecte pas les règles de sécurité.',
       );
       return;
@@ -51,7 +57,7 @@ export function PasswordChangeCard({ email, hasPassword }: { email: string; hasP
         const supabase = createClient();
         const { error: reauthError } = await supabase.auth.signInWithPassword({ email, password: current });
         if (reauthError) return { error: { message: 'Mot de passe actuel incorrect.' } };
-        return supabase.auth.updateUser({ password });
+        return avecErreurTraduite(await supabase.auth.updateUser({ password }));
       },
       { errorLabel: 'Mot de passe', refresh: false },
     );
@@ -122,6 +128,9 @@ export function PasswordChangeCard({ email, hasPassword }: { email: string; hasP
             </button>
           </div>
           <PasswordStrengthGauge password={password} />
+          {identique && (
+            <p className="text-[12px] text-error mt-2 ml-1">Le nouveau mot de passe doit être différent de l’actuel.</p>
+          )}
         </div>
 
         <div className="space-y-1">
