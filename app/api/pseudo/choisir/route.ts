@@ -20,7 +20,7 @@ import { PSEUDO_DELAI_CHANGEMENT_JOURS, PSEUDO_MAX_LENGTH, prochainChangementPse
 import { formatDate } from '@/lib/format';
 import { cguVersionValide } from '@/lib/cgu';
 import { attestationAgeVersionValide } from '@/lib/attestation-age';
-import { enregistrerAcceptationsInscription } from '@/lib/cgu-data';
+import { enregistrerAcceptationsInscription, enregistrerAttestationAgeProfil } from '@/lib/cgu-data';
 import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 20;
@@ -121,6 +121,10 @@ export async function POST(req: Request) {
     adresseChange,
   );
   if (!ecriture.ok) return NextResponse.json({ ok: false, message: ecriture.message });
+
+  // JEP-270 : la déclaration d'âge vient d'être posée (premier choix) — on la
+  // recopie sur le profil, avec l'horodatage du serveur.
+  if (premiereFois) await enregistrerAttestationAgeProfil(user.id, new Date().toISOString());
 
   // `inscription` : la méthode, quand c'est l'inscription qui se termine — le
   // navigateur en fait l'événement `sign_up` (JEP-89, lib/inscription.ts).
