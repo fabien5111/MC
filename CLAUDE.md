@@ -309,6 +309,12 @@ instrumentation.ts      Démarrage du serveur : boucle de vidange de la file de 
   (`lib/ads-config.ts`, testé) : téléphone → tablette → ordinateur, tablette →
   ordinateur. Rendu par `<picture>` (seuils `md` / `lg`) : une seule image
   téléchargée. Formats conseillés par emplacement dans `AD_SLOTS.variantes`.
+  **Seul le visuel « ordinateur » est plafonné en hauteur** (et donc recadré),
+  y compris quand un autre appareil le reprend ; un visuel dédié s'affiche
+  entier — plafonné, un 750 × 400 était rogné à 260 px. Même règle pour la
+  bannière d'accueil (`HomeBanner`) : cadre 2,5:1 imposé seulement là où la
+  bannière « web » est affichée, hauteur naturelle pour une bannière tablette
+  ou mobile propre.
   Colonnes posées par `psql` (nœud 216075) : lues en `select('*')`, écrites
   seulement si elles changent — avant la migration, tout fonctionne sauf le
   dépôt d'une variante. Admin → Partenaires : la saisie s'ouvre **sous** le

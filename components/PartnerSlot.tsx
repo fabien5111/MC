@@ -76,20 +76,32 @@ function Mention() {
   );
 }
 
-const VISUAL_MAX_HEIGHT: Record<AdSlotConfig['format'], string> = {
-  bandeau_fin: 'max-h-[160px]',
-  bandeau_large: 'max-h-[260px]',
-  pave: 'max-h-[560px]',
+// Hauteur plafond, par format : protège la page d'un visuel « ordinateur »
+// aux proportions inattendues. Classes écrites en entier, une par seuil, pour
+// que Tailwind les trouve.
+const PLAFOND: Record<AdSlotConfig['format'], { base: string; md: string; lg: string }> = {
+  bandeau_fin: { base: 'max-h-[160px]', md: 'md:max-h-[160px]', lg: 'lg:max-h-[160px]' },
+  bandeau_large: { base: 'max-h-[260px]', md: 'md:max-h-[260px]', lg: 'lg:max-h-[260px]' },
+  pave: { base: 'max-h-[560px]', md: 'md:max-h-[560px]', lg: 'lg:max-h-[560px]' },
 };
 
-// Visuel fourni par l'annonceur. `object-cover` sous une hauteur plafond : une
-// image aux proportions inattendues est recadrée plutôt que d'étirer la page.
+// Visuel fourni par l'annonceur, un par appareil (JEP-367), par `<picture>` :
+// le navigateur ne télécharge que la source retenue. Seuils de Tailwind
+// (`md`, `lg`). Une variante absente vaut le visuel de repli (`adSources`) :
+// une source égale à la suivante est simplement omise.
 //
-// Un visuel par appareil (JEP-367), par `<picture>` : le navigateur ne
-// télécharge que la source retenue. Seuils de Tailwind (`md`, `lg`). Une
-// variante absente vaut le visuel de repli (`adSources`) : une source égale
-// à la suivante est simplement omise.
+// Le plafond de hauteur (`object-cover`, donc recadrage) ne s'applique qu'au
+// visuel « ordinateur », y compris quand une tablette ou un téléphone le
+// reprennent faute de visuel propre. Un visuel dédié à l'appareil s'affiche
+// en entier : il a été fait à ses proportions, le plafonner le rognait (un
+// 750 × 400 affiché sur 700 px de large dépassait les 260 px du bandeau).
 function Visual({ ad, cfg, sources }: { ad: Ad; cfg: AdSlotConfig; sources: AdSources }) {
+  const plafond = PLAFOND[cfg.format];
+  const hauteur = [
+    sources.mobile === sources.desktop ? plafond.base : 'max-h-none',
+    sources.tablet === sources.desktop ? plafond.md : 'md:max-h-none',
+    plafond.lg,
+  ].join(' ');
   return (
     <picture>
       {sources.mobile !== sources.desktop && <source media="(max-width: 767px)" srcSet={sources.mobile} />}
@@ -97,11 +109,7 @@ function Visual({ ad, cfg, sources }: { ad: Ad; cfg: AdSlotConfig; sources: AdSo
         <source media="(min-width: 768px) and (max-width: 1023px)" srcSet={sources.tablet} />
       )}
       {/* eslint-disable-next-line @next/next/no-img-element -- visuel déposé sur le stockage objet */}
-      <img
-        src={sources.desktop}
-        alt={ad.name}
-        className={`w-full h-auto ${VISUAL_MAX_HEIGHT[cfg.format]} object-cover`}
-      />
+      <img src={sources.desktop} alt={ad.name} className={`block w-full h-auto ${hauteur} object-cover`} />
     </picture>
   );
 }
