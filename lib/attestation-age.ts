@@ -42,3 +42,33 @@ export function metadonneesAttestationAge(atteste: string): {
 } {
   return { age_attestation_version: AGE_ATTESTATION_VERSION, age_attestation_at: atteste };
 }
+
+/**
+ * Les métadonnées d'un compte portent-elles l'attestation en vigueur ? (JEP-270)
+ *
+ * Garde du callback d'inscription par e-mail : `supabase.auth.signUp()` est
+ * appelable depuis la console du navigateur, sans passer par la case de
+ * `LoginForm`. Sans cette garde, un tel compte, une fois son adresse confirmée,
+ * obtenait son pseudo sans jamais avoir déclaré son âge. Sans attestation en
+ * version valide, le membre est renvoyé sur `/choix-pseudo`, qui l'exige.
+ */
+export function attestationAgeDansMetadonnees(meta: unknown): boolean {
+  const m = (meta ?? {}) as { age_attestation_version?: unknown; age_attestation_at?: unknown };
+  return (
+    attestationAgeVersionValide(m.age_attestation_version) &&
+    typeof m.age_attestation_at === 'string' &&
+    !Number.isNaN(Date.parse(m.age_attestation_at))
+  );
+}
+
+/**
+ * Date de déclaration à inscrire sur le profil : celle des métadonnées, jamais
+ * postérieure à `maintenant` (l'horodatage vient du navigateur) ; à défaut
+ * `maintenant`. Pure, pour être testée.
+ */
+export function dateAttestationAge(meta: unknown, maintenant: Date): string {
+  const brut = (meta as { age_attestation_at?: unknown } | null | undefined)?.age_attestation_at;
+  const t = typeof brut === 'string' ? Date.parse(brut) : NaN;
+  if (Number.isNaN(t) || t > maintenant.getTime()) return maintenant.toISOString();
+  return new Date(t).toISOString();
+}

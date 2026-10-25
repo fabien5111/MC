@@ -5,9 +5,9 @@
 // usages de l'IA, impersonation journalisée, durées de conservation codées
 // en base — cf. CLAUDE.md et docs/contact-jira.md pour le module contact).
 // Règle de rédaction : ne rien promettre que le code ne tienne pas. La purge
-// des comptes inactifs et la déclaration d'âge à l'inscription n'existant
-// pas, elles n'y figurent pas — les réintroduire ici en même temps que leur
-// implémentation, jamais avant.
+// des comptes inactifs n'existant pas, elle n'y figure pas — la réintroduire
+// ici en même temps que son implémentation, jamais avant. La déclaration
+// d'âge (JEP-34, tracée sur le profil par JEP-270) y figure aux §§ 2, 3, 8, 9.
 //
 // Ce n'est PAS un avis juridique : une relecture par un professionnel reste
 // recommandée avant l'ouverture publique. Plus aucun passage n'est entre
@@ -151,6 +151,11 @@ export default function ConfidentialitePage() {
               En cas de connexion avec Google : votre nom et votre adresse e-mail transmis par Google. Ce nom sert de
               suggestion de pseudo, que vous pouvez modifier lors de votre première connexion.
             </li>
+            <li>
+              La date à laquelle vous avez déclaré avoir 15 ans ou plus (ou disposer de l&apos;accord de votre
+              représentant légal), et la version du texte déclaré. Nous ne vous demandons ni ne conservons votre âge ni
+              votre date de naissance.
+            </li>
           </Liste>
 
           <SousTitre>Contenus et usage du service</SousTitre>
@@ -221,6 +226,10 @@ export default function ConfidentialitePage() {
             entetes={['Finalité', 'Base légale (art. 6 du RGPD)']}
             lignes={[
               ['Création et gestion du compte', 'Exécution du contrat'],
+              [
+                "Conservation de la preuve de votre déclaration d'âge (15 ans ou plus)",
+                'Obligation légale (art. 8 du RGPD et art. 45 de la loi Informatique et Libertés : pouvoir justifier du respect de la condition d’âge)',
+              ],
               [
                 'Fourniture du service : carnet, fournées, listes de courses, partages, boîte à idées, mode projet',
                 'Exécution du contrat',
@@ -439,6 +448,7 @@ export default function ConfidentialitePage() {
             entetes={['Données', 'Durée']}
             lignes={[
               ['Compte et contenus', 'Tant que le compte existe'],
+              ['Date de la déclaration d’âge (§ 9)', 'Conservée avec le compte, supprimée avec lui'],
               [
                 'Après suppression du compte',
                 'Effacement sous 30 jours, sauvegardes comprises',
@@ -480,6 +490,11 @@ export default function ConfidentialitePage() {
           <p>
             Le service est destiné aux personnes de <Fort>15 ans ou plus</Fort>. L&apos;abonnement payant est
             réservé aux personnes majeures.
+          </p>
+          <p>
+            Lors de la création de votre compte, par e-mail comme avec Google, vous déclarez avoir 15 ans ou plus, ou
+            disposer de l&apos;accord de votre représentant légal. Sans cette déclaration, le compte ne peut pas être
+            créé. Nous conservons la date de cette déclaration (§ 2), pas votre âge.
           </p>
           <p>
             Si nous apprenons qu&apos;un compte a été créé par une personne de moins de 15 ans sans l&apos;autorisation

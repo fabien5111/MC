@@ -27,6 +27,8 @@ import { validerPseudo } from '@/lib/pseudo';
 import { syncProfileEmail } from '@/lib/auth';
 import { avecMarqueInscription, methodeInscription } from '@/lib/inscription';
 import { nextDepuisSuite } from '@/lib/gotrue-modeles';
+import { attestationAgeDansMetadonnees, dateAttestationAge } from '@/lib/attestation-age';
+import { enregistrerAttestationAgeProfil } from '@/lib/cgu-data';
 
 function safeNext(next: string | null): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
@@ -61,7 +63,12 @@ async function destinationApresConnexion(next: string): Promise<string> {
   // confirmation de l'adresse.
   const meta = (user.user_metadata ?? {}) as { pseudo?: string };
   const validation = meta.pseudo ? validerPseudo(meta.pseudo) : null;
-  if (validation?.ok && (await pseudoDisponible(validation.pseudo, validation.slug, user.id))) {
+  // JEP-270 : pas de pseudo — donc pas de compte complet — sans déclaration
+  // d'âge. `signUp` est appelable depuis la console du navigateur, sans la case
+  // de `LoginForm` : le membre est alors renvoyé sur `/choix-pseudo`, qui l'exige.
+  if (
+    attestationAgeDansMetadonnees(user.user_metadata) &&
+    validation?.ok && (await pseudoDisponible(validation.pseudo, validation.slug, user.id))) {
     const ecriture = await enregistrerPseudo(
       user.id,
       validation.pseudo,
@@ -73,6 +80,9 @@ async function destinationApresConnexion(next: string): Promise<string> {
     // navigateur n'a aucun moyen de le savoir (on lui répond par une
     // redirection), d'où le marqueur d'URL que `InscriptionTracker` mesure puis
     // retire (JEP-89, cf. lib/inscription.ts).
+    if (ecriture.ok) {
+      await enregistrerAttestationAgeProfil(user.id, dateAttestationAge(user.user_metadata, new Date()));
+    }
     if (ecriture.ok) return avecMarqueInscription(next, methodeInscription(user.app_metadata?.provider));
   }
 
