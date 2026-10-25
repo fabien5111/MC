@@ -82,7 +82,11 @@ export const USAGES = {
   profil: { conteneur: 'photos', prefixe: 'profils', acces: 'membre' },
   avis: { conteneur: 'photos', prefixe: 'avis', acces: 'membre' },
   banniere: { conteneur: 'photos', prefixe: 'bannieres', acces: 'admin' },
-  publicite: { conteneur: 'photos', prefixe: 'publicites', acces: 'admin' },
+  // Dossier neutre, jamais « publicites » : les listes des bloqueurs (Liste FR,
+  // EasyList) filtrent ce chemin, et uBlock Origin masquait les visuels de la
+  // régie maison. Les objets déjà déposés sous `publicites/` restent bloqués :
+  // le visuel se redépose depuis Admin → Partenaires.
+  publicite: { conteneur: 'photos', prefixe: 'partenaires', acces: 'admin' },
   article: { conteneur: 'photos', prefixe: 'articles', acces: 'admin' },
   // Pictogrammes de `tags`/`allergens` — aucun chemin d'écriture applicatif
   // (§ 7.5 étape 1 du B2), seulement repris par le B3 (`lib/backfill-data.ts`),
