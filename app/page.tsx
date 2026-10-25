@@ -192,8 +192,8 @@ export default async function HomePage({ searchParams }: HomeSearchParams) {
               </span>
             </div>
             <div className="relative luxury-shadow rounded-xl overflow-hidden bg-surface-container-lowest border border-primary/5 p-3">
-              <div className="grid rail:grid-cols-2 gap-0">
-                <div className="relative h-[400px] rail:h-auto overflow-hidden">
+              <div className="grid lg:grid-cols-2 gap-0">
+                <div className="relative h-[400px] lg:h-auto overflow-hidden">
                   <div className="w-full h-full bg-surface-container">
                     {featuredSrc ? (
                       // Pleine définition (`hero_image_url`), pas `hero_card_url`
@@ -242,7 +242,7 @@ export default async function HomePage({ searchParams }: HomeSearchParams) {
                   )}
                 </div>
 
-                <div className="p-8 rail:p-16 flex flex-col justify-center bg-surface-container-low">
+                <div className="p-8 rail:p-10 lg:p-16 flex flex-col justify-center bg-surface-container-low">
                   <span className="font-label-md text-label-md text-secondary tracking-widest uppercase mb-3">
                     {featured.recipe_types?.name || 'Recette de la communauté'}
                   </span>

@@ -3,10 +3,10 @@
 // Bouton « Créer » du carnet : un seul point d'entrée pour les trois façons
 // d'ajouter une recette — la saisir, l'importer, composer un projet.
 //
-// Deux présentations pour un même contenu : menu déroulant à partir de 768 px,
+// Deux présentations pour un même contenu : menu déroulant à partir de 701 px,
 // feuille remontante en dessous (cibles plus grandes au doigt, même motif que
-// le tiroir Compte). Les deux boutons sont rendus ; `md:hidden` /
-// `hidden md:block` départagent, et `BottomSheet` se referme seule au passage
+// le tiroir Compte). Les deux boutons sont rendus ; `rail:hidden` /
+// `hidden rail:block` départagent, et `BottomSheet` se referme seule au passage
 // du seuil.
 //
 // « Créer un projet » : JEP-130, l'entrée reste visible mais grisée sans le
@@ -130,7 +130,7 @@ export function CreateMenuButton({ peutProjet = true }: { peutProjet?: boolean }
   return (
     <>
       {/* ≥ 768 px : menu déroulant. */}
-      <div ref={wrapRef} className="relative hidden md:block">
+      <div ref={wrapRef} className="relative hidden rail:block">
         <button
           ref={btnRef}
           type="button"
@@ -161,7 +161,7 @@ export function CreateMenuButton({ peutProjet = true }: { peutProjet?: boolean }
         aria-expanded={feuille}
         aria-controls="feuille-creer"
         onClick={() => setFeuille(true)}
-        className={`${BTN} w-full justify-center md:hidden`}
+        className={`${BTN} w-full justify-center rail:hidden`}
       >
         <span className="material-symbols-outlined text-[18px]">add</span> Créer
       </button>
@@ -169,7 +169,7 @@ export function CreateMenuButton({ peutProjet = true }: { peutProjet?: boolean }
         id="feuille-creer"
         open={feuille}
         onClose={() => setFeuille(false)}
-        breakpoint="md"
+        breakpoint="rail"
         label="Créer"
         sheetClassName="max-h-[80vh] overflow-y-auto"
       >
