@@ -107,17 +107,16 @@ export async function getFollowedRecipes(userId: string, limit = 12) {
   const ids = (followedIds ?? []).map((f) => f.following_id);
   if (ids.length === 0) return [];
 
-  // `status: 'published'` seul, sans filtre `is_public` explicite : même
-  // requête que `getRecipes` (lib/recipes.ts), qui ne filtre pas non plus sur
-  // `is_public` — les recettes privées d'autrui sont donc déjà écartées par la
-  // RLS, pas par l'application. Refiltrer ici sur `is_public` avec `.neq()`
-  // aurait de surcroît exclu à tort les lignes `is_public IS NULL` (`NULL !=
-  // false` vaut NULL en SQL, donc absent du résultat).
+  // La RLS de `recipes` ne lit que `status` : une recette publiée puis rendue
+  // privée (`is_public = false`) resterait lisible, d'où le filtre explicite.
+  // `.or(...)` et non `.neq('is_public', false)` : `NULL != false` vaut NULL en
+  // SQL, ce qui exclurait à tort les lignes `is_public IS NULL` (= publiques).
   const { data, error } = await supabase
     .from('recipes')
     .select(CARD_SELECT)
     .in('author_id', ids)
     .eq('status', 'published')
+    .or('is_public.is.null,is_public.eq.true')
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) {

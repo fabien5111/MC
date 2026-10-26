@@ -66,7 +66,14 @@ export async function getItemsDeListe(
     .select(`${CARD_SELECT}, status, is_public, kind, project_stage`)
     .in('id', ids);
   if (error) console.error('getItemsDeListe:', error.message);
-  const rows = withAllergenNames((data as unknown as UserRecipeCard[] | null) ?? []);
+  // La RLS de `recipes` laisse lire toute recette `published`, même devenue
+  // privée (`is_public = false`) : c'est au code d'écarter celle d'un autre
+  // auteur, sauf si elle me vient d'un partage ou d'un favori (déjà au carnet).
+  const duCarnet = new Set(carnet.map((i) => i.recipe.id));
+  const lisibles = ((data as unknown as UserRecipeCard[] | null) ?? []).filter(
+    (r) => r.author_id === userId || r.is_public !== false || duCarnet.has(r.id),
+  );
+  const rows = withAllergenNames(lisibles);
   const rang = new Map(ids.map((id, i) => [id, i]));
   rows.sort((a, b) => (rang.get(a.id) ?? 0) - (rang.get(b.id) ?? 0));
   return { items: itemsCap(rows, carnet, userId), indisponibles: error ? 0 : nombreIndisponibles(ids, rows.map((r) => r.id)) };
