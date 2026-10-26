@@ -2027,20 +2027,18 @@ Spec complète : commentaire du ticket JEP-376. Trois sortes de listes
   vide, rien ne s'ajoute ni ne se crée ni ne se renomme. La portée « Mes listes »
   reste ouverte tant que le membre a des listes, verrouillée sinon.
 - **Fenêtre « Ajouter à une liste »** (`components/listes/AddToListButton.tsx`) :
-  sur la fiche recette (bouton « Listes ») et sur les cartes du carnet et de la
-  recherche (`MineCard`, `OtherCard`). Elle lit son état à l'ouverture
-  (`GET /api/listes?recette=`), rien n'est chargé d'avance par carte. Une case
+  sur la fiche recette seulement (bouton « Listes », à droite du cœur) —
+  **jamais sur les cartes** (arbitrage du 26/10/2026). Elle lit son état à
+  l'ouverture (`GET /api/listes?recette=`). Une case
   par liste (Favoris, CAP grisée sans le droit, listes perso) et « Nouvelle
   liste », qui y range aussitôt la recette. Favoris écrit `favorites` par le
   navigateur, comme le cœur. Écritures en `refresh: false`, resynchronisation
-  par le bouton à la fermeture (modale). Le cœur et `FavoriteButton` se
-  resynchronisent sur `initialFav` (`useEffect`) pour refléter ce changement.
+  par le bouton à la fermeture (modale). `FavoriteButton` se resynchronise sur
+  `initialFav` (`useEffect`) pour refléter un favori changé dans la fenêtre.
 - Les recettes illisibles (dépubliées, privées, auteur désactivé) restent en
   liste, masquées par la RLS et comptées « plus accessibles »
   (`getItemsDeListe`, `lib/carnet-cap-data.ts`). Plafond technique
   `LISTE_MAX_RECETTES` (300) par liste. Ajouter à une liste ne notifie personne.
-- Pas encore de bouton sur les cartes publiques (`RecipeCard` : accueil,
-  recherche hors carnet) : ajout depuis la fiche.
 - Tables absentes de `lib/database.types.ts` jusqu'à la régénération : accès non
   typé (`lib/recipe-lists-data.ts`).
 

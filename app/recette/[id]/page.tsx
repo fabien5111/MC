@@ -399,7 +399,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               />
               <span className="flex items-center gap-2 text-secondary ml-auto">
                 <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
-                {user && <AddToListButton recipeId={recipe.id} variante="fiche" />}
+                {user && <AddToListButton recipeId={recipe.id} />}
                 <ShareButton title={recipe.title} recipeId={recipe.id} ownerId={recipe.author_id} isOwner={isOwner} shareInfo={shareInfo} />
                 <PrintButton capHref={`/recette/${recipe.id}/cap`} />
               </span>

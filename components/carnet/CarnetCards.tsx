@@ -15,7 +15,6 @@ import type { useMutation } from '@/lib/use-mutation';
 import { formatDate } from '@/lib/format';
 import { matchAllergenPictos } from '@/lib/recipe-view';
 import { FavoriteHeart } from '@/components/FavoriteHeart';
-import { AddToListButton } from '@/components/listes/AddToListButton';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { RecipeCardTime } from '@/components/recipe/RecipeCardTime';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
@@ -144,7 +143,6 @@ export function MineCard({
               >
                 <span className="material-symbols-outlined text-[20px] text-primary">edit_note</span>
               </Link>
-              <AddToListButton recipeId={r.id} variante="carte" />
               <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} inline />
             </>
           )}
@@ -264,7 +262,6 @@ export function OtherCard({
           >
             <PlanBadgeIcon />
           </Link>
-          <AddToListButton recipeId={r.id} variante="carte" />
           <FavoriteHeart recipeId={r.id} initialFav={favIds.includes(r.id)} inline />
         </div>
       </div>

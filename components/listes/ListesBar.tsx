@@ -152,7 +152,7 @@ export function ListesBar({
           <div className="min-w-0 text-[14px]">
             <p className="font-semibold text-primary">{selection.nom}</p>
             <p className="text-on-surface-variant">
-              Les recettes que vous y avez rangées avec le bouton « Listes » d’une fiche ou d’une carte.
+              Les recettes que vous y avez rangées avec le bouton « Listes » d’une fiche recette.
               {indisponibles > 0 &&
                 (indisponibles === 1
                   ? ' 1 recette n’est plus accessible (supprimée, dépubliée ou devenue privée).'

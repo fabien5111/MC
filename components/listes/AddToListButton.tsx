@@ -1,10 +1,10 @@
 'use client';
 
-// « Ajouter à une liste » (JEP-376, lots 2 et 3) : sur la fiche recette et sur
-// les cartes du carnet. Le bouton n'a besoin que de l'identifiant de la recette :
-// la fenêtre lit à l'ouverture (`GET /api/listes?recette=`) les listes du
-// membre, celles qui contiennent la recette, le favori et les droits — rien
-// n'est chargé d'avance pour chaque carte d'une grille.
+// « Ajouter à une liste » (JEP-376, lots 2 et 3) : sur la fiche recette
+// seulement (arbitrage du 26/10/2026 : pas de picto sur les cartes). Le bouton
+// n'a besoin que de l'identifiant de la recette : la fenêtre lit à l'ouverture
+// (`GET /api/listes?recette=`) les listes du membre, celles qui contiennent la
+// recette, le favori et les droits.
 //
 // Une case par liste :
 //  - « Favoris » : liste virtuelle, écrite dans `favorites` par le navigateur,
@@ -41,13 +41,11 @@ type Donnees = {
   droits: { cap: boolean; perso: boolean; max: number | null };
 };
 
-export function AddToListButton({ recipeId, variante }: { recipeId: string; variante: 'fiche' | 'carte' }) {
+export function AddToListButton({ recipeId }: { recipeId: string }) {
   const [ouvert, setOuvert] = useState(false);
   const { busy, refresh } = useMutation();
 
-  function ouvrir(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
+  function ouvrir() {
     setOuvert(true);
   }
 
@@ -60,28 +58,16 @@ export function AddToListButton({ recipeId, variante }: { recipeId: string; vari
 
   return (
     <>
-      {variante === 'fiche' ? (
-        <button
-          type="button"
-          onClick={ouvrir}
-          aria-label="Ajouter à une liste"
-          title="Ajouter à une liste"
-          className="flex h-7 items-center gap-1 rounded-full border border-secondary px-2 text-secondary transition-colors hover:bg-secondary-container"
-        >
-          <span className="material-symbols-outlined text-[16px]" aria-hidden>playlist_add</span>
-          <span className="text-[11px] font-semibold">Listes</span>
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={ouvrir}
-          title="Ajouter à une liste"
-          aria-label="Ajouter à une liste"
-          className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
-        >
-          <span className="material-symbols-outlined text-[20px] text-primary" aria-hidden>playlist_add</span>
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={ouvrir}
+        aria-label="Ajouter à une liste"
+        title="Ajouter à une liste"
+        className="flex h-7 items-center gap-1 rounded-full border border-secondary px-2 text-secondary transition-colors hover:bg-secondary-container"
+      >
+        <span className="material-symbols-outlined text-[16px]" aria-hidden>playlist_add</span>
+        <span className="text-[11px] font-semibold">Listes</span>
+      </button>
       <LoadingOverlay visible={busy} />
       {ouvert && createPortal(<AddToListDialog recipeId={recipeId} onClose={fermer} />, document.body)}
     </>

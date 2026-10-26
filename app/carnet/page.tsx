@@ -38,8 +38,8 @@ const EMPTY_MESSAGES: Record<Scope, string> = {
   fav: 'Aucun favori. Le cœur sur une fiche recette l’ajoute ici.',
   sub: "Aucune publication récente chez les pâtissiers que vous suivez.",
   shared: 'Personne n’a encore partagé son carnet ou une recette avec vous.',
-  cap: 'Votre liste CAP est vide. Le bouton « Listes » d’une fiche ou d’une carte de recette l’y ajoute.',
-  listes: 'Cette liste est vide. Le bouton « Listes » d’une fiche ou d’une carte de recette y range une recette.',
+  cap: 'Votre liste CAP est vide. Le bouton « Listes » d’une fiche recette l’y ajoute.',
+  listes: 'Cette liste est vide. Le bouton « Listes » d’une fiche recette y range une recette.',
   proj: 'Aucun projet en cours. Un projet est un dessert composé de plusieurs recettes de base, mis au point essai après essai.',
 };
 
@@ -163,7 +163,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
                 <div className="min-w-0 flex-1 basis-[28rem] text-[14px] text-on-surface">
                   <p className="font-semibold text-primary">Ma liste CAP</p>
                   <p className="mt-1 text-on-surface-variant">
-                    Les recettes que vous y avez rangées avec le bouton « Listes » d’une fiche ou d’une carte — les vôtres comme celles des
+                    Les recettes que vous y avez rangées avec le bouton « Listes » d’une fiche recette — les vôtres comme celles des
                     autres. Imprimées pour le CAP, seuls leurs ingrédients et quantités figurent sur la feuille.
                   </p>
                   {cap.indisponibles > 0 && (
