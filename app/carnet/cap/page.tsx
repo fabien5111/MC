@@ -6,7 +6,6 @@ import { getEntitlements } from '@/lib/entitlements-data';
 import { getCarnetData, applyCarnetFilters } from '@/lib/carnet';
 import { EMPTY_CARNET_PARAMS } from '@/lib/carnet-params';
 import { CAP_MAX_RECETTES, getFichesCapRecettes, getItemsCap } from '@/lib/carnet-cap-data';
-import { MARQUE_CAP } from '@/lib/carnet-cap';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -19,7 +18,7 @@ import { CapSelection, type CapChoix } from '@/components/cap/CapSelection';
 // fiches d'UNE recette ou d'UNE fournée restent gratuites.
 //
 // Deux listes à choisir : celles de la rubrique « Carnet CAP » du carnet
-// (`?liste=cap`, recettes portant un tag « [CAP] … », cochées d'office, la
+// (`?liste=cap`, la liste CAP remplie à la main — JEP-376 —, cochées d'office, la
 // recherche de la rubrique est reprise par `?q=`) ou tout le carnet.
 export const metadata: Metadata = { title: 'Carnet CAP | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
@@ -98,7 +97,7 @@ export default async function CarnetCapPage({ searchParams }: SearchParams) {
         </p>
         <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Liste des recettes">
           {[
-            { cap: true, label: `Recettes « ${MARQUE_CAP} … »`, href: '/carnet/cap?choisir=1&liste=cap' },
+            { cap: true, label: 'Ma liste CAP', href: '/carnet/cap?choisir=1&liste=cap' },
             { cap: false, label: 'Tout mon carnet', href: '/carnet/cap?choisir=1' },
           ].map((o) => (
             <Link

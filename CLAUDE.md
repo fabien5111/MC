@@ -1928,12 +1928,12 @@ même quantité ne doit y figurer qu'une fois.
   verrouillée (`LockedAction`, picto `block`, bulle « Le carnet CAP n'est pas
   inclus dans votre formule. » + lien vers `/plans`, sans compteur, sur la ligne
   de pastilles et dans la feuille mobile), `?scope=cap` retombe sur « Tout » et
-  rien n'est lu (`app/carnet/page.tsx`). Elle liste **toutes
-  les recettes portant un tag « [CAP] … » (nom contenant `[CAP]`, sans casse ni espaces) auxquelles le membre a accès**
-  (`getItemsCap`, `lib/carnet-cap-data.ts` : les siennes, les partagées, les
-  publiées et publiques de la communauté — la **RLS** décide, sous la session) ;
-  les tags sont retrouvés par leur nom (`tagsCapIds`, jamais par un id en
-  dur), et l'absence de tout tag `[CAP]` est dite à l'écran. Une recette que le carnet
+  rien n'est lu (`app/carnet/page.tsx`). Elle liste **la liste CAP
+  du membre, remplie à la main** (JEP-376) par le bouton « CAP » de la fiche
+  recette (`CapListButton`) — plus aucune déduction par tag, qui ramenait toutes
+  les recettes taguées de la communauté (`getItemsCap`, `lib/carnet-cap-data.ts`,
+  relue sous la session : une recette devenue illisible est masquée par la RLS
+  et comptée « plus accessible », sa ligne de liste restant en base). Une recette que le carnet
   contient déjà garde son élément (marques et gestes habituels), les autres sont
   des cartes « d'un autre » sans marque ; un projet en cours n'y entre jamais
   (`itemsCap`, pur et testé). **La barre de statut est affichée sur TOUTES les
@@ -1992,6 +1992,30 @@ même quantité ne doit y figurer qu'une fois.
   faux est pire qu'absent.
 - Aucun auteur, logo ni adresse du site sur la feuille : le carnet doit être
   « personnel ». Le jury reste seul juge ; l'écran le dit.
+
+## Listes de recettes (JEP-376)
+
+Modèle « playlist » : le membre range lui-même une recette dans une liste.
+Spec complète et lots : commentaire du ticket JEP-376. **Lot 1 en place** : la
+liste système **CAP** (droit `carnet_cap`), qui alimente la rubrique « Carnet
+CAP » et son impression ; « Favoris » (liste virtuelle adossée à `favorites`,
+table inchangée) et les listes personnelles (plan Plus) suivront.
+
+- **Tables `recipe_lists` / `recipe_list_items`** (DDL par `psql`, nœud 216075) :
+  **lecture seule pour le propriétaire (RLS), aucune policy d'écriture**. La RLS
+  ne connaît pas les formules : la seule porte d'écriture est la route
+  `POST /api/listes/cap` (clé service_role), après `refusSiCompteBloque`, refus
+  en lecture seule et `verifierAcces('carnet_cap')`. Une recette n'est **ajoutée**
+  que si la session peut la lire et que ce n'est pas un projet en cours ; le
+  **retrait** reste toujours possible.
+- Une seule liste CAP par membre (index unique partiel `owner_id` where
+  `kind = 'cap'`), créée au premier ajout ; plafond `LISTE_MAX_RECETTES` (300).
+- Le tag `[CAP] Xxx` ne fait plus entrer une recette dans la rubrique : il ne
+  sert qu'à sa **catégorie** d'impression (`categorieCap`).
+- Sans le droit, le bouton « CAP » de la fiche reste visible, grisé
+  (`LockedAction`). Liste conservée en cas de rétrogradation.
+- Tables absentes de `lib/database.types.ts` jusqu'à la régénération : accès non
+  typé (`lib/recipe-lists-data.ts`). Ajouter à une liste ne notifie personne.
 
 ## Boîte à idées
 
