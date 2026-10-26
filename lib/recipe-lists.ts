@@ -74,11 +74,17 @@ export function droitDeListe(kind: ListeKind): string {
   return kind === LISTE_KIND_CAP ? DROIT_LISTE_CAP : DROIT_LISTES_PERSO;
 }
 
-/** Ordre d'affichage : la liste CAP d'abord, puis les listes perso par position. */
+/**
+ * Ordre d'affichage : la liste CAP d'abord, puis les listes perso par ordre
+ * alphabétique (arbitrage du 26/10/2026), sans tenir compte de la casse ni des
+ * accents (« À tester » avant « Noël »), nombres dans l'ordre naturel
+ * (« Liste 2 » avant « Liste 10 »). La position ne départage que deux noms
+ * identiques.
+ */
 export function trierListes<T extends { kind: ListeKind; position: number; nom: string }>(listes: T[]): T[] {
   return [...listes].sort((a, b) => {
     if (a.kind !== b.kind) return a.kind === LISTE_KIND_CAP ? -1 : 1;
-    return a.position - b.position || a.nom.localeCompare(b.nom, 'fr');
+    return a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base', numeric: true }) || a.position - b.position;
   });
 }
 

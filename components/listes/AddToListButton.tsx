@@ -33,6 +33,7 @@ import {
   NOM_LISTE_MAX,
   erreurNomListe,
   plafondListesAtteint,
+  trierListes,
   type ListeResume,
 } from '@/lib/recipe-lists';
 
@@ -234,7 +235,9 @@ function AddToListDialog({ recipeId, onClose }: { recipeId: string; onClose: (ch
   }
 
   const cap = donnees?.listes.find((l) => l.kind === LISTE_KIND_CAP) ?? null;
-  const perso = donnees?.listes.filter((l) => l.kind !== LISTE_KIND_CAP) ?? [];
+  // Retrié à chaque rendu : une liste créée ou renommée dans la fenêtre prend
+  // aussitôt sa place alphabétique.
+  const perso = trierListes(donnees?.listes.filter((l) => l.kind !== LISTE_KIND_CAP) ?? []);
   const plafond = donnees ? plafondListesAtteint(perso.length, donnees.droits.max) : false;
 
   return (

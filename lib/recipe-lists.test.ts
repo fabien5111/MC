@@ -31,9 +31,12 @@ describe('listes de recettes', () => {
     expect(droitDeListe('perso')).toBe('listes_recettes');
   });
 
-  it('range la liste CAP en tête, puis les listes perso par position', () => {
-    const l = (id: string, kind: ListeKind, position: number) => ({ id, nom: id, kind, position });
-    expect(trierListes([l('b', 'perso', 1), l('cap', 'cap', 9), l('a', 'perso', 0)]).map((x) => x.id)).toEqual(['cap', 'a', 'b']);
+  it('range la liste CAP en tête, puis les listes perso par ordre alphabétique', () => {
+    const l = (nom: string, kind: ListeKind, position: number) => ({ id: nom, nom, kind, position });
+    expect(
+      trierListes([l('Test', 'perso', 0), l('CAP', 'cap', 9), l('Noël', 'perso', 1), l('A tester', 'perso', 2), l('à faire', 'perso', 3)]).map((x) => x.nom),
+    ).toEqual(['CAP', 'à faire', 'A tester', 'Noël', 'Test']);
+    expect(trierListes([l('Liste 10', 'perso', 0), l('Liste 2', 'perso', 1)]).map((x) => x.nom)).toEqual(['Liste 2', 'Liste 10']);
   });
 
   it('déplace une liste d’un cran et renumérote', () => {
