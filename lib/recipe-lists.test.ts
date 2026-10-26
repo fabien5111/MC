@@ -7,6 +7,7 @@ import {
   nombreIndisponibles,
   plafondListesAtteint,
   trierListes,
+  nomListePris,
   type ListeKind,
 } from '@/lib/recipe-lists';
 
@@ -59,5 +60,20 @@ describe('listes de recettes', () => {
     expect(plafondListesAtteint(3, 3)).toBe(true);
     expect(plafondListesAtteint(2, 3)).toBe(false);
     expect(plafondListesAtteint(99, null)).toBe(false);
+  });
+
+  it('refuse un nom de liste déjà pris, sans casse ni accents', () => {
+    const existantes = [
+      { id: '1', nom: 'Noël' },
+      { id: '2', nom: 'A tester' },
+    ];
+    expect(nomListePris('noel', existantes)).toBe(true);
+    expect(nomListePris('  À  TESTER ', existantes)).toBe(true);
+    expect(nomListePris('Pâques', existantes)).toBe(false);
+    // Renommer une liste en changeant seulement la casse de son propre nom.
+    expect(nomListePris('NOËL', existantes, '1')).toBe(false);
+    // Noms réservés aux deux listes système.
+    expect(nomListePris('cap', [])).toBe(true);
+    expect(nomListePris('Favoris', [])).toBe(true);
   });
 });

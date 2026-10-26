@@ -16,8 +16,10 @@ import {
   LISTE_KIND_CAP,
   LISTE_KIND_PERSO,
   LISTE_MAX_RECETTES,
+  MESSAGE_NOM_PRIS,
   NOM_LISTE_CAP,
   deplacerListe,
+  nomListePris,
   trierListes,
   type ListeKind,
   type ListeResume,
@@ -155,8 +157,22 @@ export async function idListeCap(admin: unknown, userId: string, creer: boolean)
 }
 
 /** Crée une liste personnelle, placée en dernier. */
+// Noms des listes perso du membre, pour refuser un doublon (`nomListePris`).
+// `null` si la lecture échoue : l'appelant refuse alors l'écriture.
+async function listesPerso(db: Db, userId: string): Promise<{ id: string; nom: string }[] | null> {
+  const { data, error } = await db.from('recipe_lists').select('id, name').eq('owner_id', userId).eq('kind', LISTE_KIND_PERSO);
+  if (error) {
+    console.error('listesPerso:', error.message);
+    return null;
+  }
+  return ((data ?? []) as { id: string; name: string }[]).map((l) => ({ id: l.id, nom: l.name }));
+}
+
 export async function creerListe(admin: unknown, userId: string, nom: string): Promise<{ ok: true; liste: ListeResume } | Echec> {
   const db = vers(admin);
+  const existantes = await listesPerso(db, userId);
+  if (!existantes) return echec('Création impossible pour le moment.');
+  if (nomListePris(nom, existantes)) return echec(MESSAGE_NOM_PRIS, 409);
   const { data: dernieres } = await db
     .from('recipe_lists')
     .select('position')
@@ -179,6 +195,9 @@ export async function creerListe(admin: unknown, userId: string, nom: string): P
 
 /** Renomme une liste personnelle (jamais la liste CAP). */
 export async function renommerListe(admin: unknown, userId: string, listeId: string, nom: string): Promise<Resultat> {
+  const existantes = await listesPerso(vers(admin), userId);
+  if (!existantes) return echec('Renommage impossible pour le moment.');
+  if (nomListePris(nom, existantes, listeId)) return echec(MESSAGE_NOM_PRIS, 409);
   const { error, count } = await vers(admin)
     .from('recipe_lists')
     .update({ name: nom }, { count: 'exact' })

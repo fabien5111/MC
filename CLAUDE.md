@@ -2015,6 +2015,13 @@ Spec complète : commentaire du ticket JEP-376. Trois sortes de listes
   supprimer calés à droite. Pas de bloc de gestion au-dessus de la grille
   (arbitrage du 26/10/2026). L'API sait encore déplacer une liste
   (`PATCH … { sens }`), sans bouton à l'écran.
+- **Ordre et noms** (26/10/2026) : CAP en tête, puis les listes perso par
+  ordre alphabétique (`trierListes` : sans casse ni accents, nombres dans
+  l'ordre naturel ; la position ne départage que deux noms égaux). **Pas de
+  doublon** : `nomListePris` refuse un nom déjà porté par une autre liste du
+  membre (même comparaison que la recherche, `normSearch`) ainsi que
+  « Favoris » et « CAP » ; contrôlé par les routes de création et de renommage
+  (409), et signalé sous le champ de la fenêtre avant l'envoi.
 
 - **Tables `recipe_lists` / `recipe_list_items`** (DDL par `psql`, nœud 216075) :
   **lecture seule pour le propriétaire (RLS), aucune policy d'écriture**. La RLS

@@ -20,6 +20,8 @@
 // une recette d'une liste et supprimer une liste personnelle ; ajouter, créer
 // et renommer sont refusés.
 
+import { normSearch } from '@/lib/text-search';
+
 export const LISTE_KIND_CAP = 'cap';
 export const LISTE_KIND_PERSO = 'perso';
 export type ListeKind = typeof LISTE_KIND_CAP | typeof LISTE_KIND_PERSO;
@@ -68,6 +70,21 @@ export function erreurNomListe(brut: string): string | null {
   if (nom.length > NOM_LISTE_MAX) return `Le nom ne doit pas dépasser ${NOM_LISTE_MAX} caractères.`;
   return null;
 }
+
+/**
+ * Nom déjà pris parmi les listes du membre (arbitrage du 26/10/2026 : pas de
+ * doublon), sans tenir compte de la casse, des accents ni des espaces : « Noël »
+ * et « noel » ne font qu'un. « Favoris » et « CAP » sont réservés, une liste
+ * perso de ce nom se confondrait avec elles dans la fenêtre. `exceptId` : la
+ * liste qu'on renomme (garder son nom en changeant la casse reste permis).
+ */
+export function nomListePris(nom: string, existantes: { id: string; nom: string }[], exceptId?: string): boolean {
+  const cle = normSearch(nom);
+  if ([NOM_LISTE_CAP, 'Favoris'].some((r) => normSearch(r) === cle)) return true;
+  return existantes.some((l) => l.id !== exceptId && normSearch(l.nom) === cle);
+}
+
+export const MESSAGE_NOM_PRIS = 'Vous avez déjà une liste de ce nom. Choisissez-en un autre.';
 
 /** Droit à vérifier pour AJOUTER une recette à une liste de cette sorte. */
 export function droitDeListe(kind: ListeKind): string {

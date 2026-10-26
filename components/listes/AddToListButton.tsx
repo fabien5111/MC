@@ -30,8 +30,10 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import {
   LISTE_KIND_CAP,
+  MESSAGE_NOM_PRIS,
   NOM_LISTE_MAX,
   erreurNomListe,
+  nomListePris,
   plafondListesAtteint,
   trierListes,
   type ListeResume,
@@ -213,7 +215,9 @@ function AddToListDialog({ recipeId, onClose }: { recipeId: string; onClose: (ch
   async function creer(e: React.FormEvent) {
     e.preventDefault();
     if (!donnees || busy) return;
-    const msg = erreurNomListe(nom);
+    // Doublon signalé sous le champ avant l'envoi ; la route le refuse de toute
+    // façon (409).
+    const msg = erreurNomListe(nom) ?? (nomListePris(nom, perso) ? MESSAGE_NOM_PRIS : null);
     setErreurNom(msg);
     if (msg) return;
     let creee: ListeResume | null = null;
