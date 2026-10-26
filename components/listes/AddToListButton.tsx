@@ -42,6 +42,8 @@ import {
 type Donnees = {
   listes: (ListeResume & { contient: boolean })[];
   favori: boolean;
+  // `null` si le compte n'a pas pu être lu : la ligne s'affiche sans nombre.
+  nombreFavoris: number | null;
   droits: { cap: boolean; perso: boolean; max: number | null };
 };
 
@@ -143,7 +145,11 @@ function AddToListDialog({ recipeId, onClose }: { recipeId: string; onClose: (ch
     );
     if (!ok) return;
     trackEvent(next ? 'ajouter_favori' : 'retirer_favori', { recipe_id: recipeId });
-    setDonnees({ ...donnees, favori: next });
+    setDonnees({
+      ...donnees,
+      favori: next,
+      nombreFavoris: donnees.nombreFavoris == null ? null : donnees.nombreFavoris + (next ? 1 : -1),
+    });
     setChange(true);
   }
 
@@ -279,6 +285,8 @@ function AddToListDialog({ recipeId, onClose }: { recipeId: string; onClose: (ch
                 <Ligne
                   icon="favorite"
                   nom="Favoris"
+                  nombre={donnees.nombreFavoris ?? undefined}
+                  rempli={donnees.favori}
                   coche={donnees.favori}
                   onChange={basculerFavori}
                   disabled={busy}
@@ -407,6 +415,7 @@ function Ligne({
   disabled,
   verrou = null,
   actions = null,
+  rempli = false,
 }: {
   icon: string;
   nom: string;
@@ -416,6 +425,8 @@ function Ligne({
   disabled: boolean;
   verrou?: string | null;
   actions?: React.ReactNode;
+  // Icône pleine et rouge (cœur d'une recette en favori, comme `FavoriteButton`).
+  rempli?: boolean;
 }) {
   // Les pictos d'action restent HORS du <label> : dedans, un clic sur eux
   // cocherait ou décocherait la case au passage.
@@ -428,7 +439,11 @@ function Ligne({
         title={verrou ?? undefined}
       >
         <input type="checkbox" checked={coche} onChange={onChange} disabled={disabled} className="h-4 w-4 accent-primary" />
-        <span className="material-symbols-outlined text-[18px] text-secondary" aria-hidden>
+        <span
+          className={`material-symbols-outlined text-[18px] ${rempli && !verrou ? 'text-error' : 'text-secondary'}`}
+          style={rempli && !verrou ? { fontVariationSettings: "'FILL' 1" } : undefined}
+          aria-hidden
+        >
           {verrou ? 'block' : icon}
         </span>
         <span className="min-w-0 flex-1 truncate text-[14px] text-on-surface">{nom}</span>

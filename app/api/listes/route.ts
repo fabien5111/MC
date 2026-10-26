@@ -23,17 +23,20 @@ export async function GET(req: Request) {
   const recipeId = new URL(req.url).searchParams.get('recette') || '';
 
   const supabase = await createClient();
-  const [listes, contenant, droits, favori] = await Promise.all([
+  const [listes, contenant, droits, favori, favoris] = await Promise.all([
     getListesDuMembre(user.id),
     recipeId ? getListesContenant(user.id, recipeId) : Promise.resolve(new Set<string>()),
     getEntitlements(user.id),
     recipeId
       ? supabase.from('favorites').select('recipe_id').eq('user_id', user.id).eq('recipe_id', recipeId).maybeSingle()
       : Promise.resolve({ data: null }),
+    // Nombre de favoris, affiché sur la ligne « Favoris » comme pour les autres listes.
+    supabase.from('favorites').select('recipe_id', { count: 'exact', head: true }).eq('user_id', user.id),
   ]);
   return NextResponse.json({
     listes: listes.map((l) => ({ ...l, contient: contenant.has(l.id) })),
     favori: !!favori.data,
+    nombreFavoris: favoris.count ?? null,
     droits: {
       cap: canAccess(droits, DROIT_LISTE_CAP),
       perso: canAccess(droits, DROIT_LISTES_PERSO),
