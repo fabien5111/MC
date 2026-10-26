@@ -257,8 +257,8 @@ const RE_MARQUE_CAP = /\[\s*cap\s*\]/i;
 export const estTagCap = (nom: string) => RE_MARQUE_CAP.test(norm(nom));
 
 /**
- * Éléments de la rubrique : les recettes de la liste CAP du membre (déjà
- * filtrées par la RLS à la lecture). Une recette que le carnet
+ * Éléments d'une liste de recettes — la liste CAP ou une liste personnelle
+ * (JEP-376) —, déjà filtrées par la RLS à la lecture. Une recette que le carnet
  * contient déjà garde son élément (marques favori / abonnement / partage, donc
  * sa carte et ses gestes habituels) ; les autres — recettes de la communauté
  * rangées dans la liste — sont des cartes « d'un autre » sans marque. Un projet en cours

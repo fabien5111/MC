@@ -2,7 +2,7 @@
 
 // Bouton « Favori » (pilule) de la fiche recette. Bascule via le client
 // Supabase navigateur (porté de recette.html + toggleFavorite du db.js).
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -14,6 +14,9 @@ export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; ini
   const router = useRouter();
   const { busy, mutate } = useMutation();
   const [fav, setFav] = useState(initialFav);
+  // Le favori peut changer ailleurs sur la page (fenêtre « Ajouter à une
+  // liste », JEP-376) : le rendu serveur resynchronisé fait foi.
+  useEffect(() => setFav(initialFav), [initialFav]);
 
   async function toggle() {
     if (busy) return;

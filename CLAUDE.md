@@ -1930,7 +1930,7 @@ même quantité ne doit y figurer qu'une fois.
   de pastilles et dans la feuille mobile), `?scope=cap` retombe sur « Tout » et
   rien n'est lu (`app/carnet/page.tsx`). Elle liste **la liste CAP
   du membre, remplie à la main** (JEP-376) par le bouton « CAP » de la fiche
-  recette (`CapListButton`) — plus aucune déduction par tag, qui ramenait toutes
+  recette (fenêtre « Ajouter à une liste ») — plus aucune déduction par tag, qui ramenait toutes
   les recettes taguées de la communauté (`getItemsCap`, `lib/carnet-cap-data.ts`,
   relue sous la session : une recette devenue illisible est masquée par la RLS
   et comptée « plus accessible », sa ligne de liste restant en base). Une recette que le carnet
@@ -1996,26 +1996,53 @@ même quantité ne doit y figurer qu'une fois.
 ## Listes de recettes (JEP-376)
 
 Modèle « playlist » : le membre range lui-même une recette dans une liste.
-Spec complète et lots : commentaire du ticket JEP-376. **Lot 1 en place** : la
-liste système **CAP** (droit `carnet_cap`), qui alimente la rubrique « Carnet
-CAP » et son impression ; « Favoris » (liste virtuelle adossée à `favorites`,
-table inchangée) et les listes personnelles (plan Plus) suivront.
+Spec complète : commentaire du ticket JEP-376. Trois sortes de listes
+(`lib/recipe-lists.ts`, pur et testé) :
+- **« Favoris »** : liste **virtuelle** adossée à `favorites`, table inchangée
+  (cœur, notification nominative à l'auteur, portée « Favoris » du carnet).
+  Aucune ligne dans `recipe_lists`.
+- **« CAP »** : liste système, une par membre (index unique partiel `owner_id`
+  where `kind = 'cap'`), créée au premier ajout, droit `carnet_cap` (Pro). Elle
+  alimente la rubrique « Carnet CAP » et son impression ; le tag `[CAP] Xxx` ne
+  sert plus qu'à la **catégorie** d'impression (`categorieCap`). Ni renommable,
+  ni déplaçable, ni supprimable.
+- **Listes personnelles** (`kind = 'perso'`) : droit **`listes_recettes`**
+  (plan Plus, plafond de la grille, `getLimit`), portée « Mes listes » du carnet
+  (`?scope=listes&liste=<id>`, première liste par défaut, `ListesBar` :
+  choisir, créer, renommer, déplacer d'un cran, supprimer).
 
 - **Tables `recipe_lists` / `recipe_list_items`** (DDL par `psql`, nœud 216075) :
   **lecture seule pour le propriétaire (RLS), aucune policy d'écriture**. La RLS
-  ne connaît pas les formules : la seule porte d'écriture est la route
-  `POST /api/listes/cap` (clé service_role), après `refusSiCompteBloque`, refus
-  en lecture seule et `verifierAcces('carnet_cap')`. Une recette n'est **ajoutée**
-  que si la session peut la lire et que ce n'est pas un projet en cours ; le
-  **retrait** reste toujours possible.
-- Une seule liste CAP par membre (index unique partiel `owner_id` where
-  `kind = 'cap'`), créée au premier ajout ; plafond `LISTE_MAX_RECETTES` (300).
-- Le tag `[CAP] Xxx` ne fait plus entrer une recette dans la rubrique : il ne
-  sert qu'à sa **catégorie** d'impression (`categorieCap`).
-- Sans le droit, le bouton « CAP » de la fiche reste visible, grisé
-  (`LockedAction`). Liste conservée en cas de rétrogradation.
+  ne connaît pas les formules : seules les routes `/api/listes/*` écrivent (clé
+  service_role), après `membreEcrivain` (`lib/recipe-lists-route.ts` : connecté,
+  `refusSiCompteBloque`, refus en lecture seule) et le droit de la liste
+  (`droitDeListe`). Chaque écriture refiltre sur `owner_id` (la clé service_role
+  ignore la RLS). Routes : `GET/POST /api/listes` (état pour la fenêtre,
+  création avec plafond), `PATCH/DELETE /api/listes/[id]` (renommer / déplacer /
+  supprimer), `POST /api/listes/contenu` (ranger / retirer ; `liste: 'cap'`
+  désigne la liste CAP).
+- **Ajouter exige le droit et une recette lisible par la session** (RLS, jamais
+  un projet en cours) ; **retirer et supprimer une liste perso restent toujours
+  permis** : après une rétrogradation, rien n'est perdu, tout se consulte et se
+  vide, rien ne s'ajoute ni ne se crée ni ne se renomme. La portée « Mes listes »
+  reste ouverte tant que le membre a des listes, verrouillée sinon.
+- **Fenêtre « Ajouter à une liste »** (`components/listes/AddToListButton.tsx`) :
+  sur la fiche recette (bouton « Listes ») et sur les cartes du carnet et de la
+  recherche (`MineCard`, `OtherCard`). Elle lit son état à l'ouverture
+  (`GET /api/listes?recette=`), rien n'est chargé d'avance par carte. Une case
+  par liste (Favoris, CAP grisée sans le droit, listes perso) et « Nouvelle
+  liste », qui y range aussitôt la recette. Favoris écrit `favorites` par le
+  navigateur, comme le cœur. Écritures en `refresh: false`, resynchronisation
+  par le bouton à la fermeture (modale). Le cœur et `FavoriteButton` se
+  resynchronisent sur `initialFav` (`useEffect`) pour refléter ce changement.
+- Les recettes illisibles (dépubliées, privées, auteur désactivé) restent en
+  liste, masquées par la RLS et comptées « plus accessibles »
+  (`getItemsDeListe`, `lib/carnet-cap-data.ts`). Plafond technique
+  `LISTE_MAX_RECETTES` (300) par liste. Ajouter à une liste ne notifie personne.
+- Pas encore de bouton sur les cartes publiques (`RecipeCard` : accueil,
+  recherche hors carnet) : ajout depuis la fiche.
 - Tables absentes de `lib/database.types.ts` jusqu'à la régénération : accès non
-  typé (`lib/recipe-lists-data.ts`). Ajouter à une liste ne notifie personne.
+  typé (`lib/recipe-lists-data.ts`).
 
 ## Boîte à idées
 

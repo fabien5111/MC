@@ -25,6 +25,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   SCOPES,
   SCOPE_LABELS,
+  SCOPE_VERROU,
   STATUSES,
   STATUS_LABELS,
   SORT_KEYS,
@@ -43,7 +44,7 @@ export function CarnetToolbar({
   counts,
   statusCounts,
   shareButton,
-  peutCap = false,
+  verrouilles = [],
 }: {
   params: CarnetParams;
   counts: Record<string, number>;
@@ -52,9 +53,9 @@ export function CarnetToolbar({
   // simplement rejouée ici pour la ligne mobile « Partager + recherche » —
   // évite de faire remonter ownerId/bookSharesGiven jusqu'à ce composant.
   shareButton?: ReactNode;
-  // Droit `carnet_cap` (plan Pro) : la rubrique « Carnet CAP » n'existe que
-  // pour ceux qui l'ont (JEP-6).
-  peutCap?: boolean;
+  // Portées dont le droit manque à la formule (`carnet_cap` pour « Carnet CAP »,
+  // `listes_recettes` pour « Mes listes ») : pastille affichée mais verrouillée.
+  verrouilles?: CarnetParams['scope'][];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -216,12 +217,12 @@ export function CarnetToolbar({
           <div className="flex flex-wrap gap-2">
             {scopes.map((s) => {
               const active = params.scope === s;
-              if (s === 'cap' && !peutCap) {
+              if (verrouilles.includes(s)) {
                 return (
                   <LockedAction
                     key={s}
                     label={SCOPE_LABELS[s]}
-                    message="Le carnet CAP n'est pas inclus dans votre formule."
+                    message={SCOPE_VERROU[s] ?? ''}
                     className="whitespace-nowrap rounded-pill border border-outline-variant px-4 py-1.5 font-label-md text-[12.5px]"
                   >
                     {SCOPE_LABELS[s]}
@@ -286,7 +287,7 @@ export function CarnetToolbar({
         <CarnetFiltersSheet
           params={params}
           scopes={scopes}
-          capVerrouille={!peutCap}
+          verrouilles={verrouilles}
           counts={counts}
           statusCounts={statusCounts}
           onApply={appliquerDepuisFeuille}

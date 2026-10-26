@@ -49,28 +49,30 @@ export async function getFichesCapRecettes(ids: string[]): Promise<CapFiche[]> {
 }
 
 /**
- * Rubrique « Carnet CAP » (JEP-376) : les recettes que le membre a rangées
- * lui-même dans sa liste CAP — plus aucune déduction par tag. Lecture sous sa
- * session : une recette devenue illisible (dépubliée, privée, auteur
- * désactivé) est masquée par la RLS et comptée dans `indisponibles`, sa ligne
- * de liste restant en base.
+ * Éléments de carnet d'une liste de recettes (JEP-376), dans l'ordre de la
+ * liste (dernier ajout d'abord). Lecture sous la session : une recette devenue
+ * illisible (dépubliée, privée, auteur désactivé) est masquée par la RLS et
+ * comptée dans `indisponibles`, sa ligne de liste restant en base.
  */
-export async function getItemsCap(
-  userId: string,
+export async function getItemsDeListe(
+  ids: string[],
   carnet: CarnetItem[],
+  userId: string,
 ): Promise<{ items: CarnetItem[]; indisponibles: number }> {
-  const ids = await getIdsListeCap(userId);
   if (!ids.length) return { items: [], indisponibles: 0 };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('recipes')
     .select(`${CARD_SELECT}, status, is_public, kind, project_stage`)
     .in('id', ids);
-  if (error) console.error('getItemsCap:', error.message);
+  if (error) console.error('getItemsDeListe:', error.message);
   const rows = withAllergenNames((data as unknown as UserRecipeCard[] | null) ?? []);
-  // Ordre de la liste (dernier ajout d'abord), pas celui de la lecture.
   const rang = new Map(ids.map((id, i) => [id, i]));
   rows.sort((a, b) => (rang.get(a.id) ?? 0) - (rang.get(b.id) ?? 0));
-  const items = itemsCap(rows, carnet, userId);
-  return { items, indisponibles: error ? 0 : nombreIndisponibles(ids, rows.map((r) => r.id)) };
+  return { items: itemsCap(rows, carnet, userId), indisponibles: error ? 0 : nombreIndisponibles(ids, rows.map((r) => r.id)) };
+}
+
+/** Rubrique « Carnet CAP » : la liste CAP du membre, remplie à la main. */
+export async function getItemsCap(userId: string, carnet: CarnetItem[]): Promise<{ items: CarnetItem[]; indisponibles: number }> {
+  return getItemsDeListe(await getIdsListeCap(userId), carnet, userId);
 }

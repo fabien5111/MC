@@ -23,6 +23,7 @@ import { BottomSheet } from '@/components/BottomSheet';
 import { LockedAction } from '@/components/LockedAction';
 import {
   SCOPE_LABELS,
+  SCOPE_VERROU,
   SORT_KEYS,
   SORT_LABELS,
   STATUSES,
@@ -46,7 +47,7 @@ const PASTILLE =
 export function CarnetFiltersSheet({
   params,
   scopes,
-  capVerrouille = false,
+  verrouilles = [],
   counts,
   statusCounts,
   onApply,
@@ -55,7 +56,7 @@ export function CarnetFiltersSheet({
   params: CarnetParams;
   scopes: CarnetParams['scope'][];
   /** Sans le droit `carnet_cap` : pastille verrouillée au lieu d'un choix. */
-  capVerrouille?: boolean;
+  verrouilles?: CarnetParams['scope'][];
   counts: Record<string, number>;
   statusCounts: Record<string, number>;
   onApply: (next: CarnetParams) => void;
@@ -192,12 +193,12 @@ export function CarnetFiltersSheet({
             <div className="flex flex-wrap gap-2">
               {scopes.map((s) => {
                 const actif = draft.scope === s;
-                if (s === 'cap' && capVerrouille) {
+                if (verrouilles.includes(s)) {
                   return (
                     <LockedAction
                       key={s}
                       label={SCOPE_LABELS[s]}
-                      message="Le carnet CAP n'est pas inclus dans votre formule."
+                      message={SCOPE_VERROU[s] ?? ''}
                       className="whitespace-nowrap rounded-pill border border-outline-variant px-4 py-2 font-label-md text-[13px]"
                     >
                       {SCOPE_LABELS[s]}

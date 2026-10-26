@@ -178,7 +178,7 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
 // et pour que `app/carnet/page.tsx` l'applique après avoir choisi les compteurs
 // à afficher (qui, eux, portent toujours sur le jeu complet, non filtré).
 // Portées dont la barre de statut porte sur TOUS les éléments (JEP-6).
-const PORTEES_STATUT_COMPLET: ReadonlyArray<CarnetParams['scope']> = ['fav', 'sub', 'proj', 'cap'];
+const PORTEES_STATUT_COMPLET: ReadonlyArray<CarnetParams['scope']> = ['fav', 'sub', 'proj', 'cap', 'listes'];
 
 // Statut d'un élément : celui de ma recette ; pour la recette d'un autre, celui
 // de son partage s'il est connu, sinon « publiée » — favoris, abonnements et

@@ -37,8 +37,7 @@ import { PartnerSlot } from '@/components/PartnerSlot';
 import { AllergenPicto } from '@/components/recipe/AllergenPicto';
 import { SuggestionsSidebar } from '@/components/recipe/SuggestionsSidebar';
 import { FavoriteButton } from '@/components/recipe/FavoriteButton';
-import { CapListButton } from '@/components/recipe/CapListButton';
-import { estDansListeCap } from '@/lib/recipe-lists-data';
+import { AddToListButton } from '@/components/listes/AddToListButton';
 import { PrintButton } from '@/components/recipe/PrintButton';
 import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { BatchWidget } from '@/components/recipe/BatchWidget';
@@ -177,10 +176,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // copie — lues seulement pour qui a le droit.
   const peutExtraire = canAccess(entitlements, DROIT_EXTRACTION);
   const densities = peutExtraire ? await getIngredientDensities() : [];
-  // Liste CAP (JEP-376) : bouton grisé sans le droit `carnet_cap` ; la lecture
-  // de l'appartenance n'est faite que pour qui peut s'en servir.
-  const peutCap = canAccess(entitlements, 'carnet_cap');
-  const dansCap = user && peutCap ? await estDansListeCap(user.id, recipe.id) : false;
   // Lecture d'affichage uniquement (`mc_check_quota`, §1.3 docs/abonnements.md) :
   // seulement quand le droit existe déjà, pour ne pas payer cet aller-retour
   // aux membres qui n'ont de toute façon pas accès à l'ajustement par IA.
@@ -404,7 +399,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               />
               <span className="flex items-center gap-2 text-secondary ml-auto">
                 <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
-                {user && <CapListButton recipeId={recipe.id} initial={dansCap} autorise={peutCap} />}
+                {user && <AddToListButton recipeId={recipe.id} variante="fiche" />}
                 <ShareButton title={recipe.title} recipeId={recipe.id} ownerId={recipe.author_id} isOwner={isOwner} shareInfo={shareInfo} />
                 <PrintButton capHref={`/recette/${recipe.id}/cap`} />
               </span>

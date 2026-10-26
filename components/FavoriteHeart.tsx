@@ -3,7 +3,7 @@
 // Cœur favori (porté de favHeartHTML/favHeartClick + toggleFavorite du db.js).
 // Bascule via le client Supabase navigateur ; renvoie vers /connexion si
 // l'utilisateur n'est pas connecté.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -27,6 +27,9 @@ export function FavoriteHeart({
   const router = useRouter();
   const { busy, mutate } = useMutation();
   const [fav, setFav] = useState(initialFav);
+  // Le favori peut changer ailleurs sur la page (fenêtre « Ajouter à une
+  // liste », JEP-376) : le rendu serveur resynchronisé fait foi.
+  useEffect(() => setFav(initialFav), [initialFav]);
 
   // Séparé du gestionnaire de clic : `useResumeFavoriteIntent` rejoue ce
   // geste au montage, sans événement souris à annuler (il n'y en a pas).
