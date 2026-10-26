@@ -11,8 +11,9 @@ import { useEffect, useState } from 'react';
 import { ImportsEnAttente } from '@/components/carnet/ImportsEnAttente';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { useDialog } from '@/components/Dialog';
 import { useCarnetTransition } from '@/components/carnet/CarnetProvider';
-import { MineCard, OtherCard, retirerPartage, supprimerRecette } from '@/components/carnet/CarnetCards';
+import { MineCard, OtherCard, arreterSuivi, retirerPartage, supprimerRecette } from '@/components/carnet/CarnetCards';
 import type { CarnetItem } from '@/lib/carnet';
 import type { AllergenRef } from '@/lib/recipes';
 
@@ -51,6 +52,7 @@ export function CarnetContent({
   allergenRefs: AllergenRef[];
 }) {
   const { mutate, busy } = useMutation();
+  const dialog = useDialog();
   const { pending: navPending } = useCarnetTransition();
   const [navVisible, setNavVisible] = useState(false);
   useEffect(() => {
@@ -83,7 +85,11 @@ export function CarnetContent({
   // de ce scope au prochain rendu serveur (`mutate` resynchronise), `removedIds`
   // ne masque ici que la carte cliquée en attendant.
   async function revokeShare(item: Extract<CarnetItem, { kind: 'other' }>) {
-    if (await retirerPartage(mutate, item)) setRemovedIds((prev) => new Set(prev).add(item.recipe.id));
+    if (await retirerPartage(mutate, dialog.confirm, item)) setRemovedIds((prev) => new Set(prev).add(item.recipe.id));
+  }
+
+  async function unfollow(item: Extract<CarnetItem, { kind: 'other' }>) {
+    if (await arreterSuivi(mutate, item)) setRemovedIds((prev) => new Set(prev).add(item.recipe.id));
   }
 
   return (
@@ -111,6 +117,7 @@ export function CarnetContent({
                   item={item}
                   favIds={favIds}
                   onRevokeShare={revokeShare}
+                  onUnfollow={unfollow}
                   defaultPhoto={defaultPhoto}
                   allergenRefs={allergenRefs}
                 />

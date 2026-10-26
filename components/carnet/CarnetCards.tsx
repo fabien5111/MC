@@ -40,9 +40,34 @@ export async function supprimerRecette(mutate: Mutate, id: string, title: string
   });
 }
 
+type Autre = Extract<CarnetItem, { kind: 'other' }>;
+type Confirmer = (message: string) => Promise<boolean>;
+
+// Arrêt de l'abonnement au pâtissier auteur de la carte (RLS : un membre ne
+// gère que ses propres lignes `follows`). Renvoie vrai si la carte doit
+// disparaître : plus aucune raison de la montrer (ni favori, ni partage).
+export async function arreterSuivi(mutate: Mutate, item: Autre): Promise<boolean> {
+  const r = item.recipe;
+  const ok = await mutate(
+    async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return null;
+      return supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', r.author_id);
+    },
+    { confirm: `Ne plus suivre ${r.profiles?.full_name || 'ce pâtissier'} ?\nSes recettes quitteront votre carnet, sauf celles que vous avez en favori ou qu'il partage avec vous.` },
+  );
+  return ok && !item.favorite && !item.shared;
+}
+
 // Retrait d'un partage reçu, par son destinataire (RLS `shared_with_id =
-// auth.uid()` en DELETE — cf. lib/shares.ts).
-export async function retirerPartage(mutate: Mutate, item: Extract<CarnetItem, { kind: 'other' }>): Promise<boolean> {
+// auth.uid()` en DELETE — cf. lib/shares.ts). Si le membre suit aussi
+// l'auteur, la question « ne plus suivre ? » suit le retrait : sans elle, les
+// recettes restent dans le carnet par l'abonnement et le geste semble sans
+// effet. Renvoie vrai si la carte doit disparaître.
+export async function retirerPartage(mutate: Mutate, confirmer: Confirmer, item: Autre): Promise<boolean> {
   if (!item.shared) return false;
   const via = item.shared;
   const r = item.recipe;
@@ -50,7 +75,7 @@ export async function retirerPartage(mutate: Mutate, item: Extract<CarnetItem, {
     via.kind === 'book'
       ? `Retirer l’accès à tout le carnet partagé par ${r.profiles?.full_name || 'ce membre'} ?\nVous perdrez l’accès à toutes ses recettes partagées, pas seulement celle-ci.`
       : `Retirer le partage de « ${r.title} » ?`;
-  return mutate(
+  const retire = await mutate(
     async () => {
       const supabase = createClient();
       const {
@@ -63,6 +88,15 @@ export async function retirerPartage(mutate: Mutate, item: Extract<CarnetItem, {
     },
     { confirm: confirmMsg },
   );
+  if (!retire) return false;
+  if (item.subscription) {
+    const nom = r.profiles?.full_name || 'ce pâtissier';
+    if (await confirmer(`Vous suivez aussi ${nom}.\nSouhaitez-vous également ne plus le suivre ?\nSes recettes quitteront alors votre carnet.`)) {
+      return (await arreterSuivi(mutate, { ...item, shared: null })) || false;
+    }
+    return false;
+  }
+  return !item.favorite;
 }
 
 export function MineCard({
@@ -194,12 +228,14 @@ export function OtherCard({
   item,
   favIds,
   onRevokeShare,
+  onUnfollow,
   defaultPhoto = null,
   allergenRefs,
 }: {
   item: Extract<CarnetItem, { kind: 'other' }>;
   favIds: string[];
   onRevokeShare: (item: Extract<CarnetItem, { kind: 'other' }>) => void;
+  onUnfollow: (item: Extract<CarnetItem, { kind: 'other' }>) => void;
   defaultPhoto?: string | null;
   allergenRefs: AllergenRef[];
 }) {
@@ -252,6 +288,19 @@ export function OtherCard({
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
             >
               <span className="material-symbols-outlined text-[20px] text-error">link_off</span>
+            </button>
+          )}
+          {/* Abonnement seul (aucun partage) : c'est lui qui garde la recette dans le
+              carnet, donc c'est lui qu'on propose d'arrêter. Avec un partage, le
+              picto ci-dessus pose la question de l'abonnement après coup. */}
+          {!item.shared && item.subscription && (
+            <button
+              type="button"
+              title={`Ne plus suivre ${r.profiles?.full_name || 'ce pâtissier'}`}
+              onClick={() => onUnfollow(item)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110"
+            >
+              <span className="material-symbols-outlined text-[20px] text-error">person_remove</span>
             </button>
           )}
           <Link
