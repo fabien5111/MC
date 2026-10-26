@@ -66,9 +66,9 @@ export async function getItemsDeListe(
     .select(`${CARD_SELECT}, status, is_public, kind, project_stage`)
     .in('id', ids);
   if (error) console.error('getItemsDeListe:', error.message);
-  // La RLS de `recipes` laisse lire toute recette `published`, même devenue
-  // privée (`is_public = false`) : c'est au code d'écarter celle d'un autre
-  // auteur, sauf si elle me vient d'un partage ou d'un favori (déjà au carnet).
+  // Recette d'un autre auteur devenue privée (`is_public = false`) : la RLS de
+  // `recipes` l'écarte depuis le 26/10/2026 (sauf partage) ; ce filtre reste
+  // en seconde protection, en gardant ce qui est partagé ou déjà au carnet.
   const duCarnet = new Set(carnet.map((i) => i.recipe.id));
   const lisibles = ((data as unknown as UserRecipeCard[] | null) ?? []).filter(
     (r) => r.author_id === userId || r.is_public !== false || duCarnet.has(r.id),

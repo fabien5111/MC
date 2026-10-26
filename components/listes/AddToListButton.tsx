@@ -27,6 +27,7 @@ import { useMutation } from '@/lib/use-mutation';
 import { connexionHref } from '@/lib/nav';
 import { trackEvent } from '@/lib/analytics';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { useDialog } from '@/components/Dialog';
 import {
   LISTE_KIND_CAP,
   NOM_LISTE_MAX,
@@ -76,6 +77,7 @@ export function AddToListButton({ recipeId }: { recipeId: string }) {
 
 function AddToListDialog({ recipeId, onClose }: { recipeId: string; onClose: (change: boolean) => void }) {
   const router = useRouter();
+  const dialog = useDialog();
   const { busy, mutate } = useMutation();
   const [donnees, setDonnees] = useState<Donnees | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -110,8 +112,12 @@ function AddToListDialog({ recipeId, onClose }: { recipeId: string; onClose: (ch
     return () => window.removeEventListener('keydown', echap);
   }, [busy, change, onClose]);
 
-  const ecrireApi = (url: string, corps: unknown) => async () => {
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) });
+  const ecrireApi = (url: string, corps?: unknown, method = 'POST') => async () => {
+    const res = await fetch(url, {
+      method,
+      headers: corps ? { 'Content-Type': 'application/json' } : undefined,
+      body: corps ? JSON.stringify(corps) : undefined,
+    });
     const json = await res.json().catch(() => ({}));
     return res.ok ? { error: null, json } : { error: { message: json?.erreur || 'Enregistrement impossible.' }, json };
   };
@@ -150,6 +156,40 @@ function AddToListDialog({ recipeId, onClose }: { recipeId: string; onClose: (ch
       ...donnees,
       listes: donnees.listes.map((x) => (x.id === l.id ? { ...x, contient: next, nombre: x.nombre + (next ? 1 : -1) } : x)),
     });
+    setChange(true);
+  }
+
+  // Renommer / supprimer une liste personnelle, sans quitter la fenêtre : mêmes
+  // routes que la liste déroulante du carnet (`ListesMenu`). La fenêtre de
+  // saisie (`useDialog`) s'ouvre au-dessus de celle-ci (z-index supérieur).
+  async function renommer(l: Donnees['listes'][number]) {
+    if (!donnees || busy) return;
+    const saisi = await dialog.prompt('Nouveau nom de la liste', {
+      required: true,
+      singleLine: true,
+      maxLength: NOM_LISTE_MAX,
+      defaultValue: l.nom,
+    });
+    const nouveau = saisi?.trim();
+    if (!nouveau || nouveau === l.nom) return;
+    const ok = await mutate(ecrireApi(`/api/listes/${l.id}`, { nom: nouveau }, 'PATCH'), {
+      errorLabel: 'Liste non renommée',
+      refresh: false,
+    });
+    if (!ok) return;
+    setDonnees({ ...donnees, listes: donnees.listes.map((x) => (x.id === l.id ? { ...x, nom: nouveau } : x)) });
+    setChange(true);
+  }
+
+  async function supprimer(l: Donnees['listes'][number]) {
+    if (!donnees || busy) return;
+    const ok = await mutate(ecrireApi(`/api/listes/${l.id}`, undefined, 'DELETE'), {
+      confirm: `Supprimer la liste « ${l.nom} » ? Les recettes qu’elle contient restent dans votre carnet ; seule la liste disparaît.`,
+      errorLabel: 'Liste non supprimée',
+      refresh: false,
+    });
+    if (!ok) return;
+    setDonnees({ ...donnees, listes: donnees.listes.filter((x) => x.id !== l.id) });
     setChange(true);
   }
 
@@ -266,6 +306,30 @@ function AddToListDialog({ recipeId, onClose }: { recipeId: string; onClose: (ch
                     onChange={() => basculerListe(l)}
                     disabled={busy || (!donnees.droits.perso && !l.contient)}
                     verrou={donnees.droits.perso ? null : 'Ajouter à cette liste demande une formule qui inclut les listes.'}
+                    actions={
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => renommer(l)}
+                          disabled={busy || !donnees.droits.perso}
+                          aria-label={`Renommer la liste ${l.nom}`}
+                          title="Renommer"
+                          className={PICTO}
+                        >
+                          <span className="material-symbols-outlined text-[18px]" aria-hidden>edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => supprimer(l)}
+                          disabled={busy}
+                          aria-label={`Supprimer la liste ${l.nom}`}
+                          title="Supprimer"
+                          className={PICTO}
+                        >
+                          <span className="material-symbols-outlined text-[18px] text-error" aria-hidden>delete</span>
+                        </button>
+                      </>
+                    }
                   />
                 ))}
               </ul>
@@ -273,7 +337,7 @@ function AddToListDialog({ recipeId, onClose }: { recipeId: string; onClose: (ch
               {donnees.droits.perso ? (
                 plafond ? (
                   <p className="text-[13px] text-on-surface-variant">
-                    Vous avez atteint les {donnees.droits.max} listes de votre formule. Supprimez-en une depuis Mon carnet → Mes listes pour en créer une autre.
+                    Vous avez atteint les {donnees.droits.max} listes de votre formule. Supprimez-en une pour en créer une autre.
                   </p>
                 ) : (
                   <form onSubmit={creer} className="flex flex-col gap-1.5">
@@ -322,6 +386,9 @@ function AddToListDialog({ recipeId, onClose }: { recipeId: string; onClose: (ch
   );
 }
 
+const PICTO =
+  'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-on-surface-variant';
+
 // `icon` (et non un autre nom de prop) : `scripts/material-symbols.mjs` ne
 // recense que les noms écrits sous `icon=` ou dans l'élément de l'icône.
 function Ligne({
@@ -332,6 +399,7 @@ function Ligne({
   onChange,
   disabled,
   verrou = null,
+  actions = null,
 }: {
   icon: string;
   nom: string;
@@ -340,12 +408,15 @@ function Ligne({
   onChange: () => void;
   disabled: boolean;
   verrou?: string | null;
+  actions?: React.ReactNode;
 }) {
+  // Les pictos d'action restent HORS du <label> : dedans, un clic sur eux
+  // cocherait ou décocherait la case au passage.
   return (
-    <li>
+    <li className="flex items-center rounded border border-outline-variant bg-white pr-1.5 hover:border-primary">
       <label
-        className={`flex items-center gap-3 rounded border border-outline-variant bg-white px-3 py-2.5 ${
-          disabled ? 'opacity-60' : 'cursor-pointer hover:border-primary'
+        className={`flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 ${
+          disabled ? 'opacity-60' : 'cursor-pointer'
         }`}
         title={verrou ?? undefined}
       >
@@ -356,6 +427,7 @@ function Ligne({
         <span className="min-w-0 flex-1 truncate text-[14px] text-on-surface">{nom}</span>
         {nombre != null && <span className="text-[12px] tabular-nums text-on-surface-variant">{nombre}</span>}
       </label>
+      {actions}
     </li>
   );
 }

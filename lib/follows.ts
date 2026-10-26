@@ -107,8 +107,9 @@ export async function getFollowedRecipes(userId: string, limit = 12) {
   const ids = (followedIds ?? []).map((f) => f.following_id);
   if (ids.length === 0) return [];
 
-  // La RLS de `recipes` ne lit que `status` : une recette publiée puis rendue
-  // privée (`is_public = false`) resterait lisible, d'où le filtre explicite.
+  // Recette publiée puis rendue privée (`is_public = false`) : la RLS de
+  // `recipes` l'écarte depuis le 26/10/2026 ; le filtre reste en seconde
+  // protection.
   // `.or(...)` et non `.neq('is_public', false)` : `NULL != false` vaut NULL en
   // SQL, ce qui exclurait à tort les lignes `is_public IS NULL` (= publiques).
   const { data, error } = await supabase

@@ -2821,6 +2821,12 @@ principales :
 
 - Sécurité par **Row Level Security** (les requêtes passent par la session
   de l'utilisateur, jamais par une clé service côté front).
+- **Recette privée = illisible par les autres, même publiée** (26/10/2026) :
+  la policy « Recettes publiées lisibles par tous » de `recipes` exige
+  `status = 'published' AND is_public is not false` (ou l'auteur). Avant, elle
+  ne lisait que `status` : une recette publiée puis rendue privée restait
+  ouverte à tous par son URL, dans les listes et le fil des abonnements. Le
+  partage (`recipes_partagees`) et la modération ont leurs propres policies.
 - **Images sur le stockage objet Swift**, pas en base : les colonnes portent
   une URL. Le dépôt est un `PUT` direct navigateur → conteneur, autorisé par
   une signature TempURL mintée par `/api/stockage/televersement` — les octets
