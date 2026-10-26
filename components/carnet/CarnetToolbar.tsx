@@ -36,6 +36,8 @@ import {
 import { useCarnetTransition } from '@/components/carnet/CarnetProvider';
 import { CarnetFiltersSheet } from '@/components/carnet/CarnetFiltersSheet';
 import { LockedAction } from '@/components/LockedAction';
+import { ListesMenu } from '@/components/listes/ListesMenu';
+import type { ListeResume } from '@/lib/recipe-lists';
 
 const DEBOUNCE_MS = 300;
 
@@ -45,6 +47,7 @@ export function CarnetToolbar({
   statusCounts,
   shareButton,
   verrouilles = [],
+  listes,
 }: {
   params: CarnetParams;
   counts: Record<string, number>;
@@ -56,6 +59,9 @@ export function CarnetToolbar({
   // Portées dont le droit manque à la formule (`carnet_cap` pour « Carnet CAP »,
   // `listes_recettes` pour « Mes listes ») : pastille affichée mais verrouillée.
   verrouilles?: CarnetParams['scope'][];
+  // Pastille « Mes listes » (JEP-376) : liste déroulante des listes
+  // personnelles (choisir, créer, renommer, supprimer), cf. ListesMenu.
+  listes?: { liste: ListeResume[]; selectionId: string | null; peut: boolean; max: number | null };
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -229,6 +235,18 @@ export function CarnetToolbar({
                   </LockedAction>
                 );
               }
+              if (s === 'listes' && listes) {
+                return (
+                  <ListesMenu
+                    key={s}
+                    params={params}
+                    listes={listes.liste}
+                    selectionId={listes.selectionId}
+                    peutListes={listes.peut}
+                    max={listes.max}
+                  />
+                );
+              }
               return (
                 <Link
                   key={s}
@@ -293,6 +311,18 @@ export function CarnetToolbar({
           onApply={appliquerDepuisFeuille}
           onShare={shareButton ? () => shareRef.current?.querySelector('button')?.click() : undefined}
         />
+        {/* Sous 1024 px, la feuille choisit la portée ; sur « Mes listes », la
+            liste déroulante (choix et gestion des listes) reste à portée de doigt. */}
+        {params.scope === 'listes' && listes && (
+          <ListesMenu
+            className="mt-4 inline-block"
+            params={params}
+            listes={listes.liste}
+            selectionId={listes.selectionId}
+            peutListes={listes.peut}
+            max={listes.max}
+          />
+        )}
         {shareButton && (
           <div ref={shareRef} className="[&>button]:hidden">
             {shareButton}

@@ -2008,8 +2008,13 @@ Spec complète : commentaire du ticket JEP-376. Trois sortes de listes
   ni déplaçable, ni supprimable.
 - **Listes personnelles** (`kind = 'perso'`) : droit **`listes_recettes`**
   (plan Plus, plafond de la grille, `getLimit`), portée « Mes listes » du carnet
-  (`?scope=listes&liste=<id>`, première liste par défaut, `ListesBar` :
-  choisir, créer, renommer, déplacer d'un cran, supprimer).
+  (`?scope=listes&liste=<id>`, première liste par défaut). Un clic sur la
+  pastille ouvre une **liste déroulante** (`components/listes/ListesMenu.tsx`,
+  aussi montée sous 1024 px quand la portée est active) : « Nouvelle liste »
+  en tête, puis une ligne par liste « Nom (n) » avec les pictos renommer et
+  supprimer calés à droite. Pas de bloc de gestion au-dessus de la grille
+  (arbitrage du 26/10/2026). L'API sait encore déplacer une liste
+  (`PATCH … { sens }`), sans bouton à l'écran.
 
 - **Tables `recipe_lists` / `recipe_list_items`** (DDL par `psql`, nœud 216075) :
   **lecture seule pour le propriétaire (RLS), aucune policy d'écriture**. La RLS

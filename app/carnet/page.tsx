@@ -13,7 +13,6 @@ import { canAccess, getLimit } from '@/lib/entitlements';
 import { getItemsCap, getItemsDeListe } from '@/lib/carnet-cap-data';
 import { getIdsListe, getListesDuMembre } from '@/lib/recipe-lists-data';
 import { DROIT_LISTES_PERSO, LISTE_KIND_PERSO } from '@/lib/recipe-lists';
-import { ListesBar } from '@/components/listes/ListesBar';
 import { getEntitlements } from '@/lib/entitlements-data';
 import { parseCarnetParams, carnetParamsToQueryString, type Scope } from '@/lib/carnet-params';
 import { Header } from '@/components/Header';
@@ -150,6 +149,12 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
             params={params}
             counts={countsAffiches}
             verrouilles={verrouilles}
+            listes={{
+              liste: listesPerso,
+              selectionId: listeChoisie?.id ?? null,
+              peut: peutListes,
+              max: getLimit(droits, DROIT_LISTES_PERSO),
+            }}
             statusCounts={statusCountsAffiches}
             shareButton={!readOnly ? <ShareBookButton ownerId={user.id} given={bookSharesGiven} lienPartage={lienPartage} /> : null}
           />
@@ -189,15 +194,12 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               </div>
             </div>
           )}
-          {params.scope === 'listes' && (
-            <ListesBar
-              params={params}
-              listes={listesPerso}
-              selection={listeChoisie}
-              peutListes={peutListes}
-              max={getLimit(droits, DROIT_LISTES_PERSO)}
-              indisponibles={deListe?.indisponibles ?? 0}
-            />
+          {params.scope === 'listes' && (deListe?.indisponibles ?? 0) > 0 && (
+            <p className="mt-4 text-[13px] text-on-surface-variant">
+              {deListe!.indisponibles === 1
+                ? '1 recette de cette liste n’est plus accessible (supprimée, dépubliée ou devenue privée).'
+                : `${deListe!.indisponibles} recettes de cette liste ne sont plus accessibles (supprimées, dépubliées ou devenues privées).`}
+            </p>
           )}
           <CarnetContent
             key={carnetParamsToQueryString(params)}
@@ -209,7 +211,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
               params.q || params.statut !== 'all'
                 ? 'Aucune recette ne correspond à ce filtre.'
                 : params.scope === 'listes' && !listeChoisie
-                  ? 'Vous n’avez pas encore de liste. Créez-en une ci-dessus, ou depuis le bouton « Listes » d’une recette.'
+                  ? 'Vous n’avez pas encore de liste. Créez-en une depuis « Mes listes » → « Nouvelle liste », ou depuis le bouton « Listes » d’une recette.'
                   : EMPTY_MESSAGES[params.scope]
             }
             defaultPhoto={defaultPhoto}
