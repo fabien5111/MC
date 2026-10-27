@@ -9,12 +9,16 @@
 // §10). « Tout » cesse donc d'être littéralement tout — c'est le prix de
 // l'étanchéité, assumé ici plutôt que contourné.
 //
-// `cap` — recettes portant un tag « [CAP] … » auxquelles le membre a
-// accès (JEP-6) : les siennes, celles qu'on lui a partagées et les recettes
-// publiées de la communauté. Rubrique du droit `carnet_cap` (plan Pro) : la
-// page la retire des pastilles sans ce droit et ramène `?scope=cap` à « Tout ».
-// Comme « Projets », elle n'a pas de barre de statut.
-export const SCOPES = ['all', 'mine', 'fav', 'sub', 'shared', 'proj', 'cap'] as const;
+// `cap` — la liste CAP du membre, remplie à la main depuis la fiche recette
+// (JEP-376 ; auparavant déduite des tags « [CAP] … », JEP-6). Rubrique du droit
+// `carnet_cap` (plan Pro) : sans ce droit la pastille est verrouillée et
+// `?scope=cap` retombe sur « Tout ».
+//
+// `listes` — les listes personnelles du membre (JEP-376), une à la fois :
+// `?liste=<id>` choisit laquelle, la première par défaut. Droit
+// `listes_recettes` (plan Plus) ; sans lui la pastille reste ouverte tant que
+// le membre a encore des listes (rétrogradation : consultation et ménage).
+export const SCOPES = ['all', 'mine', 'fav', 'sub', 'shared', 'proj', 'cap', 'listes'] as const;
 export type Scope = (typeof SCOPES)[number];
 
 export const SCOPE_LABELS: Record<Scope, string> = {
@@ -25,6 +29,13 @@ export const SCOPE_LABELS: Record<Scope, string> = {
   shared: 'Partagées avec moi',
   proj: 'Projets',
   cap: 'Carnet CAP',
+  listes: 'Mes listes',
+};
+
+// Bulle d'une pastille verrouillée (droit absent de la formule).
+export const SCOPE_VERROU: Partial<Record<Scope, string>> = {
+  cap: "Le carnet CAP n'est pas inclus dans votre formule.",
+  listes: "Les listes de recettes ne sont pas incluses dans votre formule.",
 };
 
 
@@ -59,9 +70,11 @@ export type CarnetParams = {
   statut: Status;
   q: string;
   tri: CarnetSortKey;
+  // Portée `listes` seulement : identifiant de la liste affichée ('' = la première).
+  liste: string;
 };
 
-export const EMPTY_CARNET_PARAMS: CarnetParams = { scope: 'all', statut: 'all', q: '', tri: 'recent' };
+export const EMPTY_CARNET_PARAMS: CarnetParams = { scope: 'all', statut: 'all', q: '', tri: 'recent', liste: '' };
 
 // La barre de statut est affichée sur toutes les portées (homogénéité) ; ses
 // compteurs et son filtre portent sur les recettes de la portée courante.
@@ -71,7 +84,7 @@ export function parseCarnetParams(sp: Record<string, string | string[] | undefin
   const statutRaw = STATUSES.includes(one(sp.statut) as Status) ? (one(sp.statut) as Status) : 'all';
   const statut = statutRaw;
   const tri = SORT_KEYS.includes(one(sp.tri) as CarnetSortKey) ? (one(sp.tri) as CarnetSortKey) : 'recent';
-  return { scope, statut, q: one(sp.q) || '', tri };
+  return { scope, statut, q: one(sp.q) || '', tri, liste: scope === 'listes' ? one(sp.liste) || '' : '' };
 }
 
 export function carnetParamsToQueryString(p: CarnetParams): string {
@@ -80,5 +93,6 @@ export function carnetParamsToQueryString(p: CarnetParams): string {
   if (p.statut !== 'all') usp.set('statut', p.statut);
   if (p.q) usp.set('q', p.q);
   if (p.tri !== 'recent') usp.set('tri', p.tri);
+  if (p.scope === 'listes' && p.liste) usp.set('liste', p.liste);
   return usp.toString();
 }

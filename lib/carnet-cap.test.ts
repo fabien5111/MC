@@ -12,7 +12,6 @@ import {
   ficheCapRecette,
   grouperParCategorie,
   itemsCap,
-  tagsCapIds,
   lignesCap,
   nomPreparationSuspect,
   poidsTotalCap,
@@ -166,11 +165,6 @@ describe('nomPreparationSuspect', () => {
 });
 
 describe('rubrique « Carnet CAP »', () => {
-  it('retrouve les tags « [CAP] » sans tenir compte de la casse ni des espaces', () => {
-    expect(tagsCapIds([{ id: 1, name: 'Entremets' }, { id: 7, name: '[cap]  Crèmes' }, { id: 8, name: 'Pâtes [ CAP ]' }, { id: 9, name: 'CAP' }])).toEqual([7, 8]);
-    expect(tagsCapIds([{ id: 1, name: 'Entremets' }])).toEqual([]);
-  });
-
   const carte = (id: string, auteur: string, extra: Partial<UserRecipeCard> = {}) =>
     ({ id, title: id, author_id: auteur, created_at: '2026-10-01', status: 'published', is_public: true, kind: 'simple', project_stage: null, ...extra }) as unknown as UserRecipeCard;
 

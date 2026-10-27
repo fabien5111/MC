@@ -25,6 +25,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   SCOPES,
   SCOPE_LABELS,
+  SCOPE_VERROU,
   STATUSES,
   STATUS_LABELS,
   SORT_KEYS,
@@ -35,6 +36,8 @@ import {
 import { useCarnetTransition } from '@/components/carnet/CarnetProvider';
 import { CarnetFiltersSheet } from '@/components/carnet/CarnetFiltersSheet';
 import { LockedAction } from '@/components/LockedAction';
+import { ListesMenu } from '@/components/listes/ListesMenu';
+import type { ListeResume } from '@/lib/recipe-lists';
 
 const DEBOUNCE_MS = 300;
 
@@ -43,7 +46,8 @@ export function CarnetToolbar({
   counts,
   statusCounts,
   shareButton,
-  peutCap = false,
+  verrouilles = [],
+  listes,
 }: {
   params: CarnetParams;
   counts: Record<string, number>;
@@ -52,9 +56,12 @@ export function CarnetToolbar({
   // simplement rejouée ici pour la ligne mobile « Partager + recherche » —
   // évite de faire remonter ownerId/bookSharesGiven jusqu'à ce composant.
   shareButton?: ReactNode;
-  // Droit `carnet_cap` (plan Pro) : la rubrique « Carnet CAP » n'existe que
-  // pour ceux qui l'ont (JEP-6).
-  peutCap?: boolean;
+  // Portées dont le droit manque à la formule (`carnet_cap` pour « Carnet CAP »,
+  // `listes_recettes` pour « Mes listes ») : pastille affichée mais verrouillée.
+  verrouilles?: CarnetParams['scope'][];
+  // Pastille « Mes listes » (JEP-376) : liste déroulante des listes
+  // personnelles (choisir, créer, renommer, supprimer), cf. ListesMenu.
+  listes?: { liste: ListeResume[]; selectionId: string | null; peut: boolean; max: number | null };
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -216,16 +223,28 @@ export function CarnetToolbar({
           <div className="flex flex-wrap gap-2">
             {scopes.map((s) => {
               const active = params.scope === s;
-              if (s === 'cap' && !peutCap) {
+              if (verrouilles.includes(s)) {
                 return (
                   <LockedAction
                     key={s}
                     label={SCOPE_LABELS[s]}
-                    message="Le carnet CAP n'est pas inclus dans votre formule."
+                    message={SCOPE_VERROU[s] ?? ''}
                     className="whitespace-nowrap rounded-pill border border-outline-variant px-4 py-1.5 font-label-md text-[12.5px]"
                   >
                     {SCOPE_LABELS[s]}
                   </LockedAction>
+                );
+              }
+              if (s === 'listes' && listes) {
+                return (
+                  <ListesMenu
+                    key={s}
+                    params={params}
+                    listes={listes.liste}
+                    selectionId={listes.selectionId}
+                    peutListes={listes.peut}
+                    max={listes.max}
+                  />
                 );
               }
               return (
@@ -286,12 +305,24 @@ export function CarnetToolbar({
         <CarnetFiltersSheet
           params={params}
           scopes={scopes}
-          capVerrouille={!peutCap}
+          verrouilles={verrouilles}
           counts={counts}
           statusCounts={statusCounts}
           onApply={appliquerDepuisFeuille}
           onShare={shareButton ? () => shareRef.current?.querySelector('button')?.click() : undefined}
         />
+        {/* Sous 1024 px, la feuille choisit la portée ; sur « Mes listes », la
+            liste déroulante (choix et gestion des listes) reste à portée de doigt. */}
+        {params.scope === 'listes' && listes && (
+          <ListesMenu
+            className="mt-4 inline-block"
+            params={params}
+            listes={listes.liste}
+            selectionId={listes.selectionId}
+            peutListes={listes.peut}
+            max={listes.max}
+          />
+        )}
         {shareButton && (
           <div ref={shareRef} className="[&>button]:hidden">
             {shareButton}

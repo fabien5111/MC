@@ -244,12 +244,11 @@ export function nomPreparationSuspect(nom: string): boolean {
 
 // ── Rubrique « Carnet CAP » du carnet (JEP-6) ─────────────────────────────
 
-// Convention de nommage : un tag dont le nom contient « [CAP] » range la
-// recette dans la rubrique, le reste du nom étant sa catégorie
-// (« [CAP] Crèmes » → « Crèmes »). Détecté sans casse ni accents, jamais par id
-// en dur : l'id change d'une base à l'autre.
-export const MARQUE_CAP = '[CAP]';
-
+// Convention de nommage : un tag dont le nom contient « [CAP] » donne la
+// catégorie d'impression de la recette, le reste du nom étant cette catégorie
+// (« [CAP] Crèmes » → « Crèmes »). Il ne décide plus de l'entrée dans la
+// rubrique, qui est la liste CAP remplie à la main (JEP-376). Détecté sans
+// casse ni accents.
 const norm = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 
@@ -257,27 +256,22 @@ const RE_MARQUE_CAP = /\[\s*cap\s*\]/i;
 
 export const estTagCap = (nom: string) => RE_MARQUE_CAP.test(norm(nom));
 
-/** Ids de tous les tags « [CAP] … ». */
-export function tagsCapIds(tags: { id: number; name: string }[]): number[] {
-  return tags.filter((t) => estTagCap(t.name)).map((t) => t.id);
-}
-
 /**
- * Éléments de la rubrique : les recettes étiquetées auxquelles le membre a
- * accès (déjà filtrées par la RLS à la lecture). Une recette que le carnet
+ * Éléments d'une liste de recettes — la liste CAP ou une liste personnelle
+ * (JEP-376) —, déjà filtrées par la RLS à la lecture. Une recette que le carnet
  * contient déjà garde son élément (marques favori / abonnement / partage, donc
- * sa carte et ses gestes habituels) ; les autres — recettes publiées de la
- * communauté — sont des cartes « d'un autre » sans marque. Un projet en cours
+ * sa carte et ses gestes habituels) ; les autres — recettes de la communauté
+ * rangées dans la liste — sont des cartes « d'un autre » sans marque. Un projet en cours
  * n'y entre jamais (`isProjectDraft`, spec §10).
  */
 export function itemsCap(
-  etiquetees: UserRecipeCard[],
+  recettes: UserRecipeCard[],
   carnet: CarnetItem[],
   userId: string,
 ): CarnetItem[] {
   const duCarnet = new Map(carnet.map((i) => [i.recipe.id, i]));
   const out: CarnetItem[] = [];
-  for (const r of etiquetees) {
+  for (const r of recettes) {
     if (isProjectDraft(r)) continue;
     const existant = duCarnet.get(r.id);
     if (existant) {

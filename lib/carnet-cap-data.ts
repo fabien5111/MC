@@ -3,10 +3,11 @@
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import { CARD_SELECT, getRecipeFull, getRecipesFull, withAllergenNames, type RecipeFull, type UserRecipeCard } from '@/lib/recipes';
-import { getTags } from '@/lib/data/reference';
+import { getIdsListeCap } from '@/lib/recipe-lists-data';
+import { nombreIndisponibles } from '@/lib/recipe-lists';
 import type { CarnetItem } from '@/lib/carnet';
 import { isProjectRecipe } from '@/lib/projects';
-import { ficheCapRecette, itemsCap, tagsCapIds, type CapFiche } from '@/lib/carnet-cap';
+import { ficheCapRecette, itemsCap, type CapFiche } from '@/lib/carnet-cap';
 
 // Au-delà, la page d'impression deviendrait lourde à rendre et à imprimer ;
 // un carnet d'examen tient largement dans cette limite.
@@ -47,31 +48,38 @@ export async function getFichesCapRecettes(ids: string[]): Promise<CapFiche[]> {
     .sort((a, b) => a.titre.localeCompare(b.titre, 'fr'));
 }
 
-// Plafond de la rubrique : une grille déjà entièrement chargée côté serveur
-// (cf. `CarnetContent`), comme le reste du carnet.
-const CAP_MAX_RUBRIQUE = 300;
-
 /**
- * Rubrique « Carnet CAP » : toutes les recettes portant un tag « [CAP] … »
- * auxquelles le membre a accès. La lecture passe par sa session — la RLS décide
- * (les siennes, les partagées, les publiées et publiques des autres), jamais le
- * code. `tagTrouve` faux = aucun tag « [CAP] » n'existe encore au back-office : l'écran
- * le dit plutôt que d'annoncer une rubrique vide.
+ * Éléments de carnet d'une liste de recettes (JEP-376), dans l'ordre de la
+ * liste (dernier ajout d'abord). Lecture sous la session : une recette devenue
+ * illisible (dépubliée, privée, auteur désactivé) est masquée par la RLS et
+ * comptée dans `indisponibles`, sa ligne de liste restant en base.
  */
-export async function getItemsCap(
-  userId: string,
+export async function getItemsDeListe(
+  ids: string[],
   carnet: CarnetItem[],
-): Promise<{ items: CarnetItem[]; tagTrouve: boolean }> {
-  const ids = tagsCapIds(await getTags());
-  if (!ids.length) return { items: [], tagTrouve: false };
+  userId: string,
+): Promise<{ items: CarnetItem[]; indisponibles: number }> {
+  if (!ids.length) return { items: [], indisponibles: 0 };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('recipes')
-    .select(`${CARD_SELECT}, status, is_public, kind, project_stage, recipe_tags!inner(tag_id)`)
-    .in('recipe_tags.tag_id', ids)
-    .order('created_at', { ascending: false })
-    .limit(CAP_MAX_RUBRIQUE);
-  if (error) console.error('getItemsCap:', error.message);
-  const rows = withAllergenNames((data as unknown as UserRecipeCard[] | null) ?? []);
-  return { items: itemsCap(rows, carnet, userId), tagTrouve: true };
+    .select(`${CARD_SELECT}, status, is_public, kind, project_stage`)
+    .in('id', ids);
+  if (error) console.error('getItemsDeListe:', error.message);
+  // Recette d'un autre auteur devenue privée (`is_public = false`) : la RLS de
+  // `recipes` l'écarte depuis le 26/10/2026 (sauf partage) ; ce filtre reste
+  // en seconde protection, en gardant ce qui est partagé ou déjà au carnet.
+  const duCarnet = new Set(carnet.map((i) => i.recipe.id));
+  const lisibles = ((data as unknown as UserRecipeCard[] | null) ?? []).filter(
+    (r) => r.author_id === userId || r.is_public !== false || duCarnet.has(r.id),
+  );
+  const rows = withAllergenNames(lisibles);
+  const rang = new Map(ids.map((id, i) => [id, i]));
+  rows.sort((a, b) => (rang.get(a.id) ?? 0) - (rang.get(b.id) ?? 0));
+  return { items: itemsCap(rows, carnet, userId), indisponibles: error ? 0 : nombreIndisponibles(ids, rows.map((r) => r.id)) };
+}
+
+/** Rubrique « Carnet CAP » : la liste CAP du membre, remplie à la main. */
+export async function getItemsCap(userId: string, carnet: CarnetItem[]): Promise<{ items: CarnetItem[]; indisponibles: number }> {
+  return getItemsDeListe(await getIdsListeCap(userId), carnet, userId);
 }

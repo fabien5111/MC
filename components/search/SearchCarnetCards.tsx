@@ -9,7 +9,8 @@
 import { useState } from 'react';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import { MineCard, OtherCard, retirerPartage, supprimerRecette } from '@/components/carnet/CarnetCards';
+import { useDialog } from '@/components/Dialog';
+import { MineCard, OtherCard, arreterSuivi, retirerPartage, supprimerRecette } from '@/components/carnet/CarnetCards';
 import type { CarnetItem } from '@/lib/carnet';
 import type { AllergenRef } from '@/lib/recipes';
 
@@ -28,6 +29,7 @@ export function SearchMineCard({
   allergenRefs: AllergenRef[];
 }) {
   const { mutate, busy } = useMutation();
+  const dialog = useDialog();
   const [removed, setRemoved] = useState(false);
   if (removed) return null;
   return (
@@ -58,6 +60,7 @@ export function SearchOtherCard({
   allergenRefs: AllergenRef[];
 }) {
   const { mutate, busy } = useMutation();
+  const dialog = useDialog();
   const [removed, setRemoved] = useState(false);
   if (removed) return null;
   return (
@@ -67,7 +70,10 @@ export function SearchOtherCard({
         item={item}
         favIds={isFav ? [item.recipe.id] : []}
         onRevokeShare={async (it) => {
-          if (await retirerPartage(mutate, it)) setRemoved(true);
+          if (await retirerPartage(mutate, dialog.confirm, it)) setRemoved(true);
+        }}
+        onUnfollow={async (it) => {
+          if (await arreterSuivi(mutate, it)) setRemoved(true);
         }}
         defaultPhoto={defaultPhoto}
         allergenRefs={allergenRefs}

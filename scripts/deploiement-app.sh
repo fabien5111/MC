@@ -131,6 +131,13 @@ npm ci --include=dev
 # travail d'une tentative avortée (script interrompu) part avec.
 echo "→ Construction (à côté du build en service)"
 rm -rf .next-precedent .next-construction
+# Les types générés du build EN SERVICE (`.next/types`) entrent dans la
+# vérification de type du nouveau build (`tsconfig.json` inclut `**/*.ts`) :
+# une route supprimée y reste référencée et fait échouer la construction
+# (« Cannot find module …/app/api/listes/cap/route.js », JEP-376). Ils ne
+# servent qu'à la vérification de type, jamais à `next start` : les retirer
+# laisse le site en service intact.
+rm -rf .next/types
 if ! NEXT_DIST_DIR=.next-construction NODE_ENV=production npm run build; then
   rm -rf .next-construction
   # Next réécrit `tsconfig.json` pour y inclure les types du dossier de build ;

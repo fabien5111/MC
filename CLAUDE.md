@@ -1928,12 +1928,12 @@ même quantité ne doit y figurer qu'une fois.
   verrouillée (`LockedAction`, picto `block`, bulle « Le carnet CAP n'est pas
   inclus dans votre formule. » + lien vers `/plans`, sans compteur, sur la ligne
   de pastilles et dans la feuille mobile), `?scope=cap` retombe sur « Tout » et
-  rien n'est lu (`app/carnet/page.tsx`). Elle liste **toutes
-  les recettes portant un tag « [CAP] … » (nom contenant `[CAP]`, sans casse ni espaces) auxquelles le membre a accès**
-  (`getItemsCap`, `lib/carnet-cap-data.ts` : les siennes, les partagées, les
-  publiées et publiques de la communauté — la **RLS** décide, sous la session) ;
-  les tags sont retrouvés par leur nom (`tagsCapIds`, jamais par un id en
-  dur), et l'absence de tout tag `[CAP]` est dite à l'écran. Une recette que le carnet
+  rien n'est lu (`app/carnet/page.tsx`). Elle liste **la liste CAP
+  du membre, remplie à la main** (JEP-376) par le bouton « CAP » de la fiche
+  recette (fenêtre « Ajouter à une liste ») — plus aucune déduction par tag, qui ramenait toutes
+  les recettes taguées de la communauté (`getItemsCap`, `lib/carnet-cap-data.ts`,
+  relue sous la session : une recette devenue illisible est masquée par la RLS
+  et comptée « plus accessible », sa ligne de liste restant en base). Une recette que le carnet
   contient déjà garde son élément (marques et gestes habituels), les autres sont
   des cartes « d'un autre » sans marque ; un projet en cours n'y entre jamais
   (`itemsCap`, pur et testé). **La barre de statut est affichée sur TOUTES les
@@ -1992,6 +1992,67 @@ même quantité ne doit y figurer qu'une fois.
   faux est pire qu'absent.
 - Aucun auteur, logo ni adresse du site sur la feuille : le carnet doit être
   « personnel ». Le jury reste seul juge ; l'écran le dit.
+
+## Listes de recettes (JEP-376)
+
+Modèle « playlist » : le membre range lui-même une recette dans une liste.
+Spec complète : commentaire du ticket JEP-376. Trois sortes de listes
+(`lib/recipe-lists.ts`, pur et testé) :
+- **« Favoris »** : liste **virtuelle** adossée à `favorites`, table inchangée
+  (cœur, notification nominative à l'auteur, portée « Favoris » du carnet).
+  Aucune ligne dans `recipe_lists`.
+- **« CAP »** : liste système, une par membre (index unique partiel `owner_id`
+  where `kind = 'cap'`), créée au premier ajout, droit `carnet_cap` (Pro). Elle
+  alimente la rubrique « Carnet CAP » et son impression ; le tag `[CAP] Xxx` ne
+  sert plus qu'à la **catégorie** d'impression (`categorieCap`). Ni renommable,
+  ni déplaçable, ni supprimable.
+- **Listes personnelles** (`kind = 'perso'`) : droit **`listes_recettes`**
+  (plan Plus, plafond de la grille, `getLimit`), portée « Mes listes » du carnet
+  (`?scope=listes&liste=<id>`, première liste par défaut). Un clic sur la
+  pastille ouvre une **liste déroulante** (`components/listes/ListesMenu.tsx`,
+  aussi montée sous 1024 px quand la portée est active) : « Nouvelle liste »
+  en tête, puis une ligne par liste « Nom (n) » avec les pictos renommer et
+  supprimer calés à droite. Pas de bloc de gestion au-dessus de la grille
+  (arbitrage du 26/10/2026). L'API sait encore déplacer une liste
+  (`PATCH … { sens }`), sans bouton à l'écran.
+- **Ordre et noms** (26/10/2026) : CAP en tête, puis les listes perso par
+  ordre alphabétique (`trierListes` : sans casse ni accents, nombres dans
+  l'ordre naturel ; la position ne départage que deux noms égaux). **Pas de
+  doublon** : `nomListePris` refuse un nom déjà porté par une autre liste du
+  membre (même comparaison que la recherche, `normSearch`) ainsi que
+  « Favoris » et « CAP » ; contrôlé par les routes de création et de renommage
+  (409), et signalé sous le champ de la fenêtre avant l'envoi.
+
+- **Tables `recipe_lists` / `recipe_list_items`** (DDL par `psql`, nœud 216075) :
+  **lecture seule pour le propriétaire (RLS), aucune policy d'écriture**. La RLS
+  ne connaît pas les formules : seules les routes `/api/listes/*` écrivent (clé
+  service_role), après `membreEcrivain` (`lib/recipe-lists-route.ts` : connecté,
+  `refusSiCompteBloque`, refus en lecture seule) et le droit de la liste
+  (`droitDeListe`). Chaque écriture refiltre sur `owner_id` (la clé service_role
+  ignore la RLS). Routes : `GET/POST /api/listes` (état pour la fenêtre,
+  création avec plafond), `PATCH/DELETE /api/listes/[id]` (renommer / déplacer /
+  supprimer), `POST /api/listes/contenu` (ranger / retirer ; `liste: 'cap'`
+  désigne la liste CAP).
+- **Ajouter exige le droit et une recette lisible par la session** (RLS, jamais
+  un projet en cours) ; **retirer et supprimer une liste perso restent toujours
+  permis** : après une rétrogradation, rien n'est perdu, tout se consulte et se
+  vide, rien ne s'ajoute ni ne se crée ni ne se renomme. La portée « Mes listes »
+  reste ouverte tant que le membre a des listes, verrouillée sinon.
+- **Fenêtre « Ajouter à une liste »** (`components/listes/AddToListButton.tsx`) :
+  sur la fiche recette seulement (bouton « Listes », à droite du cœur) —
+  **jamais sur les cartes** (arbitrage du 26/10/2026). Elle lit son état à
+  l'ouverture (`GET /api/listes?recette=`). Une case
+  par liste (Favoris, CAP grisée sans le droit, listes perso) et « Nouvelle
+  liste », qui y range aussitôt la recette. Favoris écrit `favorites` par le
+  navigateur, comme le cœur. Écritures en `refresh: false`, resynchronisation
+  par le bouton à la fermeture (modale). `FavoriteButton` se resynchronise sur
+  `initialFav` (`useEffect`) pour refléter un favori changé dans la fenêtre.
+- Les recettes illisibles (dépubliées, privées, auteur désactivé) restent en
+  liste, masquées par la RLS et comptées « plus accessibles »
+  (`getItemsDeListe`, `lib/carnet-cap-data.ts`). Plafond technique
+  `LISTE_MAX_RECETTES` (300) par liste. Ajouter à une liste ne notifie personne.
+- Tables absentes de `lib/database.types.ts` jusqu'à la régénération : accès non
+  typé (`lib/recipe-lists-data.ts`).
 
 ## Boîte à idées
 
@@ -2767,6 +2828,12 @@ principales :
 
 - Sécurité par **Row Level Security** (les requêtes passent par la session
   de l'utilisateur, jamais par une clé service côté front).
+- **Recette privée = illisible par les autres, même publiée** (26/10/2026) :
+  la policy « Recettes publiées lisibles par tous » de `recipes` exige
+  `status = 'published' AND is_public is not false` (ou l'auteur). Avant, elle
+  ne lisait que `status` : une recette publiée puis rendue privée restait
+  ouverte à tous par son URL, dans les listes et le fil des abonnements. Le
+  partage (`recipes_partagees`) et la modération ont leurs propres policies.
 - **Images sur le stockage objet Swift**, pas en base : les colonnes portent
   une URL. Le dépôt est un `PUT` direct navigateur → conteneur, autorisé par
   une signature TempURL mintée par `/api/stockage/televersement` — les octets
