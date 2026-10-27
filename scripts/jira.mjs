@@ -239,37 +239,91 @@ async function commenter(cle, texte) {
 }
 
 /**
- * Crée un ticket. Jamais de statut ni de transition ici : un ticket naît
- * dans le statut initial du workflow, ce qui laisse intact le garde-fou des
- * verbes de transition. La priorité n'est pas sur l'écran de création des
- * tâches du projet : si Jira la refuse, elle est posée par une mise à jour
- * séparée, et un échec de cette seconde étape est signalé sans défaire le
- * ticket déjà créé.
+ * Retrouve une valeur demandée (type de ticket, priorité) parmi celles que
+ * Jira déclare, sans tenir compte de la casse. Refus explicite, avec la liste
+ * des valeurs possibles, plutôt qu'un repli silencieux : un ticket créé avec
+ * la mauvaise priorité passerait inaperçu.
+ */
+export function choisirParNom(valeurs, demande, libelle) {
+  const cible = String(demande ?? '').trim().toLowerCase();
+  const trouvee = valeurs.find((v) => String(v?.name ?? '').trim().toLowerCase() === cible);
+  if (!trouvee) {
+    const possibles = valeurs.map((v) => v?.name).filter(Boolean).join(', ') || '(aucune)';
+    throw new Error(`${libelle} inconnu(e) : « ${demande} ». Valeurs possibles : ${possibles}.`);
+  }
+  return trouvee;
+}
+
+/**
+ * Projet visé : `JIRA_PROJECT_KEY` (la variable du module contact), à défaut
+ * `JEP`, le seul projet de ce dépôt. Jamais un paramètre de la ligne de
+ * commande : un agent ne choisit pas dans quel projet il écrit.
+ */
+function projetCible() {
+  return (process.env.JIRA_PROJECT_KEY || 'JEP').trim();
+}
+
+/**
+ * Crée un ticket. Garde-fous, tous vérifiés AVANT l'écriture : projet fixé
+ * (`projetCible`), type et priorité vérifiés contre ce que Jira déclare
+ * (refus avec la liste sinon), refus d'un résumé déjà porté par un ticket du projet
+ * (sauf `--forcer`) : `appelJira` rejoue une requête après une coupure
+ * réseau, et une relance de la commande ne doit pas produire de doublon.
+ * **Aucune transition** : le ticket naît au statut initial du projet.
+ *
+ * La priorité n'est pas sur l'écran de création de tous les types (absente
+ * de celui des tâches, présente sur celui des stories) : elle est posée à la
+ * création si l'écran du type la porte, sinon par une mise à jour séparée,
+ * dont l'échec est signalé sans défaire le ticket déjà créé.
  */
 async function creer(options, description) {
   const config = lireConfig();
-  if (!options.titre?.trim()) echouer('--titre manquant.');
+  const projet = projetCible();
+  const titre = options.titre?.trim() ?? '';
+  if (!titre) echouer('--titre manquant.');
+  if (titre.length > 255) echouer('Titre trop long (255 caractères au plus).');
   if (!description.trim()) echouer('Description vide : rien à créer.');
 
+  const types = await appelJira(config, `/rest/api/3/issue/createmeta/${encodeURIComponent(projet)}/issuetypes`);
+  const type = choisirParNom(types?.issueTypes ?? types?.values ?? [], options.type, 'Type de ticket');
+  let priorite = null;
+  if (options.priorite) {
+    const priorites = await appelJira(config, '/rest/api/3/priority');
+    priorite = choisirParNom(Array.isArray(priorites) ? priorites : [], options.priorite, 'Priorité');
+  }
+
+  if (!options.forcer) {
+    const jql = `project = "${projet}" AND summary ~ "${titre.replace(/["\\]/g, ' ')}"`;
+    const existants = await appelJira(config, `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=summary&maxResults=50`);
+    const doublon = (existants?.issues ?? []).find((i) => String(i.fields?.summary ?? '').trim().toLowerCase() === titre.toLowerCase());
+    if (doublon) echouer(`Un ticket porte déjà ce titre : ${doublon.key} — ${config.baseUrl}/browse/${doublon.key} (--forcer pour créer quand même).`);
+  }
+
   const champs = {
-    project: { key: options.projet },
-    issuetype: { name: options.type },
-    summary: options.titre.trim(),
+    project: { key: projet },
+    issuetype: { id: type.id },
+    summary: titre,
     description: markdownLegerVersAdf(description),
   };
+  let prioriteALaCreation = false;
+  if (priorite) {
+    const ecran = await appelJira(config, `/rest/api/3/issue/createmeta/${encodeURIComponent(projet)}/issuetypes/${type.id}?maxResults=200`);
+    const champsEcran = ecran?.fields ?? ecran?.values ?? [];
+    prioriteALaCreation = champsEcran.some((c) => (c?.fieldId ?? c?.key) === 'priority');
+    if (prioriteALaCreation) champs.priority = { id: priorite.id };
+  }
   if (options.labels.length > 0) champs.labels = options.labels;
 
   const cree = await appelJira(config, '/rest/api/3/issue', 'POST', { fields: champs });
-  const url = `${config.baseUrl}/browse/${cree.key}`;
-
-  if (options.priorite) {
+  if (!cree?.key) echouer('Jira n’a pas renvoyé de clé : vérifier dans Jira avant de relancer.');
+  if (priorite && !prioriteALaCreation) {
     try {
-      await appelJira(config, `/rest/api/3/issue/${cree.key}`, 'PUT', { fields: { priority: { name: options.priorite } } });
+      await appelJira(config, `/rest/api/3/issue/${cree.key}`, 'PUT', { fields: { priority: { id: priorite.id } } });
     } catch (e) {
-      console.error(`${cree.key} créé, mais priorité « ${options.priorite} » non posée : ${e?.message ?? e}`);
+      console.error(`${cree.key} créé, mais priorité « ${priorite.name} » non posée : ${e?.message ?? e}`);
     }
   }
-  console.log(`${cree.key} créé — ${url}`);
+  console.log(`${cree.key} créé (${type.name}${priorite ? `, ${priorite.name}` : ''}) — ${config.baseUrl}/browse/${cree.key}`);
 }
 
 /**
@@ -390,7 +444,8 @@ const USAGE = `Usage :
   node scripts/jira.mjs demarrer <CLE>                (→ JIRA_STATUS_IN_PROGRESS, défaut « En cours »)
   node scripts/jira.mjs envoyer-en-test <CLE>         (→ JIRA_STATUS_IN_TEST, défaut « Revue en cours »)
   node scripts/jira.mjs a-deployer <CLE>              (→ JIRA_STATUS_TO_DEPLOY, défaut « A déployer »)
-  node scripts/jira.mjs creer --titre "<résumé>" <fichier|-> [--projet JEP] [--type Tâche] [--priorite Medium] [--label L]...
+  node scripts/jira.mjs creer --titre "<résumé>" <fichier|-> [--type Tâche] [--priorite Medium] [--label L]... [--forcer]
+                                                      (projet JIRA_PROJECT_KEY, défaut JEP ; refus d'un titre déjà pris)
                                                       (description en markdown restreint : ##, ###, -, 1.)
   node scripts/jira.mjs modifier <CLE> <fichier|-> [--titre "<résumé>"]
                                                       (remplace la description, même format que creer)
@@ -480,15 +535,15 @@ async function main(argv) {
   }
 
   if (verbe === 'creer') {
-    const options = { projet: 'JEP', type: 'Tâche', priorite: null, titre: null, labels: [] };
+    const options = { type: 'Tâche', priorite: null, titre: null, labels: [], forcer: false };
     const positionnels = [];
     for (let i = 0; i < args.length; i++) {
       const a = args[i];
       if (a === '--titre') options.titre = args[++i];
-      else if (a === '--projet') options.projet = args[++i];
       else if (a === '--type') options.type = args[++i];
       else if (a === '--priorite') options.priorite = args[++i];
       else if (a === '--label') options.labels.push(args[++i]);
+      else if (a === '--forcer') options.forcer = true;
       else positionnels.push(a);
     }
     const source = positionnels[0];
