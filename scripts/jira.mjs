@@ -1,9 +1,9 @@
 // Accès Jira en ligne de commande, pour lire une spec ou un bug depuis
 // Claude Code (lot 1 de l'outillage Jira — cf. `docs/outillage-jira.md`).
 //
-// Six verbes : `lire`, `chercher`, `commenter`, et trois verbes de
-// transition étroitement bornés, `demarrer`, `envoyer-en-test` et
-// `a-deployer`. Toujours pas de passe-plat REST générique : un besoin
+// Sept verbes : `lire`, `chercher`, `commenter`, `creer` (projet fixé,
+// aucune transition) et trois verbes de transition étroitement bornés,
+// `demarrer`, `envoyer-en-test` et `a-deployer`. Toujours pas de passe-plat REST générique : un besoin
 // nouveau s'ajoute au script, avec son garde-fou, plutôt que de se
 // contourner.
 //
@@ -23,6 +23,7 @@
 // conversion texte → ADF y sont donc réécrites. Duplication assumée et
 // bornée — le chemin produit (création de ticket, commentaire de réponse)
 // reste le seul à passer par `lib/jira.ts` et ses tests.
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { appelJira, lireConfig, lireConfigStatuts, memeStatut, trouverTransitionVers } from './jira-api.mjs';
 
@@ -96,6 +97,75 @@ export function texteVersAdf(texte) {
   // Jira refuse un `content` vide.
   if (paragraphes.length === 0) paragraphes.push({ type: 'paragraph', content: [{ type: 'text', text: '—' }] });
   return { type: 'doc', version: 1, content: paragraphes };
+}
+
+/**
+ * Texte « Markdown simple » → ADF, pour la description d'un ticket créé par
+ * `creer`. Une spec a des titres et des listes ; `texteVersAdf` les
+ * aplatirait en paragraphes. Trois formes reconnues, rien de plus :
+ * `#`/`##`/`###` (titre), `- ` ou `* ` (puce), le reste en paragraphes
+ * (ligne vide = nouveau paragraphe, saut simple = `hardBreak`). Le gras,
+ * les tableaux et le code restent du texte brut — lisible, jamais perdu.
+ */
+export function markdownVersAdf(texte) {
+  const blocs = [];
+  let paragraphe = [];
+  let puces = null;
+
+  const texteLigne = (t) => [{ type: 'text', text: t }];
+  const clore = () => {
+    if (paragraphe.length > 0) blocs.push({ type: 'paragraph', content: paragraphe });
+    paragraphe = [];
+    if (puces) blocs.push({ type: 'bulletList', content: puces });
+    puces = null;
+  };
+
+  for (const brute of texte.replace(/\r\n/g, '\n').split('\n')) {
+    const ligne = brute.trimEnd();
+    if (ligne.trim() === '') {
+      clore();
+      continue;
+    }
+    const titre = /^(#{1,3})\s+(.+)$/.exec(ligne);
+    if (titre) {
+      clore();
+      blocs.push({ type: 'heading', attrs: { level: titre[1].length + 1 }, content: texteLigne(titre[2].trim()) });
+      continue;
+    }
+    const puce = /^\s*[-*]\s+(.+)$/.exec(ligne);
+    if (puce) {
+      if (paragraphe.length > 0) {
+        blocs.push({ type: 'paragraph', content: paragraphe });
+        paragraphe = [];
+      }
+      puces ??= [];
+      puces.push({ type: 'listItem', content: [{ type: 'paragraph', content: texteLigne(puce[1].trim()) }] });
+      continue;
+    }
+    if (puces) clore();
+    if (paragraphe.length > 0) paragraphe.push({ type: 'hardBreak' });
+    paragraphe.push(...texteLigne(ligne));
+  }
+  clore();
+
+  if (blocs.length === 0) blocs.push({ type: 'paragraph', content: texteLigne('—') });
+  return { type: 'doc', version: 1, content: blocs };
+}
+
+/**
+ * Retrouve une valeur demandée (type de ticket, priorité) parmi celles que
+ * Jira déclare, sans tenir compte de la casse. Refus explicite, avec la liste
+ * des valeurs possibles, plutôt qu'un repli silencieux sur une valeur par
+ * défaut : un ticket créé avec la mauvaise priorité passerait inaperçu.
+ */
+export function choisirParNom(valeurs, demande, libelle) {
+  const cible = String(demande ?? '').trim().toLowerCase();
+  const trouvee = valeurs.find((v) => String(v?.name ?? '').trim().toLowerCase() === cible);
+  if (!trouvee) {
+    const possibles = valeurs.map((v) => v?.name).filter(Boolean).join(', ') || '(aucune)';
+    throw new Error(`${libelle} inconnu(e) : « ${demande} ». Valeurs possibles : ${possibles}.`);
+  }
+  return trouvee;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -188,6 +258,59 @@ async function commenter(cle, texte) {
   if (!texte.trim()) echouer('Commentaire vide : rien à publier.');
   await appelJira(config, `/rest/api/3/issue/${encodeURIComponent(cle)}/comment`, 'POST', { body: texteVersAdf(texte) });
   console.log(`Commentaire publié sur ${cle} — ${config.baseUrl}/browse/${cle}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Création (`creer`)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Projet visé : `JIRA_PROJECT_KEY` (la variable du module contact), à défaut
+ * `JEP`, le seul projet de ce dépôt. Jamais un paramètre de la ligne de
+ * commande : un agent ne choisit pas dans quel projet il écrit.
+ */
+function projetCible() {
+  return (process.env.JIRA_PROJECT_KEY || 'JEP').trim();
+}
+
+/**
+ * Crée un ticket. Garde-fous : projet fixé, type et priorité vérifiés contre
+ * ce que Jira déclare (refus avec la liste sinon), refus d'un résumé déjà
+ * porté par un ticket du projet (sauf `--forcer`) — `appelJira` rejoue une
+ * requête après une coupure réseau, et une relance de la commande ne doit
+ * pas non plus produire de doublon. **Aucune transition** : le ticket naît
+ * au statut initial du projet ; le passer ailleurs reste un geste humain.
+ */
+async function creer({ type, priorite, resume, description, forcer }) {
+  const config = lireConfig();
+  const projet = projetCible();
+  const titre = String(resume ?? '').trim();
+  if (!titre) echouer('Résumé (titre du ticket) manquant : --resume "…".');
+  if (titre.length > 255) echouer('Résumé trop long (255 caractères au plus).');
+
+  const types = await appelJira(config, `/rest/api/3/issue/createmeta/${encodeURIComponent(projet)}/issuetypes`);
+  const typeTrouve = choisirParNom(types?.issueTypes ?? types?.values ?? [], type, 'Type de ticket');
+  const priorites = await appelJira(config, '/rest/api/3/priority');
+  const prioriteTrouvee = choisirParNom(Array.isArray(priorites) ? priorites : [], priorite, 'Priorité');
+
+  if (!forcer) {
+    const jql = `project = "${projet}" AND summary ~ "${titre.replace(/["\\]/g, ' ')}"`;
+    const existants = await appelJira(config, `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=summary&maxResults=50`);
+    const doublon = (existants?.issues ?? []).find((i) => String(i.fields?.summary ?? '').trim().toLowerCase() === titre.toLowerCase());
+    if (doublon) echouer(`Un ticket porte déjà ce résumé : ${doublon.key} — ${config.baseUrl}/browse/${doublon.key} (--forcer pour créer quand même).`);
+  }
+
+  const cree = await appelJira(config, '/rest/api/3/issue', 'POST', {
+    fields: {
+      project: { key: projet },
+      issuetype: { id: typeTrouve.id },
+      priority: { id: prioriteTrouvee.id },
+      summary: titre,
+      description: markdownVersAdf(description ?? ''),
+    },
+  });
+  if (!cree?.key) echouer('Jira n’a pas renvoyé de clé : vérifier dans Jira avant de relancer.');
+  console.log(`${cree.key} créé (${typeTrouve.name}, ${prioriteTrouvee.name}) — ${config.baseUrl}/browse/${cree.key}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -291,6 +414,8 @@ const USAGE = `Usage :
   node scripts/jira.mjs lire <CLE> [--commentaires N]
   node scripts/jira.mjs chercher "<JQL>" [--max N]
   node scripts/jira.mjs commenter <CLE> "<texte>"     (ou "-" pour lire l'entrée standard)
+  node scripts/jira.mjs creer --type <TYPE> --priorite <PRIORITÉ> --resume "<titre>" [--description-fichier <f.md> | -] [--forcer]
+                                                      (projet JIRA_PROJECT_KEY, défaut JEP ; statut initial du projet)
   node scripts/jira.mjs demarrer <CLE>                (→ JIRA_STATUS_IN_PROGRESS, défaut « En cours »)
   node scripts/jira.mjs envoyer-en-test <CLE>         (→ JIRA_STATUS_IN_TEST, défaut « Revue en cours »)
   node scripts/jira.mjs a-deployer <CLE>              (→ JIRA_STATUS_TO_DEPLOY, défaut « A déployer »)
@@ -301,6 +426,7 @@ Exemples :
   node scripts/jira.mjs lire MC-123
   node scripts/jira.mjs chercher "project = MC AND statusCategory != Done ORDER BY updated DESC"
   node scripts/jira.mjs commenter MC-123 "Corrigé sur la branche claude/… — PR #42."
+  node scripts/jira.mjs creer --type Story --priorite High --resume "Mes moules" --description-fichier spec.md
   node scripts/jira.mjs demarrer MC-123
   node scripts/jira.mjs envoyer-en-test MC-123
   node scripts/jira.mjs a-deployer MC-123`;
@@ -317,6 +443,20 @@ function lireOption(args, nom, defaut) {
   if (!Number.isInteger(valeur) || valeur < 0) echouer(`${nom} attend un entier positif.`);
   args.splice(i, 2);
   return valeur;
+}
+
+/** Options à valeur texte (`--nom valeur`), retirées de `args` au passage. */
+function lireOptionsTexte(args, noms) {
+  const valeurs = {};
+  for (const nom of noms) {
+    const i = args.indexOf(nom);
+    if (i === -1) continue;
+    const valeur = args[i + 1];
+    if (valeur === undefined || valeur.startsWith('--')) echouer(`${nom} attend une valeur.`);
+    valeurs[nom] = valeur;
+    args.splice(i, 2);
+  }
+  return valeurs;
 }
 
 async function lireEntreeStandard() {
@@ -355,6 +495,25 @@ async function main(argv) {
     const reste = args.join(' ').trim();
     if (!cle || !reste) echouer(`Clé de ticket ou texte manquant.\n\n${USAGE}`);
     await commenter(cle, reste === '-' ? await lireEntreeStandard() : reste);
+    return;
+  }
+
+  if (verbe === 'creer') {
+    const options = lireOptionsTexte(args, ['--type', '--priorite', '--resume', '--description-fichier']);
+    const forcer = args.includes('--forcer');
+    if (!options['--type'] || !options['--priorite'] || !options['--resume']) {
+      echouer(`--type, --priorite et --resume sont obligatoires.\n\n${USAGE}`);
+    }
+    let description = '';
+    if (args.includes('-')) description = await lireEntreeStandard();
+    else if (options['--description-fichier']) description = readFileSync(options['--description-fichier'], 'utf8');
+    await creer({
+      type: options['--type'],
+      priorite: options['--priorite'],
+      resume: options['--resume'],
+      description,
+      forcer,
+    });
     return;
   }
 

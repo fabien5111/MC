@@ -4,7 +4,7 @@
 // c'est justement ce qui justifie de la tester ici aussi, sinon les deux
 // versions divergeraient sans que rien ne le signale.
 import { describe, expect, it } from 'vitest';
-import { adfVersTexte, resoudreTransition, texteVersAdf, verifierConfigADeployer } from './jira.mjs';
+import { adfVersTexte, choisirParNom, markdownVersAdf, resoudreTransition, texteVersAdf, verifierConfigADeployer } from './jira.mjs';
 
 describe('adfVersTexte', () => {
   it('aplatit paragraphes, sauts de ligne et listes', () => {
@@ -119,3 +119,27 @@ describe('verifierConfigADeployer', () => {
   });
 });
 
+
+describe('markdownVersAdf', () => {
+  it('reconnaît titres, puces et paragraphes', () => {
+    const doc = markdownVersAdf('## Constat\nLigne un\nligne deux\n\n- a\n- b\nAprès');
+    expect(doc.content.map((b) => b.type)).toEqual(['heading', 'paragraph', 'bulletList', 'paragraph']);
+    expect(doc.content[0].attrs.level).toBe(3);
+    expect(doc.content[2].content).toHaveLength(2);
+    expect(adfVersTexte(doc)).toBe('Constat\n\nLigne un\nligne deux\n\n- a\n- b\nAprès');
+  });
+
+  it('ne rend jamais un document vide', () => {
+    expect(markdownVersAdf('').content).toEqual([{ type: 'paragraph', content: [{ type: 'text', text: '—' }] }]);
+  });
+});
+
+describe('choisirParNom', () => {
+  const priorites = [{ id: '2', name: 'High' }, { id: '3', name: 'Medium' }];
+  it('trouve sans tenir compte de la casse', () => {
+    expect(choisirParNom(priorites, 'high').id).toBe('2');
+  });
+  it('refuse une valeur inconnue en listant les possibles', () => {
+    expect(() => choisirParNom(priorites, 'Haute', 'Priorité')).toThrow('Valeurs possibles : High, Medium');
+  });
+});

@@ -30,6 +30,7 @@ node scripts/jira.mjs lire MC-123 --commentaires 0    # sans les commentaires
 node scripts/jira.mjs chercher "project = MC AND statusCategory != Done ORDER BY updated DESC"
 node scripts/jira.mjs chercher "assignee = currentUser() AND sprint IN openSprints()" --max 50
 node scripts/jira.mjs commenter MC-123 "Corrigé sur la branche claude/… — PR #42."
+node scripts/jira.mjs creer --type Story --priorite High --resume "Titre" --description-fichier spec.md   # projet fixé, aucune transition
 node scripts/jira.mjs demarrer MC-123                 # → « En cours », à la prise en charge du ticket
 node scripts/jira.mjs envoyer-en-test MC-123          # → « Revue en cours », dès que l'aperçu de PR est EN LIGNE
 node scripts/jira.mjs a-deployer MC-123               # → « A déployer », à l'envoi de la fusion vers main
@@ -83,6 +84,9 @@ appelant l'API à la main.
    trois verbes refusent d'ailleurs explicitement toute transition qui
    mènerait à « Déployé » (cf. « Limites » ci-dessous).
 8. **Commenter** le ticket seulement si l'utilisateur le demande.
+9. **Créer** un ticket (`creer`) seulement si l'utilisateur le demande, avec
+   le type et la priorité qu'il a nommés. Le ticket naît au statut initial
+   du projet : le passer en « Spéc rédigée » reste un geste humain.
 
 ## Limites, volontaires
 
@@ -109,7 +113,7 @@ appelant l'API à la main.
   commande annonce ces variables absentes, les poser (valeurs réelles de ce
   projet : `A déployer` / `Terminé`, cf. `docs/outillage-jira.md` §1.6) —
   jamais chercher à la contourner.
-- **Aucun passe-plat REST générique** : six verbes, pas un client Jira
+- **Aucun passe-plat REST générique** : sept verbes, pas un client Jira
   complet. Un besoin nouveau s'ajoute au script, avec son garde-fou le cas
   échéant, il ne se contourne pas avec `curl`.
 - **Un commentaire est public** sur le ticket, et les tickets issus du

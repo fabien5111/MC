@@ -23,13 +23,28 @@ configuration hors dépôt, listée à la fin de sa section.
 
 ## 1. Lot 1 — `scripts/jira.mjs`
 
-Six verbes, pas un client Jira. Trois de lecture/écriture libre :
+Sept verbes, pas un client Jira. Trois de lecture/écriture libre :
 
 ```bash
 node scripts/jira.mjs lire MC-123 [--commentaires N]
 node scripts/jira.mjs chercher "<JQL>" [--max N]
 node scripts/jira.mjs commenter MC-123 "<texte>"   # « - » lit l'entrée standard
 ```
+
+Un de création (27/10/2026), à n'utiliser que sur demande explicite :
+
+```bash
+node scripts/jira.mjs creer --type Story --priorite High --resume "<titre>" --description-fichier spec.md
+```
+
+Garde-fous : projet fixé (`JIRA_PROJECT_KEY`, défaut `JEP`, jamais un
+paramètre), type et priorité vérifiés contre ce que Jira déclare (refus avec
+la liste des valeurs possibles, jamais de repli), refus d'un résumé déjà
+porté par un ticket du projet (`--forcer` pour passer outre — `appelJira`
+rejoue une requête après coupure, une relance ne doit pas dupliquer), et
+**aucune transition** : le ticket naît au statut initial du projet. La
+description accepte un Markdown simple (titres `#`, puces `-`, paragraphes —
+`markdownVersAdf`) ; tableaux et gras restent du texte brut.
 
 Et trois transitions étroitement bornées, pilotées par l'agent au rythme de
 son propre travail (`demarrer`, `envoyer-en-test`, `a-deployer` — §1.6).
