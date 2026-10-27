@@ -23,13 +23,30 @@ configuration hors dépôt, listée à la fin de sa section.
 
 ## 1. Lot 1 — `scripts/jira.mjs`
 
-Six verbes, pas un client Jira. Trois de lecture/écriture libre :
+Huit verbes, pas un client Jira. Trois de lecture/écriture libre :
 
 ```bash
 node scripts/jira.mjs lire MC-123 [--commentaires N]
 node scripts/jira.mjs chercher "<JQL>" [--max N]
 node scripts/jira.mjs commenter MC-123 "<texte>"   # « - » lit l'entrée standard
 ```
+
+Deux d'écriture de tickets, à n'utiliser que sur demande explicite :
+
+```bash
+node scripts/jira.mjs creer --titre "<titre>" spec.md [--type Story] [--priorite High] [--label L] [--forcer]
+node scripts/jira.mjs modifier MC-123 spec.md [--titre "<titre>"]
+```
+
+Garde-fous de `creer`, tous vérifiés avant l'écriture : projet fixé
+(`JIRA_PROJECT_KEY`, défaut `JEP`, jamais un paramètre), type et priorité
+vérifiés contre ce que Jira déclare (refus avec la liste des valeurs
+possibles, jamais de repli), refus d'un titre déjà porté par un ticket du
+projet (`--forcer` pour passer outre — `appelJira` rejoue une requête après
+coupure, une relance ne doit pas dupliquer). La priorité est posée à la
+création si l'écran du type la porte, sinon par une mise à jour séparée.
+**Aucune transition** : le ticket naît au statut initial du projet, et
+`modifier` ne touche qu'à la description et au titre.
 
 Et trois transitions étroitement bornées, pilotées par l'agent au rythme de
 son propre travail (`demarrer`, `envoyer-en-test`, `a-deployer` — §1.6).
