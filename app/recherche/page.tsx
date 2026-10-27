@@ -31,6 +31,7 @@ import { getFavoriteIds } from '@/lib/favorites';
 import { getFollowerCounts } from '@/lib/follows';
 import { getAllergensWithPicto, withAllergenNames } from '@/lib/recipes';
 import { getCurrentUser } from '@/lib/auth';
+import { getVisibleHelpBlocks } from '@/lib/help';
 import { getRecipeDefaultPhoto } from '@/lib/site';
 import { getCarnetMarks, relaxationSuggestions, searchAdvanced, type Relaxation } from '@/lib/search';
 import { countActiveCriteria, effectiveQuery, hasAnySearch, parseSearchCriteria } from '@/lib/search-params';
@@ -57,7 +58,11 @@ export default async function RecherchePage({
   // colonne est déjà là).
   const panelOpen = (Array.isArray(sp.panel) ? sp.panel[0] : sp.panel) === '1';
 
-  const [result, favIds, types, difficulties, tags, allergens, user, ads, defaultPhoto] = await Promise.all([
+  // Aide (JEP-373) : page publique, donc aucun bloc ni aucune lecture pour un
+  // visiteur. `getCurrentUser` est mémoïsé par requête : la chaîne ne coûte pas
+  // d'aller-retour de plus, elle s'exécute en parallèle des autres lectures.
+  const aide = getCurrentUser().then((u) => (u ? getVisibleHelpBlocks('recherche', u.id) : []));
+  const [result, favIds, types, difficulties, tags, allergens, user, ads, defaultPhoto, helpBlocks] = await Promise.all([
     searchAdvanced(criteria),
     getFavoriteIds(),
     getRecipeTypes(),
@@ -67,6 +72,7 @@ export default async function RecherchePage({
     getCurrentUser(),
     getActiveAds(['search_list']),
     getRecipeDefaultPhoto(),
+    aide,
   ]);
 
   const refs: FacetRefs = {
@@ -125,7 +131,7 @@ export default async function RecherchePage({
           <SearchHeaderBar />
 
           <div className="flex flex-col lg:flex-row">
-            <SearchFiltersPanel refs={refs} />
+            <SearchFiltersPanel refs={refs} helpBlocks={helpBlocks} />
 
             <div className="flex-1 min-w-0 px-margin-mobile md:px-margin-desktop py-8">
               <SearchSummary total={result.total} authorTotal={result.authorTotal} refs={refs} />

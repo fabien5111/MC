@@ -15,6 +15,8 @@ import { useDialog } from '@/components/Dialog';
 import { useMutation } from '@/lib/use-mutation';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
+import { useHelpBlocks } from '@/components/help/useHelpBlocks';
+import type { VisibleHelpBlock } from '@/lib/help';
 import { ExtractStepsDialog, type EtapeAExtraire } from '@/components/recipe/ExtractStepsDialog';
 import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
 
@@ -46,6 +48,7 @@ export function RecetteToc({
   isPublic,
   isAdmin,
   extraction,
+  helpBlocks = [],
 }: {
   recipeId: string;
   isOwner: boolean;
@@ -70,8 +73,11 @@ export function RecetteToc({
     units: UnitRef[];
     densities: { name: string; density_g_per_ml: number }[];
   };
+  // Blocs d'aide de la page `recette` (JEP-373) : fenêtre d'extraction.
+  helpBlocks?: VisibleHelpBlock[];
 }) {
   const router = useRouter();
+  const help = useHelpBlocks('recette', helpBlocks, true);
   const dialog = useDialog();
   const { mutate, busy: statusBusy } = useMutation();
   const { open, editMode, openCreate, close } = usePlanCtx();
@@ -234,6 +240,7 @@ export function RecetteToc({
           units={extraction.units}
           densities={extraction.densities}
           onClose={() => setExtracting(false)}
+          help={help}
         />
       )}
     </>

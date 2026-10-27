@@ -6,11 +6,11 @@
 import { HelpBlock } from './HelpBlock';
 import type { HelpBlocksState } from './useHelpBlocks';
 
-export function HelpBlockSlot({ blockKey, help }: { blockKey: string; help: HelpBlocksState }) {
+export function HelpBlockSlot({ blockKey, help, className = 'mb-8' }: { blockKey: string; help: HelpBlocksState; className?: string }) {
   const block = help.get(blockKey);
   if (!block) return null;
   return (
-    <div className="mb-8">
+    <div className={className}>
       <HelpBlock block={block} onDismiss={() => help.dismiss(blockKey)} defaultExpanded={help.defaultExpanded} />
     </div>
   );

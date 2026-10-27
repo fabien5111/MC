@@ -6,15 +6,18 @@ import { requireWritableSession } from '@/lib/impersonation';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
+import { HelpSlotClient } from '@/components/help/HelpSlotClient';
+import { getVisibleHelpBlocks } from '@/lib/help';
 import { IdeaForm } from '@/components/ideas/IdeaForm';
 
 export const metadata: Metadata = { title: 'Proposer une idée | Je pâtisse !' };
 
 export default async function NouvelleIdeePage() {
-  await requireUser('/idees/nouvelle');
+  const user = await requireUser('/idees/nouvelle');
   // Impersonation en lecture seule : la création crée une ligne → interdit,
   // même garde que /creer, /importer, /relecture.
   await requireWritableSession();
+  const helpBlocks = await getVisibleHelpBlocks('idees', user.id);
 
   return (
     <>
@@ -38,6 +41,7 @@ export default async function NouvelleIdeePage() {
           Une phrase claire, ça suffit — les autres membres pourront voter.
         </p>
 
+        <HelpSlotClient page="idees" blockKey="idees.nouvelle" blocks={helpBlocks} />
         <IdeaForm />
       </main>
       <Footer />

@@ -9,7 +9,7 @@
 // ils viennent du titre de l'étape (« Monter les blancs » décrirait une
 // technique, motif de retrait du carnet par le jury). Un repère signale un nom
 // suspect (`nomPreparationSuspect`), sans jamais bloquer l'impression.
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { fmtPoids, grouperParCategorie, nomPreparationSuspect, poidsTotalCap, type CapFiche } from '@/lib/carnet-cap';
 
@@ -25,9 +25,11 @@ type Props = {
   retour: { href: string; label: string };
   /** Carnet de plusieurs recettes : sommaire et « une recette par page ». */
   carnet?: boolean;
+  /** Bloc d'aide (JEP-373), monté par la page serveur sous le titre. */
+  aide?: ReactNode;
 };
 
-export function CapCarnet({ fiches, titreEcran, retour, carnet = false }: Props) {
+export function CapCarnet({ fiches, titreEcran, retour, carnet = false, aide }: Props) {
   const [noms, setNoms] = useState<Record<string, string>>({});
   const [poidsTotal, setPoidsTotal] = useState(true);
   const [sommaire, setSommaire] = useState(carnet);
@@ -56,6 +58,7 @@ export function CapCarnet({ fiches, titreEcran, retour, carnet = false }: Props)
           {retour.label}
         </Link>
         <h1 className="font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[32px]">{titreEcran}</h1>
+        {aide}
         <div className="space-y-2 rounded-lg border border-outline-variant bg-surface-container-low p-4 text-[14px] text-on-surface">
           <p>
             Au CAP Pâtissier (EP1 / EP2), le carnet de recettes papier ne doit contenir{' '}

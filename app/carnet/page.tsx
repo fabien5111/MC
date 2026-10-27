@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { HelpPageProvider, HelpPageSlot } from '@/components/help/HelpPageProvider';
+import { getVisibleHelpBlocks } from '@/lib/help';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { getCarnetData, applyCarnetFilters, compteursStatut } from '@/lib/carnet';
@@ -63,7 +65,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
   }
 
   const parsed = parseCarnetParams(await searchParams);
-  const [readOnly, { items, counts, statusCounts, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven, defaultPhoto, allergenRefs, droits, toutesListes] =
+  const [readOnly, { items, counts, statusCounts, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven, defaultPhoto, allergenRefs, droits, toutesListes, helpBlocks] =
     await Promise.all([
       isReadOnlySession(),
       getCarnetData(user.id),
@@ -83,6 +85,8 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
       // Listes de recettes (JEP-376) : une lecture légère (noms et compteurs),
       // qui sert la pastille « Mes listes » sur toutes les portées.
       getListesDuMembre(user.id),
+      // Aide (JEP-373) : contenu en cache, seuls les masquages du membre sont lus.
+      getVisibleHelpBlocks('carnet', user.id),
     ]);
   // Rubrique « Carnet CAP » (JEP-6) : droit `carnet_cap` (plan Pro). Sans lui,
   // `?scope=cap` retombe sur « Tout » et la pastille n'existe pas.
@@ -145,6 +149,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
           )}
         </div>
         <CarnetProvider>
+          <HelpPageProvider page="carnet" blocks={helpBlocks}>
           <CarnetToolbar
             params={params}
             counts={countsAffiches}
@@ -158,19 +163,17 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
             statusCounts={statusCountsAffiches}
             shareButton={!readOnly ? <ShareBookButton ownerId={user.id} given={bookSharesGiven} lienPartage={lienPartage} /> : null}
           />
+          <HelpPageSlot blockKey="carnet.portees" className="mt-6" />
           {params.scope === 'cap' && cap && (
             // Ordre voulu (JEP-6) : imports en attente d'abord, puis l'information
             // de la rubrique, sur toute la largeur. Sur cette portée, la grille ne
             // remontre pas le bandeau d'imports (`importsEnAttente={0}` plus bas).
             <div className="mt-6 flex flex-col gap-4">
               <ImportsEnAttente nombre={importsEnAttente} />
+              <HelpPageSlot blockKey="carnet.cap" />
               <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-lg border border-outline-variant bg-surface-container-low px-5 py-4">
                 <div className="min-w-0 flex-1 basis-[28rem] text-[14px] text-on-surface">
                   <p className="font-semibold text-primary">Ma liste CAP</p>
-                  <p className="mt-1 text-on-surface-variant">
-                    Les recettes que vous y avez rangées avec le bouton « Listes » d’une fiche recette — les vôtres comme celles des
-                    autres. Imprimées pour le CAP, seuls leurs ingrédients et quantités figurent sur la feuille.
-                  </p>
                   {cap.indisponibles > 0 && (
                     <p className="mt-1 text-on-surface-variant">
                       {cap.indisponibles === 1
@@ -216,6 +219,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
             }
             defaultPhoto={defaultPhoto}
           />
+          </HelpPageProvider>
         </CarnetProvider>
       </main>
       <Footer />

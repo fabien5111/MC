@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { HelpSlotClient } from '@/components/help/HelpSlotClient';
+import { getVisibleHelpBlocks } from '@/lib/help';
 import { requireUser } from '@/lib/auth';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements } from '@/lib/entitlements-data';
@@ -125,9 +127,17 @@ export default async function CarnetCapPage({ searchParams }: SearchParams) {
       </div>
     );
   } else {
-    const fiches = await getFichesCapRecettes(ids);
+    const [fiches, helpBlocks] = await Promise.all([getFichesCapRecettes(ids), getVisibleHelpBlocks('carnet', user.id)]);
     const retour = `/carnet/cap?choisir=1${listeCap ? '&liste=cap' : ''}&${ids.map((id) => `r=${encodeURIComponent(id)}`).join('&')}`;
-    contenu = <CapCarnet fiches={fiches} carnet titreEcran="Carnet CAP" retour={{ href: retour, label: 'Modifier la sélection' }} />;
+    contenu = (
+      <CapCarnet
+        fiches={fiches}
+        carnet
+        titreEcran="Carnet CAP"
+        retour={{ href: retour, label: 'Modifier la sélection' }}
+        aide={<HelpSlotClient page="carnet" blockKey="carnet.cap_apercu" blocks={helpBlocks} />}
+      />
+    );
   }
 
   return (

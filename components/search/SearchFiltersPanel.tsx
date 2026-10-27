@@ -17,6 +17,9 @@
 //    est mis à jour en direct, via un appel « compte seul ».
 import { useEffect, useState } from 'react';
 import { BottomSheet } from '@/components/BottomSheet';
+import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
+import { useHelpBlocks } from '@/components/help/useHelpBlocks';
+import type { VisibleHelpBlock } from '@/lib/help';
 import { SearchFacets, type FacetRefs } from '@/components/search/SearchFacets';
 import { useSearch } from '@/components/search/SearchProvider';
 import {
@@ -28,8 +31,11 @@ import {
 
 const COUNT_DEBOUNCE_MS = 300;
 
-export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
+export function SearchFiltersPanel({ refs, helpBlocks = [] }: { refs: FacetRefs; helpBlocks?: VisibleHelpBlock[] }) {
   const { criteria, update, panelOpen, setPanelOpen } = useSearch();
+  // Aide de la page `recherche` (JEP-373) : un seul état pour la colonne et le
+  // tiroir, qui montrent le même emplacement.
+  const help = useHelpBlocks('recherche', helpBlocks, true);
 
   // Brouillon du tiroir : initialisé depuis les critères appliqués, et
   // resynchronisé à chaque ouverture.
@@ -104,6 +110,7 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
             Réinitialiser
           </button>
         </div>
+        <HelpBlockSlot blockKey="recherche.facettes" help={help} className="px-6 pt-5" />
         <SearchFacets value={criteria} onChange={update} refs={refs} layout="column" />
       </aside>
 
@@ -134,6 +141,7 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
           </div>
 
           <div className="flex-1 overflow-y-auto hide-sb px-5">
+            <HelpBlockSlot blockKey="recherche.facettes" help={help} className="pt-4" />
             <SearchFacets value={draft} onChange={(next) => setDraft(next)} refs={refs} layout="sheet" />
             <div className="h-4" />
           </div>

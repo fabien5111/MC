@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { isAdmin, requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
+import { getVisibleHelpBlocks } from '@/lib/help';
 import { getImports } from '@/lib/imports';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
@@ -17,11 +18,12 @@ export default async function ImporterPage() {
   const user = await requireUser('/importer');
   // Impersonation en lecture seule : l'import crée un brouillon → interdit.
   await requireWritableSession();
-  const [imports, admin, droits, currentPlan] = await Promise.all([
+  const [imports, admin, droits, currentPlan, helpBlocks] = await Promise.all([
     getImports(user.id),
     isAdmin(user.id),
     getEntitlements(user.id),
     getCurrentPlan(user.id),
+    getVisibleHelpBlocks('importer', user.id),
   ]);
   // Droit d'abonnement : l'historique des imports reste visible quoi qu'il
   // arrive (§7.4, l'existant est préservé) — seul le formulaire de NOUVEL
@@ -89,6 +91,7 @@ export default async function ImporterPage() {
         {peutImporter ? (
           <ImporterForm
             quotaImport={quotaImport}
+            helpBlocks={helpBlocks}
             quotaMessage={messageQuotaImport ? `${messageQuotaImport.titre}. ${messageQuotaImport.corps}` : null}
           />
         ) : (

@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
+import { revalidateReference } from '@/lib/revalidate-reference';
 
 type BlockInput = { key: string; adminLabel: string; text: string; videoUrl: string };
 
@@ -48,6 +49,7 @@ function HelpBlockCard({ block }: { block: BlockInput }) {
       if (error) throw error;
       // Lu côté serveur par les pages qui affichent l'aide : sans
       // invalidation, le changement n'y apparaît qu'après un rechargement.
+      await revalidateReference('help_blocks');
       router.refresh();
       dialog.alert('Bloc enregistré ✓');
     } catch (e) {

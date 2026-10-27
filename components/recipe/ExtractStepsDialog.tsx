@@ -13,6 +13,8 @@
 // « Dupliquer la recette ».
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
+import type { HelpBlocksState } from '@/components/help/useHelpBlocks';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
@@ -37,6 +39,7 @@ export function ExtractStepsDialog({
   units,
   densities,
   onClose,
+  help,
 }: {
   recipeId: string;
   recipeTitle: string;
@@ -46,6 +49,9 @@ export function ExtractStepsDialog({
   units: UnitRef[];
   densities: { name: string; density_g_per_ml: number }[];
   onClose: () => void;
+  // Aide de la page `recette` (JEP-373), tenue par le parent : la fenêtre se
+  // démonte à la fermeture, un masquage ne doit pas être oublié.
+  help?: HelpBlocksState;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -154,6 +160,8 @@ export function ExtractStepsDialog({
         </div>
 
         <div className="p-6 flex flex-col gap-6">
+          {/* Défile avec la fenêtre (jamais en `fixed`). */}
+          {help && <HelpBlockSlot blockKey="recette.extraire" help={help} />}
           <fieldset className="flex flex-col gap-2">
             <legend className={`${LBL} mb-2`}>Étapes à extraire</legend>
             {steps.map((s, i) => (

@@ -4,13 +4,31 @@
 // section admin « Blocs d'aide » n'en édite que le contenu (texte + lien
 // vidéo, table `help_blocks`), sans écran d'ajout/suppression. Un nouveau
 // bloc s'ajoute donc ici, un par un, au fil des besoins.
-export type HelpPageSlug = 'creer' | 'fournee' | 'projet' | 'relecture';
+export type HelpPageSlug =
+  | 'creer'
+  | 'fournee'
+  | 'projet'
+  | 'relecture'
+  | 'importer'
+  | 'courses'
+  | 'carnet'
+  | 'recette'
+  | 'recherche'
+  | 'reglages'
+  | 'idees';
 
 export const HELP_PAGES: { slug: HelpPageSlug; label: string }[] = [
   { slug: 'creer', label: 'Création / modification recette' },
   { slug: 'fournee', label: 'Fournée' },
   { slug: 'projet', label: 'Mode projet' },
   { slug: 'relecture', label: "Relecture d'un import" },
+  { slug: 'importer', label: 'Import de recette' },
+  { slug: 'courses', label: 'Liste de courses' },
+  { slug: 'carnet', label: 'Carnet' },
+  { slug: 'recette', label: 'Fiche recette' },
+  { slug: 'recherche', label: 'Recherche avancée' },
+  { slug: 'reglages', label: 'Réglages' },
+  { slug: 'idees', label: 'Boîte à idées' },
 ];
 
 export type HelpBlockDef = {
@@ -103,6 +121,18 @@ export const HELP_BLOCKS: HelpBlockDef[] = [
   { key: 'projet.ajustement', page: 'projet', adminLabel: "1ᵉʳ volet « Ajustement des quantités »" },
   { key: 'projet.reste_a_faire', page: 'projet', adminLabel: "Panneau « Reste à faire » (exemplaire du haut)" },
   { key: 'projet.essais_validation', page: 'projet', adminLabel: "Bloc « Essais et validation »" },
+  // Lot 2 (JEP-373) : import, courses, carnet, fiche recette, recherche, réglages, idées.
+  { key: 'importer.intro', page: 'importer', adminLabel: "/importer, avant le choix texte collé / PDF / photos" },
+  { key: 'importer.photos', page: 'importer', adminLabel: "Onglet « Photos », avant la zone de dépôt" },
+  { key: 'courses.fusion', page: 'courses', adminLabel: "/courses/[id], en tête de la liste" },
+  { key: 'courses.ajout', page: 'courses', adminLabel: "Avant le formulaire d'ajout à la main" },
+  { key: 'carnet.portees', page: 'carnet', adminLabel: "/carnet, sous la ligne des portées" },
+  { key: 'carnet.cap', page: 'carnet', adminLabel: "Portée « Carnet CAP », avant le bandeau d'information" },
+  { key: 'carnet.cap_apercu', page: 'carnet', adminLabel: "/carnet/cap, en tête de l'aperçu" },
+  { key: 'recette.extraire', page: 'recette', adminLabel: "Fenêtre « Extraire des étapes en recette », en tête" },
+  { key: 'recherche.facettes', page: 'recherche', adminLabel: "/recherche, en tête de la colonne de facettes et du tiroir mobile" },
+  { key: 'reglages.notifications', page: 'reglages', adminLabel: "Bloc « Notifications », avant la grille" },
+  { key: 'idees.nouvelle', page: 'idees', adminLabel: "/idees/nouvelle, avant le formulaire" },
 ];
 
 export function helpBlocksForPage(page: HelpPageSlug): HelpBlockDef[] {
