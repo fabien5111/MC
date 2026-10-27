@@ -13,6 +13,7 @@ import { IngredientTotalList } from '@/components/IngredientTotalList';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { getVisibleHelpBlocks } from '@/lib/help';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements, checkQuota } from '@/lib/entitlements-data';
 import { getActiveAds } from '@/lib/ads';
@@ -148,7 +149,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // dépendent pas les unes des autres — regroupées en un seul `Promise.all`
   // plutôt qu'enchaînées en `await` successifs, qui coûtaient un aller-retour
   // en série par lecture sur la page la plus consultée du site.
-  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials, entitlements] = await Promise.all([
+  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials, entitlements, helpBlocks] = await Promise.all([
     // Réservé au propriétaire : un visiteur n'a pas à savoir avec qui la
     // recette est partagée (lib/shares.ts — à tenir synchrone avec la policy
     // RLS `recipes_partagees`).
@@ -169,6 +170,8 @@ export default async function RecettePage({ params, searchParams }: Params) {
     // docs/abonnements.md §3). Mémoïsé par requête, aucune requête de plus si
     // une autre partie de la page l'a déjà lu.
     user ? getEntitlements(user.id) : Promise.resolve({}),
+    // Aide du panneau « Lancer une fournée » (JEP-373) : membres connectés seulement.
+    user ? getVisibleHelpBlocks('fournee', user.id) : Promise.resolve([]),
   ]);
   const peutAjusterIA = canAccess(entitlements, 'ajustement_ia_mensuel');
   // Extraire des étapes en recette (JEP-258, plan Pro) : les masses
@@ -487,7 +490,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               rail. Une fournée créée quitte cette fiche pour vivre sur son
               propre écran (/fournee/[id]) — voir CLAUDE.md « Fournées ». */}
           <div className="no-print">
-          <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} peutAjusterIA={peutAjusterIA} quotaIA={quotaIA} />
+          <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} peutAjusterIA={peutAjusterIA} quotaIA={quotaIA} helpBlocks={helpBlocks} />
           {isProject && isOwner && (
             // Historique des essais (spec §7.5 : reste consultable après
             // validation) — `canLaunch={false}` : lancer une fournée passe

@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
+import { getVisibleHelpBlocks } from '@/lib/help';
 import { ProjectV2 } from '@/components/projets/v2/ProjectV2';
 import { ProjectReadOnly } from '@/components/projets/ProjectReadOnly';
 
@@ -63,7 +64,7 @@ export default async function ProjetPage({ params }: Params) {
   }
 
   const supabase = await createClient();
-  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, tags, difficulties, utensilNames, ids, allergenRefs, refAllergens] =
+  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, tags, difficulties, utensilNames, ids, allergenRefs, refAllergens, helpBlocks] =
     await Promise.all([
       getMoldTypes(),
       getUnits(),
@@ -81,6 +82,7 @@ export default async function ProjetPage({ params }: Params) {
       supabase.from('recipes').select('difficulty_id').eq('id', id).maybeSingle(),
       getAllergenRefs(),
       getIngredientRefAllergens(),
+      getVisibleHelpBlocks('projet', user.id),
     ]);
   const peutGenererIA = canAccess(droits, 'mode_projet_ia_mensuel');
   const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, 'mode_projet_ia_mensuel') : null;
@@ -113,6 +115,7 @@ export default async function ProjetPage({ params }: Params) {
           utensilNames={utensilNames}
           difficultyId={ligne?.difficulty_id ?? null}
           peutCreerTag={admin}
+          helpBlocks={helpBlocks}
         />
       </main>
       <Footer />

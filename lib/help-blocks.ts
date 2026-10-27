@@ -4,11 +4,12 @@
 // section admin « Blocs d'aide » n'en édite que le contenu (texte + lien
 // vidéo, table `help_blocks`), sans écran d'ajout/suppression. Un nouveau
 // bloc s'ajoute donc ici, un par un, au fil des besoins.
-export type HelpPageSlug = 'creer' | 'planification' | 'relecture';
+export type HelpPageSlug = 'creer' | 'fournee' | 'projet' | 'relecture';
 
 export const HELP_PAGES: { slug: HelpPageSlug; label: string }[] = [
   { slug: 'creer', label: 'Création / modification recette' },
-  { slug: 'planification', label: 'Planification' },
+  { slug: 'fournee', label: 'Fournée' },
+  { slug: 'projet', label: 'Mode projet' },
   { slug: 'relecture', label: "Relecture d'un import" },
 ];
 
@@ -80,6 +81,28 @@ export const HELP_BLOCKS: HelpBlockDef[] = [
     page: 'relecture',
     adminLabel: "Avant la section « Récapitulatif des ingrédients »",
   },
+  // Fournée (JEP-373, lot 1) — page `fournee`, chargée par /recette/[id]
+  // (panneau de lancement) et /fournee/[id] (deux modes).
+  { key: 'fournee.lancer', page: 'fournee', adminLabel: "Panneau « Lancer une fournée », en tête (fiche recette)" },
+  { key: 'fournee.preparer_intro', page: 'fournee', adminLabel: "Mode Préparer, en tête de l'écran" },
+  {
+    key: 'fournee.deja_realise',
+    page: 'fournee',
+    adminLabel: "Mode Préparer, 1ʳᵉ étape, avant la case « Réalisée partiellement ou complètement »",
+  },
+  {
+    key: 'fournee.remplacement',
+    page: 'fournee',
+    adminLabel: "Mode Préparer, 1ʳᵉ étape, dans le bloc « Ingrédients de l'étape »",
+  },
+  { key: 'fournee.notes', page: 'fournee', adminLabel: "Mode Préparer, 1ʳᵉ étape, avant « Ma note »" },
+  { key: 'fournee.patisser_intro', page: 'fournee', adminLabel: "Mode Pâtisser, en tête de l'écran" },
+  // Mode projet (JEP-373, lot 1) — page `projet`, /projets/[id].
+  { key: 'projet.intention', page: 'projet', adminLabel: "Bloc « Votre intention », avant le champ" },
+  { key: 'projet.structure', page: 'projet', adminLabel: "Bloc « Structure », avant la liste des préparations" },
+  { key: 'projet.ajustement', page: 'projet', adminLabel: "1ᵉʳ volet « Ajustement des quantités »" },
+  { key: 'projet.reste_a_faire', page: 'projet', adminLabel: "Panneau « Reste à faire » (exemplaire du haut)" },
+  { key: 'projet.essais_validation', page: 'projet', adminLabel: "Bloc « Essais et validation »" },
 ];
 
 export function helpBlocksForPage(page: HelpPageSlug): HelpBlockDef[] {

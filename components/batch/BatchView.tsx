@@ -27,6 +27,9 @@ import { MaryseIcon } from '@/components/MaryseIcon';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
+import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
+import { useHelpBlocks, type HelpBlocksState } from '@/components/help/useHelpBlocks';
+import type { VisibleHelpBlock } from '@/lib/help';
 import { BatchNotes } from '@/components/recipe/BatchNotes';
 import { BatchReview } from '@/components/batch/BatchReview';
 import type { MyRecipeReview } from '@/lib/reviews-data';
@@ -209,10 +212,13 @@ export function BatchView({
   essaiProjet = false,
   droits,
   ajustement,
+  helpBlocks = [],
 }: {
   // « Modifier l'ajustement » : ce que le panneau de lancement lit sur la fiche
   // recette (référentiel des moules, droit et quota d'ajustement par IA).
   // Absent : pas de bouton.
+  // Blocs d'aide de la page `fournee` (JEP-373) ; vides sur une fournée close.
+  helpBlocks?: VisibleHelpBlock[];
   ajustement?: {
     moldTypes: { id: number; name: string; forme: string | null }[];
     peutAjusterIA: boolean;
@@ -277,6 +283,7 @@ export function BatchView({
   // repasse `status` à `planifiee`, mais le paramètre d'URL, lui, resterait —
   // la fournée rouverte serait donc encore verrouillée. `resumeBatch` le
   // retire des deux côtés (état + URL).
+  const help = useHelpBlocks('fournee', helpBlocks, true);
   const [lectureMode, setLectureMode] = useState(lecture);
   useEffect(() => setLectureMode(lecture), [lecture]);
   const readOnly = batch.status !== 'planifiee' || lectureMode || impersonationReadOnly;
@@ -649,6 +656,7 @@ export function BatchView({
             onMarkTerminee={markTerminee}
             droits={droits}
             panneauAjustement={panneauAjustement}
+            help={readOnly ? undefined : help}
           />
         ) : (
           <PatisserView
@@ -662,6 +670,7 @@ export function BatchView({
             onMarkTerminee={markTerminee}
             finishBatch={finishBatch}
             reviewEligible={reviewEligible}
+            help={readOnly ? undefined : help}
           />
         )}
       </div>
@@ -687,6 +696,7 @@ function PreparerView({
   onMarkTerminee,
   droits,
   panneauAjustement,
+  help,
 }: {
   batch: BatchFull;
   baseRecipe: BaseRecipeInfo;
@@ -706,6 +716,8 @@ function PreparerView({
   // Panneau « Modifier l'ajustement » (BatchWidget en édition), ouvert par le
   // bouton du bloc « Quantité produite » ; absent sur une fournée close.
   panneauAjustement: React.ReactNode;
+  // Aide (JEP-373) : absente sur une fournée close ou en lecture seule.
+  help?: HelpBlocksState;
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   // Volet « Ajustement par l'IA » sous 1024 px : ouvert par défaut. Au-dessus
@@ -909,6 +921,8 @@ function PreparerView({
           bouton flottant du tiroir se pose dessous elle (z-index inférieur)
           et devient inatteignable au clic sur mobile. */}
       <RecipeToc sections={tocSections} steps={tocSteps} anchorFor={(i) => `etape-${tocSteps[i].key}`} actions={actions} mobile="drawer" mobileInset="nav" />
+
+      {help && <HelpBlockSlot blockKey="fournee.preparer_intro" help={help} />}
 
       <p className="no-print font-body-md text-[12px] text-on-surface-variant">
         Sur cette fiche : <span className="text-green-700">en vert</span> ce que vous avez ajouté (dont les étapes venues
@@ -1414,8 +1428,12 @@ function PreparerView({
                   canPersonalNotes={droits.notesPersonnelles}
                   canSubsteps={droits.sousEtapes}
                   readOnly={readOnly}
+                  aideRealise={help && i === 0 ? <HelpBlockSlot blockKey="fournee.deja_realise" help={help} /> : undefined}
+                  aideNote={help && i === 0 ? <HelpBlockSlot blockKey="fournee.notes" help={help} /> : undefined}
                   ingredientsEditor={
                     !readOnly && ingredientsOfStep.length > 0 ? (
+                      <>
+                      {help && i === 0 && <HelpBlockSlot blockKey="fournee.remplacement" help={help} />}
                       <BatchStepIngredients
                         batch={batch}
                         step={s}
@@ -1427,6 +1445,7 @@ function PreparerView({
                         allergenNames={allergenRefs.map((a) => a.name)}
                         canReplaceIngredient={droits.remplacementIngredient}
                       />
+                      </>
                     ) : undefined
                   }
                 >
@@ -1463,6 +1482,7 @@ function PatisserView({
   onMarkTerminee,
   finishBatch,
   reviewEligible,
+  help,
 }: {
   batch: BatchFull;
   setBatch: React.Dispatch<React.SetStateAction<BatchFull>>;
@@ -1478,6 +1498,7 @@ function PatisserView({
   finishBatch: () => Promise<boolean>;
   // Un avis est-il encore possible sur cette fournée une fois terminée ?
   reviewEligible: boolean;
+  help?: HelpBlocksState;
 }) {
   const dialog = useDialog();
   const router = useRouter();
@@ -1714,6 +1735,8 @@ function PatisserView({
           atteignables même pour une fournée sans étape. `mobileInset="nav"` :
           même raison que dans PreparerView, cf. son commentaire. */}
       <RecipeToc sections={tocSections} steps={tocSteps} anchorFor={jalonAnchorId} actions={tocActions} onNavigateToStep={expandJalon} mobile="drawer" mobileInset="nav" />
+
+      {help && <HelpBlockSlot blockKey="fournee.patisser_intro" help={help} />}
 
       {meta && <p className="text-on-surface-variant text-sm mb-6">{meta}</p>}
 
