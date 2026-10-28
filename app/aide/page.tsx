@@ -11,7 +11,7 @@ import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
 import { ReafficherAidesButton } from '@/components/help/ReafficherAidesButton';
-import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
+import { AideSections } from '@/components/help/AideSections';
 import { getCurrentUser } from '@/lib/auth';
 import { getHelpBlocksReference } from '@/lib/data/reference';
 import { HELP_BLOCKS, HELP_PAGES } from '@/lib/help-blocks';
@@ -25,7 +25,7 @@ export default async function AidePage() {
   const sections = HELP_PAGES.map((page) => ({
     ...page,
     blocs: HELP_BLOCKS.filter((b) => b.page === page.slug)
-      .map((b) => ({ key: b.key, text: parCle.get(b.key)?.text?.trim() || null, videoUrl: parCle.get(b.key)?.video_url || null }))
+      .map((b) => ({ key: b.key, title: b.title, text: parCle.get(b.key)?.text?.trim() || null, videoUrl: parCle.get(b.key)?.video_url || null }))
       .filter((b) => b.text || b.videoUrl),
   })).filter((s) => s.blocs.length > 0);
 
@@ -57,44 +57,7 @@ export default async function AidePage() {
         {sections.length === 0 ? (
           <p className="text-on-surface-variant italic">Les textes d&apos;aide arrivent bientôt.</p>
         ) : (
-          <>
-            <nav aria-label="Thèmes d'aide" className="mb-10 flex flex-wrap gap-2">
-              {sections.map((s) => (
-                <a
-                  key={s.slug}
-                  href={`#${s.slug}`}
-                  className="rounded-pill border border-outline-variant px-4 py-1.5 font-label-md text-[12.5px] text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
-                >
-                  {s.label}
-                </a>
-              ))}
-            </nav>
-
-            <div className="flex flex-col gap-12">
-              {sections.map((s) => (
-                <section key={s.slug} id={s.slug} className="scroll-mt-28">
-                  <h2 className="font-headline-md text-headline-md text-primary mb-4">{s.label}</h2>
-                  <div className="flex flex-col gap-4">
-                    {s.blocs.map((b) => (
-                      <div
-                        key={b.key}
-                        className="flex flex-col md:flex-row gap-6 items-start rounded-xl border border-secondary-container bg-secondary-container/30 p-6"
-                      >
-                        {b.text && (
-                          <p className="flex-1 min-w-0 font-body-md text-body-md text-on-surface whitespace-pre-line">{b.text}</p>
-                        )}
-                        {b.videoUrl && (
-                          <div className="w-full md:w-64 shrink-0">
-                            <StepVideoPlayer url={b.videoUrl} />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          </>
+          <AideSections sections={sections} />
         )}
       </main>
       <Footer />
