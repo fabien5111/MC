@@ -67,7 +67,9 @@ export function useHelpBlocks(
       else if (choice === 'block') setVisible((v) => v.filter((b) => b.key !== key));
       else setVisible((v) => v.map((b) => (b.key === key ? { ...b, showVideo: false } : b)));
 
-      await dialog.alert("Vous pourrez le retrouver dans la section d'aide du site.");
+      await dialog.alert(
+        'Vous pourrez relire cette aide sur la page Aide, et la réafficher depuis les Réglages du compte.',
+      );
     },
     [visible, dialog, mutate, page],
   );

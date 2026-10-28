@@ -13,6 +13,7 @@ import { RecipeSharesCard } from '@/components/profile/RecipeSharesCard';
 import { getVisibleHelpBlocks } from '@/lib/help';
 import { NotificationPreferencesCard } from '@/components/profile/NotificationPreferencesCard';
 import { UsageCard } from '@/components/profile/UsageCard';
+import { AidesCard } from '@/components/profile/AidesCard';
 import { MesDemandesCard } from '@/components/profile/MesDemandesCard';
 import { getFollowCounts, getFollowing } from '@/lib/follows';
 import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
@@ -166,6 +167,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           appareilsPush={appareilsPush}
           helpBlocks={helpBlocks}
         />
+        <AidesCard />
         <MesDemandesCard demandes={mesDemandes} />
       </main>
       <Footer />
