@@ -3,8 +3,8 @@
 // Page Aide (JEP-373) : un panneau repliable par page d'aide, tous repliés à
 // l'arrivée. Les pastilles du haut ouvrent le panneau visé et y amènent ; un
 // lien `/aide#<page>` (ou un rechargement avec ancre) ouvre aussi le bon
-// panneau. Le contenu n'est monté qu'à l'ouverture, sauf pour l'impression des
-// vidéos, qui n'en a pas besoin (`no-print` dans `StepVideoPlayer`).
+// panneau. Chaque aide est elle-même repliable, repliée à l'arrivée : seul son
+// titre se lit. Le contenu n'est monté qu'à l'ouverture.
 import { useEffect, useState } from 'react';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 
@@ -16,6 +16,16 @@ export type AideSection = {
 
 export function AideSections({ sections }: { sections: AideSection[] }) {
   const [ouverts, setOuverts] = useState<Set<string>>(new Set());
+  // Aides ouvertes, par clé de bloc : toutes repliées à l'arrivée.
+  const [aidesOuvertes, setAidesOuvertes] = useState<Set<string>>(new Set());
+
+  const basculerAide = (cle: string) =>
+    setAidesOuvertes((prev) => {
+      const next = new Set(prev);
+      if (next.has(cle)) next.delete(cle);
+      else next.add(cle);
+      return next;
+    });
 
   const basculer = (slug: string) =>
     setOuverts((prev) => {
@@ -79,21 +89,39 @@ export function AideSections({ sections }: { sections: AideSection[] }) {
               </h2>
               {ouvert && (
                 <div id={`${s.slug}-panneau`} className="flex flex-col gap-4 border-t border-outline-variant p-5 md:p-6">
-                  {s.blocs.map((b) => (
-                    <article key={b.key} className="rounded-xl border border-secondary-container bg-secondary-container/30 p-5 md:p-6">
-                      <h3 className="mb-3 font-label-md text-label-md font-semibold text-primary">{b.title}</h3>
-                      <div className="flex flex-col items-start gap-6 md:flex-row">
-                        {b.text && (
-                          <p className="min-w-0 flex-1 whitespace-pre-line font-body-md text-body-md text-on-surface">{b.text}</p>
-                        )}
-                        {b.videoUrl && (
-                          <div className="w-full shrink-0 md:w-64">
-                            <StepVideoPlayer url={b.videoUrl} />
+                  {s.blocs.map((b) => {
+                    const aideOuverte = aidesOuvertes.has(b.key);
+                    return (
+                      <article key={b.key} className="rounded-xl border border-secondary-container bg-secondary-container/30">
+                        <h3>
+                          <button
+                            type="button"
+                            onClick={() => basculerAide(b.key)}
+                            aria-expanded={aideOuverte}
+                            aria-controls={`aide-${b.key}`}
+                            className="flex w-full items-center justify-between gap-4 p-4 text-left md:px-6"
+                          >
+                            <span className="min-w-0 font-label-md text-label-md font-semibold text-primary">{b.title}</span>
+                            <span className="material-symbols-outlined shrink-0 text-[22px] text-on-surface-variant">
+                              {aideOuverte ? 'expand_less' : 'expand_more'}
+                            </span>
+                          </button>
+                        </h3>
+                        {aideOuverte && (
+                          <div id={`aide-${b.key}`} className="flex flex-col items-start gap-6 px-4 pb-5 md:flex-row md:px-6">
+                            {b.text && (
+                              <p className="min-w-0 flex-1 whitespace-pre-line font-body-md text-body-md text-on-surface">{b.text}</p>
+                            )}
+                            {b.videoUrl && (
+                              <div className="w-full shrink-0 md:w-64">
+                                <StepVideoPlayer url={b.videoUrl} />
+                              </div>
+                            )}
                           </div>
                         )}
-                      </div>
-                    </article>
-                  ))}
+                      </article>
+                    );
+                  })}
                 </div>
               )}
             </section>
