@@ -603,9 +603,15 @@ export function CuisineContent({
               const done = items.filter((i) => i.checked).length;
               const pct = items.length > 0 ? Math.round((done / items.length) * 100) : 0;
               return (
-                <div key={l.id} className="rounded-lg border border-outline-variant p-5 transition-colors hover:bg-surface-container-low">
+                // Toute la carte ouvre la liste : la zone cliquable du titre est
+                // étendue à la carte (`after:inset-0`), les boutons et le
+                // panneau de fusion passent au-dessus (`relative z-10`).
+                <div key={l.id} className="relative rounded-lg border border-outline-variant p-5 transition-colors hover:bg-surface-container-low">
                   <div className="mb-3 flex items-start justify-between gap-3">
-                    <Link href={`/courses/${l.id}`} className="font-label-md text-[15px] text-primary hover:text-secondary">
+                    <Link
+                      href={`/courses/${l.id}`}
+                      className="font-label-md text-[15px] text-primary hover:text-secondary after:absolute after:inset-0 after:rounded-lg after:content-['']"
+                    >
                       {l.name}
                     </Link>
                     <span className="shrink-0 whitespace-nowrap text-[12px] text-on-surface-variant">
@@ -619,7 +625,7 @@ export function CuisineContent({
                     <p className="text-[12px] text-on-surface-variant">
                       {l.created_at ? 'Créée le ' + formatDate(l.created_at) : ''}
                     </p>
-                    <div className="flex shrink-0 gap-1">
+                    <div className="relative z-10 flex shrink-0 gap-1">
                       {droits.fusionListes ? (
                         <button
                           type="button"
@@ -652,7 +658,7 @@ export function CuisineContent({
                     </div>
                   </div>
                   {mergingListId === l.id && (
-                    <div className="mt-4 border-t border-outline-variant/60 pt-4">
+                    <div className="relative z-10 mt-4 border-t border-outline-variant/60 pt-4">
                       <MergeListRow
                         candidates={activeShoppingLists.filter((o) => o.id !== l.id)}
                         onMerge={(sourceId, sourceName) => mergeShoppingLists(l.id, sourceId, l.name, sourceName)}
@@ -816,12 +822,16 @@ function ARacheterCard({ liste }: { liste: ShoppingListSummary }) {
   const items = liste.shopping_list_items || [];
   const restants = items.filter((i) => !i.checked).length;
   return (
-    <div className="mb-4 rounded-lg border-2 border-secondary/40 bg-secondary/5 p-5 transition-colors hover:bg-secondary/10">
+    // Aucun bouton sur cette carte : elle est tout entière le lien.
+    <Link
+      href={`/courses/${liste.id}`}
+      className="group mb-4 block rounded-lg border-2 border-secondary/40 bg-secondary/5 p-5 transition-colors hover:bg-secondary/10"
+    >
       <div className="flex items-start justify-between gap-3">
-        <Link href={`/courses/${liste.id}`} className="flex items-center gap-2 font-label-md text-[15px] text-primary hover:text-secondary">
+        <span className="flex items-center gap-2 font-label-md text-[15px] text-primary group-hover:text-secondary">
           <span className="material-symbols-outlined text-[18px]">add_shopping_cart</span>
           {NOM_A_RACHETER}
-        </Link>
+        </span>
         <span className="shrink-0 whitespace-nowrap text-[12px] text-on-surface-variant">
           {restants ? `${restants} à racheter` : 'Tout est racheté'}
         </span>
@@ -829,6 +839,6 @@ function ARacheterCard({ liste }: { liste: ShoppingListSummary }) {
       <p className="mt-2 text-[12px] text-on-surface-variant">
         Les ingrédients finis pendant une fournée, ajoutés depuis le mode Pâtisser.
       </p>
-    </div>
+    </Link>
   );
 }
