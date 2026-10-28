@@ -449,7 +449,7 @@ function MergeItemRow({
   }
   return (
     <div className="py-3 border-b border-outline-variant/30 flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1">
+      <label className="flex min-w-0 max-w-full flex-col gap-1">
         <span className={LBL}>Fusionner avec</span>
         <select
           value={sourceId}
@@ -458,7 +458,7 @@ function MergeItemRow({
             setCommentKey(undefined);
           }}
           className={`${FIELD} bg-white`}
-          style={{ width: '16rem' }}
+          style={{ width: '16rem', maxWidth: '100%' }}
         >
           {candidates.map((c) => (
             <option key={c.id} value={c.id}>
