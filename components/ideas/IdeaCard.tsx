@@ -3,6 +3,7 @@
 // n'en porte pas).
 import { formatDate } from '@/lib/format';
 import type { IdeaCardData } from '@/lib/ideas';
+import { IdeaDescription } from '@/components/ideas/IdeaDescription';
 import { StatusBadge } from '@/components/ideas/StatusBadge';
 import { VoteButton } from '@/components/ideas/VoteButton';
 
@@ -19,7 +20,7 @@ export function IdeaCard({ idea }: { idea: IdeaCardData }) {
           <StatusBadge status={idea.status} />
         </div>
         {idea.description && (
-          <p className="text-sm text-on-surface-variant line-clamp-2 mb-2">{idea.description}</p>
+          <IdeaDescription text={idea.description} />
         )}
         {idea.status === 'declined' && idea.admin_note && (
           <p className="text-sm text-on-surface-variant italic mb-2">« {idea.admin_note} »</p>
