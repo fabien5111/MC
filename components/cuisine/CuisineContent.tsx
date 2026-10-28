@@ -769,13 +769,14 @@ function MergeListRow({
   }
   return (
     <div className="flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1">
+      {/* `min-w-0` + `w-full` : le libellé d'une option (nom de liste long) ne doit
+          jamais élargir la liste au-delà de la carte — le select tronque. */}
+      <label className="flex min-w-0 max-w-full flex-1 basis-64 flex-col gap-1">
         <span className="font-label-md text-[10px] uppercase text-on-surface-variant">Fusionner avec</span>
         <select
           value={sourceId}
           onChange={(e) => setSourceId(Number(e.target.value))}
-          className="rounded border border-outline-variant bg-white px-3 py-1.5 font-body-md text-sm"
-          style={{ minWidth: '16rem' }}
+          className="w-full min-w-0 max-w-full rounded border border-outline-variant bg-white px-3 py-1.5 font-body-md text-sm"
         >
           {candidates.map((c) => (
             <option key={c.id} value={c.id}>

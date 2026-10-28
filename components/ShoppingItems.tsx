@@ -4,6 +4,9 @@
 // « courses-detail » — plus complet que courses.html qui n'a que la coche).
 // La coche est optimiste puis persistée via le client Supabase navigateur
 // (RLS appliquée par la session partagée en cookies).
+import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
+import { useHelpBlocks } from '@/components/help/useHelpBlocks';
+import type { VisibleHelpBlock } from '@/lib/help';
 import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
@@ -33,6 +36,7 @@ export function ShoppingItems({
   units,
   conversions,
   ingredientRefs,
+  helpBlocks = [],
 }: {
   listId: number;
   listName: string;
@@ -40,8 +44,11 @@ export function ShoppingItems({
   units: Unit[];
   conversions: ConversionRef[];
   ingredientRefs: IngredientRefOption[];
+  // Blocs d'aide de la page `courses` (JEP-373).
+  helpBlocks?: VisibleHelpBlock[];
 }) {
   const router = useRouter();
+  const help = useHelpBlocks('courses', helpBlocks, true);
   const dialog = useDialog();
   const { mutate } = useMutation();
   const [items, setItems] = useState(() => [...initialItems].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr')));
@@ -277,6 +284,10 @@ export function ShoppingItems({
         </div>
       </div>
 
+      <div className="max-w-2xl">
+        <HelpBlockSlot blockKey="courses.fusion" help={help} />
+      </div>
+
       {total === 0 ? (
         <p className="text-on-surface-variant italic">Cette liste est vide.</p>
       ) : (
@@ -343,7 +354,10 @@ export function ShoppingItems({
       </datalist>
 
       {adding ? (
-        <AddItemRow units={units} onAdd={addItem} onCancel={() => setAdding(false)} />
+        <div className="mt-8 max-w-2xl">
+          <HelpBlockSlot blockKey="courses.ajout" help={help} />
+          <AddItemRow units={units} onAdd={addItem} onCancel={() => setAdding(false)} />
+        </div>
       ) : (
         <div className="flex flex-wrap items-end gap-3 mt-8 pt-6 border-t border-outline-variant/50 max-w-2xl">
           <button type="button" onClick={() => setAdding(true)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px] flex items-center gap-1">
@@ -435,7 +449,7 @@ function MergeItemRow({
   }
   return (
     <div className="py-3 border-b border-outline-variant/30 flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1">
+      <label className="flex min-w-0 max-w-full flex-col gap-1">
         <span className={LBL}>Fusionner avec</span>
         <select
           value={sourceId}
@@ -444,7 +458,7 @@ function MergeItemRow({
             setCommentKey(undefined);
           }}
           className={`${FIELD} bg-white`}
-          style={{ width: '16rem' }}
+          style={{ width: '16rem', maxWidth: '100%' }}
         >
           {candidates.map((c) => (
             <option key={c.id} value={c.id}>

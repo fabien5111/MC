@@ -23,6 +23,9 @@
 //
 // Mise en page : un bloc par catégorie plutôt qu'un tableau, qui déborderait
 // à 360 px.
+import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
+import { useHelpBlocks } from '@/components/help/useHelpBlocks';
+import type { VisibleHelpBlock } from '@/lib/help';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -50,6 +53,7 @@ export function NotificationPreferencesCard({
   backOffice,
   clePushPublique,
   appareilsPush,
+  helpBlocks = [],
 }: {
   userId: string;
   preferences: PreferencesMembre;
@@ -59,7 +63,10 @@ export function NotificationPreferencesCard({
   clePushPublique: string | null;
   /** Nombre d'appareils activés du membre (`null` si illisible). */
   appareilsPush: number | null;
+  /** Blocs d'aide de la page `reglages` (JEP-373). */
+  helpBlocks?: VisibleHelpBlock[];
 }) {
+  const help = useHelpBlocks('reglages', helpBlocks, true);
   const { mutate, busy } = useMutation();
   const [prefs, setPrefs] = useState<PreferencesMembre>(preferences);
 
@@ -102,6 +109,7 @@ export function NotificationPreferencesCard({
         {clePushPublique ? ', sur votre téléphone' : ''}, ou pas du tout — et à quel rythme. Décochez tout pour ne rien
         recevoir. Le réglage vaut dès le prochain événement.
       </p>
+      <HelpBlockSlot blockKey="reglages.notifications" help={help} />
       <PushDeviceSection clePublique={clePushPublique} appareils={appareilsPush} />
       <ul className="divide-y divide-outline-variant">
         {categories.map((c) => (

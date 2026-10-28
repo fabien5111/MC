@@ -421,6 +421,26 @@ export const getSocialLinks = async () => liensAffichables(await lireLiensSociau
 export const getSocialLinksRows = lireLiensSociaux;
 
 // ---------------------------------------------------------------------------
+// help_blocks — contenu des blocs d'aide (JEP-373)
+// ---------------------------------------------------------------------------
+//
+// Lu par les pages à fort trafic (`/carnet`, `/recherche`) : le contenu est le
+// même pour tous les membres, seuls les masquages (`help_dismissals`) sont
+// propres à chacun et restent lus par requête (`lib/help.ts`). Pas
+// d'`allowEmpty` : un contenu vide (aucun texte saisi, ou lecture refusée au
+// rôle `anon`) n'est pas mis en cache et retombe sur la lecture avec la
+// session — l'aide s'affiche dans tous les cas, le gain se perd seulement
+// tant qu'aucun texte n'est saisi. Invalidé à l'enregistrement d'un bloc
+// (`revalidateReference('help_blocks')`, Admin → Aide).
+export type HelpBlockContent = { key: string; text: string | null; video_url: string | null };
+
+export const getHelpBlocksReference = referenceAccessor<HelpBlockContent>({
+  table: 'help_blocks',
+  revalidate: JOUR,
+  query: async (sb) => lignes(await sb.from('help_blocks').select('key, text, video_url')),
+});
+
+// ---------------------------------------------------------------------------
 // Grille des abonnements — quatre lectures, une seule forme composée ailleurs
 // ---------------------------------------------------------------------------
 //

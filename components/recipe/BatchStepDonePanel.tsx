@@ -68,6 +68,8 @@ export function BatchStepDonePanel({
   canSubsteps = true,
   readOnly = false,
   ingredientsEditor,
+  aideRealise,
+  aideNote,
 }: {
   step: StepFlags;
   ingredients: IngRow[];
@@ -110,6 +112,10 @@ export function BatchStepDonePanel({
   // de l'étape » : les deux montraient les mêmes lignes. Sans lui (fournée
   // close, lecture seule), la liste simple d'origine.
   ingredientsEditor?: ReactNode;
+  // Blocs d'aide (JEP-373), montés par la page sur la 1ʳᵉ étape seulement :
+  // avant la case « réalisée » et avant « Ma note ».
+  aideRealise?: ReactNode;
+  aideNote?: ReactNode;
 }) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
@@ -652,6 +658,7 @@ export function BatchStepDonePanel({
   return (
     <div className="flex flex-col gap-3">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
+      {aideRealise}
       <div className="flex flex-col gap-3 border-b border-outline pb-4">
         {/* Case + chevron sur la même ligne que le titre, jamais couplés aux
             badges de date/temps (dayControl/meta) : ces badges peuvent à eux
@@ -687,6 +694,7 @@ export function BatchStepDonePanel({
           traitée), la note personnelle sert justement à ajuster la recette
           après coup — la replier avec le reste la rendrait invisible sans
           qu'on pense à dérouler le chevron pour aller la chercher. */}
+      {aideNote}
       {noteBlock}
       {open && (
         <div className="flex flex-col gap-6">

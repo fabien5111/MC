@@ -6,10 +6,10 @@
 // change, la liste ne change pas ; l'écrire deux fois, c'est se garantir qu'un
 // jour l'une des deux aura une entrée que l'autre n'a pas.
 //
-// Deux entrées des maquettes sont volontairement absentes : **Messagerie** et
-// **Aide** n'ont pas d'écran. Une entrée grisée « bientôt » est du décor : elle
-// occupe une place, se fait cliquer, et n'apprend rien. Elles reviendront avec
-// leur destination.
+// Une entrée des maquettes est volontairement absente : **Messagerie** n'a pas
+// d'écran. Une entrée grisée « bientôt » est du décor : elle occupe une place,
+// se fait cliquer, et n'apprend rien. Elle reviendra avec sa destination.
+// **Aide** a la sienne depuis JEP-373 (`/aide`).
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -114,6 +114,9 @@ export function AccountMenuItems({
             Administration
           </Link>
         )}
+        <Link href="/aide" role="menuitem" prefetch={false} onClick={onNavigate} className={ITEM}>
+          <span className="material-symbols-outlined text-[20px] text-outline">help</span> Aide
+        </Link>
         <Link href="/contact" role="menuitem" prefetch={false} onClick={onNavigate} className={ITEM}>
           <span className="material-symbols-outlined text-[20px] text-outline">mail</span> Contact
         </Link>

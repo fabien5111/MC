@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
+import { getVisibleHelpBlocks } from '@/lib/help';
 import { getShoppingList } from '@/lib/shopping';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
@@ -18,13 +19,14 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function CoursesPage({ params }: Params) {
-  await requireUser();
+  const user = await requireUser();
   const { id } = await params;
-  const [list, units, conversions, ingredientRefs] = await Promise.all([
+  const [list, units, conversions, ingredientRefs, helpBlocks] = await Promise.all([
     Number.isFinite(Number(id)) ? getShoppingList(Number(id)) : null,
     getUnits(),
     getIngredientConversions(),
     getIngredientRefsList(),
+    getVisibleHelpBlocks('courses', user.id),
   ]);
 
   return (
@@ -52,6 +54,7 @@ export default async function CoursesPage({ params }: Params) {
             units={units}
             conversions={conversions}
             ingredientRefs={ingredientRefs}
+            helpBlocks={helpBlocks}
           />
         )}
       </main>

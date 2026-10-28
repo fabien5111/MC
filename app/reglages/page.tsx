@@ -10,8 +10,10 @@ import { PasswordChangeCard } from '@/components/profile/PasswordChangeCard';
 import { FollowingCard } from '@/components/profile/FollowingCard';
 import { BookSharesCard } from '@/components/profile/BookSharesCard';
 import { RecipeSharesCard } from '@/components/profile/RecipeSharesCard';
+import { getVisibleHelpBlocks } from '@/lib/help';
 import { NotificationPreferencesCard } from '@/components/profile/NotificationPreferencesCard';
 import { UsageCard } from '@/components/profile/UsageCard';
+import { AidesCard } from '@/components/profile/AidesCard';
 import { MesDemandesCard } from '@/components/profile/MesDemandesCard';
 import { getFollowCounts, getFollowing } from '@/lib/follows';
 import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
@@ -81,7 +83,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   const identities = await getUserIdentities();
   const hasPassword = identities ? identities.some((i) => i.provider === 'email') : true;
 
-  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notificationPrefs, usage, grid, currentPlan, trialConsumed, mesDemandes, abonnementStripeCourant, appareilsPush] =
+  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notificationPrefs, usage, grid, currentPlan, trialConsumed, mesDemandes, abonnementStripeCourant, appareilsPush, helpBlocks] =
     await Promise.all([
       getFollowCounts(user.id),
       getFollowing(user.id),
@@ -95,6 +97,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
       getMesDemandes(user.id),
       getAbonnementStripeCourant(user.id),
       countPushDevices(user.id),
+      getVisibleHelpBlocks('reglages', user.id),
     ]);
   // Second temps, dépendant du premier : `getChangementProgramme` a besoin de
   // l'identifiant Stripe résolu ci-dessus, pas de raison de le lancer pour un
@@ -162,7 +165,9 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           backOffice={manager}
           clePushPublique={clePubliquePush()}
           appareilsPush={appareilsPush}
+          helpBlocks={helpBlocks}
         />
+        <AidesCard />
         <MesDemandesCard demandes={mesDemandes} />
       </main>
       <Footer />

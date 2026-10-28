@@ -37,6 +37,9 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import { connexionHref } from '@/lib/nav';
 import { trackEvent } from '@/lib/analytics';
 import { LockedAction, LockedHint } from '@/components/LockedAction';
+import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
+import { useHelpBlocks } from '@/components/help/useHelpBlocks';
+import type { VisibleHelpBlock } from '@/lib/help';
 import { libelleAjustement, lireAjustementIA, lireAjustementIngredient, type AjustementIA } from '@/lib/batch-ai';
 
 const num = (v: string | number | null | undefined): number | null => {
@@ -69,11 +72,15 @@ export function BatchWidget({
   existingBatch,
   peutAjusterIA = false,
   quotaIA = null,
+  helpBlocks,
 }: {
   recipe: RecipeFull;
   moldTypes: { id: number; name: string; forme: string | null }[];
   ingredients: MergedIngredient[];
   existingBatch?: BatchFull | null;
+  // Blocs d'aide de la page `fournee` (JEP-373) : fournis par la fiche recette
+  // seulement. Jamais en modification d'un ajustement (`existingBatch`).
+  helpBlocks?: VisibleHelpBlock[];
   // Droit d'abonnement `ajustement_ia_mensuel` (cf. docs/abonnements.md §3,
   // JEP-77) : ajustement des quantités par IA (texte libre), proposé comme
   // troisième mode d'ajustement dans les modes « unités » et « moule ». Sur
@@ -88,6 +95,7 @@ export function BatchWidget({
   quotaIA?: { allowed: boolean; limit?: number; usage?: number } | null;
 }) {
   const router = useRouter();
+  const help = useHelpBlocks('fournee', helpBlocks ?? [], true);
   const dialog = useDialog();
   const writeGuard = useWriteGuard();
   const { open, editMode, close } = usePlanCtx();
@@ -566,6 +574,7 @@ export function BatchWidget({
         <span className="material-symbols-outlined">calendar_month</span>
         {editMode && existingBatch ? "Modifier l'ajustement de la fournée" : 'Lancer une fournée'}
       </h3>
+      {!(editMode && existingBatch) && <HelpBlockSlot blockKey="fournee.lancer" help={help} />}
       {etapesCochees > 0 && (
         <p className="mb-6 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 font-body-md text-sm text-on-surface">
           <span className="material-symbols-outlined text-[18px] text-amber-700">warning</span>

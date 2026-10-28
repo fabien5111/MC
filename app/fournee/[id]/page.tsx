@@ -8,6 +8,7 @@ import { getBatch, getUnits, getShoppingLists } from '@/lib/profile';
 import { getIngredientConversions, getIngredientDensities, getAllergensWithPicto, getIngredientRefsList } from '@/lib/recipes';
 import { getIngredientRefAllergens } from '@/lib/imports';
 import { getMyRecipeReview, recetteEstProjetEnCours } from '@/lib/reviews-data';
+import { getVisibleHelpBlocks } from '@/lib/help';
 import { createClient } from '@/lib/supabase/server';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
@@ -81,7 +82,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
   const batch = Number.isFinite(batchId) ? await getBatch(batchId) : null;
   if (!batch) notFound();
 
-  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements, essaiProjet, ingredientRefs, refAllergens, moldTypes] =
+  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements, essaiProjet, ingredientRefs, refAllergens, moldTypes, helpBlocks] =
     await Promise.all([
       getUnits(),
       getIngredientConversions(),
@@ -95,6 +96,8 @@ export default async function FourneePage({ params, searchParams }: Params) {
       getIngredientRefsList(),
       getIngredientRefAllergens(),
       getMoldTypes(),
+      // Aide (JEP-373) : aucune sur une fournée close ou en lecture seule.
+      batch.status === 'planifiee' && lecture !== '1' ? getVisibleHelpBlocks('fournee', user.id) : Promise.resolve([]),
     ]);
   // Droits d'abonnement (§4 « Lancer une fournée ») : calculés une fois ici,
   // jamais recalculés plus bas dans l'arbre de composants.
@@ -147,6 +150,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
           essaiProjet={essaiProjet}
           droits={droits}
           ajustement={{ moldTypes, peutAjusterIA, quotaIA }}
+          helpBlocks={helpBlocks}
         />
       </main>
       <div className="no-print">

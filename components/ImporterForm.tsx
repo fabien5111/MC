@@ -27,6 +27,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
+import { useHelpBlocks } from '@/components/help/useHelpBlocks';
+import type { VisibleHelpBlock } from '@/lib/help';
 import { affecterPhotos, extrairePdf, type PhotoPdf } from '@/lib/pdf';
 import { resizePhotoForAi } from '@/lib/images';
 import { trackEvent } from '@/lib/analytics';
@@ -58,6 +61,7 @@ const tailleLisible = (octets: number): string =>
 export function ImporterForm({
   quotaImport = null,
   quotaMessage: quotaMessageServeur = null,
+  helpBlocks = [],
 }: {
   // État du quota `import_ia_mensuel` (`mc_check_quota`, affichage seulement
   // — le vrai refus reste porté par `mc_consume` dans /api/import-url) :
@@ -69,8 +73,11 @@ export function ImporterForm({
   // Texte composé côté serveur (JEP-76 : essai ou abonnement, date de
   // recharge). Absent : repli générique ci-dessous.
   quotaMessage?: string | null;
+  // Blocs d'aide de la page `importer` (JEP-373).
+  helpBlocks?: VisibleHelpBlock[];
 } = {}) {
   const router = useRouter();
+  const help = useHelpBlocks('importer', helpBlocks, true);
   const dialog = useDialog();
   const [onglet, setOnglet] = useState<Onglet>('texte');
   const [texte, setTexte] = useState('');
@@ -391,6 +398,8 @@ export function ImporterForm({
     <>
       <LoadingOverlay visible={busy} label={etape} showLabel />
 
+      <HelpBlockSlot blockKey="importer.intro" help={help} />
+
       <div className="flex border-b border-outline-variant mb-8 overflow-x-auto">
         <button type="button" onClick={() => setOnglet('texte')} className={ongletCls(onglet === 'texte')}>
           Texte collé
@@ -510,6 +519,7 @@ export function ImporterForm({
         </div>
       ) : (
         <div className="mb-4">
+          <HelpBlockSlot blockKey="importer.photos" help={help} />
           <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
             Photos de la recette
           </span>

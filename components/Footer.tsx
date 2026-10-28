@@ -33,6 +33,7 @@ export async function Footer() {
                 <li><Link className="hover:text-primary transition-colors" href="/plans">Nos formules</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/idees">Boîte à idées</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/connexion">Connexion</Link></li>
+                <li><Link className="hover:text-primary transition-colors" href="/aide">Aide</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/contact">Contact</Link></li>
                 <li><ShareSiteButton className="text-left hover:text-primary transition-colors" /></li>
               </ul>

@@ -63,6 +63,9 @@ import {
 import { resequenceProjectSteps, validateProject } from '@/lib/projects-write';
 import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
 import { PlanningTimeline } from '@/components/recipe/PlanningTimeline';
+import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
+import { useHelpBlocks } from '@/components/help/useHelpBlocks';
+import type { VisibleHelpBlock } from '@/lib/help';
 import { ProjectTodo } from '@/components/projets/v2/ProjectTodo';
 import { VerifCase } from '@/components/projets/v2/VerifCase';
 import { mergeIngredientLines, planningDays } from '@/lib/recipe-view';
@@ -129,6 +132,7 @@ export function ProjectV2({
   utensilNames,
   difficultyId,
   peutCreerTag = false,
+  helpBlocks = [],
 }: {
   project: ProjectFull;
   // `null` si la recette du projet n'a pas pu être lue : les blocs de recette
@@ -151,8 +155,12 @@ export function ProjectV2({
   difficultyId: number | null;
   // Création d'un tag à la volée : réservée aux admins, comme dans /creer.
   peutCreerTag?: boolean;
+  // Blocs d'aide de la page `projet` (JEP-373). Jamais passés en lecture seule :
+  // `ProjectReadOnly` ne monte pas ce composant.
+  helpBlocks?: VisibleHelpBlock[];
 }) {
   const router = useRouter();
+  const help = useHelpBlocks('projet', helpBlocks, true);
   const dialog = useDialog();
   const { mutate, busy, refresh } = useMutation();
   // Sections modifiées et non enregistrées (cf. sections.ts) : alimente les
@@ -720,12 +728,14 @@ export function ProjectV2({
         </div>
       </header>
 
+      <HelpBlockSlot blockKey="projet.reste_a_faire" help={help} />
       <ProjectTodo id="reste-a-faire" items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
 
       <div className="space-y-6">
         {bloc(
           'intention',
           <div className="space-y-3">
+            <HelpBlockSlot blockKey="projet.intention" help={help} />
             <textarea
               value={intent}
               onChange={(e) => setIntent(e.target.value.slice(0, INTENT_MAX))}
@@ -770,6 +780,7 @@ export function ProjectV2({
               Du bas vers le haut de l’assemblage. Le rôle et l’ajustement (volume ou surface) décident du calcul des
               quantités.
             </p>
+            <HelpBlockSlot blockKey="projet.structure" help={help} />
             <ProjectStructureList
               components={composants}
               extra={(c) => (
@@ -903,6 +914,9 @@ export function ProjectV2({
                         coefficient par préparation, comme en base), replié
                         par défaut : les étapes dessous montrent déjà les
                         quantités ajustées. */}
+                    {c.resolved && c.id === ordered.find((o) => o.resolved)?.id && (
+                      <HelpBlockSlot blockKey="projet.ajustement" help={help} />
+                    )}
                     {c.resolved && (
                       <details id={`prep-${c.id}-quantites`} open={ouvertAuChargement(c, 'quantites')} className="group mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
@@ -1032,6 +1046,7 @@ export function ProjectV2({
         {bloc(
           'validation',
           <div className="space-y-5 text-sm">
+            <HelpBlockSlot blockKey="projet.essais_validation" help={help} />
             {blockers.length ? (
               <ul className="list-disc space-y-1 pl-5 text-secondary">
                 {blockers.map((b) => (
