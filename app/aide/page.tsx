@@ -10,16 +10,20 @@ import Link from 'next/link';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
-import { ReafficherAidesButton } from '@/components/help/ReafficherAidesButton';
 import { AideSections } from '@/components/help/AideSections';
 import { getCurrentUser } from '@/lib/auth';
 import { getHelpBlocksReference } from '@/lib/data/reference';
+import { getMesMasquagesAide } from '@/lib/help';
 import { HELP_BLOCKS, HELP_PAGES } from '@/lib/help-blocks';
+import { statutsAide } from '@/lib/help-statut';
 
 export const metadata: Metadata = { title: 'Aide | Je pâtisse !' };
 
 export default async function AidePage() {
   const [contenus, user] = await Promise.all([getHelpBlocksReference(), getCurrentUser()]);
+  // Statut d'activation de l'aide du membre connecté, page par page (JEP-373) :
+  // sur les pages qui ont du contenu seulement, celles que la page affiche.
+  const masquages = user ? await getMesMasquagesAide(user.id) : null;
   const parCle = new Map(contenus.map((c) => [c.key, c]));
 
   const sections = HELP_PAGES.map((page) => ({
@@ -28,6 +32,12 @@ export default async function AidePage() {
       .map((b) => ({ key: b.key, title: b.title, text: parCle.get(b.key)?.text?.trim() || null, videoUrl: parCle.get(b.key)?.video_url || null }))
       .filter((b) => b.text || b.videoUrl),
   })).filter((s) => s.blocs.length > 0);
+  const statuts = masquages
+    ? statutsAide(
+        sections.map((s) => ({ slug: s.slug, keys: HELP_BLOCKS.filter((b) => b.page === s.slug).map((b) => b.key) })),
+        masquages,
+      )
+    : undefined;
 
   return (
     <>
@@ -44,20 +54,12 @@ export default async function AidePage() {
             </Link>
             .
           </p>
-          {user && (
-            <div className="mt-6 flex flex-wrap items-center gap-4">
-              <ReafficherAidesButton />
-              <span className="text-[13px] text-on-surface-variant">
-                Rétablit les blocs d&apos;aide que vous avez fermés sur les écrans.
-              </span>
-            </div>
-          )}
         </section>
 
         {sections.length === 0 ? (
           <p className="text-on-surface-variant italic">Les textes d&apos;aide arrivent bientôt.</p>
         ) : (
-          <AideSections sections={sections} />
+          <AideSections sections={sections} statuts={statuts} />
         )}
       </main>
       <Footer />

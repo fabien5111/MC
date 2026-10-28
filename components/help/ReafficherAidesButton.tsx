@@ -2,7 +2,7 @@
 
 // « Réafficher les aides » (JEP-373) : rétablit tous les blocs d'aide que le
 // membre a masqués (bloc, vidéo ou page entière). Passe par
-// `DELETE /api/aide/masquages`. Les blocs reviennent à la prochaine
+// `POST /api/aide/masquages` (action `activer`, sans page = toutes). Les blocs reviennent à la prochaine
 // ouverture des écrans concernés : l'état d'une page déjà ouverte est tenu en
 // mémoire par `useHelpBlocks`.
 import { useState } from 'react';
@@ -19,7 +19,11 @@ export function ReafficherAidesButton({ className }: { className?: string }) {
     if (busy) return;
     setBusy(true);
     try {
-      const res = await fetch('/api/aide/masquages', { method: 'DELETE' });
+      const res = await fetch('/api/aide/masquages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'activer' }),
+      });
       const data = (await res.json().catch(() => ({}))) as { message?: string };
       if (!res.ok) throw new Error(data.message || 'Réaffichage impossible.');
       router.refresh();

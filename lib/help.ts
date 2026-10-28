@@ -69,6 +69,17 @@ export async function getVisibleHelpBlocks(page: HelpPageSlug, userId: string | 
   return (await getVisibleHelpBlocksForPages([page], userId))[page] ?? [];
 }
 
+// Masquages d'aide du membre (page, blocs, vidéos), pour le statut affiché sur
+// la page Aide. Lecture sous la session (RLS : ses propres lignes).
+export async function getMesMasquagesAide(userId: string): Promise<{ kind: string; target: string }[]> {
+  const { data, error } = await (await createClient()).from('help_dismissals').select('kind, target').eq('user_id', userId);
+  if (error) {
+    console.error('getMesMasquagesAide:', error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
 // Contenu brut d'une page, sans filtrage par masquage — consommé par l'admin,
 // qui doit voir/éditer un bloc même vide ou masqué par les membres.
 export async function getHelpBlocksContent(

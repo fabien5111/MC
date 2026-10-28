@@ -5,8 +5,12 @@
 // lien `/aide#<page>` (ou un rechargement avec ancre) ouvre aussi le bon
 // panneau. Chaque aide est elle-même repliable, repliée à l'arrivée : seul son
 // titre se lit. Le contenu n'est monté qu'à l'ouverture.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { useDialog } from '@/components/Dialog';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
+import { resumeAide, type StatutPage } from '@/lib/help-statut';
 
 export type AideSection = {
   slug: string;
@@ -14,7 +18,57 @@ export type AideSection = {
   blocs: { key: string; title: string; text: string | null; videoUrl: string | null }[];
 };
 
-export function AideSections({ sections }: { sections: AideSection[] }) {
+const LIBELLE_STATUT: Record<StatutPage, string> = {
+  active: 'Activée',
+  partielle: 'Partiellement masquée',
+  inactive: 'Désactivée',
+};
+const PASTILLE_STATUT: Record<StatutPage, string> = {
+  active: 'bg-green-100 text-green-800',
+  partielle: 'bg-amber-100 text-amber-900',
+  inactive: 'bg-surface-container-high text-on-surface-variant',
+};
+const BTN =
+  'rounded-pill border border-primary px-4 py-1.5 font-label-md text-[12.5px] text-primary transition-colors hover:bg-primary/5 disabled:opacity-60';
+
+// `statuts` absent (visiteur) : aucun statut ni bouton d'activation.
+export function AideSections({
+  sections,
+  statuts,
+}: {
+  sections: AideSection[];
+  statuts?: Record<string, StatutPage>;
+}) {
+  const router = useRouter();
+  const dialog = useDialog();
+  const [envoi, setEnvoi] = useState(false);
+  // Le voile reste jusqu'au retour du rendu serveur (cf. `useMutation`), sinon
+  // les statuts s'afficheraient périmés un instant sur une interface active.
+  const [pending, startTransition] = useTransition();
+  const busy = envoi || pending;
+
+  // Active ou désactive l'aide d'une page, ou de toutes (`page` absent), puis
+  // relit les statuts côté serveur.
+  async function agir(action: 'activer' | 'desactiver', page?: string) {
+    if (busy) return;
+    setEnvoi(true);
+    try {
+      const res = await fetch('/api/aide/masquages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action, page }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { message?: string };
+      if (!res.ok) throw new Error(data.message || 'Modification impossible.');
+      startTransition(() => router.refresh());
+    } catch (e) {
+      await dialog.alert((e as Error).message);
+    } finally {
+      setEnvoi(false);
+    }
+  }
+
+  const resume = statuts ? resumeAide(statuts) : null;
   const [ouverts, setOuverts] = useState<Set<string>>(new Set());
   // Aides ouvertes, par clé de bloc : toutes repliées à l'arrivée.
   const [aidesOuvertes, setAidesOuvertes] = useState<Set<string>>(new Set());
@@ -50,6 +104,36 @@ export function AideSections({ sections }: { sections: AideSection[] }) {
 
   return (
     <>
+      <LoadingOverlay visible={busy} label="Mise à jour de l’aide…" />
+      {resume && (
+        <div className="mb-8 flex flex-col gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-5">
+          <p className="font-label-md text-label-md text-on-surface" role="status">
+            {resume.global === 'active' && 'Toute l’aide est activée.'}
+            {resume.global === 'inactive' && 'Toute l’aide est désactivée.'}
+            {resume.global === 'mixte' &&
+              `L’aide est active sur ${resume.actives} page${resume.actives > 1 ? 's' : ''} sur ${resume.total}` +
+                (resume.partielles ? `, partiellement masquée sur ${resume.partielles}` : '') +
+                (resume.inactives ? `, désactivée sur ${resume.inactives}` : '') +
+                '.'}
+          </p>
+          <p className="text-[13px] text-on-surface-variant">
+            Une aide désactivée n&apos;apparaît plus en haut des écrans concernés. Elle reste lisible ici.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {resume.global !== 'active' && (
+              <button type="button" className={BTN} disabled={busy} onClick={() => void agir('activer')}>
+                Activer toute l’aide
+              </button>
+            )}
+            {resume.global !== 'inactive' && (
+              <button type="button" className={BTN} disabled={busy} onClick={() => void agir('desactiver')}>
+                Désactiver toute l’aide
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <nav aria-label="Thèmes d'aide" className="mb-8 flex flex-wrap gap-2">
         {sections.map((s) => (
           <button
@@ -66,27 +150,47 @@ export function AideSections({ sections }: { sections: AideSection[] }) {
       <div className="flex flex-col gap-3">
         {sections.map((s) => {
           const ouvert = ouverts.has(s.slug);
+          const statut = statuts?.[s.slug];
           return (
             <section key={s.slug} id={s.slug} className="scroll-mt-28 rounded-xl border border-outline-variant bg-surface-container-lowest">
-              <h2>
-                <button
-                  type="button"
-                  onClick={() => basculer(s.slug)}
-                  aria-expanded={ouvert}
-                  aria-controls={`${s.slug}-panneau`}
-                  className="flex w-full items-center justify-between gap-4 p-5 text-left md:px-6"
-                >
-                  <span className="min-w-0">
-                    <span className="font-headline-md text-headline-md text-primary">{s.label}</span>
-                    <span className="ml-3 font-label-md text-[12px] text-on-surface-variant">
-                      {s.blocs.length} aide{s.blocs.length > 1 ? 's' : ''}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 p-5 md:px-6">
+                <h2 className="min-w-0 flex-1 basis-64">
+                  <button
+                    type="button"
+                    onClick={() => basculer(s.slug)}
+                    aria-expanded={ouvert}
+                    aria-controls={`${s.slug}-panneau`}
+                    className="flex w-full items-center gap-3 text-left"
+                  >
+                    <span className="material-symbols-outlined shrink-0 text-[24px] text-on-surface-variant">
+                      {ouvert ? 'expand_less' : 'expand_more'}
                     </span>
-                  </span>
-                  <span className="material-symbols-outlined shrink-0 text-[24px] text-on-surface-variant">
-                    {ouvert ? 'expand_less' : 'expand_more'}
-                  </span>
-                </button>
-              </h2>
+                    <span className="min-w-0">
+                      <span className="font-headline-md text-headline-md text-primary">{s.label}</span>
+                      <span className="ml-3 font-label-md text-[12px] text-on-surface-variant">
+                        {s.blocs.length} aide{s.blocs.length > 1 ? 's' : ''}
+                      </span>
+                    </span>
+                  </button>
+                </h2>
+                {statut && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded-pill px-3 py-1 font-label-md text-[11.5px] ${PASTILLE_STATUT[statut]}`}>
+                      {LIBELLE_STATUT[statut]}
+                    </span>
+                    {statut !== 'active' && (
+                      <button type="button" className={BTN} disabled={busy} onClick={() => void agir('activer', s.slug)}>
+                        Activer
+                      </button>
+                    )}
+                    {statut !== 'inactive' && (
+                      <button type="button" className={BTN} disabled={busy} onClick={() => void agir('desactiver', s.slug)}>
+                        Désactiver
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               {ouvert && (
                 <div id={`${s.slug}-panneau`} className="flex flex-col gap-4 border-t border-outline-variant p-5 md:p-6">
                   {s.blocs.map((b) => {
