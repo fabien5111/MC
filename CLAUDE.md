@@ -2022,9 +2022,12 @@ Logique pure : `lib/a-racheter.ts` (testé) ; écriture : `lib/a-racheter-data.t
 - **Avant la migration, rien ne casse** : `kind` est lue par `select('*')`
   (jamais nommée), aucune liste n'est alors la liste système ; la route répond
   503. Colonne, index et triggers par `psql` (nœud 216075) ; ligne de grille
-  `features` / `plan_features` par pgweb. Le trigger de plafond
-  `listes_courses_max` (`mc_enforce_stock`) ne doit ni refuser la création de
-  la liste système, ni la compter.
+  `features` / `plan_features` par pgweb. **Plafond `listes_courses_max`** :
+  la création ne peut pas être refusée (`mc_enforce_stock` laisse passer
+  quand `auth.uid()` est nul, cas de la route en service_role) ; le décompte
+  (`mc_usage`, branche `listes_courses_max`) exclut
+  `kind = 'a_racheter'` — la liste système ne prend la place d'aucune liste
+  de courses.
 
 ## Listes de recettes (JEP-376)
 
