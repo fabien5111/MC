@@ -1993,6 +1993,39 @@ même quantité ne doit y figurer qu'une fois.
 - Aucun auteur, logo ni adresse du site sur la feuille : le carnet doit être
   « personnel ». Le jury reste seul juge ; l'écran le dit.
 
+## Liste de courses « À racheter » (JEP-379)
+
+Liste de courses système, une par membre (`shopping_lists.kind = 'a_racheter'`,
+index unique partiel), droit **`liste_a_racheter`** (plans Plus et Pro).
+Logique pure : `lib/a-racheter.ts` (testé) ; écriture : `lib/a-racheter-data.ts`.
+
+- **Alimentée depuis le mode Pâtisser** : un picto `add_shopping_cart` par ligne
+  d'ingrédient (`components/batch/ARacheterButton.tsx`, hors du `<label>` de la
+  ligne, actif même sur une fournée close — il n'écrit rien dans la fournée).
+  Sans le droit : `LockedAction`. Un clic = `POST /api/courses/a-racheter`
+  (`membreEcrivain`, droit, référentiel revérifié) : **nom seul, sans quantité
+  ni unité** (arbitrage du 28/10/2026 : on rachète un paquet, pas les 40 g de
+  la recette). Déjà présent (même `ingredientKey` ou même `ref_id`) → rien
+  n'est écrit, un message le dit ; présent mais barré → remis à racheter.
+  Pas de voile : le picto devient une coche quelques secondes.
+- **La liste ne naît que par la route** (clé service_role) : le trigger
+  `shopping_lists_guard_a_racheter` refuse à un membre de créer, renommer,
+  changer le `kind` ou supprimer la liste système. Les articles, eux, se
+  cochent et se suppriment depuis le navigateur comme ailleurs (RLS).
+- **Écran des courses** (`CuisineContent`, `rangerListes`) : en tête, masquée
+  tant qu'elle est vide, **jamais archivée** (tout barré, elle reste), ni
+  supprimable ni fusionnable, absente des destinations « Ajouter à une liste »
+  (fiche recette, fournée). Page de la liste (`ShoppingItems`, `aRacheter`) :
+  non barrés en tête (`trierARacheter`), cocher barre sans retirer, bouton
+  « Supprimer les articles barrés », saisie à la main sans unité obligatoire
+  et sans doublon.
+- **Avant la migration, rien ne casse** : `kind` est lue par `select('*')`
+  (jamais nommée), aucune liste n'est alors la liste système ; la route répond
+  503. Colonne, index et triggers par `psql` (nœud 216075) ; ligne de grille
+  `features` / `plan_features` par pgweb. Le trigger de plafond
+  `listes_courses_max` (`mc_enforce_stock`) ne doit ni refuser la création de
+  la liste système, ni la compter.
+
 ## Listes de recettes (JEP-376)
 
 Modèle « playlist » : le membre range lui-même une recette dans une liste.

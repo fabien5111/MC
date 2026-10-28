@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { canAccess } from '@/lib/entitlements';
+import { DROIT_A_RACHETER, estListeARacheter } from '@/lib/a-racheter';
 import { getEntitlements, checkQuota } from '@/lib/entitlements-data';
 import { getMoldTypes } from '@/lib/admin';
 import { getBatch, getUnits, getShoppingLists } from '@/lib/profile';
@@ -105,6 +106,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
     remplacementIngredient: canAccess(entitlements, 'remplacement_ingredient_par_recette'),
     notesPersonnelles: canAccess(entitlements, 'notes_personnelles'),
     sousEtapes: canAccess(entitlements, 'sous_etapes_sequencement'),
+    aRacheter: canAccess(entitlements, DROIT_A_RACHETER),
   };
   // « Modifier l'ajustement » : mêmes données que le panneau de la fiche
   // recette. Quota lu seulement si le droit existe (affichage, cf. BatchWidget).
@@ -114,7 +116,8 @@ export default async function FourneePage({ params, searchParams }: Params) {
   units.forEach((u) => {
     if (u.tooltip) unitTips[String(u.name).toLowerCase().trim()] = u.tooltip;
   });
-  const shoppingLists = shoppingListsRaw.map((l) => ({ id: l.id, name: l.name }));
+  // « À racheter » (JEP-379) n'est pas une destination des courses d'une fournée.
+  const shoppingLists = shoppingListsRaw.filter((l) => !estListeARacheter(l)).map((l) => ({ id: l.id, name: l.name }));
 
   return (
     <>

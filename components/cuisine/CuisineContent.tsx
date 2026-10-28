@@ -39,6 +39,7 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
 import { LockedAction } from '@/components/LockedAction';
 import { findMergeTarget } from '@/lib/shopping-merge';
+import { NOM_A_RACHETER, rangerListes } from '@/lib/a-racheter';
 
 type PlanningView = 'jours' | 'recettes';
 
@@ -117,15 +118,14 @@ export function CuisineContent({
   useEffect(() => setShoppingList(shoppingLists), [shoppingLists]);
   // Archivée = tous les articles cochés. Aucune colonne dédiée en base : la
   // distinction est purement une lecture. Une liste sans article n'est jamais
-  // « archivée » — elle n'a simplement encore rien à cocher.
-  const activeShoppingLists = shoppingList.filter((l) => {
-    const items = l.shopping_list_items || [];
-    return items.length === 0 || items.some((i) => !i.checked);
-  });
-  const archivedShoppingLists = shoppingList.filter((l) => {
-    const items = l.shopping_list_items || [];
-    return items.length > 0 && items.every((i) => i.checked);
-  });
+  // « archivée » — elle n'a simplement encore rien à cocher. La liste
+  // « À racheter » (JEP-379) est mise à part : en tête, jamais archivée,
+  // jamais fusionnée, masquée tant qu'elle est vide (`rangerListes`).
+  const {
+    aRacheter,
+    actives: activeShoppingLists,
+    archivees: archivedShoppingLists,
+  } = rangerListes(shoppingList);
   const [mergingListId, setMergingListId] = useState<number | null>(null);
   // La vue par jour est la vue par défaut (décision produit) : c'est elle
   // qui rend le planning actionnable sans ouvrir chaque fournée une à une.
@@ -595,6 +595,7 @@ export function CuisineContent({
         <h2 className="mb-6 flex items-center gap-3 font-headline-md text-primary">
           <span className="material-symbols-outlined">shopping_bag</span> Listes de courses
         </h2>
+        {aRacheter && <ARacheterCard liste={aRacheter} />}
         {activeShoppingLists.length > 0 ? (
           <div className="space-y-4">
             {activeShoppingLists.map((l) => {
@@ -663,7 +664,7 @@ export function CuisineContent({
               );
             })}
           </div>
-        ) : (
+        ) : aRacheter ? null : (
           <p className="text-sm italic text-on-surface-variant">
             Aucune liste de courses active. Depuis une fournée, cliquez sur « Liste de courses » dans la liste
             complète des ingrédients.
@@ -803,6 +804,31 @@ function MergeListRow({
       >
         Annuler
       </button>
+    </div>
+  );
+}
+
+// Liste « À racheter » (JEP-379) : même carte que les autres listes, sans
+// suppression ni fusion (liste système). Le compteur dit ce qui reste à
+// racheter, pas une progression : les articles barrés y restent jusqu'à ce
+// que le membre les retire depuis la liste.
+function ARacheterCard({ liste }: { liste: ShoppingListSummary }) {
+  const items = liste.shopping_list_items || [];
+  const restants = items.filter((i) => !i.checked).length;
+  return (
+    <div className="mb-4 rounded-lg border-2 border-secondary/40 bg-secondary/5 p-5 transition-colors hover:bg-secondary/10">
+      <div className="flex items-start justify-between gap-3">
+        <Link href={`/courses/${liste.id}`} className="flex items-center gap-2 font-label-md text-[15px] text-primary hover:text-secondary">
+          <span className="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+          {NOM_A_RACHETER}
+        </Link>
+        <span className="shrink-0 whitespace-nowrap text-[12px] text-on-surface-variant">
+          {restants ? `${restants} à racheter` : 'Tout est racheté'}
+        </span>
+      </div>
+      <p className="mt-2 text-[12px] text-on-surface-variant">
+        Les ingrédients finis pendant une fournée, ajoutés depuis le mode Pâtisser.
+      </p>
     </div>
   );
 }

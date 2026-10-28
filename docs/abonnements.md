@@ -158,6 +158,7 @@ pour la page publique et ne demandent aucun code. Les points à câbler (lot 5) 
 | `fusion_listes_courses` | binaire | `CuisineContent` (`/en-cuisine`) |
 | `navigation_sans_pub` | binaire | `PartnerSlot` hors accueil |
 | `extraction_etapes` | binaire | `/api/recette/extraire`, rail de la fiche recette (`RecetteToc`) — JEP-258, plan Pro |
+| `liste_a_racheter` | binaire | `/api/courses/a-racheter`, picto du mode Pâtisser (`ARacheterButton`) — JEP-379, plans Plus et Pro |
 
 **Correctif JEP-77** : `BatchWidget` gardait son troisième mode d'ajustement
 (« Ajuster les quantités par IA ») derrière `isAdmin`, un reliquat du
