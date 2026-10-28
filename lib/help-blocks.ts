@@ -145,7 +145,7 @@ export const HELP_BLOCKS: HelpBlockDef[] = [
   { key: 'carnet.cap', title: 'Préparer son carnet CAP', page: 'carnet', adminLabel: "Portée « Carnet CAP », avant le bandeau d'information" },
   { key: 'carnet.cap_apercu', title: 'Imprimer le carnet CAP', page: 'carnet', adminLabel: "/carnet/cap, en tête de l'aperçu" },
   { key: 'recette.extraire', title: 'Extraire des étapes en recette', page: 'recette', adminLabel: "Fenêtre « Extraire des étapes en recette », en tête" },
-  { key: 'recherche.facettes', title: 'Affiner sa recherche', page: 'recherche', adminLabel: "/recherche, en tête de la colonne de facettes et du tiroir mobile" },
+  { key: 'recherche.facettes', title: 'Affiner sa recherche', page: 'recherche', adminLabel: "/recherche, au-dessus de la liste des résultats" },
   { key: 'reglages.notifications', title: 'Régler ses notifications', page: 'reglages', adminLabel: "Bloc « Notifications », avant la grille" },
   { key: 'idees.nouvelle', title: 'Proposer une idée', page: 'idees', adminLabel: "/idees/nouvelle, avant le formulaire" },
 ];

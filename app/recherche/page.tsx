@@ -31,6 +31,7 @@ import { getFavoriteIds } from '@/lib/favorites';
 import { getFollowerCounts } from '@/lib/follows';
 import { getAllergensWithPicto, withAllergenNames } from '@/lib/recipes';
 import { getCurrentUser } from '@/lib/auth';
+import { HelpSlotClient } from '@/components/help/HelpSlotClient';
 import { getVisibleHelpBlocks } from '@/lib/help';
 import { getRecipeDefaultPhoto } from '@/lib/site';
 import { getCarnetMarks, relaxationSuggestions, searchAdvanced, type Relaxation } from '@/lib/search';
@@ -131,9 +132,12 @@ export default async function RecherchePage({
           <SearchHeaderBar />
 
           <div className="flex flex-col lg:flex-row">
-            <SearchFiltersPanel refs={refs} helpBlocks={helpBlocks} />
+            <SearchFiltersPanel refs={refs} />
 
             <div className="flex-1 min-w-0 px-margin-mobile md:px-margin-desktop py-8">
+              {/* Aide (JEP-373), au-dessus de la liste des résultats : visible aussi
+                  sur mobile, où les critères sont dans un tiroir fermé. */}
+              <HelpSlotClient page="recherche" blockKey="recherche.facettes" blocks={helpBlocks} />
               <SearchSummary total={result.total} authorTotal={result.authorTotal} refs={refs} />
 
               {criteria.includeRecipes && (
