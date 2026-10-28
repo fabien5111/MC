@@ -1,0 +1,72 @@
+{
+  "ticket": "local-praline-riz-souffle",
+  "recette": {
+    "titre": "Praliné riz soufflé",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Croustillant au praliné et au chocolat au lait, au riz soufflé nature, aérien, qui se découpe net. Il apporte du croquant et de la gourmandise en insert fin, en fond ou au cœur d'une bûche roulée.",
+    "rendement": "1 plaque 30 x 30 cm, 5 mm d'épaisseur — environ 360 g de croustillant utilisable (380 g d'ingrédients, perte ≈ 5 %)",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Maryse",
+      "Thermomètre",
+      "Cadre pâtissier",
+      "Papier cuisson",
+      "Couteau",
+      "Emporte-pièce"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Praliné riz soufflé",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné noisette",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Riz soufflé",
+            "quantite": 80,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat au lait au bain-marie, à 40-45 °C au maximum, sans une goutte d'eau ni de vapeur.",
+          "Ajouter le praliné à température ambiante et mélanger jusqu'à un mélange lisse, à 30 °C environ.",
+          "Verser le riz soufflé nature non sucré en une seule fois, sorti du paquet à ce moment seulement.",
+          "Enrober à la maryse en soulevant la masse, sans écraser, jusqu'à ce que chaque grain soit luisant et que plus aucun grain ne reste sec.",
+          "Étaler aussitôt dans un cadre 30 x 30 cm posé sur du papier cuisson et tasser très légèrement à l'épaisseur voulue, 5 mm pour la référence.",
+          "Réserver au frais 30 minutes, jusqu'à prise ferme.",
+          "Détailler à la forme du montage avec un couteau passé sous l'eau chaude et essuyé, ou un emporte-pièce."
+        ],
+        "conseils_etape": "Le riz ramollit au contact de l'eau, de l'humidité de l'air et des crèmes : travailler à sec, ne jamais verser le riz dans un mélange à plus de 30 °C et enrober chaque grain complètement, la matière grasse faisant barrière. Si le riz n'est plus craquant, le sécher 10 minutes à 100 °C et le laisser refroidir avant emploi. Tasser trop fort écrase le riz et durcit l'insert.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 1 semaine au frais en boîte hermétique, 3 mois au congélateur."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, insert de 5 mm : ≈ 80 g de croustillant, soit ×0,22 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 5 mm : ≈ 125 g de croustillant, soit ×0,35 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 5 mm : ≈ 180 g de croustillant, soit ×0,50 de la recette.",
+      "Utilisation — Individuels en cercles Ø 8 cm, fond de 5 mm : ≈ 20 g par pièce, soit environ 18 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, fond de 5 mm : ≈ 55 g de croustillant, soit ×0,15 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, fond de 5 mm : ≈ 95 g de croustillant, soit ×0,26 de la recette.",
+      "Utilisation — Bûche roulée, bâton de 30 x 2 cm et 1 cm de haut posé au cœur du biscuit roulé (jamais roulé lui-même) : ≈ 50 g de croustillant, soit ×0,14 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, couche de 5 mm : ≈ 230 g de croustillant, soit ×0,64 de la recette.",
+      "Variante — Chocolat noir 55 % à la place du chocolat au lait, même poids : moins sucré, plus de caractère ; ou chocolat blond, même poids : notes de biscuit caramélisé, aussi doux que le lait."
+    ],
+    "conseils_conservation": "Au réfrigérateur 1 semaine, en boîte hermétique avec papier absorbant ; au congélateur 3 mois, sans décongélation nécessaire avant le montage. Utiliser le plus tard possible dans le montage : poser sur le croustillant une fine couche de chocolat au lait fondu avant toute crème ou mousse crée une barrière qui le garde croquant 24 à 48 h."
+  }
+}
