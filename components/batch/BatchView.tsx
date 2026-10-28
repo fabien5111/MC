@@ -51,6 +51,7 @@ import { NomIngredient } from '@/components/IngredientNomsProvider';
 import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
 import { trackEvent } from '@/lib/analytics';
+import { ARacheterButton } from '@/components/batch/ARacheterButton';
 import {
   fmtNum,
   BATCH_STATUS_LBL,
@@ -252,7 +253,7 @@ export function BatchView({
   initialMode?: 'preparer' | 'patisser';
   // Droits d'abonnement (§4 « Lancer une fournée »), calculés une fois par la
   // page — jamais recalculés ici, `BatchView` n'a pas de session à lire.
-  droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean };
+  droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean; aRacheter: boolean };
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -670,6 +671,7 @@ export function BatchView({
             onMarkTerminee={markTerminee}
             finishBatch={finishBatch}
             reviewEligible={reviewEligible}
+            peutRacheter={droits.aRacheter}
             help={readOnly ? undefined : help}
           />
         )}
@@ -712,7 +714,7 @@ function PreparerView({
   onDelete: () => void;
   onSwitchMode: (m: 'preparer' | 'patisser') => void;
   onMarkTerminee: () => void;
-  droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean };
+  droits: { remplacementIngredient: boolean; notesPersonnelles: boolean; sousEtapes: boolean; aRacheter: boolean };
   // Panneau « Modifier l'ajustement » (BatchWidget en édition), ouvert par le
   // bouton du bloc « Quantité produite » ; absent sur une fournée close.
   panneauAjustement: React.ReactNode;
@@ -1482,6 +1484,7 @@ function PatisserView({
   onMarkTerminee,
   finishBatch,
   reviewEligible,
+  peutRacheter,
   help,
 }: {
   batch: BatchFull;
@@ -1498,6 +1501,8 @@ function PatisserView({
   finishBatch: () => Promise<boolean>;
   // Un avis est-il encore possible sur cette fournée une fois terminée ?
   reviewEligible: boolean;
+  // Droit `liste_a_racheter` (JEP-379) : picto « À racheter » actif ou verrouillé.
+  peutRacheter: boolean;
   help?: HelpBlocksState;
 }) {
   const dialog = useDialog();
@@ -1777,6 +1782,7 @@ function PatisserView({
           onIngReal={(id, value) => updateIngredient(id, { real_quantity: numify(value) })}
           onIngComment={onIngComment}
           onStepComment={onStepComment}
+          peutRacheter={peutRacheter}
         />
       </div>
 
@@ -1801,6 +1807,7 @@ function PatisserBody({
   onIngReal,
   onIngComment,
   onStepComment,
+  peutRacheter,
 }: {
   batch: BatchFull;
   jalons: BatchJalon[];
@@ -1817,6 +1824,7 @@ function PatisserBody({
   onIngReal: (id: number, value: string) => void;
   onIngComment: (id: number, value: string) => void;
   onStepComment: (id: number, value: string) => void;
+  peutRacheter: boolean;
 }) {
   const all = jalons.flatMap((j) => j.steps);
   const done = all.filter((s) => s.done).length;
@@ -1945,6 +1953,7 @@ function PatisserBody({
                     onIngReal={onIngReal}
                     onIngComment={onIngComment}
                     onStepComment={onStepComment}
+                    peutRacheter={peutRacheter}
                   />
                 );
               })}
@@ -1971,6 +1980,7 @@ function StepCookCard({
   onIngReal,
   onIngComment,
   onStepComment,
+  peutRacheter,
 }: {
   step: BatchStepRow & { batch_substeps: BatchSubstepRow[] };
   ingredients: BatchIngredientRow[];
@@ -1987,6 +1997,7 @@ function StepCookCard({
   onIngReal: (id: number, value: string) => void;
   onIngComment: (id: number, value: string) => void;
   onStepComment: (id: number, value: string) => void;
+  peutRacheter: boolean;
 }) {
   // Repliée par défaut : le mode Pâtisser sert à avancer étape par étape, et
   // dérouler d'un coup les ingrédients et sous-étapes de toute une journée
@@ -2175,13 +2186,20 @@ function StepCookCard({
             );
             return (
               <li key={ing.id} className="flex flex-col gap-1.5 py-2.5 border-b border-outline-variant/30">
-                <label className="flex items-center gap-3">
-                  {checkbox}
-                  <span className={`font-body-md text-[16px] flex-1 min-w-0${struck}`}>
-                    <NomIngredient nom={ing.name} quantite={ing.quantity ?? ing.quantity_text} unite={ing.unit} refId={ing.ref_id} />
-                    {ing.comment && <span className="italic text-on-surface-variant"> ({ing.comment})</span>}
-                  </span>
-                </label>
+                <div className="flex items-center gap-2">
+                  <label className="flex flex-1 min-w-0 items-center gap-3">
+                    {checkbox}
+                    <span className={`font-body-md text-[16px] flex-1 min-w-0${struck}`}>
+                      <NomIngredient nom={ing.name} quantite={ing.quantity ?? ing.quantity_text} unite={ing.unit} refId={ing.ref_id} />
+                      {ing.comment && <span className="italic text-on-surface-variant"> ({ing.comment})</span>}
+                    </span>
+                  </label>
+                  {/* « Je finis le paquet » (JEP-379) : hors du `<label>`, pour
+                      qu'un clic n'aille jamais cocher l'ingrédient. Actif même
+                      sur une ligne verrouillée ou une fournée close : il
+                      n'écrit rien dans la fournée. */}
+                  <ARacheterButton nom={ing.name} refId={ing.ref_id} autorise={peutRacheter} />
+                </div>
                 <span className={`font-label-md text-label-md text-on-surface-variant ml-9${struck}`}>
                   prévu {prevTxt} {conv && <span className="text-[14px]">({conv})</span>}
                 </span>

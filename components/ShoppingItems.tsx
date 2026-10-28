@@ -20,6 +20,7 @@ import type { Unit } from '@/lib/profile';
 import { fixOeufLigature } from '@/lib/text';
 import { commentChoices, findMergeTarget, mergedComment, mergeCandidates, mergePreview, mergeResult, type CommentChoice } from '@/lib/shopping-merge';
 import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { decisionAjout, messageAjout, trierARacheter } from '@/lib/a-racheter';
 
 // Délai de regroupement des resynchronisations serveur (voir scheduleRefresh).
 const REFRESH_DELAY = 2000;
@@ -36,10 +37,15 @@ export function ShoppingItems({
   units,
   conversions,
   ingredientRefs,
+  aRacheter = false,
   helpBlocks = [],
 }: {
   listId: number;
   listName: string;
+  // Liste système « À racheter » (JEP-379) : non barrés en tête, unité
+  // facultative, un ingrédient n'y figure qu'une fois, « Supprimer les
+  // articles barrés ».
+  aRacheter?: boolean;
   initialItems: ShoppingItem[];
   units: Unit[];
   conversions: ConversionRef[];
@@ -51,7 +57,19 @@ export function ShoppingItems({
   const help = useHelpBlocks('courses', helpBlocks, true);
   const dialog = useDialog();
   const { mutate } = useMutation();
-  const [items, setItems] = useState(() => [...initialItems].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr')));
+  // Ordre d'affichage : alphabétique, ou « non barrés d'abord » pour la
+  // liste « À racheter ». Réappliqué à chaque changement de l'état local.
+  const trier = useCallback(
+    (list: ShoppingItem[]) =>
+      aRacheter ? trierARacheter(list) : [...list].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr')),
+    [aRacheter],
+  );
+  const [items, setItemsBrut] = useState(() => trier(initialItems));
+  const setItems = useCallback(
+    (next: ShoppingItem[] | ((prev: ShoppingItem[]) => ShoppingItem[])) =>
+      setItemsBrut((prev) => trier(typeof next === 'function' ? next(prev) : next)),
+    [trier],
+  );
   const [editingId, setEditingId] = useState<number | null>(null);
   const [mergingId, setMergingId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
@@ -198,6 +216,10 @@ export function ShoppingItems({
       dialog.alert('Indiquez un libellé.');
       return;
     }
+    if (aRacheter) {
+      await addARacheter(name, quantity, unit, comment);
+      return;
+    }
     // Sans unité, la ligne ne peut ni se convertir ni se fusionner (ni, demain,
     // se chiffrer) : obligatoire à l'ajout (la modification reste libre).
     if (!unit) {
@@ -245,8 +267,59 @@ export function ShoppingItems({
       dialog.alert('Erreur : ' + error.message);
       return;
     }
-    setItems((prev) => [...prev, data].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr')));
+    setItems((prev) => [...prev, data]);
     setAdding(false);
+    scheduleRefresh();
+  }
+
+  // Saisie à la main dans « À racheter » : même règle que le picto du mode
+  // Pâtisser — un ingrédient déjà présent n'est pas ajouté une seconde fois
+  // (barré : il est remis à racheter). Unité facultative : on rachète un
+  // produit, la quantité n'est qu'une précision.
+  async function addARacheter(name: string, quantity: string, unit: string, comment: string) {
+    name = fixOeufLigature(name).trim();
+    const refId = resolveIngredientRefId(name, ingredientRefs);
+    const decision = decisionAjout(items, name, refId);
+    const supabase = createClient();
+    if (decision.action === 'deja') {
+      dialog.alert(messageAjout('deja', name));
+      return;
+    }
+    if (decision.action === 'decocher') {
+      const { error } = await supabase.from('shopping_list_items').update({ checked: false }).eq('id', decision.id);
+      if (error) {
+        dialog.alert('Erreur : ' + error.message);
+        return;
+      }
+      setItems((prev) => prev.map((i) => (i.id === decision.id ? { ...i, checked: false } : i)));
+    } else {
+      const { data, error } = await supabase
+        .from('shopping_list_items')
+        .insert({ list_id: listId, name, quantity: quantity.trim() || null, unit: unit || null, comment: comment.trim() || null, checked: false, ref_id: refId })
+        .select()
+        .single();
+      if (error) {
+        dialog.alert('Erreur : ' + error.message);
+        return;
+      }
+      setItems((prev) => [...prev, data]);
+    }
+    setAdding(false);
+    scheduleRefresh();
+  }
+
+  // « Supprimer les articles barrés » (« À racheter ») : cocher barre sans
+  // retirer, c'est ce bouton qui vide ce qui a été racheté.
+  async function purgeChecked() {
+    const ids = items.filter((i) => i.checked).map((i) => i.id);
+    if (!ids.length) return;
+    const ok = await mutate(() => createClient().from('shopping_list_items').delete().in('id', ids).eq('list_id', listId), {
+      confirm: `Supprimer ${ids.length > 1 ? `les ${ids.length} articles barrés` : "l'article barré"} de la liste ?`,
+      errorLabel: 'Suppression impossible',
+      refresh: false,
+    });
+    if (!ok) return;
+    setItems((prev) => prev.filter((i) => !ids.includes(i.id)));
     scheduleRefresh();
   }
 
@@ -270,6 +343,15 @@ export function ShoppingItems({
             {total} article{total > 1 ? 's' : ''}
             {done ? ` · ${done} coché${done > 1 ? 's' : ''}` : ''}
           </span>
+          {aRacheter && done > 0 && (
+            <button
+              type="button"
+              onClick={purgeChecked}
+              className="flex items-center gap-1 rounded-full border border-error px-3 py-1 font-label-md text-[12px] text-error hover:bg-error/10"
+            >
+              <span className="material-symbols-outlined text-[16px]">delete_sweep</span> Supprimer les articles barrés
+            </button>
+          )}
           {done > 0 && (
             <label className="flex items-center gap-1.5 font-label-md text-label-md text-on-surface-variant cursor-pointer">
               <input
@@ -356,7 +438,7 @@ export function ShoppingItems({
       {adding ? (
         <div className="mt-8 max-w-2xl">
           <HelpBlockSlot blockKey="courses.ajout" help={help} />
-          <AddItemRow units={units} onAdd={addItem} onCancel={() => setAdding(false)} />
+          <AddItemRow units={units} uniteFacultative={aRacheter} onAdd={addItem} onCancel={() => setAdding(false)} />
         </div>
       ) : (
         <div className="flex flex-wrap items-end gap-3 mt-8 pt-6 border-t border-outline-variant/50 max-w-2xl">
@@ -496,10 +578,13 @@ function MergeItemRow({
 
 function AddItemRow({
   units,
+  uniteFacultative = false,
   onAdd,
   onCancel,
 }: {
   units: Unit[];
+  // Liste « À racheter » : l'unité n'y est pas exigée.
+  uniteFacultative?: boolean;
   onAdd: (name: string, qty: string, unit: string, comment: string) => void;
   onCancel: () => void;
 }) {
@@ -521,19 +606,19 @@ function AddItemRow({
         <input value={qty} onChange={(e) => setQty(e.target.value)} type="number" min={0} step="any" className={FIELD} style={{ width: '6rem' }} />
       </label>
       <label className="flex flex-col gap-1">
-        <span className={LBL}>Unité *</span>
+        <span className={LBL}>Unité{uniteFacultative ? '' : ' *'}</span>
         <select
           value={unit}
           onChange={(e) => {
             setUnit(e.target.value);
             if (e.target.value) setUnitMissing(false);
           }}
-          required
+          required={!uniteFacultative}
           aria-invalid={unitMissing}
           className={`${FIELD} bg-white ${unitMissing ? '!border-red-600 ring-1 ring-red-600' : ''}`}
           style={{ width: '8rem' }}
         >
-          <option value="" disabled>— Unité —</option>
+          <option value="" disabled={!uniteFacultative}>— Unité —</option>
           {units.map((u) => (
             <option key={u.id} value={u.name}>
               {u.name}
@@ -546,7 +631,7 @@ function AddItemRow({
         <input value={comment} onChange={(e) => setComment(e.target.value)} className={FIELD} style={{ width: '13rem' }} />
       </label>
       <button type="button" onClick={() => {
-          setUnitMissing(!unit);
+          setUnitMissing(!uniteFacultative && !unit);
           onAdd(name, qty, unit, comment);
         }} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-md text-[12px] flex items-center gap-1">
         <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter

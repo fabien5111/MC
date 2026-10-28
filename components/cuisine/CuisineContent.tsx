@@ -39,6 +39,7 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
 import { LockedAction } from '@/components/LockedAction';
 import { findMergeTarget } from '@/lib/shopping-merge';
+import { NOM_A_RACHETER, rangerListes } from '@/lib/a-racheter';
 
 type PlanningView = 'jours' | 'recettes';
 
@@ -117,15 +118,14 @@ export function CuisineContent({
   useEffect(() => setShoppingList(shoppingLists), [shoppingLists]);
   // Archivée = tous les articles cochés. Aucune colonne dédiée en base : la
   // distinction est purement une lecture. Une liste sans article n'est jamais
-  // « archivée » — elle n'a simplement encore rien à cocher.
-  const activeShoppingLists = shoppingList.filter((l) => {
-    const items = l.shopping_list_items || [];
-    return items.length === 0 || items.some((i) => !i.checked);
-  });
-  const archivedShoppingLists = shoppingList.filter((l) => {
-    const items = l.shopping_list_items || [];
-    return items.length > 0 && items.every((i) => i.checked);
-  });
+  // « archivée » — elle n'a simplement encore rien à cocher. La liste
+  // « À racheter » (JEP-379) est mise à part : en tête, jamais archivée,
+  // jamais fusionnée, masquée tant qu'elle est vide (`rangerListes`).
+  const {
+    aRacheter,
+    actives: activeShoppingLists,
+    archivees: archivedShoppingLists,
+  } = rangerListes(shoppingList);
   const [mergingListId, setMergingListId] = useState<number | null>(null);
   // La vue par jour est la vue par défaut (décision produit) : c'est elle
   // qui rend le planning actionnable sans ouvrir chaque fournée une à une.
@@ -595,6 +595,7 @@ export function CuisineContent({
         <h2 className="mb-6 flex items-center gap-3 font-headline-md text-primary">
           <span className="material-symbols-outlined">shopping_bag</span> Listes de courses
         </h2>
+        {aRacheter && <ARacheterCard liste={aRacheter} />}
         {activeShoppingLists.length > 0 ? (
           <div className="space-y-4">
             {activeShoppingLists.map((l) => {
@@ -602,9 +603,15 @@ export function CuisineContent({
               const done = items.filter((i) => i.checked).length;
               const pct = items.length > 0 ? Math.round((done / items.length) * 100) : 0;
               return (
-                <div key={l.id} className="rounded-lg border border-outline-variant p-5 transition-colors hover:bg-surface-container-low">
+                // Toute la carte ouvre la liste : la zone cliquable du titre est
+                // étendue à la carte (`after:inset-0`), les boutons et le
+                // panneau de fusion passent au-dessus (`relative z-10`).
+                <div key={l.id} className="relative rounded-lg border border-outline-variant p-5 transition-colors hover:bg-surface-container-low">
                   <div className="mb-3 flex items-start justify-between gap-3">
-                    <Link href={`/courses/${l.id}`} className="font-label-md text-[15px] text-primary hover:text-secondary">
+                    <Link
+                      href={`/courses/${l.id}`}
+                      className="font-label-md text-[15px] text-primary hover:text-secondary after:absolute after:inset-0 after:rounded-lg after:content-['']"
+                    >
                       {l.name}
                     </Link>
                     <span className="shrink-0 whitespace-nowrap text-[12px] text-on-surface-variant">
@@ -618,7 +625,7 @@ export function CuisineContent({
                     <p className="text-[12px] text-on-surface-variant">
                       {l.created_at ? 'Créée le ' + formatDate(l.created_at) : ''}
                     </p>
-                    <div className="flex shrink-0 gap-1">
+                    <div className="relative z-10 flex shrink-0 gap-1">
                       {droits.fusionListes ? (
                         <button
                           type="button"
@@ -651,7 +658,7 @@ export function CuisineContent({
                     </div>
                   </div>
                   {mergingListId === l.id && (
-                    <div className="mt-4 border-t border-outline-variant/60 pt-4">
+                    <div className="relative z-10 mt-4 border-t border-outline-variant/60 pt-4">
                       <MergeListRow
                         candidates={activeShoppingLists.filter((o) => o.id !== l.id)}
                         onMerge={(sourceId, sourceName) => mergeShoppingLists(l.id, sourceId, l.name, sourceName)}
@@ -663,7 +670,7 @@ export function CuisineContent({
               );
             })}
           </div>
-        ) : (
+        ) : aRacheter ? null : (
           <p className="text-sm italic text-on-surface-variant">
             Aucune liste de courses active. Depuis une fournée, cliquez sur « Liste de courses » dans la liste
             complète des ingrédients.
@@ -804,5 +811,34 @@ function MergeListRow({
         Annuler
       </button>
     </div>
+  );
+}
+
+// Liste « À racheter » (JEP-379) : même carte que les autres listes, sans
+// suppression ni fusion (liste système). Le compteur dit ce qui reste à
+// racheter, pas une progression : les articles barrés y restent jusqu'à ce
+// que le membre les retire depuis la liste.
+function ARacheterCard({ liste }: { liste: ShoppingListSummary }) {
+  const items = liste.shopping_list_items || [];
+  const restants = items.filter((i) => !i.checked).length;
+  return (
+    // Aucun bouton sur cette carte : elle est tout entière le lien.
+    <Link
+      href={`/courses/${liste.id}`}
+      className="group mb-4 block rounded-lg border-2 border-secondary/40 bg-secondary/5 p-5 transition-colors hover:bg-secondary/10"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span className="flex items-center gap-2 font-label-md text-[15px] text-primary group-hover:text-secondary">
+          <span className="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+          {NOM_A_RACHETER}
+        </span>
+        <span className="shrink-0 whitespace-nowrap text-[12px] text-on-surface-variant">
+          {restants ? `${restants} à racheter` : 'Tout est racheté'}
+        </span>
+      </div>
+      <p className="mt-2 text-[12px] text-on-surface-variant">
+        Les ingrédients finis pendant une fournée, ajoutés depuis le mode Pâtisser.
+      </p>
+    </Link>
   );
 }

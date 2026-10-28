@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { getVisibleHelpBlocks } from '@/lib/help';
 import { getShoppingList } from '@/lib/shopping';
+import { estListeARacheter } from '@/lib/a-racheter';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
 import { Footer } from '@/components/Footer';
@@ -54,6 +55,7 @@ export default async function CoursesPage({ params }: Params) {
             units={units}
             conversions={conversions}
             ingredientRefs={ingredientRefs}
+            aRacheter={estListeARacheter(list)}
             helpBlocks={helpBlocks}
           />
         )}

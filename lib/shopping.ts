@@ -5,6 +5,8 @@ import type { Database } from '@/lib/database.types';
 
 export type ShoppingItem = Database['public']['Tables']['shopping_list_items']['Row'];
 export type ShoppingList = Database['public']['Tables']['shopping_lists']['Row'] & {
+  // `'a_racheter'` pour la liste « À racheter » (JEP-379), absente avant la migration.
+  kind?: string | null;
   shopping_list_items: ShoppingItem[];
 };
 
@@ -13,12 +15,12 @@ export async function getShoppingList(id: number): Promise<ShoppingList | null> 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('shopping_lists')
-    // Colonnes énumérées des deux côtés de la jointure (cf. CLAUDE.md) : ici
-    // tout est réellement affiché — c'est la vue détail — mais une colonne
-    // ajoutée plus tard à l'une des deux tables ne rejoindra pas le payload
-    // sans qu'on l'ait décidé.
+    // Colonnes des articles énumérées (cf. CLAUDE.md) : une colonne ajoutée
+    // plus tard ne rejoindra pas le payload sans qu'on l'ait décidé. Côté
+    // liste, `*` : `kind` (JEP-379, quatre colonnes courtes) est posée à la
+    // main, la nommer ferait échouer la lecture avant la migration.
     .select(
-      'id, name, user_id, created_at, ' +
+      '*, ' +
         'shopping_list_items(id, list_id, name, quantity, unit, ref_id, comment, checked, created_at)',
     )
     .eq('id', id)

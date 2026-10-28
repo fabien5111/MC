@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
 import { CARD_SELECT, withAllergenNames, type RecipeCard, type RecipeCardWithAllergenNames } from '@/lib/recipes';
 import { BATCH_FULL_SELECT, TERMINEES_PAGE_SIZE, type BatchFull } from '@/lib/recipe-plan';
+import { estListeARacheter } from '@/lib/a-racheter';
 
 export type Unit = Database['public']['Tables']['units']['Row'];
 
@@ -68,6 +69,9 @@ export type BatchListRow = {
 };
 
 export type ShoppingListSummary = Database['public']['Tables']['shopping_lists']['Row'] & {
+  // `'a_racheter'` pour la liste système « À racheter » (JEP-379) ; absente
+  // avant la migration et des types générés, d'où le `select('*')`.
+  kind?: string | null;
   shopping_list_items: { id: number; checked: boolean }[];
 };
 
@@ -176,7 +180,9 @@ export async function getShoppingLists(userId: string): Promise<ShoppingListSumm
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('shopping_lists')
-    .select('id, name, user_id, created_at, shopping_list_items(id, checked)')
+    // `*` côté liste : `kind` (JEP-379) est posée à la main, la nommer ferait
+    // échouer la lecture avant la migration.
+    .select('*, shopping_list_items(id, checked)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) console.error('getShoppingLists:', error.message);
@@ -195,11 +201,14 @@ export async function getShoppingListNames(userId: string): Promise<{ id: number
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('shopping_lists')
-    .select('id, name')
+    .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) console.error('getShoppingListNames:', error.message);
-  return data ?? [];
+  // « À racheter » (JEP-379) ne reçoit pas les courses d'une recette.
+  return ((data ?? []) as { id: number; name: string; kind?: string | null }[])
+    .filter((l) => !estListeARacheter(l))
+    .map(({ id, name }) => ({ id, name }));
 }
 
 // L'en-tête d'une fournée (ligne `batches` seule, sans son contenu) — utilisé
