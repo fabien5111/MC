@@ -1,0 +1,78 @@
+{
+  "ticket": "local-gianduja-croustillant",
+  "recette": {
+    "titre": "Gianduja croustillant",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Couche fondante de gianduja relevée de feuilletine et d'éclats de noisettes torréfiées, qui garde son croquant au froid. Elle sert de fond ou d'insert croustillant dans un entremets, une bûche ou une tartelette.",
+    "rendement": "1 cadre 24 x 24 cm, environ 5 mm d'épaisseur — environ 260 g de croustillant utilisable (275 g d'ingrédients, perte ≈ 5 %)",
+    "ustensiles": [
+      "Four",
+      "Plaque de cuisson",
+      "Papier cuisson",
+      "Couteau de chef",
+      "Planche à découper",
+      "Cul-de-poule",
+      "Casserole",
+      "Thermomètre de cuisine",
+      "Maryse",
+      "Cadre 24 x 24 cm",
+      "Spatule coudée",
+      "Feuille guitare"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Gianduja croustillant",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 12,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 5 jours au réfrigérateur ou 1 mois au congélateur, filmé au contact entre deux feuilles guitare.",
+        "ingredients": [
+          {
+            "nom": "Noisettes",
+            "quantite": 45,
+            "unite": "g",
+            "commentaire": "émondées"
+          },
+          {
+            "nom": "Gianduja",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuilletine",
+            "quantite": 70,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Torréfier les noisettes sur une plaque couverte de papier cuisson, 12 min à 150 °C, jusqu'à ce qu'elles soient blondes à cœur.",
+          "Laisser refroidir les noisettes sur la plaque.",
+          "Concasser grossièrement les noisettes au couteau sur une planche.",
+          "Faire fondre le gianduja au bain-marie dans un cul-de-poule, sans dépasser 40 °C.",
+          "Laisser redescendre le gianduja vers 30 °C, en contrôlant au thermomètre.",
+          "Incorporer la feuilletine et les noisettes concassées à la maryse, en enrobant sans écraser.",
+          "Étaler aussitôt dans le cadre posé sur une feuille guitare, à la spatule coudée, sur 5 mm d'épaisseur régulière.",
+          "Laisser prendre 30 min au réfrigérateur avant de décadrer ou de découper."
+        ],
+        "conseils_etape": "Mélanger la feuilletine dans un gianduja tiède (vers 30 °C) et non chaud : trop chaud, elle ramollit et perd son croquant. Étaler sans attendre, le gianduja fige vite au contact des éclats froids ; tasser légèrement sans écraser pour garder la texture."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 5 mm : ≈ 90 g de croustillant, soit ×0,35 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 5 mm : ≈ 140 g de croustillant, soit ×0,54 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 5 mm : ≈ 205 g de croustillant, soit ×0,79 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 5 mm : ≈ 17 g par disque, soit 14 disques avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, semelle de 5 mm : ≈ 65 g de croustillant, soit ×0,25 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, semelle de 5 mm : ≈ 110 g de croustillant, soit ×0,42 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 5 mm : ≈ 145 g de croustillant, soit ×0,56 de la recette.",
+      "Variante — Ajouter 1 g de fleur de sel avec la feuilletine pour relever le goût de noisette.",
+      "Variante — Remplacer les noisettes par des amandes torréfiées et le gianduja aux noisettes par un gianduja aux amandes."
+    ],
+    "conseils_conservation": "Se garde 5 jours au réfrigérateur ou 1 mois au congélateur, filmé au contact entre deux feuilles guitare, à l'abri de l'humidité qui ramollit la feuilletine. S'utilise directement sortant du froid, découpé à la taille du cercle ; le monter sous une mousse ou une crème le jour même ou la veille du service pour qu'il reste croquant."
+  }
+}
