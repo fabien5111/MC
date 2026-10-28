@@ -1,0 +1,91 @@
+{
+  "ticket": "local-cremeux-chocolat-au-lait",
+  "recette": {
+    "titre": "Crémeux chocolat au lait",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crémeux onctueux et fondant, au goût lacté et caramélisé du chocolat au lait, qui se tient net à la découpe grâce à une pointe de gélatine. Coulé en cercle et congelé, il sert d'insert au cœur d'un entremets ou d'une bûche.",
+    "rendement": "1 cercle Ø 16 cm, 2 cm de hauteur — environ 405 g de crémeux utilisable (463 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Bol",
+      "Casserole",
+      "Cul-de-poule",
+      "Fouet",
+      "Maryse",
+      "Thermomètre",
+      "Mixeur plongeant",
+      "Cercle Ø 16 cm",
+      "Plaque",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crémeux chocolat au lait",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 300,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 2 mois au congélateur, filmé au contact ; démouler et placer dans l'entremets encore congelé.",
+        "ingredients": [
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 160,
+            "unite": "g",
+            "commentaire": "haché ou en pistoles, 35-40 % de cacao"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine 10 minutes dans un grand volume d'eau froide, dans un bol.",
+          "Porter le lait et la crème à frémissement dans la casserole.",
+          "Mélanger les jaunes et le sucre au fouet dans le cul-de-poule sans les faire blanchir ni mousser, puis verser un tiers du liquide chaud dessus en fouettant.",
+          "Reverser le tout dans la casserole et cuire à feu doux en remuant sans cesse à la maryse jusqu'à 82-84 °C au thermomètre : la crème nappe la maryse.",
+          "Hors du feu, ajouter la gélatine bien essorée et mélanger jusqu'à dissolution complète.",
+          "Verser la crème anglaise en trois fois sur le chocolat au lait dans le cul-de-poule, en émulsionnant à la maryse depuis le centre, puis lisser au mixeur plongeant tête immergée, sans incorporer d'air.",
+          "Couler dans le cercle Ø 16 cm filmé au fond et posé sur une plaque, puis filmer au contact.",
+          "Laisser prendre 1 heure au réfrigérateur, puis congeler au moins 4 heures avant de démouler."
+        ],
+        "conseils_etape": "Ne jamais dépasser 85 °C : au-delà, les jaunes coagulent et la crème graine. Émulsionner en plusieurs fois et mixer sans bulles donne la texture lisse et brillante ; couler vers 35-40 °C pour une surface plane."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert Ø 16 cm pour entremets Ø 20 cm, 1,5 cm de hauteur : ≈ 305 g de crémeux, soit ×0,75 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, couche de 1,5 cm : ≈ 475 g de crémeux, soit ×1,17 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche de 1,5 cm : ≈ 685 g de crémeux, soit ×1,69 de la recette.",
+      "Utilisation — Inserts individuels en cercles Ø 7 cm, 1,5 cm de hauteur : ≈ 60 g par pièce (×0,15), soit 6 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert en bande 18 x 4 cm sur 2 cm : ≈ 145 g de crémeux, soit ×0,36 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert en bande 28 x 5 cm sur 2 cm : ≈ 280 g de crémeux, soit ×0,69 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 1 cm : ≈ 325 g de crémeux, soit ×0,80 de la recette.",
+      "Variante — Chocolat noir 64-70 % : remplacer les 160 g de chocolat au lait par 120 g de chocolat noir et passer le sucre à 30 g.",
+      "Variante — Praliné : remplacer 40 g de chocolat au lait par 50 g de praliné noisette, ajouté avec le chocolat."
+    ],
+    "conseils_conservation": "3 jours au réfrigérateur, filmé au contact. 2 mois au congélateur, en cercle ou démoulé et emballé hermétiquement. Utiliser congelé comme insert dans le montage ; le dessert décongèle ensuite 6 à 8 heures au réfrigérateur."
+  }
+}
