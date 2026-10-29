@@ -72,7 +72,7 @@ const attendre = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 export async function appelStripe<T>(
   chemin: string,
-  options: { methode?: 'GET' | 'POST'; corps?: Record<string, unknown>; idempotencyKey?: string } = {},
+  options: { methode?: 'GET' | 'POST' | 'DELETE'; corps?: Record<string, unknown>; idempotencyKey?: string } = {},
 ): Promise<ReponseStripe<T>> {
   const { cleSecrete } = configStripe();
   const methode = options.methode ?? (options.corps ? 'POST' : 'GET');

@@ -467,21 +467,31 @@ export default function ConfidentialitePage() {
             ]}
           />
           <p>
-            Vous pouvez demander la suppression de votre compte à tout moment via le <LienContact /> (type « Mes
-            données personnelles »).
+            Vous pouvez supprimer votre compte à tout moment depuis les réglages de votre compte (« Supprimer mon
+            compte »), ou en faire la demande via le <LienContact /> (type « Mes données personnelles »). Un e-mail
+            vous confirme la suppression ; un abonnement en cours est résilié immédiatement.
           </p>
           <SousTitre>Contenus publiés, à la suppression du compte</SousTitre>
           <p>
-            Vos recettes, y compris celles que vous avez publiées, sont supprimées avec votre compte. Toutefois :
+            Vos recettes, y compris celles que vous avez publiées, sont supprimées avec votre compte, ainsi que vos
+            fournées, listes, favoris, abonnements et partages. Toutefois :
           </p>
           <Liste>
+            <li>
+              vos notes et avis sur les recettes, ainsi que vos idées de la boîte à idées, restent en ligne, signés
+              « Membre supprimé », sans lien avec votre identité ;
+            </li>
             <li>
               un membre qui a créé une fournée à partir de l&apos;une de vos recettes en conserve une copie du texte
               — jamais des photos, qui ne sont pas copiées ;
             </li>
             <li>
-              votre pseudo peut rester affiché comme crédit d&apos;auteur dans les projets de dessert d&apos;autres
-              membres qui ont repris l&apos;une de vos recettes. Vous pouvez en demander le retrait.
+              dans les projets de dessert d&apos;autres membres qui ont repris l&apos;une de vos recettes, le crédit
+              d&apos;auteur reste, signé « Membre supprimé » ;
+            </li>
+            <li>
+              l&apos;historique de vos paiements est conservé pour nos obligations comptables, détaché de votre
+              identité dans notre base ; vos factures restent chez notre prestataire de paiement (10 ans).
             </li>
           </Liste>
         </Section>

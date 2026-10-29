@@ -232,7 +232,8 @@ export async function searchMembers(term: string, excludeId: string, limit = 8):
   if (byUsername.error) console.error('searchMembers (identifiant):', byUsername.error.message);
   const seen = new Map<string, Member>();
   for (const m of [...(byName.data ?? []), ...(byUsername.data ?? [])] as (Member & { status?: string | null })[]) {
-    if (m.status === 'disabled') continue;
+    // Compte désactivé (JEP-272) ou profil anonyme d'un compte supprimé (JEP-33).
+    if (m.status === 'disabled' || m.status === 'deleted') continue;
     const { status: _status, ...membre } = m;
     seen.set(m.id, membre);
   }

@@ -695,6 +695,68 @@ migration. Logique pure : `lib/email-confirmation.ts`.
   poser `UNCONFIRMED_ACCOUNT_TTL_DAYS` sur le nœud 216658 seulement pour changer le seuil
   (lue à l'exécution : un redémarrage suffit, à vérifier par `pm2 env 0`).
 
+### Suppression de compte et anonymisation (JEP-33)
+
+Deux chemins, **un seul mécanisme serveur** (`anonymiserMembre`,
+`lib/anonymisation-data.ts` ; logique pure `lib/anonymisation.ts`) : le membre
+depuis `/reglages` → « Supprimer mon compte » (`DeleteAccountCard`,
+`POST /api/compte/supprimer`, confirmation par saisie du pseudo) et l'admin
+depuis la fiche → « Anonymiser » (`POST /api/admin/membres/[id]/anonymiser`,
+motif obligatoire, ni soi-même ni un admin). « Supprimer définitivement »
+(`/api/admin/delete-member`, purge des non-confirmés) reste à côté, inchangé.
+
+- **Arbitrage du 28/10/2026** : le contenu part avec le compte, **recettes
+  publiées comprises** (CGU § 4.2 et Confidentialité le promettaient déjà) ;
+  seuls les **avis** (note + commentaire) et les **idées** restent, signés
+  « Membre supprimé ». Un compte déjà `disabled` ne fait pas réapparaître ses
+  avis ni ses idées masqués : ils sont supprimés.
+- **Profil fantôme, un par suppression.** `profiles.id` référence `auth.users`
+  en cascade, et GoTrue ne sait pas détacher une identité Google : garder le
+  compte d'origine laisserait l'adresse Google en base et bloquerait sa
+  réinscription. On crée donc un compte de connexion neuf (adresse aléatoire
+  `@anonyme.jepatisse.com`, banni, sans identité externe) et son profil
+  (`full_name` « Membre supprimé », `username` `membre-supprime-<8 hex>`,
+  **`status = 'deleted'`**), on y rattache ce qui est conservé (avis, idées,
+  `subscriptions`, `billing_customers`, `trials` — empreinte d'adresse
+  remplacée —, `notifications_sent`, `subscription_requests`, journal de
+  modération, crédits du mode projet, journal « en tant que », articles), puis
+  on supprime le compte d'origine, dont la cascade emporte le reste. Un seul
+  fantôme partagé buterait sur l'index unique `comments(recipe_id, user_id)`.
+  Le fantôme est aussi la **trace minimale** (sa date de création, sans
+  identité) ; pour un admin, la ligne `anonymisation` du journal y est
+  rattachée, écrite **avant** tout geste destructeur.
+- **`'deleted'` n'est ni bloquant ni masquant** (≠ `disabled`) : les avis
+  comptent dans la note (`mc_recalculer_note` n'exclut que `disabled`). Profil
+  public 404 pour tous, absent de la recherche de membres, pas de lien sur un
+  avis (`estSlugSupprime`), badge « Supprimé » dans Admin → Membres.
+- **Ordre** : fantôme → journal → **résiliation Stripe immédiate** (refus =
+  fantôme défait, rien supprimé : on ne supprime pas un compte encore
+  prélevé ; échéancier résilié par l'échéancier ; aucun remboursement
+  automatique) → transferts → ménage (contact : demande sans ticket Jira
+  supprimée, avec ticket débarrassée d'e-mail / IP hachée / contexte ; photos
+  de `jp-contact` supprimées ; recettes et leurs photos de `jp-photos`, sauf
+  celles qu'une autre ligne cite encore — duplicata, extraction ; tables
+  `TABLES_A_VIDER` ; ligne `allowlist`) → compte GoTrue d'origine → e-mail de
+  confirmation à l'ancienne adresse (`pied: 'obligatoire'`). Une table en échec
+  au ménage n'arrête rien (avertissement rendu à l'admin) ; un échec de la
+  suppression GoTrue se relance.
+- **Notifications des autres** qui nomment le membre (repérées par
+  `data->>acteurHandle`) réécrites avec « Membre supprimé » ; événements en
+  file dont il est l'acteur supprimés. Limite : un récapitulatif e-mail déjà
+  en file chez un autre membre garde le pseudo.
+- **Toute nouvelle table qui porte une donnée personnelle doit entrer dans
+  `TABLES_A_VIDER` ou `TABLES_TRANSFEREES`.**
+- **Gardes** : `getVerifiedUser`, refus en session « en tant que » (tout mode),
+  administrateur exclu des deux chemins (bloc masqué dans `/reglages`). Sans
+  `refusSiCompteBloque` : un compte bloqué garde son droit à l'effacement (la
+  route est appelable ; `/compte-suspendu` ne porte pas encore le bloc).
+  Suppression Swift par TempURL `DELETE` signée côté serveur (`supprimerObjet`,
+  `lib/storage-data.ts`).
+- **Migration** : `profiles.status` et `member_moderation_events.action`
+  doivent accepter `deleted` / `anonymisation` si une contrainte CHECK les
+  borne (DDL par `psql`, nœud 216075). Sans elle, l'opération échoue **avant**
+  toute suppression, avec ce message.
+
 ### Connexion « en tant que » (impersonation)
 
 - **Niveau d'accès hérité**, jamais choisi au clic : `profiles.impersonation_access`

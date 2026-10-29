@@ -3,6 +3,7 @@
 // par la RLS (`status = 'approved'`), pas de logique de visibilité côté
 // client à dupliquer.
 import Link from 'next/link';
+import { estSlugSupprime } from '@/lib/anonymisation';
 import { formatDate } from '@/lib/format';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import type { RecipeComment } from '@/lib/reviews-data';
@@ -40,7 +41,7 @@ export function RecipeComments({ comments }: { comments: RecipeComment[] }) {
             </span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 flex-wrap mb-1">
-                {c.profiles?.username ? (
+                {c.profiles?.username && !estSlugSupprime(c.profiles.username) ? (
                   <Link href={`/u/${c.profiles.username}`} className="font-label-md text-label-md text-primary hover:underline">
                     {c.profiles.full_name || 'Membre'}
                   </Link>

@@ -76,6 +76,7 @@ export function MemberDetail({
   const [notes, setNotes] = useState(member.notes || '');
   const [impAccess, setImpAccess] = useState<ImpersonationMode>(member.impersonationAccess);
   const [deleting, setDeleting] = useState(false);
+  const [anonymizing, setAnonymizing] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [changingEmail, setChangingEmail] = useState(false);
   const [confirmingEmail, setConfirmingEmail] = useState(false);
@@ -230,9 +231,61 @@ export function MemberDetail({
     }
   }
 
+  // JEP-33 — même mécanisme que « Supprimer mon compte » côté membre : contenu
+  // supprimé, avis et idées conservés sous « Membre supprimé ». Motif
+  // obligatoire, tracé au journal de modération ; la route revérifie tout.
+  async function anonymiser() {
+    if (!member.profileId) return;
+    setAnonymizing(true);
+    let abonnement: { libelle: string; stripe: boolean } | null = null;
+    try {
+      const res = await fetch(`/api/admin/membres/${member.profileId}/anonymiser`);
+      if (res.ok) abonnement = (await res.json())?.abonnement ?? null;
+    } catch {
+      // Lecture indicative : la route relit l'abonnement avant d'agir.
+    }
+    setAnonymizing(false);
+    const motif = await dialog.prompt(
+      `Anonymiser « ${member.fullName || member.email} » ?\n\n` +
+        'Ses recettes (publiées comprises), fournées, listes, favoris, abonnements, partages et données personnelles ' +
+        'seront supprimés ; ses avis et ses idées resteront en ligne, signés « Membre supprimé ». Le compte de ' +
+        'connexion est supprimé, et un e-mail prévient le membre.' +
+        (abonnement ? `\n\nSon abonnement « ${abonnement.libelle} » sera résilié immédiatement.` : '') +
+        '\n\nIrréversible. Motif (obligatoire, envoyé au membre) :',
+      { required: true, maxLength: 500 },
+    );
+    if (motif == null) return;
+    setAnonymizing(true);
+    try {
+      const res = await fetch(`/api/admin/membres/${member.profileId}/anonymiser`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motif }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAnonymizing(false);
+        dialog.alert(data?.erreur || 'Anonymisation impossible');
+        return;
+      }
+      const avertissements: string[] = data?.avertissements ?? [];
+      if (avertissements.length > 0 || data?.emailEnvoye === false) {
+        await dialog.alert(
+          'Compte anonymisé.' +
+            (data?.emailEnvoye === false ? "\n\nL'e-mail au membre n'est pas parti." : '') +
+            (avertissements.length ? `\n\nPoints à vérifier :\n- ${avertissements.join('\n- ')}` : ''),
+        );
+      }
+      router.push('/admin/membres');
+    } catch (e) {
+      setAnonymizing(false);
+      dialog.alert('Erreur réseau : ' + ((e as Error).message || 'anonymisation impossible'));
+    }
+  }
+
   return (
     <main className="flex-1 p-margin-mobile md:p-margin-desktop max-w-[900px] w-full space-y-6">
-      <LoadingOverlay visible={impBusy || deleting || changingEmail || confirmingEmail || resendingEmail} />
+      <LoadingOverlay visible={impBusy || deleting || anonymizing || changingEmail || confirmingEmail || resendingEmail} />
 
       {/* En-tête : identité + lien vers la vitrine publique */}
       <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 flex items-center gap-4">
@@ -518,6 +571,21 @@ export function MemberDetail({
 
       {/* Suppression */}
       <CollapsibleSection title="Zone de danger">
+        {member.profileId && member.role !== 'admin' && member.status !== 'deleted' && (
+          <>
+            <button
+              type="button"
+              onClick={anonymiser}
+              className="w-full bg-error text-on-error py-2.5 rounded text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              Anonymiser
+            </button>
+            <p className="text-[10px] text-on-surface-variant text-center">
+              Suppression du compte à la demande du membre (RGPD) ou par décision de l&apos;équipe : contenu supprimé,
+              avis et idées conservés sous « Membre supprimé », abonnement résilié, motif au journal.
+            </p>
+          </>
+        )}
         <button
           type="button"
           onClick={supprimer}
