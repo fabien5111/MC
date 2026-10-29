@@ -1,0 +1,90 @@
+{
+  "ticket": "local-cremeux-chocolat-blanc",
+  "recette": {
+    "titre": "Crémeux chocolat blanc",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crémeux onctueux sur base de crème anglaise, au goût lacté et vanillé du chocolat blanc. Collé à la gélatine et congelé en cercle, il sert d'insert qui se tient net à la découpe d'un entremets ou d'une bûche.",
+    "rendement": "1 cercle Ø 20 cm, 1,5 cm de hauteur — environ 470 g de crémeux utilisable (534 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Fouet",
+      "Maryse",
+      "Thermomètre de cuisson",
+      "Mixeur plongeant",
+      "Cercle à entremets Ø 20 cm",
+      "Film alimentaire",
+      "Plaque"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crémeux chocolat blanc",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 360,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 2 mois au congélateur, démoulé et filmé.",
+        "ingredients": [
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 200,
+            "unite": "g",
+            "commentaire": "haché"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans un grand volume d'eau froide pendant 10 minutes.",
+          "Chauffer le lait et la crème dans la casserole jusqu'à frémissement.",
+          "Blanchir les jaunes avec le sucre au fouet dans le cul-de-poule.",
+          "Verser un tiers du liquide chaud sur les jaunes en fouettant, puis reverser le tout dans la casserole.",
+          "Cuire à feu doux en remuant à la maryse jusqu'à 82-84 °C au thermomètre : la crème nappe la maryse.",
+          "Hors du feu, ajouter la gélatine essorée, puis verser la crème en trois fois sur le chocolat blanc en émulsionnant à la maryse.",
+          "Mixer au mixeur plongeant, tête immergée, puis couler dans le cercle filmé posé sur la plaque.",
+          "Laisser prendre 2 heures au réfrigérateur, puis congeler au moins 4 heures avant de démouler."
+        ],
+        "conseils_etape": "Ne jamais dépasser 84 °C : au-delà, les jaunes coagulent et la crème graine. Verser la crème chaude sur le chocolat en plusieurs fois pour une émulsion lisse et brillante, et mixer sans sortir la tête du mixeur pour ne pas incorporer de bulles."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert coulé en cercle Ø 16 cm (entremets Ø 20 cm), 1,5 cm de hauteur : ≈ 300 g de crémeux, soit ×0,64 de la recette.",
+      "Utilisation — Insert coulé en cercle Ø 20 cm (entremets Ø 22 à 24 cm), 1 cm de hauteur : ≈ 315 g de crémeux, soit ×0,67 de la recette.",
+      "Utilisation — Insert coulé en cercle Ø 24 cm (entremets Ø 26 à 28 cm), 1 cm de hauteur : ≈ 450 g de crémeux, soit ×0,96 de la recette.",
+      "Utilisation — Inserts individuels en cercles Ø 7 cm, 1 cm de hauteur : ≈ 40 g par pièce (38,5 g au plus juste), soit 12 pièces avec la recette entière.",
+      "Utilisation — Insert de bûche en gouttière 20 x 7 cm, bande de 20 x 4 cm sur 2 cm : ≈ 160 g de crémeux, soit ×0,34 de la recette.",
+      "Utilisation — Insert de bûche en gouttière 30 x 8 cm, bande de 28 x 5 cm sur 2 cm : ≈ 280 g de crémeux, soit ×0,60 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 1 cm de hauteur : ≈ 325 g de crémeux, soit ×0,69 de la recette.",
+      "Variante — Vanillé : infuser une gousse de vanille fendue et grattée dans le lait et la crème 15 minutes avant la cuisson.",
+      "Variante — Chocolat blanc caramélisé (type Dulcey) à poids égal, en réduisant le sucre à 10 g."
+    ],
+    "conseils_conservation": "3 jours au réfrigérateur, filmé au contact ; 2 mois au congélateur, dans le cercle ou démoulé sous film. Démouler congelé et poser l'insert encore gelé au montage ; décongeler l'entremets fini 6 heures au réfrigérateur."
+  }
+}
