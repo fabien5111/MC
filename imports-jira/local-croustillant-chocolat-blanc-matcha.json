@@ -1,0 +1,78 @@
+{
+  "ticket": "local-croustillant-chocolat-blanc-matcha",
+  "recette": {
+    "titre": "Croustillant chocolat blanc matcha",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Croustillant fin et craquant, d'un vert franc, au goût végétal et légèrement amer du matcha qui équilibre la douceur du chocolat blanc. Il sert de fond ou d'insert croquant dans un entremets ; il s'accorde avec la framboise, le sésame noir et le yuzu.",
+    "rendement": "1 cadre carré 28 x 28 cm, 5 mm d'épaisseur — environ 335 g de croustillant utilisable (355 g d'ingrédients, perte ≈ 5 %)",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Thermomètre sonde",
+      "Tamis",
+      "Maryse",
+      "Spatule coudée",
+      "Cadre carré 28 x 28 cm",
+      "Papier cuisson",
+      "Plaque à pâtisserie"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Croustillant chocolat blanc matcha",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 1 semaine au frais, en boîte hermétique, à l'abri de l'humidité.",
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 175,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Matcha",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuilletine",
+            "quantite": 140,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat blanc et le beurre de cacao au bain-marie, dans le cul-de-poule, sans dépasser 40 °C.",
+          "Laisser redescendre le mélange à 35 °C maximum, en contrôlant à la sonde.",
+          "Tamiser le matcha sur le chocolat, puis mélanger à la maryse jusqu'à une teinte verte uniforme, sans grumeaux.",
+          "Incorporer la feuilletine en la brisant le moins possible, jusqu'à ce qu'elle soit entièrement enrobée.",
+          "Étaler aussitôt dans le cadre de 28 x 28 cm posé sur du papier cuisson, sur une plaque, sur 5 mm d'épaisseur, et lisser à la spatule coudée.",
+          "Réserver au froid 30 minutes, jusqu'à prise complète."
+        ],
+        "conseils_etape": "Le matcha perd sa couleur (il vire au kaki) et devient amer au-dessus de 35 °C : contrôler la température à la sonde avant de l'ajouter. Étaler sans attendre, et ne pas écraser la feuilletine, pour garder tout le croquant."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 5 mm : ≈ 85 g de croustillant, soit ×0,25 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 5 mm : ≈ 135 g de croustillant, soit ×0,40 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 5 mm : ≈ 195 g de croustillant, soit ×0,58 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 5 mm : ≈ 16 g par pièce, soit environ 20 pièces avec la recette entière.",
+      "Utilisation — Individuels en cercles Ø 8 cm, fond de 5 mm : ≈ 21 g par pièce, soit environ 15 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert de 5 mm : ≈ 60 g de croustillant, soit ×0,18 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert de 5 mm : ≈ 105 g de croustillant, soit ×0,31 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 5 mm : ≈ 140 g de croustillant, soit ×0,42 de la recette.",
+      "Variante — Sésame noir : remplacer 15 g de feuilletine par 15 g de sésame noir grillé.",
+      "Variante — Framboise : ajouter 20 g de framboise lyophilisée en poudre avec la feuilletine, en retirant 20 g de feuilletine."
+    ],
+    "conseils_conservation": "1 semaine au réfrigérateur en boîte hermétique, 3 mois au congélateur, sans décongélation nécessaire avant emploi. Dans un montage, le placer en fond et le protéger de l'humidité d'une crème ou d'un insert par une fine couche de beurre de cacao ; consommer dans les 48 h suivant l'assemblage."
+  }
+}
