@@ -1,0 +1,85 @@
+{
+  "ticket": "local-croustillant-chocolat-blanc-fruits-lyophilises",
+  "recette": {
+    "titre": "Croustillant chocolat blanc fruits lyophilisés",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Croustillant au chocolat blanc et à la feuilletine, coloré et parfumé naturellement par de la framboise lyophilisée, croquant avec une pointe d'acidité. Il apporte texture, couleur et fraîcheur au fond ou au cœur d'un entremets ou d'une bûche fruitée.",
+    "rendement": "1 cadre carré 20 x 20 cm, 8 mm d'épaisseur — environ 205 g de croustillant utilisable (215 g d'ingrédients, perte ≈ 4 %)",
+    "ustensiles": [
+      "Casserole (bain-marie)",
+      "Cul-de-poule",
+      "Couteau",
+      "Maryse",
+      "Thermomètre",
+      "Tamis",
+      "Cadre inox 20 x 20 cm",
+      "Plaque",
+      "Papier cuisson",
+      "Spatule coudée"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Croustillant chocolat blanc fruits lyophilisés",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 1 semaine au frais en boîte hermétique, ou 3 mois au congélateur.",
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuilletine",
+            "quantite": 65,
+            "unite": "g"
+          },
+          {
+            "nom": "Framboise lyophilisée en poudre",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Framboise lyophilisée en éclats",
+            "quantite": 10,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hacher le chocolat blanc et le beurre de cacao.",
+          "Les faire fondre au bain-marie, sans dépasser 45 °C.",
+          "Retirer du feu et laisser redescendre à 35 °C en mélangeant à la maryse.",
+          "Tamiser la poudre de framboise sur le chocolat et mélanger jusqu'à obtenir une masse lisse et uniforme.",
+          "Ajouter les éclats de framboise et la feuilletine brisée du bout des doigts, puis enrober délicatement sans broyer.",
+          "Étaler aussitôt dans le cadre posé sur une plaque recouverte de papier cuisson, sur 8 mm d'épaisseur, et lisser à la spatule coudée.",
+          "Réserver au froid 30 minutes, jusqu'à prise complète."
+        ],
+        "conseils_etape": "Ne jamais dépasser 45 °C pour le chocolat blanc et incorporer la poudre de fruit hors du feu : acide et très hygroscopique, elle épaissit ou fait gripper le chocolat si le mélange est trop chaud. Étaler sans attendre pour que la feuilletine reste croquante."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond ou insert de 8 mm : ≈ 105 g de croustillant, soit ×0,51 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 8 mm : ≈ 160 g de croustillant, soit ×0,78 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 8 mm : ≈ 230 g de croustillant, soit ×1,12 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 8 mm : ≈ 20 g par pièce, soit 10 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, fond croustillant de 8 mm : ≈ 70 g de croustillant, soit ×0,34 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, fond croustillant de 8 mm : ≈ 125 g de croustillant, soit ×0,61 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 8 mm : ≈ 165 g de croustillant, soit ×0,80 de la recette.",
+      "Variante — Fraise : remplacer la poudre de framboise par 20 g de poudre de fraise lyophilisée ; goût plus doux, rose pâle, acidité plus faible (éclats de fraise à poids égal).",
+      "Variante — Passion : remplacer la poudre de framboise par 15 g de poudre de fruit de la passion lyophilisée ; acidité marquée, teinte jaune doré (éclats de passion à poids égal).",
+      "Variante — Sans éclats : 25 g de poudre de framboise seule pour une couleur plus uniforme, mais un croquant moins marqué."
+    ],
+    "conseils_conservation": "Au réfrigérateur 1 semaine en boîte hermétique, au congélateur 3 mois ; décongeler au frais environ 1 heure. À poser juste avant le coulage d'une mousse ou d'une crème pour préserver le croquant."
+  }
+}
