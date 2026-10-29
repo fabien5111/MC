@@ -41,6 +41,9 @@ def controler(d):
             err.append(f'Étape {n} : peut_preparer_avance vaut true ou est omis')
         if e.get('precisions_avance') and not e.get('peut_preparer_avance'):
             err.append(f'Étape {n} : precisions_avance sans peut_preparer_avance')
+        # Case cochée = précisions obligatoires (durée, lieu, emballage).
+        if e.get('peut_preparer_avance') and not (isinstance(e.get('precisions_avance'), str) and e['precisions_avance'].strip()):
+            err.append(f'Étape {n} : peut_preparer_avance sans precisions_avance (durée, lieu, emballage)')
         if len(e.get('precisions_avance') or '') > 200:
             err.append(f'Étape {n} : precisions_avance dépasse 200 caractères')
         ni = len(e.get('instructions', []))
