@@ -126,12 +126,14 @@ function IdeaRow({
               ))}
           </select>
         </div>
-        <div>
+        {/* min-w-0 : un <select> réclame la largeur de sa plus longue option
+            (titre d'idée) et poussait le bouton hors de la carte (JEP-385). */}
+        <div className="min-w-0">
           <label className="text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold block mb-1">
             Fusionner dans
           </label>
           <div className="flex gap-2">
-            <select value={mergeTarget} onChange={(e) => setMergeTarget(e.target.value)} disabled={busy} className={`${FIELD} flex-1`}>
+            <select value={mergeTarget} onChange={(e) => setMergeTarget(e.target.value)} disabled={busy} className={`${FIELD} flex-1 min-w-0 w-full`}>
               <option value="">— choisir une idée —</option>
               {candidates
                 .filter((c) => c.id !== idea.id)
