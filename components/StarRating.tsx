@@ -26,6 +26,7 @@ export function StarRating({
   size = 16,
   className = '',
   compact = false,
+  souligne = false,
 }: {
   value: number | null | undefined;
   // Nombre d'avis affiché entre parenthèses, après les étoiles — omis si
@@ -38,7 +39,12 @@ export function StarRating({
   // ajoute les parenthèses (cf. RecipeCardLayout, AuthorCard, recette de la
   // semaine).
   compact?: boolean;
+  // Note cliquable (lien vers les avis) : le chiffre et le nombre d'avis
+  // sont soulignés — le soulignement d'un parent ne descend pas dans les
+  // `inline-flex`, il se pose donc ici.
+  souligne?: boolean;
 }) {
+  const ul = souligne ? ' underline underline-offset-2' : '';
   const avg = Number(value) || 0;
   if (avg <= 0) return null;
   if (compact) {
@@ -57,14 +63,14 @@ export function StarRating({
   const pct = Math.max(0, Math.min(1, avg / 5)) * 100;
   return (
     <span className={`inline-flex items-center gap-1.5 ${className}`}>
-      <span className="font-bold text-primary">{avg.toFixed(1).replace('.', ',')}</span>
+      <span className={`font-bold text-primary${ul}`}>{avg.toFixed(1).replace('.', ',')}</span>
       <span className="relative inline-flex">
         <StarRow filled={false} size={size} />
         <span className="absolute inset-0 overflow-hidden" style={{ width: `${pct}%` }}>
           <StarRow filled={true} size={size} />
         </span>
       </span>
-      {count != null && count > 0 && <span className="text-on-surface-variant opacity-70">({count})</span>}
+      {count != null && count > 0 && <span className={`text-on-surface-variant opacity-70${ul}`}>({count})</span>}
     </span>
   );
 }
