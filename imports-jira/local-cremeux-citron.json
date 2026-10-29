@@ -1,0 +1,94 @@
+{
+  "ticket": "local-cremeux-citron",
+  "recette": {
+    "titre": "Crémeux citron",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crémeux onctueux et acidulé à base de crème anglaise, qui se tient à la découpe une fois congelé. Parfait en insert d'entremets ou d'individuel pour apporter de la fraîcheur et du peps.",
+    "rendement": "1 cercle Ø 18 cm, 1,5 cm de hauteur — environ 370 g de crémeux utilisable (420 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Casserole",
+      "Fouet",
+      "Maryse",
+      "Thermomètre",
+      "Chinois",
+      "Mixeur plongeant",
+      "Cercle à entremets",
+      "Plaque",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crémeux citron",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 84,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Zeste de citron jaune",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron jaune",
+            "quantite": 70,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans un grand volume d'eau très froide pendant 10 minutes.",
+          "Porter le lait, la crème et les zestes à frémissement, puis couvrir et laisser infuser 10 minutes.",
+          "Blanchir les jaunes avec le sucre au fouet, sans faire mousser.",
+          "Verser le liquide chaud en filet sur les jaunes en fouettant, puis remettre l'ensemble dans la casserole.",
+          "Cuire à feu doux en remuant à la maryse jusqu'à 82-84 °C, la crème nappant la maryse, sans ébullition.",
+          "Hors du feu, ajouter la gélatine essorée et la dissoudre, puis passer au chinois et laisser refroidir à 35-40 °C.",
+          "Ajouter le jus de citron et mixer 1 minute au mixeur plongeant, sans incorporer d'air.",
+          "Couler dans un cercle posé sur une plaque filmée, filmer au contact et congeler au moins 4 heures."
+        ],
+        "conseils_etape": "Ne dépassez pas 84 °C, au-delà les jaunes coagulent et la crème devient granuleuse. Incorporez le jus de citron seulement vers 35-40 °C, et mixez sans lever le mixeur pour éviter les bulles. L'acidité affaiblit la gélatine : respectez le dosage pour une découpe nette.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 1 mois congelé, filmé au contact."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets Ø 16 cm, insert Ø 12 cm de 1 cm : ≈ 115 g de crémeux, soit ×0,31 de la recette.",
+      "Utilisation — Entremets Ø 20 cm, insert Ø 16 cm de 1,5 cm : ≈ 300 g de crémeux, soit ×0,81 de la recette.",
+      "Utilisation — Entremets Ø 24 cm, insert Ø 20 cm de 1 cm : ≈ 315 g de crémeux, soit ×0,85 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, insert Ø 5 cm de 1 cm : ≈ 20 g par pièce, soit 18 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert 18 x 4 cm de 1,5 cm : ≈ 110 g de crémeux, soit ×0,30 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert 28 x 4,5 cm de 1,5 cm : ≈ 190 g de crémeux, soit ×0,51 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 1 cm : ≈ 325 g de crémeux, soit ×0,88 de la recette.",
+      "Variante — Citron vert : remplacer le jus et le zeste de citron jaune par du citron vert, à poids égal.",
+      "Variante — Texture plus souple : réduire la gélatine à 5 g, pour un crémeux à consommer sans congélation préalable."
+    ],
+    "conseils_conservation": "Se conserve 1 mois au congélateur, filmé au contact. Démouler congelé et monter l'entremets directement avec l'insert congelé; il décongèle ensuite au réfrigérateur en 4 à 6 heures. Une fois décongelé, il se garde 2 jours au réfrigérateur."
+  }
+}
