@@ -1,0 +1,122 @@
+{
+  "ticket": "local-croustillant-cacahuete",
+  "recette": {
+    "titre": "Croustillant cacahuète",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Couche croquante et fondante au chocolat au lait, beurre de cacahuète, feuilletine et éclats de cacahuètes caramélisées relevés de fleur de sel, au goût de barre chocolatée. Elle apporte le croquant en semelle d'un entremets, d'une bûche ou d'une tartelette ; contient de l'arachide, du lait et du gluten.",
+    "rendement": "1 cadre 24 x 24 cm, environ 6 mm d'épaisseur — environ 365 g de croustillant utilisable (396 g d'ingrédients, perte ≈ 8 %)",
+    "ustensiles": [
+      "Casserole",
+      "Thermomètre de cuisson",
+      "Spatule en bois",
+      "Tapis en silicone",
+      "Couteau de chef",
+      "Cul-de-poule",
+      "Four à micro-ondes",
+      "Maryse",
+      "Cadre 24 x 24 cm",
+      "Plaque à pâtisserie",
+      "Papier cuisson",
+      "Cuillère",
+      "Rouleau à pâtisserie"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Cacahuètes caramélisées",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 2 semaines en boîte hermétique, au sec, à l'abri de l'humidité.",
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacahuètes",
+            "quantite": 80,
+            "unite": "g",
+            "commentaire": "grillées, non salées — allergène : arachide"
+          }
+        ],
+        "instructions": [
+          "Cuire le sucre et l'eau dans une casserole jusqu'à 118 °C.",
+          "Hors du feu, verser les cacahuètes d'un coup et remuer à la spatule jusqu'à ce que le sucre masse et devienne blanc et sableux.",
+          "Remettre sur feu moyen et remuer sans arrêt jusqu'à ce que le sucre refonde et enrobe les cacahuètes d'un caramel ambré.",
+          "Débarrasser aussitôt sur un tapis en silicone et séparer les cacahuètes à la spatule.",
+          "Laisser refroidir complètement à température ambiante.",
+          "Concasser grossièrement au couteau en éclats de 2 à 3 mm."
+        ],
+        "conseils_etape": "Remuer sans cesse pendant la recaramélisation : le caramel brûle en quelques secondes une fois ambré. Ne concasser que des cacahuètes parfaitement froides, sinon elles collent ; à l'humidité elles ramollissent, d'où un stockage hermétique."
+      },
+      {
+        "nom_etape": "Croustillant",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 1 semaine au réfrigérateur ou 2 mois au congélateur, filmé au contact.",
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 100,
+            "unite": "g",
+            "commentaire": "couverture 35 à 40 %"
+          },
+          {
+            "nom": "Beurre de cacahuète",
+            "quantite": 80,
+            "unite": "g",
+            "commentaire": "100 % cacahuète, sans sucre ajouté — allergène : arachide"
+          },
+          {
+            "nom": "Feuilletine",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Fondre le chocolat au lait au bain-marie ou au micro-ondes jusqu'à 40-45 °C.",
+          "Incorporer le beurre de cacahuète à la maryse jusqu'à obtenir un mélange lisse.",
+          "Ajouter la feuilletine, les cacahuètes caramélisées concassées et la fleur de sel, puis mélanger délicatement pour enrober sans écraser.",
+          "Poser le cadre 24 x 24 cm sur une plaque recouverte de papier cuisson et y verser le croustillant.",
+          "Étaler en couche régulière d'environ 6 mm, en lissant au dos d'une cuillère ou au rouleau à travers une seconde feuille de papier cuisson.",
+          "Laisser prendre 30 minutes au réfrigérateur avant de détailler ou de monter."
+        ],
+        "conseils_etape": "Ne pas dépasser 45 °C pour le chocolat au lait, qui grainerait ; un mélange trop chaud détrempe aussi la feuilletine. Enrober sans écraser, et étaler sans tasser, pour garder le croquant. Pour détailler net, couper le croustillant pris au froid avec un couteau chauffé."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, semelle de 6 mm : ≈ 125 g de croustillant, soit ×0,34 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, semelle de 6 mm : ≈ 200 g de croustillant, soit ×0,55 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, semelle de 6 mm : ≈ 285 g de croustillant, soit ×0,78 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, disques de 6 mm : ≈ 25 g pièce, soit 14 pièces avec la recette entière (aussi en fond de tartelettes Ø 8 cm).",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, semelle de 6 mm sous l'entremets : ≈ 90 g de croustillant, soit ×0,25 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, semelle de 6 mm sous l'entremets : ≈ 150 g de croustillant, soit ×0,41 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 6 mm : ≈ 205 g de croustillant, soit ×0,56 de la recette.",
+      "Variante — Remplacer le beurre de cacahuète par du praliné cacahuète pour un croustillant plus sucré et plus fluide.",
+      "Variante — Chocolat noir 55 % à la place du chocolat au lait, pour une version moins sucrée.",
+      "Variante — Remplacer une partie de la feuilletine par des crêpes dentelle émiettées ou du riz soufflé."
+    ],
+    "conseils_conservation": "Se garde 1 semaine au réfrigérateur ou 2 mois au congélateur, bien filmé au contact pour protéger le croquant de l'humidité ; décongeler au réfrigérateur dans son film. L'utiliser froid, voire congelé, pour le détailler net et le poser en semelle au moment du montage, à l'abri des crèmes et mousses qui le ramolliraient."
+  }
+}
