@@ -17,8 +17,10 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import { confirmationPseudoValide, MESSAGE_AVANT_SUPPRESSION } from '@/lib/anonymisation';
 
+// Zone de saisie bien visible (champ encadré, pas un simple filet) : c'est la
+// confirmation d'un geste irréversible. Bordure verte quand le pseudo est bon.
 const FIELD =
-  'w-full bg-transparent border-b border-outline-variant py-3 px-1 focus:outline-none focus:border-primary transition-all duration-300 font-body-md text-body-md placeholder:text-on-surface-variant/40';
+  'w-full rounded border-2 bg-surface-container-low px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors duration-200';
 
 type Abonnement = { libelle: string; stripe: boolean } | null;
 
@@ -94,7 +96,8 @@ function Contenu({ pseudo }: { pseudo: string }) {
           value={saisie}
           onChange={(e) => setSaisie(e.target.value)}
           autoComplete="off"
-          className={FIELD}
+          placeholder="Saisissez votre pseudo ici"
+          className={`${FIELD} ${confirme ? 'border-green-700 bg-green-50' : 'border-primary/60 focus:border-primary'}`}
         />
       </label>
       <button
