@@ -1,0 +1,91 @@
+{
+  "ticket": "local-cremeux-cafe",
+  "recette": {
+    "titre": "Crémeux café",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème anglaise infusée au café et collée à la gélatine : texture onctueuse et fondante, qui se tient parfaitement à la découpe une fois congelée. Il s'utilise en insert d'entremets ou de bûche, pour apporter une note de café intense au cœur du dessert.",
+    "rendement": "1 cercle Ø 16 cm, 1,7 cm de hauteur — environ 335 g de crémeux utilisable (429 g d'ingrédients, perte ≈ 22 %)",
+    "ustensiles": [
+      "Poêle",
+      "Casserole",
+      "Passoire fine",
+      "Fouet",
+      "Maryse",
+      "Thermomètre",
+      "Mixeur plongeant",
+      "Cercle Ø 16 cm",
+      "Rhodoïd",
+      "Plaque",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crémeux café",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 275,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Grains de café torréfiés",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 4,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Concasser grossièrement les grains de café et les torréfier à sec 2 minutes dans une poêle.",
+          "Porter le lait et la crème à frémissement dans une casserole, y verser les grains chauds, couvrir hors du feu et laisser infuser 20 minutes.",
+          "Réhydrater la gélatine dans de l'eau très froide pendant 10 minutes.",
+          "Filtrer à la passoire fine en pressant bien les grains (environ 275 g de liquide récupérés), puis réchauffer le liquide filtré dans la casserole jusqu'à frémissement.",
+          "Blanchir légèrement les jaunes avec le sucre au fouet, verser le liquide chaud en fouettant, puis remettre dans la casserole.",
+          "Cuire à feu moyen en remuant sans cesse à la maryse jusqu'à 82-84 °C au thermomètre, c'est-à-dire jusqu'à ce que la crème nappe la maryse.",
+          "Hors du feu, ajouter la gélatine essorée et mélanger jusqu'à dissolution, puis mixer 1 minute au mixeur plongeant en gardant le pied immergé.",
+          "Laisser tiédir vers 40 °C, couler dans le cercle Ø 16 cm filmé au fond, posé sur une plaque et chemisé de rhodoïd, lisser et congeler au minimum 4 heures avant de démouler."
+        ],
+        "conseils_etape": "Ne jamais dépasser 84 °C : au-delà, les jaunes coagulent et la crème devient granuleuse. Ne pas prolonger l'infusion au-delà de 20 minutes, sinon le café devient amer. Mixer sans incorporer d'air pour obtenir une surface lisse et une coupe nette.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 2 jours au frais, filmé au contact, ou 2 mois congelé."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, insert Ø 14 cm de 1 cm : ≈ 150 g de crémeux, soit ×0,45 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, insert Ø 16 cm de 1 cm : ≈ 195 g de crémeux, soit ×0,58 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, insert Ø 20 cm de 1 cm : ≈ 310 g de crémeux, soit ×0,93 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, insert Ø 5 cm de 1 cm : ≈ 20 g par pièce, soit 17 pièces avec la recette entière.",
+      "Utilisation — Individuels en cercles Ø 8 cm, insert Ø 6 cm de 1 cm : ≈ 30 g par pièce, soit 12 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert de 18 x 5 cm sur 1,5 cm de hauteur : ≈ 130 g de crémeux, soit ×0,39 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 1 cm : ≈ 315 g de crémeux, soit ×0,94 de la recette.",
+      "Variante — Version moka : ajouter 30 g de chocolat noir 64 % haché à la crème chaude avant de mixer.",
+      "Variante — Café soluble : remplacer les grains par 8 g de café soluble dissous dans le lait chaud, sans infusion ni filtration (rendement accru d'environ 25 g)."
+    ],
+    "conseils_conservation": "2 jours au réfrigérateur, filmé au contact, 2 mois au congélateur. Le démouler congelé pour l'insérer dans l'entremets ou la bûche, et laisser décongeler le dessert lentement au frais (environ 4 heures) pour une texture fondante."
+  }
+}
