@@ -1,0 +1,88 @@
+{
+  "ticket": "local-cremeux-framboise",
+  "recette": {
+    "titre": "Crémeux framboise",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème anglaise collée à la gélatine et parfumée à la framboise, onctueuse en bouche et assez ferme pour se découper net une fois congelée. Elle sert d'insert acidulé dans un entremets, une bûche ou un individuel.",
+    "rendement": "1 cercle Ø 16 cm, 2 cm de hauteur — environ 420 g de crémeux utilisable (476 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Bol",
+      "Casserole",
+      "Fouet",
+      "Maryse",
+      "Thermomètre",
+      "Mixeur plongeant",
+      "Cercle à entremets Ø 16 cm",
+      "Plaque",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crémeux framboise",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de framboise",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 6,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en feuilles 10 minutes dans un bol d'eau très froide.",
+          "Chauffer le lait et la crème liquide dans une casserole jusqu'au frémissement.",
+          "Mélanger les jaunes d'œufs et le sucre au fouet, sans les faire blanchir.",
+          "Verser le lait et la crème chauds sur les jaunes en fouettant, remettre dans la casserole et cuire à feu moyen jusqu'à 82-84 °C, en remuant à la maryse, jusqu'à ce que la crème nappe la maryse.",
+          "Hors du feu, ajouter la gélatine essorée et remuer jusqu'à dissolution complète.",
+          "Verser sur la purée de framboise et mixer au mixeur plongeant, sans faire entrer d'air.",
+          "Laisser descendre à 35-40 °C en remuant, puis couler dans le cercle Ø 16 cm posé sur une plaque recouverte de film alimentaire et lisser.",
+          "Filmer au contact et congeler au moins 4 heures avant de démouler."
+        ],
+        "conseils_etape": "Ne pas dépasser 84 °C : au-delà, les jaunes granulent. Mixer en gardant la tête du mixeur immergée pour ne pas créer de bulles, qui abîment la découpe. Couler entre 35 et 40 °C : plus chaud, la prise est ralentie ; plus froid, la gélatine commence à prendre.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 3 mois au congélateur, filmé au contact."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert Ø 12 cm pour entremets Ø 16 cm, 2 cm de hauteur : ≈ 235 g de crémeux, soit ×0,56 de la recette.",
+      "Utilisation — Insert Ø 16 cm pour entremets Ø 20 cm, 2 cm de hauteur : ≈ 420 g de crémeux, soit ×1,00 de la recette.",
+      "Utilisation — Insert Ø 20 cm pour entremets Ø 24 cm, 2 cm de hauteur : ≈ 655 g de crémeux, soit ×1,56 de la recette.",
+      "Utilisation — Insert Ø 5 cm pour individuels Ø 7 cm, 2 cm de hauteur : ≈ 40 g par pièce, soit 10 pièces avec la recette entière.",
+      "Utilisation — Insert de bûche en gouttière 20 x 7 cm, demi-cylindre Ø 4 cm de 18 cm de long : ≈ 120 g de crémeux, soit ×0,29 de la recette.",
+      "Utilisation — Insert de bûche en gouttière 30 x 8 cm, demi-cylindre Ø 5 cm de 28 cm de long : ≈ 285 g de crémeux, soit ×0,68 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 1 cm de hauteur, à détailler en inserts : ≈ 340 g de crémeux, soit ×0,81 de la recette.",
+      "Variante — Autres fruits : remplacer la purée de framboise à poids égal par de la passion, de la mangue ou de la fraise, en ajustant le sucre à l'acidité du fruit."
+    ],
+    "conseils_conservation": "Au réfrigérateur : 2 jours en cercle, filmé au contact. Au congélateur : 3 mois, filmé au contact. Un insert se pose congelé dans le montage et décongèle au froid en 4 à 6 heures ; le crémeux est à son meilleur ainsi, bien tenu à la découpe."
+  }
+}
