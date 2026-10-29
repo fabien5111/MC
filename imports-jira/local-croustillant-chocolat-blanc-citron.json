@@ -1,0 +1,79 @@
+{
+  "ticket": "local-croustillant-chocolat-blanc-citron",
+  "recette": {
+    "titre": "Croustillant chocolat blanc citron",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Croustillant fin et croquant, au chocolat blanc relevé par les zestes de citron pour une note fraîche et acidulée. Il sert de fond ou d'insert croquant sous une mousse ou une crème onctueuse.",
+    "rendement": "1 cadre 30 x 20 cm, 5 mm d'épaisseur — environ 240 g de croustillant utilisable (253 g d'ingrédients, perte ≈ 5 %)",
+    "ustensiles": [
+      "Cul-de-poule",
+      "Casserole",
+      "Thermomètre",
+      "Râpe fine",
+      "Maryse",
+      "Cadre 30 x 20 cm",
+      "Spatule coudée",
+      "Feuille de papier cuisson"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Croustillant chocolat blanc citron",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuilletine",
+            "quantite": 105,
+            "unite": "g"
+          },
+          {
+            "nom": "Zestes de citron",
+            "quantite": 3,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Poser le cadre sur une feuille de papier cuisson.",
+          "Fondre le chocolat blanc et le beurre au bain-marie, sans dépasser 40 °C.",
+          "Mélanger jusqu'à obtenir une texture lisse et brillante.",
+          "Laisser tiédir à 30 °C environ.",
+          "Zester le citron finement sur le mélange tiède, au dernier moment.",
+          "Verser la feuilletine et mélanger à la maryse sans l'écraser, jusqu'à ce que chaque éclat soit enrobé.",
+          "Étaler aussitôt dans le cadre sur 5 mm d'épaisseur et lisser à la spatule coudée.",
+          "Réserver au réfrigérateur 30 minutes, jusqu'à prise ferme."
+        ],
+        "conseils_etape": "Ne pas dépasser 40 °C pour que le chocolat blanc ne graine pas. Zester au dernier moment, sur le mélange tiède, pour garder des zestes parfumés et une note acidulée franche. Mélanger sans écraser la feuilletine et étaler vite, avant que le beurre ne fige.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 3 jours au frais, en boîte hermétique et à l'abri de l'humidité."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 5 mm : ≈ 80 g de croustillant, soit ×0,33 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 5 mm : ≈ 125 g de croustillant, soit ×0,52 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 5 mm : ≈ 180 g de croustillant, soit ×0,75 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 5 mm : ≈ 15 g par pièce, soit 15 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, fond de 5 mm : ≈ 55 g de croustillant, soit ×0,23 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, fond de 5 mm : ≈ 95 g de croustillant, soit ×0,40 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 5 mm : ≈ 130 g de croustillant, soit ×0,54 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, fond de 5 mm : ≈ 230 g de croustillant, soit ×0,96 de la recette.",
+      "Variante — Yuzu : remplacer les 3 g de zestes de citron par 3 g de zestes de yuzu, plus floraux et plus amers.",
+      "Variante — Orange : remplacer les zestes de citron par 5 g de zestes d'orange, pour une version plus douce et moins acidulée."
+    ],
+    "conseils_conservation": "Se garde 3 jours au réfrigérateur dans une boîte hermétique, à l'abri de l'humidité qui ramollit la feuilletine. Se congèle 1 mois à plat, entre deux feuilles ; décongeler 30 minutes au réfrigérateur. À poser sur son support juste avant de couler la mousse ou la crème, pour garder tout le croquant."
+  }
+}
