@@ -736,8 +736,11 @@ motif obligatoire, ni soi-même ni un admin). « Supprimer définitivement »
   supprimé au lieu d'être transféré : le fantôme a déjà le sien et
   `subscriptions_one_default` n'en admet qu'un ; un échec ici **arrête avant
   le ménage**, mais la résiliation Stripe et les transferts déjà faits ne se
-  défont pas — relancer la suppression achève, un nouveau fantôme reprenant le
-  reste) → ménage (contact : demande sans ticket Jira
+  défont pas — relancer la suppression achève, en **reprenant le même profil
+  anonyme** : il est repéré par `profiles.notes = 'anonymisation:<id d'origine>'`,
+  posée à sa création et effacée en toute fin d'opération — un compte n'a jamais
+  plus d'une ligne « Membre supprimé » ; un profil repris n'est jamais défait en
+  cas d'échec, et la ligne de journal admin n'est écrite qu'une fois) → ménage (contact : demande sans ticket Jira
   supprimée, avec ticket débarrassée d'e-mail / IP hachée / contexte ; photos
   de `jp-contact` supprimées ; recettes et leurs photos de `jp-photos`, sauf
   celles qu'une autre ligne cite encore — duplicata, extraction ; tables

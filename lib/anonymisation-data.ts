@@ -216,59 +216,91 @@ export async function anonymiserMembre(
   const etaitDesactive = profil.status === 'disabled';
 
   // ── 1. Fantôme ───────────────────────────────────────────
-  const identite = identiteFantome(randomUUID());
-  const cree = await client.auth.admin.createUser({
-    email: identite.email,
-    password: randomBytes(32).toString('hex'),
-    email_confirm: true,
-    ban_duration: '876000h',
-    user_metadata: { full_name: NOM_MEMBRE_SUPPRIME },
-  });
-  if (cree.error || !cree.data.user) {
-    return { ok: false, erreur: `Création du profil anonyme impossible : ${cree.error?.message ?? 'réponse vide'}`, status: 502 };
+  // Une opération interrompue puis relancée reprend le profil anonyme de la
+  // tentative précédente (repéré par `profiles.notes`, marque effacée en fin
+  // d'opération) : un compte n'a jamais plus d'une ligne « Membre supprimé ».
+  const marque = `anonymisation:${p.membreId}`;
+  const { data: precedent } = await db
+    .from('profiles')
+    .select('id')
+    .eq('status', STATUT_SUPPRIME)
+    .eq('notes', marque)
+    .limit(1)
+    .maybeSingle();
+  const reutilise = !!(precedent as { id: string } | null)?.id;
+  let fantomeId: string;
+  if (reutilise) {
+    fantomeId = (precedent as { id: string }).id;
+  } else {
+    const identite = identiteFantome(randomUUID());
+    const cree = await client.auth.admin.createUser({
+      email: identite.email,
+      password: randomBytes(32).toString('hex'),
+      email_confirm: true,
+      ban_duration: '876000h',
+      user_metadata: { full_name: NOM_MEMBRE_SUPPRIME },
+    });
+    if (cree.error || !cree.data.user) {
+      return { ok: false, erreur: `Création du profil anonyme impossible : ${cree.error?.message ?? 'réponse vide'}`, status: 502 };
+    }
+    fantomeId = cree.data.user.id;
+    // `handle_new_user` a pu créer la ligne : upsert, jamais insert.
+    const { error: ecritureFantome } = await db.from('profiles').upsert(
+      {
+        id: fantomeId,
+        full_name: NOM_MEMBRE_SUPPRIME,
+        username: identite.slug,
+        email: null,
+        status: STATUT_SUPPRIME,
+        // `role` est NOT NULL : on le laisse au défaut de la colonne (membre ordinaire).
+        notes: marque,
+        bio: null,
+        avatar_url: null,
+        banner_url: null,
+        cover_url: null,
+      },
+      { onConflict: 'id' },
+    );
+    if (ecritureFantome) {
+      await client.auth.admin.deleteUser(fantomeId);
+      await db.from('profiles').delete().eq('id', fantomeId);
+      return {
+        ok: false,
+        erreur:
+          `Profil anonyme non enregistré : ${ecritureFantome.message}. ` +
+          `Si une contrainte refuse le statut « ${STATUT_SUPPRIME} », la migration JEP-33 doit être jouée d'abord.`,
+        status: 500,
+      };
+    }
   }
-  const fantomeId = cree.data.user.id;
+  // Un profil anonyme repris porte déjà des données transférées : on ne le défait jamais.
   const defaireFantome = async () => {
+    if (reutilise) return;
     const { error } = await client.auth.admin.deleteUser(fantomeId);
     if (error) console.error('anonymisation (fantôme non défait):', error.message);
     await db.from('profiles').delete().eq('id', fantomeId);
   };
 
-  // `handle_new_user` a pu créer la ligne : upsert, jamais insert.
-  const { error: ecritureFantome } = await db.from('profiles').upsert(
-    {
-      id: fantomeId,
-      full_name: NOM_MEMBRE_SUPPRIME,
-      username: identite.slug,
-      email: null,
-      status: STATUT_SUPPRIME,
-      // `role` est NOT NULL : on le laisse au défaut de la colonne (membre ordinaire).
-      bio: null,
-      avatar_url: null,
-      banner_url: null,
-      cover_url: null,
-    },
-    { onConflict: 'id' },
-  );
-  if (ecritureFantome) {
-    await defaireFantome();
-    return {
-      ok: false,
-      erreur:
-        `Profil anonyme non enregistré : ${ecritureFantome.message}. ` +
-        `Si une contrainte refuse le statut « ${STATUT_SUPPRIME} », la migration JEP-33 doit être jouée d'abord.`,
-      status: 500,
-    };
-  }
-
   // ── 2. Journal (admin) ───────────────────────────────────
   if (p.origine === 'admin') {
-    const { error } = await db.from('member_moderation_events').insert({
-      member_id: fantomeId,
-      admin_id: p.adminId ?? null,
-      action: ACTION_JOURNAL_ANONYMISATION,
-      reason: p.motif ?? null,
-    });
+    let dejaTrace = false;
+    if (reutilise) {
+      const { data } = await db
+        .from('member_moderation_events')
+        .select('id')
+        .eq('member_id', fantomeId)
+        .eq('action', ACTION_JOURNAL_ANONYMISATION)
+        .limit(1);
+      dejaTrace = !!data?.length;
+    }
+    const { error } = dejaTrace
+      ? { error: null }
+      : await db.from('member_moderation_events').insert({
+          member_id: fantomeId,
+          admin_id: p.adminId ?? null,
+          action: ACTION_JOURNAL_ANONYMISATION,
+          reason: p.motif ?? null,
+        });
     if (error) {
       await defaireFantome();
       return {
@@ -480,6 +512,8 @@ export async function anonymiserMembre(
     };
   }
   noter('profil', (await db.from('profiles').delete().eq('id', p.membreId)).error);
+  // L'opération est achevée : la marque qui reliait le profil anonyme à l'ancien identifiant disparaît.
+  noter('profil anonyme', (await db.from('profiles').update({ notes: null }).eq('id', fantomeId)).error);
   invaliderBlocage(p.membreId);
 
   // ── 7. E-mail de confirmation ────────────────────────────
