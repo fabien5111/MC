@@ -1,0 +1,75 @@
+{
+  "ticket": "local-croustillant-chocolat-caramelise",
+  "recette": {
+    "titre": "Croustillant chocolat caramélisé",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Croustillant au chocolat blond aux notes biscuitées et caramel, relevé d'une pointe de fleur de sel, avec un éclat net sous la dent. Il sert de fond ou d'insert croquant sous une crème, une mousse ou un entremets, et s'accorde avec la banane, le café et la pomme.",
+    "rendement": "1 cadre 24 x 24 cm, environ 6 mm d'épaisseur — environ 340 g de croustillant utilisable (360 g d'ingrédients, perte ≈ 5 %)",
+    "ustensiles": [
+      "Bain-marie",
+      "Saladier",
+      "Maryse",
+      "Cadre 24 x 24 cm",
+      "Papier sulfurisé",
+      "Spatule coudée",
+      "Couteau"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Croustillant chocolat caramélisé",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 1 semaine au frais en boîte hermétique, ou 2 mois au congélateur.",
+        "ingredients": [
+          {
+            "nom": "Chocolat blond",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuilletine",
+            "quantite": 129,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hacher le chocolat blond et le faire fondre doucement au bain-marie, sans dépasser 45 °C.",
+          "Ajouter le beurre coupé en morceaux et mélanger jusqu'à obtenir un mélange lisse et brillant.",
+          "Émietter légèrement la feuilletine dans un saladier si elle est en gros morceaux.",
+          "Verser le chocolat fondu sur la feuilletine, ajouter la fleur de sel et mélanger à la maryse jusqu'à ce que chaque éclat soit enrobé.",
+          "Étaler aussitôt dans le cadre posé sur du papier sulfurisé, sur environ 6 mm, et lisser à la spatule coudée.",
+          "Réserver au froid 30 minutes jusqu'à prise complète, puis détailler à la forme du montage."
+        ],
+        "conseils_etape": "Ne pas dépasser 45 °C, le chocolat blond brûle vite et devient grumeleux. Mélanger vite et sans écraser la feuilletine, sinon le croustillant perd son croquant ; étaler sans attendre, le mélange prend rapidement."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 6 mm : ≈ 120 g de croustillant, soit ×0,35 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 6 mm : ≈ 185 g de croustillant, soit ×0,54 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 6 mm : ≈ 265 g de croustillant, soit ×0,78 de la recette.",
+      "Utilisation — Individuels en cercles Ø 8 cm, fond de 6 mm : ≈ 30 g par pièce, soit environ 11 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, en fond de 6 mm : ≈ 85 g de croustillant, soit ×0,25 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, en fond de 6 mm : ≈ 140 g de croustillant, soit ×0,41 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 6 mm : ≈ 190 g de croustillant, soit ×0,56 de la recette.",
+      "Variante — Chocolat blanc caramélisé au four maison : étaler 210 g de chocolat blanc en couche de 5 mm sur une plaque avec papier sulfurisé, cuire à 120 °C pendant 45 à 60 minutes en remuant toutes les 10 minutes jusqu'à une couleur noisette et une texture lisse, laisser refroidir, mixer, puis l'utiliser à la place du chocolat blond (200 g).",
+      "Variante — Version café : ajouter 3 g de café soluble au chocolat fondu."
+    ],
+    "conseils_conservation": "1 semaine au réfrigérateur dans une boîte hermétique, entre deux papiers ; 2 mois au congélateur. Pas de décongélation nécessaire : l'insérer directement dans le montage. Pour garder le croquant, l'utiliser rapidement et protéger le fond de l'humidité d'une crème par une fine couche de chocolat."
+  }
+}
