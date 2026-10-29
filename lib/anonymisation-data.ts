@@ -308,6 +308,11 @@ export async function anonymiserMembre(
     noter('avis', (await db.from('comments').update({ user_id: fantomeId, batch_id: null }).eq('user_id', p.membreId)).error);
     noter('idées', (await db.from('ideas').update({ author_id: fantomeId }).eq('author_id', p.membreId)).error);
   }
+  // Le plan par défaut (type DEFAULT, gratuit) n'a aucune valeur comptable :
+  // on le retire plutôt que de le transférer. Le profil anonyme a déjà reçu le
+  // sien à sa création, et l'index `subscriptions_one_default` refuse d'en
+  // avoir deux. Ce sont les abonnements payés, essais et dons qui sont gardés.
+  noter('abonnement par défaut', (await db.from('subscriptions').delete().eq('user_id', p.membreId).eq('type', 'DEFAULT')).error);
   for (const [table, colonne, extra] of TABLES_TRANSFEREES) {
     noter(table, (await db.from(table).update({ [colonne]: fantomeId, ...extra }).eq(colonne, p.membreId)).error);
   }
@@ -324,7 +329,10 @@ export async function anonymiserMembre(
   if (avertissements.length > 0) {
     return {
       ok: false,
-      erreur: `Transfert des données conservées incomplet, rien n'a été supprimé : ${avertissements.join(' ; ')}`,
+      erreur:
+        `Opération interrompue avant le ménage (${avertissements.join(' ; ')}). Aucun contenu n'a été supprimé ` +
+        `et ce qui devait rester est en sûreté : relancer la suppression l'achève. ` +
+        (abonnementResilie ? `L'abonnement, lui, a déjà été résilié.` : ''),
       status: 500,
     };
   }
