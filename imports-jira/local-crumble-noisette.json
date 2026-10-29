@@ -1,0 +1,79 @@
+{
+  "ticket": "local-crumble-noisette",
+  "recette": {
+    "titre": "Crumble noisette",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crumble sablé, croustillant et friable, au goût franc de noisette torréfiée et de cassonade caramélisée. Il apporte du croquant en insert d'entremets (5 mm) et s'accorde avec le praliné, le café et la pomme.",
+    "rendement": "1 plaque 40 x 30 cm, couche de 5 mm — environ 325 g de crumble utilisable (341 g d'ingrédients, perte ≈ 4 %)",
+    "ustensiles": [
+      "Robot pâtissier avec feuille",
+      "Plaque de cuisson",
+      "Papier cuisson",
+      "Spatule"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crumble noisette",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 45,
+        "temps_cuisson_minutes": 26,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 5 jours en boîte hermétique après cuisson, ou 3 mois au congélateur.",
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 85,
+            "unite": "g",
+            "commentaire": "froid, en dés"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 85,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 85,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisette",
+            "quantite": 85,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Torréfier la poudre de noisette 8 minutes à 150 °C sur une plaque, en remuant à mi-cuisson, puis la laisser refroidir complètement.",
+          "Mélanger le beurre froid en dés, la cassonade, la farine, la poudre de noisette refroidie et le sel dans le bol du robot muni de la feuille.",
+          "Sabler à vitesse lente jusqu'à obtenir des grains irréguliers de 3 à 5 mm, sans former de pâte.",
+          "Répartir les grains en une couche régulière de 5 mm sur une plaque recouverte de papier cuisson, sans tasser.",
+          "Réserver 20 minutes au froid.",
+          "Cuire 15 à 18 minutes à 160 °C, jusqu'à une coloration blonde dorée.",
+          "Laisser refroidir complètement sur la plaque, puis émietter ou détailler selon l'emploi."
+        ],
+        "conseils_etape": "Laisser la poudre de noisette refroidir complètement avant de l'incorporer : tiède, elle fait fondre le beurre et le crumble devient gras. Garder le beurre froid et sabler brièvement pour des grains irréguliers ; sans passage au froid, le crumble s'étale à la cuisson. Il durcit en refroidissant : le sortir du four dès qu'il est doré."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, couche de 5 mm : ≈ 55 g de crumble, soit ×0,17 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, couche de 5 mm : ≈ 85 g de crumble, soit ×0,26 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche de 5 mm : ≈ 125 g de crumble, soit ×0,38 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, couche de 5 mm : ≈ 10 g par pièce, soit environ 30 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, fond croustillant de 5 mm : ≈ 40 g de crumble, soit ×0,12 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, fond croustillant de 5 mm : ≈ 65 g de crumble, soit ×0,20 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 5 mm : ≈ 90 g de crumble, soit ×0,28 de la recette.",
+      "Variante — Version café : ajouter 3 g de café moulu très fin avec la farine.",
+      "Variante — Version cacao : remplacer 10 g de farine par 10 g de cacao en poudre non sucré."
+    ],
+    "conseils_conservation": "Après cuisson, 5 jours à température ambiante en boîte hermétique, ou 3 mois au congélateur (cuit ou cru, réparti en grains). Le crumble cuit se recroustille 5 minutes à 150 °C. Dans un entremets, l'isoler de la crème humide par une fine couche de chocolat blanc ou de beurre de cacao, et le poser le plus tard possible avant le montage."
+  }
+}
