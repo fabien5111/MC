@@ -1,0 +1,78 @@
+{
+  "ticket": "local-croustillant-chocolat-noir-et-grue",
+  "recette": {
+    "titre": "Croustillant chocolat noir et grué",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Couche croquante et peu sucrée, à l'amertume marquée du chocolat noir et du grué de cacao, qui se casse net sous la dent. Elle équilibre une mousse lactée ou un crémeux vanille dans un entremets.",
+    "rendement": "1 plaque 30 x 20 cm, 5 mm d'épaisseur — environ 280 g de croustillant utilisable (300 g d'ingrédients, perte ≈ 7 %)",
+    "ustensiles": [
+      "Casserole (bain-marie)",
+      "Cul-de-poule",
+      "Thermomètre",
+      "Maryse",
+      "Papier cuisson",
+      "Rouleau à pâtisserie",
+      "Plaque",
+      "Couteau"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Croustillant chocolat noir et grué",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir 66%",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuilletine",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Grué de cacao",
+            "quantite": 40,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hacher le chocolat noir et le beurre de cacao.",
+          "Les faire fondre au bain-marie jusqu'à 45-50 °C, sans dépasser 50 °C.",
+          "Laisser redescendre le mélange à 35-40 °C en remuant à la maryse.",
+          "Ajouter la feuilletine et le grué de cacao, puis mélanger délicatement sans écraser la feuilletine.",
+          "Étaler le mélange au rouleau, sans appuyer, entre deux feuilles de papier cuisson posées sur une plaque, en un rectangle de 30 x 20 cm sur 5 mm d'épaisseur.",
+          "Réserver au réfrigérateur 30 minutes, jusqu'à prise ferme.",
+          "Détailler au couteau chauffé à la forme voulue."
+        ],
+        "conseils_etape": "Ne jamais dépasser 50 °C au chocolat fondu, et l'utiliser à 35-40 °C : trop chaud, il ramollit la feuilletine ; trop froid, il épaissit et empêche d'étaler finement. Le mélange doit napper chaque éclat sans être détrempé : il se tient en masse compacte qui ne laisse pas de chocolat au fond du cul-de-poule.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 1 semaine au frais entre deux feuilles de papier cuisson."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 5 mm : ≈ 95 g de croustillant, soit ×0,34 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 5 mm : ≈ 145 g de croustillant, soit ×0,52 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 5 mm : ≈ 210 g de croustillant, soit ×0,75 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 5 mm : ≈ 18 g par pièce, soit 15 pièces avec la recette entière.",
+      "Utilisation — Individuels en cercles Ø 8 cm, fond de 5 mm : ≈ 23 g par pièce, soit 11 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, semelle (fond) de 5 mm : ≈ 65 g de croustillant, soit ×0,23 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 5 mm : ≈ 150 g de croustillant, soit ×0,54 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, fond de 5 mm : ≈ 270 g de croustillant, soit ×0,96 de la recette.",
+      "Variante — Version noisette : remplacer 30 g de feuilletine par 30 g d'éclats de noisettes torréfiées.",
+      "Variante — Relever avec 1 g de fleur de sel ajoutée avec la feuilletine, pour exhausser le goût du chocolat."
+    ],
+    "conseils_conservation": "Jusqu'à 1 semaine au réfrigérateur entre deux feuilles de papier cuisson, dans une boîte hermétique, à l'abri de l'humidité qui ramollit la feuilletine. Se congèle jusqu'à 1 mois ; l'utiliser alors encore gelé, directement sous la mousse. À poser en fond ou en insert juste avant la mousse ou le crémeux, pour rester croustillant."
+  }
+}
