@@ -1,0 +1,79 @@
+{
+  "ticket": "local-crumble",
+  "recette": {
+    "titre": "Crumble",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Un sablé émietté, beurré et doré, qui apporte le croquant et la note de beurre cuit. Il se pose en fond, en insert ou en finition sur une crème, une mousse ou un fruit.",
+    "rendement": "1 plaque 40 x 30 cm, couche de 5 mm — environ 335 g de crumble utilisable (351 g d'ingrédients, perte ≈ 4 %)",
+    "ustensiles": [
+      "Batteur avec feuille",
+      "Plaque de cuisson",
+      "Papier cuisson",
+      "Cercles à pâtisserie"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crumble",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Cuit, se garde 5 jours en boîte hermétique ; cru, 3 mois au congélateur, à cuire sans le décongeler.",
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 100,
+            "unite": "g",
+            "commentaire": "froid, en dés"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger la farine, le sucre, la poudre d'amande et le sel au batteur muni de la feuille.",
+          "Ajouter le beurre froid en dés et sabler à vitesse lente jusqu'à obtenir des grains irréguliers, de la taille d'un petit pois.",
+          "Réserver 30 minutes au réfrigérateur.",
+          "Émietter la pâte en grains sur une plaque garnie de papier cuisson, ou dans des cercles, sans tasser, sur 5 mm d'épaisseur.",
+          "Cuire à 160 °C pendant 15 minutes, jusqu'à une coloration blonde dorée.",
+          "Laisser refroidir complètement sur la plaque, puis détacher en morceaux à la main."
+        ],
+        "conseils_etape": "Le beurre doit rester froid et en petits morceaux visibles : un beurre fondu donne une pâte compacte au lieu de grains. Ne pas tasser avant la cuisson, et attendre le refroidissement complet pour que le crumble devienne croustillant."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, couche croquante de 5 mm : ≈ 55 g de crumble, soit ×0,16 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, couche croquante de 5 mm : ≈ 90 g de crumble, soit ×0,27 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche croquante de 5 mm : ≈ 125 g de crumble, soit ×0,37 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 5 mm : ≈ 10 g par pièce, soit environ 30 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, fond croquant (semelle) de 5 mm : ≈ 40 g de crumble, soit ×0,12 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, fond croquant (semelle) de 5 mm : ≈ 65 g de crumble, soit ×0,19 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 5 mm : ≈ 90 g de crumble, soit ×0,27 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, couche de 5 mm : ≈ 160 g de crumble, soit ×0,48 de la recette.",
+      "Variante — Noisette : remplacer la poudre d'amande par de la poudre de noisette.",
+      "Variante — Cacao : remplacer 15 g de farine par 15 g de cacao en poudre non sucré."
+    ],
+    "conseils_conservation": "Cuit, se conserve 5 jours en boîte hermétique à température ambiante, à l'abri de l'humidité. Cru, se congèle 3 mois et se cuit sans décongélation, en ajoutant 2 à 3 minutes. À poser sur le dessert au dernier moment pour garder son croquant."
+  }
+}
