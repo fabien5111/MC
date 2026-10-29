@@ -87,6 +87,8 @@ STRUCTURE — clés exactes, aucune clé en plus :
       "temps_cuisson_minutes": 12,
       "temperature_cuisson_celsius": 180,
       "anticipation_jours": 0,
+      "peut_preparer_avance": true,
+      "precisions_avance": "Se garde 3 jours au frais, filmée au contact ; 1 mois au congélateur",
       "ingredients": [
         { "nom": "Farine T55", "quantite": 125, "unite": "g" }
       ],
@@ -138,9 +140,14 @@ Couvrir au minimum, quand le composant s'y prête : • entremets ronds Ø 16, 2
 Calcul : à la SURFACE pour un biscuit, une pâte ou un fond (cercle = π × r²) ; au VOLUME pour une crème, une mousse, un insert ou un glaçage (surface × hauteur, masse volumique ≈ 1 g/cm³, ≈ 0,6 g/cm³ pour une mousse aérée). Partir de la masse UTILISABLE N au cm² (ou au cm³) du format de référence, jamais de la somme des ingrédients. Arrondir à 5 g près.
 Ajouter ensuite 0 à 3 entrées commençant par "Variante — " : variantes de parfum, de texture ou substitutions (ex. version cacao). Rien d'autre dans "astuces_recette" : les conseils de réussite vont dans "conseils_etape".
 
+Préparation à l'avance — par étape
+"peut_preparer_avance" et "precisions_avance" sont FACULTATIFS : présents ensemble, ou OMIS ensemble (jamais false, jamais null, jamais l'un sans l'autre).
+Les écrire sur une étape quand son résultat se garde jusqu'au montage SANS perdre de qualité : pâte sucrée ou sablée crue, crème d'amande, biscuit cuit, praliné, insert gélifié, crème cuite refroidie… Les omettre quand le résultat s'emploie aussitôt : appareil monté à couler tout de suite, meringue française, chantilly, glaçage à utiliser à température, pâte à cuire dès qu'elle est prête. « Se congèle » ne suffit pas : la question est « peut-on la faire la veille ou avant sans dégrader le dessert ? ».
+"precisions_avance" est OBLIGATOIRE dès que la case est cochée : une phrase de 200 caractères au plus, qui dit la durée, le lieu (frais, congélateur, température ambiante) et l'emballage ou l'état de conservation (« Se garde 3 jours au frais, filmée au contact ; 1 mois au congélateur »). Elle ne contredit jamais "conseils_conservation" (mêmes durées).
+À ne pas confondre avec "anticipation_jours" (le jour PRÉVU de l'étape) ni avec "temps_attente_minutes" (un repos qui fait partie de la recette) : une pâte qui doit reposer une nuit a anticipation_jours 1 ; qu'elle puisse aussi être faite 3 jours avant relève de la case.
+
 Autres champs
 "anticipation_jours" : nombre de jours AVANT le moment où le composant doit être prêt (0 = le jour même ; 1 pour une pâte qui repose une nuit).
-"peut_preparer_avance" / "precisions_avance" : à n'écrire (true + une phrase de 200 caractères au plus, ex. « Se garde 3 jours au frais, filmée au contact ») que pour une étape réellement préparable à l'avance, d'après la recette ; sinon OMETTRE les deux clés. À ne pas confondre avec "anticipation_jours" (jour prévu).
 "commentaire" (ingrédient, facultatif) : précision de la ligne (« mou », « tamisée »), le nom restant l'ingrédient seul ; omettre sans précision.
 "temps_attente_minutes" : repos, refroidissement, prise au froid. null quand il n'y en a pas, comme pour les autres temps.
 "conseils_conservation" : durée au réfrigérateur et au congélateur, emballage, décongélation, et moment idéal pour l'utiliser dans un montage.
@@ -148,7 +155,7 @@ Autres champs
 Une recette éprouvée, aux proportions classiques ; aucune invention.
 
 VÉRIFICATION AVANT DE RÉPONDRE
-JSON valide ; au plus 3 étapes ; toutes les unités en "g" ; "conseils_etape" rempli sur chaque étape ; somme des ingrédients = S ; N = S × (1 − P/100) ; utilisations calculées sur N et cohérentes entre elles (un Ø 24 cm demande plus qu'un Ø 20 cm, dans le rapport des surfaces ou des volumes) ; "astuces_recette" ne contient que des « Utilisation — » et des « Variante — ».
+JSON valide ; au plus 3 étapes ; toutes les unités en "g" ; "conseils_etape" rempli sur chaque étape ; somme des ingrédients = S ; N = S × (1 − P/100) ; utilisations calculées sur N et cohérentes entre elles (un Ø 24 cm demande plus qu'un Ø 20 cm, dans le rapport des surfaces ou des volumes) ; "astuces_recette" ne contient que des « Utilisation — » et des « Variante — » ; chaque étape conservable porte "peut_preparer_avance": true ET "precisions_avance" (≤ 200 caractères, durées identiques à "conseils_conservation"), les autres n'ont aucune des deux clés.
 
 ## REVUE DU CHEF
 
@@ -165,6 +172,7 @@ A. Technique
 - Ordre des gestes, repères de texture, points critiques ; aucun geste manquant entre deux instructions.
 - Dosages sensibles : gélatine, levure, sel, agents de texture.
 - Sécurité alimentaire : œufs crus, pasteurisation quand elle est nécessaire, refroidissement, durées de conservation réalistes.
+- Préparation à l'avance, étape par étape : la case "peut_preparer_avance" est-elle justifiée (le résultat se garde jusqu'au montage sans perte de qualité), ou manque-t-elle sur une étape qui le permet ? "precisions_avance" est-il présent dès que la case est cochée, avec durée, lieu et emballage réalistes, et les mêmes durées que "conseils_conservation" ? Ajoute ou retire les deux clés ensemble.
 
 B. Quantités
 - Toutes les unités en "g" ; quantités réalisables en cuisine (œufs entiers proches de multiples de 50 g, jaunes de 20 g, blancs de 30 g).
