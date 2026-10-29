@@ -27,6 +27,8 @@
         "temps_cuisson_minutes": 10,
         "temperature_cuisson_celsius": 200,
         "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "2 jours à température ambiante en boîte hermétique ; 1 mois au congélateur, filmé à plat",
         "ingredients": [
           {
             "nom": "Jaunes d'œufs",
@@ -74,7 +76,7 @@
           "Dresser à la poche munie de la douille unie en bâtonnets accolés en biais sur 1 cm d'épaisseur, puis saupoudrer deux fois de sucre glace à 5 minutes d'intervalle.",
           "Cuire 9 à 10 minutes jusqu'à une coloration blonde, faire glisser le papier sur une grille et laisser refroidir."
         ],
-        "conseils_etape": "La pâte doit rester gonflée et tenir à la poche : un mélange trop travaillé après l'ajout des poudres fait retomber la meringue et donne un biscuit plat."
+        "conseils_etape": "La pâte doit rester gonflée et tenir à la poche : un mélange trop travaillé après l'ajout des poudres fait retomber la meringue et donne un biscuit plat. Le double saupoudrage de sucre glace forme la croûte perlée caractéristique du biscuit cuillère."
       }
     ],
     "astuces_recette": [
@@ -86,8 +88,7 @@
       "Utilisation — Bûche en gouttière 20 x 7 cm, semelle (fond) de 1 cm : ≈ 55 g de pâte, soit ×0,12 de la recette.",
       "Utilisation — Bûche en gouttière 30 x 8 cm, enveloppe (bande 30 x 18 cm) : ≈ 210 g de pâte, soit ×0,45 de la recette.",
       "Utilisation — Cadre carré 24 x 24 cm, fond de 1 cm : ≈ 225 g de pâte, soit ×0,48 de la recette.",
-      "Astuce — Le double saupoudrage de sucre glace forme la croûte perlée caractéristique du biscuit cuillère.",
-      "Astuce — Variante parfumée : ajouter aux jaunes le zeste d'un citron ou les graines d'une gousse de vanille."
+      "Variante — Parfumée : ajouter aux jaunes le zeste d'un citron ou les graines d'une gousse de vanille."
     ],
     "conseils_conservation": "2 jours à température ambiante dans une boîte hermétique. Congélation jusqu'à 1 mois, à plat, bien filmé ; décongeler 30 minutes à température ambiante, sans retirer le film. Idéal la veille du montage : bien sec, il absorbe mieux le sirop d'imbibage."
   }

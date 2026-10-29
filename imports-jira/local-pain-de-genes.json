@@ -20,13 +20,15 @@
     ],
     "etapes": [
       {
-        "nom_etape": "Appareil et cuisson",
+        "nom_etape": "Pain de Gênes",
         "page": null,
         "temps_preparation_minutes": 25,
         "temps_attente_minutes": 30,
         "temps_cuisson_minutes": 16,
         "temperature_cuisson_celsius": 170,
         "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Filmé au contact : 3 jours au frais ; 2 mois au congélateur",
         "ingredients": [
           {
             "nom": "Pâte d'amande 50 %",
