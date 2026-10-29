@@ -71,7 +71,10 @@ function Contenu({ pseudo }: { pseudo: string }) {
         <li>Vos fournées, listes de courses, listes de recettes, favoris, abonnements et partages sont supprimés.</li>
         <li>Vos idées de la boîte à idées restent en ligne, signées « Membre supprimé ».</li>
         <li>Vos demandes de contact sont effacées de vos données personnelles.</li>
-        <li>Vous pourrez créer un nouveau compte avec la même adresse.</li>
+        <li>
+          Vous pourrez créer un nouveau compte avec la même adresse, mais vous ne retrouverez aucune de vos données : il
+          repartira de zéro.
+        </li>
         <li>La suppression est définitive.</li>
       </ul>
       {abonnement && (

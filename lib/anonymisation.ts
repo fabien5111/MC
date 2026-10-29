@@ -40,7 +40,7 @@ export const MOTIF_MAX = 500;
 
 /** Message affiché au membre avant confirmation (validé le 28/10/2026). */
 export const MESSAGE_AVANT_SUPPRESSION =
-  'Vos recettes, y compris publiées, seront supprimées. Vos notes et avis resteront en ligne, sans lien avec votre identité.';
+  'Vos recettes, y compris publiées, seront supprimées. Vos notes et avis resteront en ligne, signés « Membre supprimé ».';
 
 export function estProfilSupprime(statut: string | null | undefined): boolean {
   return statut === STATUT_SUPPRIME;
