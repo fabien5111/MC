@@ -99,6 +99,8 @@ export const LIBELLE_ACTION_JOURNAL: Record<string, string> = {
   // JEP-262 : forçage de la confirmation d'e-mail, tracé dans le même journal.
   confirmation_email: "Confirmation d'e-mail forcée",
   relance_confirmation: 'Relance du mail de confirmation',
+  // JEP-33 : suppression du compte par un admin (ligne portée par le profil anonyme).
+  anonymisation: 'Anonymisation du compte',
 };
 
 export type DemandeModeration = {

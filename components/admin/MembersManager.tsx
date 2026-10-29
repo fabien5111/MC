@@ -24,7 +24,7 @@ import { matchesSearch } from '@/lib/text-search';
 // (compte de démonstration), qui n'a rien à voir avec l'abonnement.
 // 'unconfirmed' : compte inscrit dont l'adresse e-mail n'est pas confirmée
 // (JEP-262) — dimension distincte du statut, d'où son propre filtre.
-type Filter = 'all' | 'active' | 'pending' | 'suspended' | 'disabled' | 'demo' | 'trial' | 'unconfirmed';
+type Filter = 'all' | 'active' | 'pending' | 'suspended' | 'disabled' | 'deleted' | 'demo' | 'trial' | 'unconfirmed';
 
 function inviteLinkFor(email: string): string {
   return `${window.location.origin}/connexion?invite=${encodeURIComponent(email)}`;
@@ -64,6 +64,7 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
       pending: rows.filter((m) => m.status === 'pending').length,
       suspended: rows.filter((m) => m.status === 'suspended').length,
       disabled: rows.filter((m) => m.status === 'disabled').length,
+      deleted: rows.filter((m) => m.status === 'deleted').length,
     }),
     [rows],
   );
@@ -192,6 +193,7 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
           {chip('pending', 'Invités')}
           {chip('suspended', 'Suspendus')}
           {chip('disabled', 'Désactivés')}
+          {chip('deleted', 'Supprimés')}
           {chip('demo', 'Démo')}
           {chip('trial', 'Essai en cours')}
           {chip('unconfirmed', 'Non confirmés')}
@@ -285,7 +287,9 @@ export function MembersManager({ members, iaOverview }: { members: Member[]; iaO
                                   ? `Suspendu → ${formatDate(m.moderation.jusquAu)}`
                                   : 'Suspendu',
                               )
-                            : badge('bg-error-container text-on-error-container', 'Désactivé')}
+                            : m.status === 'deleted'
+                              ? badge('bg-surface-container text-on-surface-variant', 'Supprimé')
+                              : badge('bg-error-container text-on-error-container', 'Désactivé')}
                       {m.emailConfirmed === false && (
                         <span className="ml-1">{badge('bg-amber-100 text-amber-900', 'E-mail non confirmé')}</span>
                       )}

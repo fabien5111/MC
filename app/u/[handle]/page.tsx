@@ -30,7 +30,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { handle } = await params;
   const profile = await getPublicProfile(handle);
   // Compte désactivé (JEP-272) : même titre qu'un profil inexistant.
-  const visible = profile && profile.status !== 'disabled';
+  // Profil anonyme d'un compte supprimé (JEP-33) : aucune vitrine, pour personne.
+  const visible = profile && profile.status !== 'disabled' && profile.status !== 'deleted';
   return { title: visible ? `${profile.full_name || profile.username} | Je pâtisse !` : 'Profil introuvable' };
 }
 
@@ -42,7 +43,7 @@ export default async function PublicProfilePage({ params, searchParams }: Params
   const { cat } = await searchParams;
 
   const profile = await getPublicProfile(handle);
-  if (!profile) notFound();
+  if (!profile || profile.status === 'deleted') notFound();
   // Compte désactivé (JEP-272, lot 2) : la vitrine disparaît comme si le
   // profil n'existait pas — sauf pour l'équipe, qui doit pouvoir constater.
   if (profile.status === 'disabled') {

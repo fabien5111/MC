@@ -64,7 +64,7 @@ export function signer(cleSecrete: string, methode: string, expire: number, chem
   return createHmac(DIGEST, cleSecrete).update(corps).digest('hex');
 }
 
-function urlSignee(conteneur: Conteneur, cleObjet: string, methode: 'PUT' | 'GET', dureeS: number): string {
+function urlSignee(conteneur: Conteneur, cleObjet: string, methode: 'PUT' | 'GET' | 'DELETE', dureeS: number): string {
   const { origine, baseV1 } = racine();
   const chemin = cheminObjet(baseV1, conteneur, cleObjet);
   const expire = Math.floor(Date.now() / 1000) + dureeS;
@@ -141,6 +141,23 @@ export function cleDepuisUrlCanonique(conteneur: Conteneur, valeur: string): str
 export function urlAffichablePrivee(conteneur: Conteneur, valeur: string): string {
   const cle = cleDepuisUrlCanonique(conteneur, valeur);
   return cle ? urlDeLecture(conteneur, cle) : valeur;
+}
+
+/**
+ * Supprime un objet du stockage (JEP-33, suppression d'un compte), par une
+ * TempURL `DELETE` signée côté serveur et consommée aussitôt — jamais
+ * transmise au navigateur. Un 404 (objet déjà absent) vaut succès. Ne lève
+ * jamais : renvoie `false` en cas d'échec, que l'appelant journalise.
+ */
+export async function supprimerObjet(conteneur: Conteneur, cleObjet: string): Promise<boolean> {
+  try {
+    const url = urlSignee(conteneur, cleObjet, 'DELETE', 60);
+    const r = await fetch(url, { method: 'DELETE', cache: 'no-store', signal: AbortSignal.timeout(10_000) });
+    return r.ok || r.status === 404;
+  } catch (e) {
+    console.error('stockage (suppression):', (e as Error).message);
+    return false;
+  }
 }
 
 export { CONTENEURS };
