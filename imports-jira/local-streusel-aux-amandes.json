@@ -1,0 +1,82 @@
+{
+  "ticket": "local-streusel-aux-amandes",
+  "recette": {
+    "titre": "Streusel aux amandes",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Miettes dorées, sablées et croustillantes, au goût de beurre et d'amande grillée. Il apporte le croquant à un entremets, un insert crémeux, une tartelette ou un dessert aux fruits.",
+    "rendement": "1 plaque 40 x 30 cm, miettes sur 5 mm — environ 385 g de streusel utilisable (402 g d'ingrédients, perte ≈ 4 %)",
+    "ustensiles": [
+      "Robot avec feuille",
+      "Balance",
+      "Plaque de cuisson",
+      "Papier cuisson"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Streusel aux amandes",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 45,
+        "temps_cuisson_minutes": 16,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Cuit, se garde 1 semaine en boîte hermétique au sec ; cru, 1 mois au congélateur.",
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 100,
+            "unite": "g",
+            "commentaire": "froid"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 2,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Tailler le beurre froid en petits dés.",
+          "Mélanger la farine, la poudre d'amande, le sucre semoule et le sel dans la cuve du robot munie de la feuille.",
+          "Ajouter le beurre en dés et sabler à petite vitesse jusqu'à obtenir un sable grossier.",
+          "Arrêter dès que la pâte forme de grosses miettes irrégulières, sans la pétrir.",
+          "Réserver 30 minutes au réfrigérateur et préchauffer le four à 170 °C.",
+          "Émietter la pâte à la main sur une plaque recouverte de papier cuisson, en gardant des miettes de 5 à 10 mm.",
+          "Cuire à 170 °C pendant 16 minutes, en remuant les miettes à mi-cuisson, jusqu'à une coloration blonde dorée.",
+          "Laisser refroidir complètement sur la plaque avant de détacher les miettes."
+        ],
+        "conseils_etape": "Garder le beurre bien froid et ne pas pétrir : une pâte lisse donnerait une plaque dure, et non des miettes. Le repos au froid fige le beurre et garde les miettes irrégulières à la cuisson. Laisser refroidir complètement avant de manipuler : le streusel ne devient croustillant qu'en refroidissant."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, une couche de miettes de 5 mm : ≈ 65 g de streusel, soit ×0,17 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, une couche de miettes de 5 mm : ≈ 100 g de streusel, soit ×0,26 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, une couche de miettes de 5 mm : ≈ 145 g de streusel, soit ×0,38 de la recette.",
+      "Utilisation — Individuels en cercles Ø 8 cm, fond croquant de 5 mm : ≈ 15 g par pièce, soit environ 23 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, semelle croquante (fond) : ≈ 45 g de streusel, soit ×0,12 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, semelle croquante (fond) : ≈ 75 g de streusel, soit ×0,19 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de miettes de 5 mm : ≈ 105 g de streusel, soit ×0,27 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, couche de miettes de 5 mm : ≈ 185 g de streusel, soit ×0,48 de la recette.",
+      "Variante — Streusel cacao : remplacer 15 g de farine T55 par 15 g de cacao en poudre non sucré.",
+      "Variante — Streusel noisette : remplacer la poudre d'amande par de la poudre de noisette.",
+      "Variante — Streusel plus rustique : remplacer le sucre semoule par de la cassonade."
+    ],
+    "conseils_conservation": "Cuit et refroidi : 1 semaine à température ambiante en boîte hermétique, au sec, ou 2 mois au congélateur (à remettre 5 minutes au four à 150 °C pour retrouver le croquant). Cru, en miettes : 1 mois au congélateur, à cuire sans décongeler. En montage, le déposer au dernier moment ou l'isoler de la crème par une fine couche de chocolat blanc ou de beurre de cacao, sinon il ramollit."
+  }
+}
