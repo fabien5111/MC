@@ -1,0 +1,78 @@
+{
+  "ticket": "local-crumble-sarrasin",
+  "recette": {
+    "titre": "Crumble sarrasin",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crumble sablé, très croustillant, au goût rustique de noisette grillée et à la légère amertume du sarrasin. Il apporte du croquant dans un entremet et s'accorde au caramel, à la pomme et au chocolat au lait.",
+    "rendement": "3 cercles Ø 18 cm, 5 mm d'épaisseur — environ 315 g de crumble utilisable (330 g d'ingrédients, perte ≈ 4 %)",
+    "ustensiles": [
+      "Robot pâtissier avec feuille",
+      "Tamis",
+      "Plaque à pâtisserie",
+      "Tapis de cuisson en silicone"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crumble sarrasin",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre demi-sel",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine de sarrasin",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Couper le beurre froid en dés de 1 cm.",
+          "Tamiser les deux farines et les mélanger avec la cassonade et la poudre d'amande dans le bol du robot muni de la feuille.",
+          "Ajouter le beurre et sabler à vitesse lente jusqu'à obtenir des grains irréguliers de 2 à 5 mm, sans former de pâte lisse.",
+          "Répartir les grains sur une plaque couverte d'un tapis de cuisson et réserver 30 minutes au réfrigérateur.",
+          "Cuire à 160 °C chaleur tournante pendant 15 minutes, en remuant délicatement à mi-cuisson, jusqu'à une coloration dorée uniforme.",
+          "Laisser refroidir complètement sur la plaque, puis émietter."
+        ],
+        "conseils_etape": "Garder le beurre bien froid et sabler brièvement : un beurre ramolli donne une pâte compacte qui ne croustille pas. Stopper la cuisson à la couleur noisette, car le sarrasin brunit vite et devient amer au-delà. Pour que le croustillant de 5 mm tienne au contact d'une crème ou d'un insert de pomme, enrober les grains refroidis d'une fine couche de chocolat au lait fondu (environ 10 % du poids de crumble).",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Cuit, se garde 1 semaine en boîte hermétique au sec, ou 3 mois au congélateur."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, couche de 5 mm : ≈ 85 g de crumble, soit ×0,27 de la recette.",
+      "Utilisation — Entremets rond Ø 18 cm, couche de 5 mm : ≈ 105 g de crumble, soit ×0,33 de la recette (3 entremets avec la recette entière).",
+      "Utilisation — Entremets rond Ø 20 cm, couche de 5 mm : ≈ 130 g de crumble, soit ×0,41 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche de 5 mm : ≈ 185 g de crumble, soit ×0,59 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, couche de 5 mm : ≈ 15 g par pièce (15,9 g), soit 19 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, fond (semelle) croustillant de 5 mm : ≈ 60 g de crumble, soit ×0,19 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 5 mm : ≈ 135 g de crumble, soit ×0,43 de la recette.",
+      "Variante — Sans gluten : remplacer les 50 g de farine T55 par 30 g de farine de riz et 20 g de fécule de maïs, et choisir une farine de sarrasin certifiée sans gluten (risque de contamination croisée au moulin).",
+      "Variante — Noisette : remplacer la poudre d'amande par de la poudre de noisette torréfiée.",
+      "Variante — Pomme : ajouter 1 g de cannelle en poudre aux farines."
+    ],
+    "conseils_conservation": "Crumble cuit et refroidi : 1 semaine en boîte hermétique à température ambiante et au sec, 3 mois au congélateur sans décongélation préalable. Crumble cru : 3 jours au réfrigérateur ou 2 mois au congélateur, à cuire directement. À poser dans l'entremet le plus tard possible pour garder le croquant."
+  }
+}
