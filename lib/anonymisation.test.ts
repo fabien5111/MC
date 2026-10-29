@@ -102,6 +102,7 @@ describe('composerEmailSuppression', () => {
     expect(m.texte).toContain('Comme vous l’avez demandé');
     expect(m.texte).toContain('« Membre supprimé »');
     expect(m.texte).toContain('aucun nouveau prélèvement');
+    expect(m.texte).toContain('ne retrouverez aucune de vos données');
     expect(m.texte).toContain('https://dev.jepatisse.com/connexion');
   });
   it('donne le motif d’une suppression par l’équipe', () => {

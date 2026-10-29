@@ -154,14 +154,14 @@ export function composerEmailSuppression(p: {
   if (p.origine === 'admin' && p.motif) lignes.push('', `Motif : ${p.motif}`);
   lignes.push(
     '',
-    'Vos recettes, vos fournées, vos listes et vos données personnelles ont été supprimées. Vos notes et avis restent en ligne, signés « Membre supprimé », sans lien avec votre identité.',
+    'Vos recettes, vos fournées, vos listes et vos données personnelles ont été supprimées. Vos notes et avis restent en ligne, signés « Membre supprimé ».',
   );
   if (p.abonnementResilie) {
     lignes.push('', 'Votre abonnement a été résilié : aucun nouveau prélèvement ne sera effectué.');
   }
   lignes.push(
     '',
-    `Vous pouvez à tout moment créer un nouveau compte avec la même adresse : ${p.urlSite.replace(/\/$/, '')}/connexion`,
+    `Vous pouvez à tout moment créer un nouveau compte avec la même adresse, mais vous ne retrouverez aucune de vos données : il repartira de zéro. ${p.urlSite.replace(/\/$/, '')}/connexion`,
   );
   if (p.origine === 'admin') {
     lignes.push('', `Pour toute question : ${p.urlSite.replace(/\/$/, '')}/contact`);

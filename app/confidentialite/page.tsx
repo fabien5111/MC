@@ -479,7 +479,7 @@ export default function ConfidentialitePage() {
           <Liste>
             <li>
               vos notes et avis sur les recettes, ainsi que vos idées de la boîte à idées, restent en ligne, signés
-              « Membre supprimé », sans lien avec votre identité ;
+              « Membre supprimé » ;
             </li>
             <li>
               un membre qui a créé une fournée à partir de l&apos;une de vos recettes en conserve une copie du texte
