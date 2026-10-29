@@ -1,0 +1,96 @@
+{
+  "ticket": "local-crumble-epices",
+  "recette": {
+    "titre": "Crumble épices",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crumble sablé et croustillant, parfumé à la cannelle, au gingembre et à la muscade, avec une note beurrée et caramélisée. Il apporte du croquant en insert d'un entremets ou d'une bûche de Noël, et s'accorde avec le chocolat, la poire, l'orange et le marron.",
+    "rendement": "1 plaque 40 x 30 cm, couche de 5 mm — environ 330 g de crumble cru utilisable (345 g d'ingrédients, perte ≈ 4 %)",
+    "ustensiles": [
+      "Robot pâtissier avec feuille",
+      "Balance",
+      "Plaque à pâtisserie",
+      "Papier cuisson"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crumble épices",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 1 semaine cuit en boîte hermétique, ou 3 mois cru congelé",
+        "ingredients": [
+          {
+            "nom": "Farine T55",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Cannelle en poudre",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Gingembre en poudre",
+            "quantite": 1.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Muscade en poudre",
+            "quantite": 0.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 100,
+            "unite": "g",
+            "commentaire": "froid, en dés"
+          }
+        ],
+        "instructions": [
+          "Mélanger dans le bol du robot, muni de la feuille, la farine, la poudre d'amande, la cassonade, le sel, la cannelle, le gingembre et la muscade.",
+          "Ajouter le beurre froid coupé en dés.",
+          "Sabler à petite vitesse jusqu'à obtenir des grains irréguliers, de la taille d'un petit pois, sans former de boule de pâte.",
+          "Réserver 20 minutes au frais et préchauffer le four à 170 °C.",
+          "Émietter le crumble du bout des doigts sur une plaque recouverte de papier cuisson, en couche de 5 mm, sans tasser.",
+          "Cuire 15 minutes jusqu'à une coloration dorée uniforme.",
+          "Laisser refroidir complètement sur la plaque, puis égrener ou découper selon l'usage."
+        ],
+        "conseils_etape": "Garder le beurre bien froid et arrêter le sablage dès que les grains se forment : une pâte trop travaillée donne un crumble dur et non friable. Ne pas tasser avant la cuisson et cuire à cœur, car un crumble insuffisamment cuit ramollit vite au contact d'une crème. Avant le montage, enrober les morceaux refroidis d'un peu de beurre de cacao ou de chocolat fondu pour préserver le croquant."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, couche de 5 mm en insert : ≈ 55 g de crumble, soit ×0,17 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, couche de 5 mm en insert : ≈ 85 g de crumble, soit ×0,26 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche de 5 mm en insert : ≈ 125 g de crumble, soit ×0,38 de la recette.",
+      "Utilisation — Individuels en cercles Ø 8 cm, couche de 5 mm : la recette entière donne environ 24 pièces (≈ 14 g chacune).",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert d'environ 18 x 5,5 cm sur 5 mm : ≈ 25 g de crumble, soit ×0,08 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert d'environ 28 x 6 cm sur 5 mm : ≈ 45 g de crumble, soit ×0,14 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 5 mm en insert : ≈ 90 g de crumble, soit ×0,27 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, couche de 5 mm en insert : ≈ 160 g de crumble, soit ×0,48 de la recette.",
+      "Variante — Épices à spéculoos : remplacer la cannelle, le gingembre et la muscade (4 g au total) par 4 g d'épices à spéculoos, le reste inchangé.",
+      "Variante — Noisette : remplacer la poudre d'amande par 40 g de poudre de noisette, pour un accord plus marqué avec le chocolat.",
+      "Variante — Orange : ajouter le zeste finement râpé d'une orange non traitée au moment du sablage."
+    ],
+    "conseils_conservation": "Cuit et refroidi : 1 semaine en boîte hermétique à l'abri de l'humidité, 3 mois au congélateur. Cru en grains : 3 jours au réfrigérateur, 3 mois au congélateur, cuisson directe sans décongélation. À insérer dans l'entremet ou la bûche au dernier moment, après l'avoir isolé de la crème par une fine couche de chocolat ou de beurre de cacao."
+  }
+}
