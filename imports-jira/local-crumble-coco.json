@@ -1,0 +1,76 @@
+{
+  "ticket": "local-crumble-coco",
+  "recette": {
+    "titre": "Crumble coco",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crumble sablé et croustillant à la noix de coco râpée, au parfum exotique et au goût de beurre doré. Il apporte du croquant à un entremet et s'accorde aux fruits acides (mangue, passion, ananas, citron vert).",
+    "rendement": "1 plaque 30 x 30 cm, 5 mm d'épaisseur — environ 335 g de crumble utilisable (350 g d'ingrédients, perte ≈ 4 %)",
+    "ustensiles": [
+      "Four",
+      "Cul-de-poule",
+      "Plaque de cuisson",
+      "Papier cuisson",
+      "Spatule"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crumble coco",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 1 semaine en boîte hermétique, une fois cuit et complètement refroidi.",
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 100,
+            "unite": "g",
+            "commentaire": "froid, coupé en dés"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Noix de coco râpée",
+            "quantite": 80,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 160 °C.",
+          "Chemiser la plaque de papier cuisson.",
+          "Mélanger le sucre, la farine et la noix de coco râpée dans un cul-de-poule.",
+          "Ajouter le beurre froid coupé en dés.",
+          "Sabler du bout des doigts jusqu'à obtenir des grains irréguliers.",
+          "Répartir les grains sur la plaque en couche d'environ 5 mm, sans tasser.",
+          "Cuire 15 minutes à 160 °C en remuant à la spatule à mi-cuisson, jusqu'à une coloration blond doré.",
+          "Laisser refroidir complètement sur la plaque avant de casser ou d'utiliser."
+        ],
+        "conseils_etape": "La noix de coco colore très vite et passe de blond à brûlé en quelques minutes : surveiller dès la 10e minute et sortir le crumble dès qu'il est blond doré, car il continue de colorer hors du four. Garder le beurre bien froid pour obtenir des grains sablés et non une pâte."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, fond de 5 mm : ≈ 75 g de crumble, soit ×0,22 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, fond de 5 mm : ≈ 115 g de crumble, soit ×0,34 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, fond de 5 mm : ≈ 170 g de crumble, soit ×0,51 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, fond de 5 mm : ≈ 15 g par pièce, soit environ 23 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, semelle croustillante de 5 mm : ≈ 50 g de crumble, soit ×0,15 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, semelle croustillante de 5 mm : ≈ 90 g de crumble, soit ×0,27 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, fond de 5 mm : ≈ 120 g de crumble, soit ×0,36 de la recette.",
+      "Variante — Ajouter le zeste de 1 citron vert pour renforcer l'accord avec les fruits exotiques.",
+      "Variante — Remplacer le sucre semoule par de la cassonade pour une note plus caramélisée."
+    ],
+    "conseils_conservation": "Cuit et refroidi, se conserve 1 semaine en boîte hermétique à température ambiante, au sec. Peut se congeler cuit 1 mois. Cru, les grains se gardent 3 jours au frais. Idéal à poser sur le fond de l'entremet juste avant l'assemblage pour garder le croquant."
+  }
+}
