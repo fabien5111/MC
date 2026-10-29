@@ -1,0 +1,220 @@
+{
+  "ticket": "JEP-117",
+  "recette": {
+    "titre": "Éclair façon tarte au citron meringuée (Christophe Adam)",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une réinterprétation en format éclair du grand classique de la tarte au citron meringuée, inspirée du travail de Christophe Adam : une pâte à choux croustillante garnie d'un crémeux citron acidulé, nappée pour la brillance, puis surmontée d'une meringue italienne au citron vert légèrement caramélisée au chalumeau.",
+    "rendement": "Environ 8 à 10 éclairs (d'environ 11 à 12 cm de longueur)",
+    "ustensiles": [
+      "Casseroles",
+      "Cul-de-poule / récipients pour bain-marie",
+      "Thermomètre de cuisson (thermosonde)",
+      "Mixeur plongeant",
+      "Film alimentaire",
+      "Tamis",
+      "Spatule / cuillère en bois",
+      "Maryse",
+      "Robot pâtissier muni d'un fouet (ou batteur électrique)",
+      "Poches à douille",
+      "Douille petits fours 16 mm",
+      "Douille cannelée fine ou douille à garnir (pour le perçage et garnissage)",
+      "Ciseaux (pour découpe en biseau de la poche)",
+      "Plaque de cuisson et papier cuisson ou tapis silicone perforé",
+      "Râpe / zesteur (type Microplane)",
+      "Pinceau pâtissier",
+      "Chalumeau de cuisine"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crème citron",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 260,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": 83,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron jaune",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Zestes de citron jaune râpés",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers battus (environ 2 œufs)",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux (froid)",
+            "quantite": 145,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre en versant directement le jus de citron dessus, puis laisser reposer pendant 20 minutes.",
+          "Verser le mélange gélatine/jus de citron dans un cul-de-poule avec le sucre semoule, les zestes râpés et les œufs battus.",
+          "Placer sur un bain-marie chaud et fouetter continuellement jusqu'à ce que la préparation atteigne 83 °C.",
+          "Retirer du feu et laisser redescendre la température de la crème entre 45 °C et 50 °C.",
+          "Couper le beurre froid en morceaux, l'ajouter à la crème, puis émulsionner au mixeur plongeant jusqu'à obtention d'une texture parfaitement lisse et brillante.",
+          "Verser la crème dans un plat à fond large, filmer au contact et réserver au réfrigérateur pendant au moins 4 heures."
+        ],
+        "conseils_etape": "Ne pas incorporer le beurre au-dessus de 50 °C pour préserver l'émulsion et la fraîcheur du beurre. Le plat large accélère le refroidissement à cœur et limite le développement bactérien. À préparer la veille ou au moins 4 à 5 heures avant le montage."
+      },
+      {
+        "nom_etape": "Pâte à choux",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Extrait de vanille liquide",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine (tamisée)",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers (battus)",
+            "quantite": 140,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans une casserole, réunir l'eau, le lait, le beurre coupé en dés, le sucre, le sel et l'extrait de vanille.",
+          "Chauffer sur feu moyen pour faire fondre le beurre complètement avant d'amener l'ensemble à franche ébullition.",
+          "Retirer du feu, verser la farine tamisée en une seule fois et mélanger vivement à la spatule jusqu'à disparition des grumeaux.",
+          "Remettre la casserole sur feu doux et dessécher la panade pendant environ 3 minutes en remuant sans arrêt, jusqu'à ce qu'une fine pellicule se forme au fond.",
+          "Transvaser la pâte dans un cul-de-poule et incorporer les œufs battus petit à petit à la spatule ou à la feuille, en attendant que chaque ajout soit bien absorbé avant le suivant.",
+          "Vérifier la consistance : la pâte doit être souple, luisante, et le sillon tracé à la spatule doit se refermer lentement.",
+          "Mettre la pâte dans une poche munie d'une douille petits fours de 16 mm et dresser des éclairs d'environ 11 à 12 cm sur une plaque recouverte de papier cuisson.",
+          "Enfourner à 180 °C pendant environ 20 minutes sans ouvrir la porte du four pendant la première phase de pousse.",
+          "Laisser refroidir complètement sur une grille."
+        ],
+        "conseils_etape": "L'utilisation d'une douille petits fours cannelée favorise un développement régulier et limite le risque de craquellement à la cuisson. Ne jamais ouvrir le four durant le premier quart d'heure pour éviter l'affaissement des choux. Chaleur statique recommandée."
+      },
+      {
+        "nom_etape": "Meringue italienne au citron vert",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": 121,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs (température ambiante)",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Citron vert non traité (zeste)",
+            "quantite": 1,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Dans une petite casserole, verser l'eau puis le sucre semoule et chauffer pour former un sirop jusqu'à 118 °C - 121 °C.",
+          "Parallèlement, commencer à faire monter les blancs d'œufs en neige à vitesse moyenne au robot.",
+          "Dès que le sirop atteint la température voulue, couper le feu, laisser débuller quelques secondes, puis le verser en filet continu le long de la paroi intérieure du bol tout en battant à grande vitesse.",
+          "Poursuivre le fouettage pendant 5 à 10 minutes jusqu'à ce que la cuve tiédisse et que la meringue forme un bec d'oiseau ferme, lisse et brillant.",
+          "Râper le zeste d'un citron vert entier au-dessus de la meringue, puis l'incorporer délicatement à la maryse sans casser le volume.",
+          "Mettre la meringue dans une poche à douille (coupée en biseau ou munie de la douille de votre choix)."
+        ],
+        "conseils_etape": "Verser le sucre liquide sur la paroi et non directement sur les pales du fouet pour éviter les projections de sucre durci. Manipuler délicatement la maryse lors de l'ajout des zestes pour conserver tout le foisonnement. À réaliser juste avant le dressage."
+      },
+      {
+        "nom_etape": "Montage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Nappage neutre (chauffé pour liquéfaction)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Citron vert non traité (zeste)",
+            "quantite": 1,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Percer 3 petits trous sous chaque éclair refroidi à l'aide d'une douille ou de la pointe d'un couteau.",
+          "Détendre légèrement la crème citron froide au fouet, la mettre en poche et garnir généreusement chaque éclair par les orifices.",
+          "Chauffer le nappage neutre pour le fluidifier, puis appliquer une fine couche au pinceau sur le dessus de chaque éclair pour apporter une brillance uniforme.",
+          "Pocher harmonieusement la meringue italienne au citron vert sur le dessus des éclairs.",
+          "Caraméliser légèrement la meringue au chalumeau de cuisine.",
+          "Râper des zestes frais de citron vert sur la meringue en finition."
+        ],
+        "conseils_etape": "Vérifier que l'éclair soit bien lourd en main après pochage de la crème pour s'assurer qu'il n'y a aucun vide interne. Passer le chalumeau en mouvement continu sans stationner pour éviter de brûler le relief de la meringue. À réaliser 1 à 2 heures avant le service."
+      }
+    ],
+    "astuces_recette": [
+      "Ajustement du sucre : si vous préférez une dominante très acidulée, il est possible de diminuer légèrement le sucre de la crème citron (80 g au lieu de 100 g), la meringue italienne apportant déjà une note très sucrée.",
+      "Émulsion au mixeur plongeant : ne faites pas l'impasse sur le mixage dynamique de la crème citron après l'ajout du beurre ; cela garantit une texture soyeuse et une tenue optimale sans sensation de gras.",
+      "Organisation temporelle : réalisez la crème la veille pour lui laisser le temps de cristalliser parfaitement au frais, et pochez les choux le jour J afin de garantir un contraste maximal entre le croustillant de la pâte et l'onctuosité de l'appareil."
+    ],
+    "conseils_conservation": "Servir bien frais. Le contraste entre le croustillant de la pâte à choux, la tonicité du crémeux citron et la douceur aérée de la meringue italienne est à son apogée dans les 4 heures suivant le montage. Conserver au réfrigérateur entre 2 °C et 4 °C pendant 24 heures maximum dans une boîte non close hermétiquement pour limiter le ramollissement de la pâte à choux par l'humidité de la crème. La congélation de l'éclair monté est déconseillée (la meringue italienne et la pâte à choux garnie perdent leur tenue à la décongélation)."
+  }
+}

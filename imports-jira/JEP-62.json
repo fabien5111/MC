@@ -1,0 +1,307 @@
+{
+  "ticket": "JEP-62",
+  "recette": {
+    "titre": "Bûche marron-cassis",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une bûche de Noël moderne et aérienne composée d'un insert compoté de cassis acidulé, d'un biscuit moelleux aux marrons, d'un croustillant feuillantine chocolat au lait, et d'une ganache montée à la vanille, le tout sublimé par un glaçage miroir aux marrons et un décor vermicelle.",
+    "rendement": "Une bûche de 25 cm (environ 8 personnes)",
+    "ustensiles": [
+      "Casseroles",
+      "Saladier",
+      "Cul-de-poule",
+      "Robot pâtissier muni d'un fouet",
+      "Mixeur plongeant",
+      "Plaque à génoise",
+      "Papier sulfurisé",
+      "Moule à insert pour bûche",
+      "Moule à bûche de 25 cm",
+      "Spatule",
+      "Couteau",
+      "Pichet",
+      "Poche à douille et douille à vermicelles"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "La ganache montée vanille",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Crème liquide chaude",
+            "quantite": 337.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide froide",
+            "quantite": 337.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Vanille en poudre",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans de l'eau bien froide.",
+          "Faire bouillir la première moitié de crème liquide chaude avec la poudre de vanille en mélangeant bien.",
+          "Verser la crème bouillante en trois fois sur le chocolat blanc préalablement fondu, en émulsionnant avec de petits cercles au centre.",
+          "Essorer la gélatine et l'incorporer dans la crème encore chaude, puis ajouter la seconde moitié de crème liquide froide.",
+          "Mélanger pour homogénéiser, filmer au contact dans un plat large et réserver au frais."
+        ],
+        "conseils_etape": "Réaliser l'émulsion en trois fois pour éviter de trancher la ganache."
+      },
+      {
+        "nom_etape": "Le glaçage miroir aux marrons",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 37.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait concentré non sucré",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine",
+            "quantite": 2.5,
+            "unite": "feuilles"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème de marron",
+            "quantite": 45,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans de l'eau bien froide.",
+          "Porter l'eau, le sucre semoule et le glucose à ébullition dans une casserole.",
+          "Ajouter le lait concentré non sucré et la gélatine essorée, puis mélanger.",
+          "Verser en trois fois sur le chocolat blanc fondu pour créer l'émulsion.",
+          "Transvaser dans un récipient haut, ajouter la crème de marron et mixer au mixeur plongeant pour obtenir un glaçage lisse et brillant.",
+          "Filmer au contact et réserver au réfrigérateur."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "L'insert cassis",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Purée de cassis",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine",
+            "quantite": 4,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger la pectine et le sucre semoule ensemble pour éviter les grumeaux.",
+          "Faire chauffer la purée de cassis avec le jus de citron jusqu'aux premières bulles.",
+          "Ajouter le mélange sucre-pectine en deux fois tout en mélangeant bien.",
+          "Laisser cuire à ébullition pendant deux minutes précises.",
+          "Couler la préparation dans un moule à insert pour bûche et placer au congélateur pour la nuit."
+        ],
+        "conseils_etape": "La pectine doit impérativement bouillir pour s'activer, mais une cuisson trop longue rendrait la compotée trop compacte."
+      },
+      {
+        "nom_etape": "Le biscuit marron",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 42,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Amandes effilées",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Marrons cuits en conserve",
+            "quantite": 17.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 32.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine de châtaigne",
+            "quantite": 7.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine blanche",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs (environ 5 œufs)",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre cassonade roux",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 17.5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Torréfier les amandes effilées à 140°C pendant 15 à 20 minutes, puis les laisser refroidir.",
+          "Découper les marrons cuits en petits morceaux.",
+          "Mélanger dans un bol les amandes refroidies, les morceaux de marrons, le sucre glace, la farine de châtaigne et la farine blanche.",
+          "Monter les blancs d'œufs en neige en serrant progressivement avec le mélange de sucre semoule et de sucre cassonade ajouté en trois fois à vitesse modérée.",
+          "Incorporer délicatement les poudres dans la meringue du centre vers la périphérie pour ne pas la faire retomber.",
+          "Étaler la pâte sur une plaque à génoise graissée sur une épaisseur de 2 à 3 cm.",
+          "Enfourner à 160°C pendant 22 minutes."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Le croustillant",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Feuillantine",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel (une pincée)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat au lait et le mélanger avec la feuillantine et la fleur de sel.",
+          "Déposer le tout entre deux feuilles de papier sulfurisé, étaler à la longueur de la bûche.",
+          "Placer au congélateur pendant une demi-heure."
+        ],
+        "conseils_etape": "À réaliser pendant la cuisson du biscuit."
+      },
+      {
+        "nom_etape": "Le montage de la bûche",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Monter la ganache reposée au robot à vitesse moyenne jusqu'à l'obtention d'une texture de ruban.",
+          "Découper le biscuit marron et le croustillant aux dimensions de la base du moule à bûche.",
+          "Démouler l'insert cassis congelé.",
+          "Pocher un cordon de ganache montée au fond du moule (le haut de la bûche), puis tapisser les parois en lissant bien à la spatule pour éliminer les bulles d'air.",
+          "Placer l'insert cassis au centre et recouvrir d'une couche de ganache.",
+          "Déposer le biscuit moelleux aux marrons en l'enfonçant légèrement, ajouter une fine couche de ganache, puis terminer en posant le disque de croustillant à hauteur.",
+          "Placer la bûche au congélateur pour toute une nuit."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Finitions et glaçage",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 35,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Crème de marron pour le décor",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Réchauffer doucement le glaçage miroir entre 30°C et 35°C.",
+          "Démouler la bûche congelée et la placer sur une grille.",
+          "Verser généreusement le glaçage tiédi sur l'ensemble de la bûche.",
+          "Garnir une poche à douille munie d'une douille à vermicelles de crème de marron et réaliser des allers-retours sur le dessus pour créer l'effet neige.",
+          "Découper les extrémités proprement avant de servir."
+        ],
+        "conseils_etape": null
+      }
+    ],
+    "astuces_recette": [
+      "Respecter les temps de repos au congélateur pour garantir un démoulage net et une structure stable lors du glaçage.",
+      "Veiller à bien émulsionner les ganaches et glaçages en versant les liquides chauds en trois fois pour éviter qu'ils ne tranchent."
+    ],
+    "conseils_conservation": "Laisser décongeler la bûche plusieurs heures au réfrigérateur avant la dégustation pour retrouver une texture fondante et aérienne. Conserver au réfrigérateur et consommer dans les 48 heures suivant la décongélation."
+  }
+}

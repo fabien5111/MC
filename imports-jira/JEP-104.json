@@ -1,0 +1,238 @@
+{
+  "ticket": "JEP-104",
+  "recette": {
+    "titre": "Cookies 100% chocolat façon Cédric Grolet",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=1K53a0gO1J0",
+    "description": "Une version ultra-gourmande et technique du cookie selon Cédric Grolet, composée d'une pâte cacaotée au grué, d'un cœur coulant de praliné noisette-grué injecté à mi-cuisson et d'un caramel onctueux au chocolat noir.",
+    "rendement": "15 cookies",
+    "ustensiles": [
+      "Robot pâtissier avec feuille (ou spatule/cul-de-poule)",
+      "Balance de précision",
+      "Casseroles",
+      "Thermomètre de cuisson",
+      "Mixeur plongeant",
+      "Mixeur / robot coupe pour praliné",
+      "Poches à douille",
+      "Plaques de cuisson",
+      "Tapis silicone (ou papier cuisson)",
+      "Maryse",
+      "Film étirable alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Pâte à cookies",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre pommade",
+            "quantite": 65,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 65,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 49,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs battus",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Bicarbonate de soude",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre non sucré",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Grué de cacao",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Brisures de chocolat noir",
+            "quantite": 110,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Crémer le beurre pommade avec la cassonade, le sucre semoule et le sel au batteur muni de la feuille jusqu'à texture homogène.",
+          "Ajouter l'œuf battu et mélanger brièvement.",
+          "Incorporer à vitesse lente le bicarbonate, la farine et la poudre de cacao tamisés.",
+          "Ajouter le grué de cacao et les brisures de chocolat noir, puis mélanger rapidement sans corser la pâte.",
+          "Façonner 15 boules régulières et les disposer sur une plaque.",
+          "Réserver au réfrigérateur pendant 2 heures minimum."
+        ],
+        "conseils_etape": "Ne pas trop travailler la pâte après l'ajout de la farine pour éviter de développer le réseau glutineux, ce qui durcirait les cookies."
+      },
+      {
+        "nom_etape": "Caramel au chocolat",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": 105,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Lait entier (1)",
+            "quantite": 72,
+            "unite": "g"
+          },
+          {
+            "nom": "Sirop de glucose (1)",
+            "quantite": 13,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 67,
+            "unite": "g"
+          },
+          {
+            "nom": "Sirop de glucose (2)",
+            "quantite": 28,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre",
+            "quantite": 18,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir",
+            "quantite": 24,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier froid (2)",
+            "quantite": 40,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Porter à léger frémissement le lait (1), le glucose (1) et la crème dans une première casserole, puis couvrir hors du feu pour maintenir au chaud.",
+          "Cuire à sec le sucre et le glucose (2) dans une seconde casserole sur feu moyen jusqu'à l'obtention d'un caramel blond/brun uniforme.",
+          "Décuire le caramel en versant le mélange crème-lait chaud en deux fois sur feu moyen, en mélangeant vivement en prenant garde aux projections de vapeur.",
+          "Cuire l'ensemble jusqu'à atteindre 105 °C au thermomètre, puis retirer immédiatement du feu.",
+          "Transvaser dans un récipient haut et étroit, puis laisser tiédir sous 70 °C.",
+          "Ajouter le beurre, le chocolat noir et la fleur de sel, puis émulsionner au mixeur plongeant pendant 1 à 2 minutes sans incorporer d'air.",
+          "Ajouter le lait froid (2) pour détendre la texture et mixer à nouveau.",
+          "Débarrasser dans un plat large, filmer au contact et réserver 2 heures au frais avant de mettre en poche."
+        ],
+        "conseils_etape": "Le deuxième ajout de lait froid est indispensable pour garantir un caramel souple et très coulant même à température ambiante."
+      },
+      {
+        "nom_etape": "Praliné noisette et grué de cacao",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 35,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Noisettes torréfiées (30 minutes à 150 °C)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Grué de cacao",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Cuire le sucre à sec dans une casserole à feu modéré jusqu'à coloration dorée, sans le brûler pour éviter l'amertume.",
+          "Couler le caramel sur une feuille silicone et laisser refroidir totalement jusqu'à durcissement.",
+          "Placer dans la cuve d'un robot mixeur les noisettes torréfiées, le caramel concassé et le grué de cacao.",
+          "Mixer jusqu'à formation d'une pâte fluide et lisse.",
+          "Incorporer délicatement la fleur de sel à la maryse, puis débarrasser en poche à douille."
+        ],
+        "conseils_etape": "Veiller à ce que le caramel soit totalement figé et froid avant le broyage pour éviter de faire chauffer et trancher la masse de fruits secs."
+      },
+      {
+        "nom_etape": "Cuisson, garnissage et finition",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 13,
+        "temperature_cuisson_celsius": 165,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Brisures de chocolat noir (finition)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Fleur de sel (finition)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 165 °C et espacer les boules de pâte très froides sur une plaque munie d'un tapis silicone.",
+          "Enfourner pour une première cuisson de 9 minutes.",
+          "Sortir la plaque, enfoncer l'embout de la poche de praliné au cœur de chaque cookie encore mou en déposant 3 points généreux.",
+          "Réenfourner immédiatement pendant 4 minutes à 165 °C.",
+          "Débarrasser aussitôt les cookies sur une grille pour stopper net la cuisson par le dessous.",
+          "Déposer immédiatement à chaud 3 points de caramel au chocolat.",
+          "Laisser tiédir 30 minutes, puis déposer de nouveau 3 points de caramel froid par-dessus.",
+          "Terminer par quelques brisures de chocolat noir et une pincée de fleur de sel sur le dessus."
+        ],
+        "conseils_etape": "Les cookies doivent être extrêmement mous et paraître sous-cuits à la sortie du four ; ils raffermiront en refroidissant tout en conservant un cœur ultra-moelleux."
+      }
+    ],
+    "astuces_recette": [
+      "Respecter scrupuleusement les temps de repos au frais des boules de pâte avant enfournement : cela empêche les cookies de s'étaler trop vite et préserve l'épaisseur caractéristique.",
+      "Conserver le caramel bien au réfrigérateur entre la première et la seconde dépose sur les cookies tièdes pour créer un joli relief et un double jeu de texture."
+    ],
+    "conseils_conservation": "Idéalement tièdes ou à température ambiante environ 30 à 45 minutes après la sortie du four pour apprécier le contraste entre le croquant du grué, la mâche du biscuit et les cœurs coulants. Se conservent 48 heures dans une boîte hermétique à température ambiante, à l'abri de l'humidité. Éviter le réfrigérateur une fois cuits pour ne pas figer les textures fondantes."
+  }
+}

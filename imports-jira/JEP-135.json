@@ -1,0 +1,288 @@
+{
+  "ticket": "JEP-135",
+  "recette": {
+    "titre": "L'Équinoxe noisette & gianduja (inspiré du Noisette de Cyril Lignac)",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Entremets individuel format finger associant le croustillant d'un sablé noisette, le moelleux d'un biscuit Joconde, la légèreté d'une bavaroise au gianduja, l'enrobage croquant d'un glaçage rocher au chocolat au lait et la gourmandise d'une ganache montée au gianduja.",
+    "rendement": "Environ 6 entremets individuels rectangulaires (moules ou cadres de 3 x 3 x 9,5 cm)",
+    "ustensiles": [
+      "Robot pâtissier (feuille et fouet)",
+      "Rouleau à pâtisserie",
+      "Papier sulfurisé ou toile de cuisson (type Silpat)",
+      "Plaque à génoise ou plaque de cuisson",
+      "Emporte-pièce rectangulaire adapté (environ 3 x 9,5 cm)",
+      "Moules rectangles / fingers en silicone (3 x 3 x 9,5 cm)",
+      "Casseroles",
+      "Culs-de-poule",
+      "Fouet à main",
+      "Maryse",
+      "Thermomètre de cuisson / sonde",
+      "Tamis ou passoire fine",
+      "Râpe Microplane",
+      "Grille à pâtisserie avec bac de récupération",
+      "Poches à douille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache montée au gianduja",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 2,
+            "unite": "feuille"
+          },
+          {
+            "nom": "Crème liquide entière 30 % MG",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Sirop de glucose",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Gianduja lait noisette",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30 % MG (très froide)",
+            "quantite": 190,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réhydrater les 2 feuilles de gélatine dans un bol d'eau bien froide pendant 10 minutes.",
+          "Faire fondre doucement le gianduja au bain-marie ou au micro-ondes dans un cul-de-poule.",
+          "Porter à ébullition les 70 g de crème liquide avec le glucose dans une casserole.",
+          "Verser la crème chaude en trois fois sur le gianduja fondu en frictionnant énergiquement au centre avec une maryse pour créer une émulsion bien lisse.",
+          "Incorporer la gélatine essorée dans le mélange encore chaud et mélanger jusqu'à dissolution complète.",
+          "Ajouter les 190 g de crème liquide très froide en une seule fois et homogénéiser la préparation.",
+          "Filmer au contact et réserver au réfrigérateur pendant au moins 4 heures (idéalement une nuit)."
+        ],
+        "conseils_etape": "Ne zappez pas l'émulsion en trois fois pour éviter que les matières grasses du gianduja et de la crème ne déphasent. À réaliser la veille."
+      },
+      {
+        "nom_etape": "Sablé noisette",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 165,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (à température ambiante)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisette",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Crémer le beurre pommade dans la cuve du robot munie de la feuille.",
+          "Mélanger la poudre de noisette et le sucre glace, puis les incorporer au beurre crémé jusqu'à homogénéisation.",
+          "Ajouter la farine petit à petit et mélanger brièvement dès que la pâte s'agglomère, sans corser la pâte.",
+          "Étaler la pâte entre deux feuilles de papier sulfurisé sur 3 mm d'épaisseur.",
+          "Placer la plaque de pâte au congélateur pendant 15 minutes pour la raffermir.",
+          "Détailler des rectangles à l'aide de l'emporte-pièce et les disposer sur une plaque couverte de papier cuisson ou d'une toile siliconée.",
+          "Enfourner à 165°C pendant 15 à 20 minutes jusqu'à coloration dorée.",
+          "Dès la sortie du four, redétailler immédiatement les rectangles encore chauds avec l'emporte-pièce pour des bordures parfaitement nettes, puis laisser refroidir."
+        ],
+        "conseils_etape": "Si le sablé dépasse légèrement après cuisson et refroidissement, égalisez les bords à sec avec une râpe fine Microplane pour faciliter l'insertion dans le moule. À réaliser la veille."
+      },
+      {
+        "nom_etape": "Biscuit Joconde",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": 210,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Poudre d'amandes",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers (environ 2 petits œufs)",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs (environ 3 œufs)",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre les 15 g de beurre doux dans une petite casserole ou au micro-ondes, puis laisser tiédir.",
+          "Fouetter les œufs entiers avec le sucre glace et la poudre d'amandes au robot muni du fouet jusqu'à ce que le mélange double de volume et blanchisse (ruban).",
+          "Monter les blancs d'œufs en neige dans un autre cul-de-poule en serrant avec les 15 g de sucre semoule versés en deux fois, jusqu'à consistance souple (bec d'oiseau).",
+          "Ajouter délicatement le beurre fondu tiède au mélange œufs/amandes à l'aide d'une maryse.",
+          "Tamiser la farine sur l'appareil et l'incorporer délicatement à la maryse.",
+          "Incorporer enfin les blancs montés délicatement en soulevant la masse par le fond pour conserver le volume d'air.",
+          "Étaler la pâte sur une plaque à génoise graissée ou recouverte de papier cuisson sur environ 1 cm d'épaisseur.",
+          "Cuire au four préchauffé à 210°C pendant 7 minutes.",
+          "Débarrasser immédiatement la feuille hors de la plaque chaude pour stopper la cuisson, laisser tiédir et détailler des rectangles aux dimensions de vos inserts."
+        ],
+        "conseils_etape": "Les blancs doivent impérativement rester souples ; des blancs trop fermes rendraient le biscuit cassant et difficile à mélanger sans faire retomber la pâte. À réaliser la veille."
+      },
+      {
+        "nom_etape": "Bavaroise au gianduja et montage",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": 84,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 1,
+            "unite": "feuille"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 0.5,
+            "unite": null
+          },
+          {
+            "nom": "Jaune d'œuf (environ 1 gros jaune)",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Gianduja lait noisette",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30 % MG (très froide)",
+            "quantite": 90,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réhydrater la feuille de gélatine dans de l'eau froide pendant 10 minutes.",
+          "Faire fondre doucement les 90 g de gianduja dans un cul-de-poule.",
+          "Fendre et gratter la demi-gousse de vanille dans le lait, porter à ébullition dans une casserole, couvrir d'un film et laisser infuser 10 minutes.",
+          "Blanchir rapidement au fouet le jaune d'œuf avec le sucre semoule pendant 20 secondes.",
+          "Passer le lait infusé au tamis pour retirer la gousse, le verser chaud sur les jaunes sucrés tout en fouettant, puis reverser le tout dans la casserole.",
+          "Cuire la crème anglaise à feu doux/moyen en remuant constamment à la maryse jusqu'à atteindre 83-84°C (cuisson à la nappe).",
+          "Verser la crème anglaise chaude sur le gianduja fondu en 2 ou 3 fois en créant une émulsion au fouet ou à la maryse.",
+          "Ajouter la feuille de gélatine essorée dans l'émulsion chaude et mélanger jusqu'à dissolution complète, puis laisser tiédir à température ambiante (environ 30-35°C).",
+          "Monter les 90 g de crème liquide bien froide en texture mousseuse (aspect mousse à raser, non serrée).",
+          "Détendre la base gianduja avec un tiers de crème fouettée au fouet, puis incorporer délicatement le reste à la maryse.",
+          "Dans les empreintes du moule rectangulaire, déposer un rectangle de sablé noisette au fond.",
+          "Couler une première couche de bavaroise au gianduja, déposer un rectangle de biscuit Joconde, puis recouvrir de bavaroise jusqu'à hauteur du moule et lisser.",
+          "Bloquer au congélateur pendant au moins 1 nuit complète."
+        ],
+        "conseils_etape": "Surveillez attentivement la texture de la crème fouettée : une crème montée trop ferme donnerait une bavaroise grumeleuse et alourdirait la texture finale. À réaliser la veille."
+      },
+      {
+        "nom_etape": "Glaçage rocher, finition et dressage",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": 40,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 210,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile neutre (pépin de raisin ou tournesol)",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Amandes hachées (torréfiées de préférence)",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuille d'or alimentaire",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat au lait au bain-marie ou au micro-ondes.",
+          "Ajouter l'huile neutre, mélanger pour obtenir un liquide fluide, puis incorporer les amandes hachées.",
+          "Laisser redescendre la température du glaçage rocher autour de 30°C - 32°C.",
+          "Démouler les entremets congelés et les disposer sur une grille posée sur un plat creux.",
+          "Verser généreusement le glaçage sur chaque entremets encore gelé pour recouvrir l'ensemble des faces de manière homogène ; le glaçage fige presque instantanément au contact du froid.",
+          "Transférer immédiatement les entremets glacés sur un plat de service à l'aide d'une spatule.",
+          "Sortir la ganache montée du réfrigérateur et la monter au robot avec le fouet à vitesse lente puis moyenne jusqu'à obtention d'une texture crémeuse tenant au bec d'oiseau.",
+          "Garnir une poche à douille (coupée en biseau ou munie d'une douille Saint-Honoré) de ganache montée.",
+          "Pocher un ruban ondulé régulier sur toute la longueur du finger.",
+          "Déposer délicatement quelques éclats de feuille d'or sur la ganache.",
+          "Placer au réfrigérateur pendant 3 à 4 heures avant le service pour permettre une décongélation à cœur complète."
+        ],
+        "conseils_etape": "Ne battez jamais la ganache montée à pleine vitesse, au risque de la faire grainer en quelques secondes sous l'action du gras du gianduja. Glaçage préparé vers 40°C, utilisé entre 30°C et 35°C. À réaliser le jour de la dégustation, le matin."
+      }
+    ],
+    "astuces_recette": [
+      "Si vous n'avez pas de gianduja du commerce, réalisez-le vous-même en mixant 100 g de noisettes torréfiées avec 100 g de sucre glace jusqu'à formation d'un praliné lisse, puis ajoutez 100 g de chocolat au lait fondu.",
+      "Respectez scrupuleusement les températures de glaçage : un glaçage rocher trop chaud ferait fondre la bavaroise superficiellement, tandis qu'un glaçage trop froid serait trop épais et formerait une coque dure difficile à découper.",
+      "L'utilisation d'une huile neutre (pépin de raisin) apporte la fluidité nécessaire au glaçage sans altérer la saveur des fruits secs."
+    ],
+    "conseils_conservation": "À servir frais mais après au moins 3 à 4 heures de décongélation lente au réfrigérateur. Sortir 5 à 10 minutes avant de servir pour apprécier le fondant de la bavaroise et le croustillant de la coque rocher. Les gâteaux finis se conservent 48 heures maximum au réfrigérateur à l'abri des odeurs. Avant glaçage et décor, les entremets montés dans leurs moules se conservent jusqu'à 1 mois au congélateur hermétiquement filmés."
+  }
+}
