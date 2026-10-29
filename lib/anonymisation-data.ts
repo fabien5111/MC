@@ -242,7 +242,7 @@ export async function anonymiserMembre(
       username: identite.slug,
       email: null,
       status: STATUT_SUPPRIME,
-      role: null,
+      // `role` est NOT NULL : on le laisse au défaut de la colonne (membre ordinaire).
       bio: null,
       avatar_url: null,
       banner_url: null,
