@@ -1,0 +1,83 @@
+{
+  "ticket": "local-crumble-cacao",
+  "recette": {
+    "titre": "Crumble cacao",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Sablé chocolaté croustillant et friable, au goût profond de cacao et d'amande. Posé en couche fine de 5 mm dans un entremets, il apporte du croquant et s'accorde avec la poire, la framboise et la mousse au chocolat.",
+    "rendement": "1 plaque 40 x 30 cm, 5 mm d'épaisseur — environ 385 g de crumble cru utilisable (400 g d'ingrédients, perte ≈ 4 %)",
+    "ustensiles": [
+      "Tamis",
+      "Robot avec feuille",
+      "Cul-de-poule",
+      "Plaque à pâtisserie",
+      "Papier cuisson",
+      "Four"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crumble cacao",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 35,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 100,
+            "unite": "g",
+            "commentaire": "froid, en dés"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre non sucré",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Tamiser la farine et le cacao ensemble.",
+          "Mélanger la farine, le cacao, la poudre d'amande et le sucre dans le cul-de-poule du robot.",
+          "Ajouter le beurre froid coupé en dés.",
+          "Sabler à vitesse lente avec la feuille jusqu'à obtenir de gros grains irréguliers de 3 à 5 mm, sans former de boule.",
+          "Réserver 20 minutes au frais pour raffermir les grains, et préchauffer le four à 160 °C.",
+          "Répartir les grains en couche de 5 mm sur une plaque recouverte de papier cuisson, sans tasser.",
+          "Cuire 18 à 20 minutes à 160 °C en remuant les grains à mi-cuisson.",
+          "Laisser refroidir entièrement sur la plaque, puis émietter."
+        ],
+        "conseils_etape": "La couleur ne renseigne pas : le cacao masque le brunissement. Jugez la cuisson à la texture — les grains doivent être secs et mats, sans brillance de beurre, et un morceau sorti du four doit durcir en 1 à 2 minutes et croquer net en refroidissant (encore tendre : prolonger de 2 à 3 minutes). Une odeur de cacao grillé et d'amande torréfiée est bon signe, une odeur âcre signale un crumble trop cuit et amer.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Cuit, se garde 5 jours en boîte hermétique au sec ; cru, 3 mois au congélateur."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, couche croustillante de 5 mm : ≈ 65 g de crumble, soit ×0,17 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, couche croustillante de 5 mm : ≈ 100 g de crumble, soit ×0,26 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche croustillante de 5 mm : ≈ 145 g de crumble, soit ×0,38 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, couche de 5 mm : ≈ 12 g par pièce, soit 31 pièces avec la recette entière (Ø 8 cm : ≈ 16 g, soit 23 pièces).",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, fond (semelle) croustillant de 5 mm : ≈ 45 g de crumble, soit ×0,12 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, fond (semelle) croustillant de 5 mm : ≈ 75 g de crumble, soit ×0,19 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 5 mm : ≈ 105 g de crumble, soit ×0,27 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, couche de 5 mm : ≈ 185 g de crumble, soit ×0,48 de la recette.",
+      "Variante — Remplacer la poudre d'amande par de la poudre de noisette pour un goût plus torréfié.",
+      "Variante — Remplacer le sucre semoule par de la cassonade pour une note caramélisée."
+    ],
+    "conseils_conservation": "Cuit : 5 jours en boîte hermétique à température ambiante, au sec ; 1 mois au congélateur. Cru en grains : 3 jours au frais, 3 mois au congélateur, à cuire sans décongeler (prévoir 2 minutes de plus). À poser sur la mousse ou l'insert au dernier moment pour qu'il reste croquant."
+  }
+}
