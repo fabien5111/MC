@@ -158,7 +158,7 @@ export function StepEditorCard({
       {!collapsed && (
         <div className="space-y-8 mt-8">
           <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
-            <label className="font-label-md text-label-md text-outline shrink-0 uppercase">Ajustement des quantités de cette étape</label>
+            <label className="font-label-md text-label-md text-outline uppercase">Ajustement des quantités de cette étape</label>
             <select
               value={step.scaling_mode ?? 'simple'}
               onChange={(e) => onChange({ scaling_mode: e.target.value })}
@@ -213,7 +213,7 @@ export function StepEditorCard({
         ))}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <label className={`${label} whitespace-nowrap`}>À PRÉPARER LE JOUR J −</label>
         <input
           value={step.day_offset ?? ''}
