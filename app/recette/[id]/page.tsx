@@ -28,6 +28,8 @@ import { PlanningTimeline } from '@/components/recipe/PlanningTimeline';
 import { UNITS_LBL, yieldInfo, mergeIngredients, mergeIngredientLines, planningDays, effectiveTimes, peutSePreparerAvance } from '@/lib/recipe-view';
 import { recipeJsonLd } from '@/lib/recipe-jsonld';
 import { siteUrl } from '@/lib/site-url';
+import { ORIGINE_CANONIQUE } from '@/lib/indexation.mjs';
+import { recetteIndexable } from '@/lib/indexation-recettes';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { Header } from '@/components/Header';
 import { RetourContextuel } from '@/components/RetourContextuel';
@@ -64,10 +66,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // partage privé) reste rendue — la RLS la garde de toute façon hors de
   // portée d'un visiteur non autorisé — mais ne doit pas être indexée
   // (JEP-90 §8, même motif que `/blog/[slug]?preview` et `/reglages/mes-demandes`).
-  const indexable = !!r && r.status === 'published' && r.is_public !== false;
+  // Même règle que le plan du site (`recetteIndexable`, JEP-246). Adresse
+  // canonique absolue sur `www` : `metadataBase` suit l'environnement, et
+  // `?planifier=…` ferait sinon passer une recette pour deux pages.
+  const indexable = recetteIndexable(r);
   return {
     title: r ? `${r.title} | Je pâtisse !` : 'Recette | Je pâtisse !',
-    ...(indexable ? {} : { robots: { index: false, follow: false } }),
+    ...(indexable
+      ? { alternates: { canonical: `${ORIGINE_CANONIQUE}/recette/${id}` } }
+      : { robots: { index: false, follow: false } }),
   };
 }
 

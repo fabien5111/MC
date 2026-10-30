@@ -834,7 +834,21 @@ interdit l'exploration mais ne retire pas une page déjà connue :
 - **`app/robots.ts`**, décidé sur `Host` : `www` autorise et cite le sitemap,
   le reste `Disallow: /`.
 `app/sitemap.ts` utilise `ORIGINE_CANONIQUE`, jamais `siteUrl()` (qui suit
-l'environnement). **Après tout déploiement touchant cette logique, tester les
+l'environnement).
+
+**Recettes (JEP-246)** : plan dédié `app/recette/sitemap.ts`
+(`/recette/sitemap.xml`), cité par `robots.ts` à côté du plan principal. **Une
+seule règle**, `recetteIndexable` (`lib/indexation-recettes.ts`, pur et testé :
+publiée, pas privée, pas un projet en cours), lue par le plan ET par le `noindex`
+de la fiche, qui porte en plus une adresse canonique absolue sur `www`. Lecture au
+rôle `anon` (`lib/indexation-recettes-data.ts`) : la RLS écarte d'elle-même
+privé et auteur désactivé ; cache d'une heure, jamais une liste vide ou en erreur
+(une panne ne vide pas le plan). **Sous `COMING_SOON`, les deux plans taisent
+recettes et blog sur `www` seulement** (`sitemapEnAttente` : la page d'attente
+servirait ces adresses en `noindex`) ; sur dev ils restent complets, pour
+vérification. Le middleware exclut `.xml`, sans quoi la page d'attente
+réécrirait `/recette/sitemap.xml` en HTML. `robots.ts` ferme les écrans privés
+(`ZONES_PRIVEES`), jamais `/recette/` (le `noindex` doit rester lisible). **Après tout déploiement touchant cette logique, tester les
 deux cas** : `curl -sI -H "Host: www.jepatisse.com" …` (aucun `X-Robots-Tag`)
 et le même avec `dev.jepatisse.com` (en-tête présent). Si dev est déjà indexé :
 demander la suppression dans Search Console (propriété `dev`, « Suppressions »).

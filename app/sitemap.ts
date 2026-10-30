@@ -1,12 +1,13 @@
 // Plan du site : l'accueil, la liste du blog, chaque article publié et les
 // pages légales.
 //
-// Volontairement borné au blog (et à l'accueil) : un plan de site couvrant
-// aussi les recettes est un chantier à part (visibilité publique/privée,
-// pagination sur des milliers d'entrées) que le handoff blog ne couvre pas.
+// Les recettes ont leur propre plan (`app/recette/sitemap.ts`, JEP-246), cité
+// à côté de celui-ci par `app/robots.ts`.
+import { headers } from 'next/headers';
 import type { MetadataRoute } from 'next';
 import { getSitemapArticles } from '@/lib/blog';
 import { ORIGINE_CANONIQUE } from '@/lib/indexation.mjs';
+import { sitemapEnAttente } from '@/lib/indexation-recettes';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Toujours l'origine canonique, quel que soit le domaine qui sert le plan
@@ -15,11 +16,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // `sitemap.ts` s'exécute au build (comme `generateStaticParams`) : sans
   // variables Supabase posées à ce moment, on dégrade vers un plan de site
   // réduit à l'accueil et à la liste plutôt que de faire échouer le build.
-  const articles = await getSitemapArticles().catch(() => []);
+  // Page d'attente sur `www` (JEP-246) : les articles y seraient servis en
+  // `noindex`, on ne les annonce donc pas encore.
+  const enAttente = sitemapEnAttente((await headers()).get('host'), process.env.COMING_SOON);
+  const articles = enAttente ? [] : await getSitemapArticles().catch(() => []);
 
   return [
     { url: base, changeFrequency: 'daily', priority: 1 },
-    { url: `${base}/blog`, changeFrequency: 'daily', priority: 0.8 },
+    ...(enAttente ? [] : [{ url: `${base}/blog`, changeFrequency: 'daily' as const, priority: 0.8 }]),
     { url: `${base}/mentions-legales`, changeFrequency: 'yearly', priority: 0.1 },
     { url: `${base}/confidentialite`, changeFrequency: 'yearly', priority: 0.1 },
     { url: `${base}/cgu`, changeFrequency: 'yearly', priority: 0.1 },

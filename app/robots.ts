@@ -7,13 +7,37 @@ import { headers } from 'next/headers';
 import type { MetadataRoute } from 'next';
 import { estHoteIndexable, ORIGINE_CANONIQUE } from '@/lib/indexation.mjs';
 
+// Écrans privés ou sans intérêt pour un moteur (JEP-246). Jamais `/recette/` :
+// Google ne pourrait plus y lire le `noindex` des recettes non publiques.
+// `/recherche?` : les combinaisons de facettes font un nombre illimité
+// d'adresses ; `/recherche` nu reste explorable.
+const ZONES_PRIVEES = [
+  '/api/',
+  '/admin',
+  '/carnet',
+  '/creer',
+  '/courses',
+  '/fournee',
+  '/execution',
+  '/importer',
+  '/relecture',
+  '/projets',
+  '/reglages',
+  '/notifications',
+  '/choix-pseudo',
+  '/compte-suspendu',
+  '/connexion',
+  '/recherche?',
+  '/recette/*/cap',
+];
+
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const host = (await headers()).get('host');
   if (!estHoteIndexable(host)) {
     return { rules: { userAgent: '*', disallow: '/' } };
   }
   return {
-    rules: { userAgent: '*', allow: '/' },
-    sitemap: `${ORIGINE_CANONIQUE}/sitemap.xml`,
+    rules: { userAgent: '*', allow: '/', disallow: ZONES_PRIVEES },
+    sitemap: [`${ORIGINE_CANONIQUE}/sitemap.xml`, `${ORIGINE_CANONIQUE}/recette/sitemap.xml`],
   };
 }
