@@ -2,7 +2,7 @@
 // rapprochement manqué laisse deux lignes dans les courses, un rapprochement
 // abusif additionne deux ingrédients différents — les deux sont silencieux.
 import { describe, expect, it } from 'vitest';
-import { ingredientKey, ingredientRefDuplicates, sameIngredient, libelleIngredient, nomsDeLigne } from '@/lib/ingredient-name';
+import { entreePlurielPreferee, ingredientKey, ingredientRefDuplicates, sameIngredient, libelleIngredient, nomsDeLigne } from '@/lib/ingredient-name';
 import { estimateWeightGrams } from '@/lib/ingredient-conversions';
 
 describe('ingredientKey', () => {
@@ -60,6 +60,45 @@ describe('ingredientRefDuplicates', () => {
       { id: 4, name: 'Sucre glace' },
     ];
     expect(ingredientRefDuplicates(refs).map((g) => g.map((r) => r.id))).toEqual([[1, 3]]);
+  });
+});
+
+// JEP-383 : singulier et pluriel d'un même ingrédient se confondent déjà.
+describe('ingredientKey — paires du ticket JEP-383', () => {
+  const paires: [string, string][] = [
+    ['Poudre de pistache', 'Poudre de pistaches'],
+    ['Éclats de noisette', 'Éclats de noisettes'],
+    ['Pâte de cacahuète', 'Pâte de cacahuètes'],
+    ['Praliné amande', 'Praliné amandes'],
+    ['Purée de fruit', 'Purée de fruits'],
+    ['Pâte de fruit', 'Pâte de fruits'],
+    ['Crème de marron', 'Crème de marrons'],
+    ['Coulis de framboise', 'Coulis de framboises'],
+    ['Zeste de citron', 'Zestes de citron'],
+    ['Zeste de citron', 'Zestes de citrons'],
+    ["Écorce d'orange", "Écorces d'orange"],
+    ['Fève de cacao', 'Fèves de cacao'],
+  ];
+  it.each(paires)('« %s » et « %s » ont la même clé', (a, b) => {
+    expect(ingredientKey(a)).toBe(ingredientKey(b));
+  });
+});
+
+describe('entreePlurielPreferee (JEP-383)', () => {
+  it('préfère le libellé au pluriel, quel que soit l’ordre', () => {
+    const g = [{ name: 'Poudre de pistache' }, { name: 'Poudre de pistaches' }];
+    expect(entreePlurielPreferee(g)?.name).toBe('Poudre de pistaches');
+    expect(entreePlurielPreferee([...g].reverse())?.name).toBe('Poudre de pistaches');
+  });
+  it('reconnaît le pluriel d’un nom composé', () => {
+    expect(entreePlurielPreferee([{ name: "Jaune d'œuf" }, { name: "Jaunes d'œufs" }])?.name).toBe("Jaunes d'œufs");
+    expect(entreePlurielPreferee([{ name: 'Œuf' }, { name: 'Œufs' }])?.name).toBe('Œufs');
+  });
+  it('ne prend pas un mot invariable pour un pluriel', () => {
+    expect(entreePlurielPreferee([{ name: 'Noix de coco' }, { name: 'Noix de coco ' }])).toBeNull();
+  });
+  it('sans pluriel à reconnaître, ne suggère rien', () => {
+    expect(entreePlurielPreferee([{ name: 'Fève de tonka' }, { name: 'Fève tonka' }])).toBeNull();
   });
 });
 
