@@ -18,6 +18,8 @@ import { siteUrl } from '@/lib/site-url';
 import { CHEMIN_PREFERENCES, composerRecapitulatif, enTetesDesinscription, type LigneRecap } from '@/lib/notification-email';
 import { definitionEvenement, preferenceEffective, type Categorie, type DonneesEvenement } from '@/lib/notification-events';
 import { lirePreferences, notifier, reserverQuota } from '@/lib/notifier';
+import { lireFilesModeration } from '@/lib/notification-moderation-data';
+import { estEvenementFile, lignesModerationActuelles, type FilesModeration } from '@/lib/notification-moderation-recap';
 
 type Db = SupabaseClient;
 const vers = (admin: unknown): Db => admin as Db;
@@ -156,6 +158,8 @@ export async function envoyerRecapitulatifs(
   let reportes = 0;
   const url = siteUrl();
   const maintenant = () => new Date().toISOString();
+  // Lues au premier membre qui en a besoin, puis gardées pour toute la passe.
+  let filesModeration: Promise<FilesModeration | null> | null = null;
 
   for (const [userId, lignes] of parMembre) {
     const ids = lignes.map((l) => l.id);
@@ -167,17 +171,32 @@ export async function envoyerRecapitulatifs(
     // Compte suspendu ou désactivé depuis la mise en file (JEP-272) : seuls
     // les événements verrouillés partent encore (cf. `notifier`).
     const bloque = await membreBloque(db, userId);
-    const retenues = lignes.filter(
+    const acceptees = lignes.filter(
       (l) =>
         (!bloque || !!definitionEvenement(l.event)?.verrouille) &&
         preferenceEffective(prefs, definitionEvenement(l.event)?.rubrique ?? l.category).email,
     );
-    if (retenues.length === 0) {
+    const { data: profil } = await db.from('profiles').select('email, full_name, role').eq('id', userId).maybeSingle();
+    // Files de modération (JEP-386) : les lignes en file ne sont qu'un
+    // déclencheur, leur texte figé est remplacé par l'état réel des files.
+    const evenementsFile = acceptees.filter((l) => estEvenementFile(l.event)).map((l) => l.event);
+    let lignesModeration: LigneRecap[] = [];
+    if (evenementsFile.length > 0 && profil?.email) {
+      const files = await (filesModeration ??= lireFilesModeration(db));
+      if (files) {
+        lignesModeration = lignesModerationActuelles({
+          evenements: evenementsFile,
+          role: profil.role as string | null,
+          files,
+        });
+      }
+    }
+    const retenues = acceptees.filter((l) => !estEvenementFile(l.event));
+    if (retenues.length === 0 && lignesModeration.length === 0) {
       await db.from('email_digest_queue').update({ sent_at: maintenant() }).in('id', ids);
       ecartes += lignes.length;
       continue;
     }
-    const { data: profil } = await db.from('profiles').select('email, full_name').eq('id', userId).maybeSingle();
     if (!profil?.email) {
       await db.from('email_digest_queue').update({ sent_at: maintenant() }).in('id', ids);
       ecartes += lignes.length;
@@ -188,17 +207,21 @@ export async function envoyerRecapitulatifs(
       continue;
     }
     const aHebdo = retenues.some((l) => l.rhythm === 'weekly');
+    const aQuotidien = lignesModeration.length > 0 || retenues.some((l) => l.rhythm === 'daily');
     const mail = composerRecapitulatif({
       prenom: (profil.full_name as string | null)?.split(' ')[0] ?? null,
-      rythme: aHebdo && !retenues.some((l) => l.rhythm === 'daily') ? 'hebdo' : 'quotidien',
+      rythme: aHebdo && !aQuotidien ? 'hebdo' : 'quotidien',
       urlSite: url,
-      lignes: retenues.map<LigneRecap>((l) => ({
-        categorie: l.category,
-        rubrique: definitionEvenement(l.event)?.rubrique ?? null,
-        titre: l.title,
-        corps: l.body,
-        lien: l.link,
-      })),
+      lignes: [
+        ...retenues.map<LigneRecap>((l) => ({
+          categorie: l.category,
+          rubrique: definitionEvenement(l.event)?.rubrique ?? null,
+          titre: l.title,
+          corps: l.body,
+          lien: l.link,
+        })),
+        ...lignesModeration,
+      ],
     });
     const ok = await sendEmailBestEffort({
       to: profil.email as string,

@@ -7,6 +7,9 @@
 import { cache } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
+import { getRole } from '@/lib/auth';
+import { lireFilesModeration } from '@/lib/notification-moderation-data';
+import { FILTRE_HORS_FILES, KINDS_FILE, entreesFilesActuelles } from '@/lib/notification-moderation-recap';
 import type { Database } from '@/lib/database.types';
 import { RYTHME_DEPUIS_BASE, type Categorie, type PreferencesMembre } from '@/lib/notification-events';
 import {
@@ -53,6 +56,36 @@ const versLigne = (n: LigneNotification): NotificationRow => ({
   category: n.category ?? null,
 });
 
+/** Les deux files de modération telles qu'elles sont maintenant — une lecture par requête. */
+const filesModeration = cache(async () => lireFilesModeration(await createClient()));
+
+/**
+ * Entrées « file de modération » de la cloche (JEP-386), recalées sur l'état
+ * réel des files : un avis déjà validé, une recette d'un membre anonymisé ne
+ * restent ni dans la liste ni dans la pastille. Réservé à l'équipe — un membre
+ * ordinaire n'en a jamais et ne paie aucune lecture. Lecture des files en
+ * échec : entrées laissées telles quelles, une alerte passagèrement fausse
+ * valant mieux qu'une alerte perdue.
+ */
+const entreesFiles = cache(async (userId: string): Promise<NotificationRow[]> => {
+  const role = await getRole(userId);
+  if (role !== 'admin' && role !== 'gestionnaire') return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('notifications')
+    .select(COLONNES)
+    .eq('user_id', userId)
+    .in('kind', KINDS_FILE)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  const lignes = (data ?? []).map(versLigne);
+  if (lignes.length === 0) return [];
+  const files = await filesModeration();
+  return files ? entreesFilesActuelles(lignes, { role, files }) : lignes;
+});
+
+const plusRecentesD = (a: NotificationRow, b: NotificationRow) => b.createdAt.localeCompare(a.createdAt);
+
 /**
  * Les plus récentes, pour la cloche de l'en-tête (cinq : le reste est sur
  * /notifications) — mémoïsé par requête : la cloche et une éventuelle page
@@ -61,46 +94,60 @@ const versLigne = (n: LigneNotification): NotificationRow => ({
 export const getRecentNotifications = cache(
   async (userId: string, limite: number = NOTIFICATIONS_CLOCHE): Promise<NotificationRow[]> => {
     const supabase = await createClient();
-    const { data } = await supabase
-      .from('notifications')
-      .select(COLONNES)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(limite);
-    return (data ?? []).map(versLigne);
+    const [{ data }, files] = await Promise.all([
+      supabase
+        .from('notifications')
+        .select(COLONNES)
+        .eq('user_id', userId)
+        .or(FILTRE_HORS_FILES)
+        .order('created_at', { ascending: false })
+        .limit(limite),
+      entreesFiles(userId),
+    ]);
+    return [...(data ?? []).map(versLigne), ...files].sort(plusRecentesD).slice(0, limite);
   },
 );
 
 /**
  * Nombre TOTAL de notifications non lues — la pastille de la cloche. Compté en
  * base plutôt que sur les lignes chargées : la cloche n'en montre plus que
- * cinq, une pastille bâtie dessus mentirait dès la sixième.
+ * cinq, une pastille bâtie dessus mentirait dès la sixième. Les files de
+ * modération y entrent par leur entrée recalée (`entreesFiles`), jamais par
+ * leurs lignes brutes.
  */
 export const countUnreadNotifications = cache(async (userId: string): Promise<number> => {
   const supabase = await createClient();
-  const { count } = await supabase
-    .from('notifications')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .is('read_at', null);
-  return count ?? 0;
+  const [{ count }, files] = await Promise.all([
+    supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .is('read_at', null)
+      .or(FILTRE_HORS_FILES),
+    entreesFiles(userId),
+  ]);
+  return (count ?? 0) + files.filter((f) => f.readAt === null).length;
 });
 
 /**
  * Page /notifications : `limite` entrées de la portée demandée, les plus
  * récentes d'abord. On lit une ligne de plus que demandé pour savoir s'il en
- * reste, sans second comptage.
+ * reste, sans second comptage. Les files de modération sont d'administration :
+ * absentes de la portée « membre ».
  */
 export async function listNotifications(
   userId: string,
   opts: { portee: Portee; limite: number },
 ): Promise<{ rows: NotificationRow[]; hasMore: boolean }> {
   const supabase = await createClient();
-  let q = supabase.from('notifications').select(COLONNES).eq('user_id', userId);
+  let q = supabase.from('notifications').select(COLONNES).eq('user_id', userId).or(FILTRE_HORS_FILES);
   if (opts.portee === 'admin') q = q.in('category', CATEGORIES_ADMIN);
   else if (opts.portee === 'membre') q = q.or(filtreMembre());
-  const { data } = await q.order('created_at', { ascending: false }).limit(opts.limite + 1);
-  const lignes = (data ?? []).map(versLigne);
+  const [{ data }, files] = await Promise.all([
+    q.order('created_at', { ascending: false }).limit(opts.limite + 1),
+    opts.portee === 'membre' ? Promise.resolve([]) : entreesFiles(userId),
+  ]);
+  const lignes = [...(data ?? []).map(versLigne), ...files].sort(plusRecentesD);
   return { rows: lignes.slice(0, opts.limite), hasMore: lignes.length > opts.limite };
 }
 
