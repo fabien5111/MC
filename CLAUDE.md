@@ -765,6 +765,47 @@ motif obligatoire, ni soi-même ni un admin). « Supprimer définitivement »
   borne (DDL par `psql`, nœud 216075). Sans elle, l'opération échoue **avant**
   toute suppression, avec ce message.
 
+### Export des données d'un membre (JEP-362)
+
+Droit d'accès et de portabilité (RGPD, art. 15 et 20) : une archive JSON de
+toutes les données d'un membre. **Un seul assembleur**,
+`exporterDonneesMembre` (`lib/export-donnees-data.ts`, clé service_role,
+lecture seule ; logique pure et testée : `lib/export-donnees.ts`), deux portes :
+l'admin depuis la fiche → bloc « Données personnelles » → « Exporter les
+données » (`POST /api/admin/membres/[id]/exporter`, admin complet,
+`getVerifiedUser`, refusée en session « en tant que ») et le membre depuis
+`/reglages` → « Télécharger mes données » (`ExportDonneesCard`,
+`POST /api/compte/exporter`). La route rend le fichier lui-même
+(`Content-Disposition`), récupéré en Blob par `telechargerExport`
+(`lib/export-donnees-client.ts`).
+
+- **Journal** : chaque export pose une ligne `export_donnees` dans
+  `member_moderation_events` **avant** la lecture, retirée si l'export échoue
+  (sans trace, pas d'export). `admin_id` nul = export fait par le membre, affiché
+  « par le membre » (`parLeMembre`). **Libre-service : un export par 24 h**
+  (`exportAutorise`), compté sur ces seules lignes sans admin ; journal illisible
+  = refus. **Migration préalable** : la contrainte CHECK de `action`, si elle
+  existe, doit accepter `export_donnees` (DDL par `psql`, nœud 216075) — sans
+  elle, les deux routes refusent l'export avec ce message.
+- **Rien d'un autre membre** au-delà du nom affiché d'un pâtissier suivi ou de
+  l'autre partie d'un partage (`remplacerParNom` : l'identifiant disparaît).
+  Colonnes retirées par table dans `COLONNES_RETIREES` (admin du journal, des
+  abonnements et des réponses de contact, auteur d'une recette source du mode
+  projet, clés de chiffrement des appareils push, colonnes de recherche). Ni
+  abonnés (nombre seul), ni avis reçus, ni notifications reçues (elles nomment
+  d'autres membres). Les notes internes de l'équipe (`profiles.notes`,
+  `contact_messages.admin_notes`) **sont** exportées : ce sont des données du
+  membre (art. 15).
+- **Jamais une archive incomplète** : une lecture en échec arrête l'export (502),
+  seule une table absente (migration pas jouée) est ignorée. Lecture paginée par
+  1 000 (PostgREST tronque sans erreur au-delà), garde-fou à 50 pages.
+- **Photos hors périmètre** : adresses seulement, data-URL remplacées par
+  `IMAGE_NON_EXPORTEE`.
+- Sans `refusSiCompteBloque` : un compte bloqué garde son droit d'accès (la carte
+  de `/reglages` lui est inatteignable, l'admin exporte pour lui).
+- **Toute nouvelle table qui porte une donnée personnelle doit entrer dans
+  l'export** (rubrique de `RUBRIQUES` + lecture), comme dans `TABLES_A_VIDER`.
+
 ### Connexion « en tant que » (impersonation)
 
 - **Niveau d'accès hérité**, jamais choisi au clic : `profiles.impersonation_access`
