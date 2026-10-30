@@ -28,7 +28,7 @@ export async function Footer() {
               <h4 className="font-label-md text-label-md text-primary uppercase tracking-widest font-bold">
                 Le Club
               </h4>
-              <ul className="flex flex-col gap-3 font-body-md text-body-md text-on-surface-variant">
+              <ul className="flex flex-col gap-1 font-body-md text-body-md text-on-surface-variant [&_a]:inline-block [&_a]:py-1.5">
                 <li><a className="hover:text-primary transition-colors" href="#">Notre Histoire</a></li>
                 <li><Link className="hover:text-primary transition-colors" href="/plans">Nos formules</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/idees">Boîte à idées</Link></li>
@@ -42,7 +42,7 @@ export async function Footer() {
               <h4 className="font-label-md text-label-md text-primary uppercase tracking-widest font-bold">
                 Légal
               </h4>
-              <ul className="flex flex-col gap-3 font-body-md text-body-md text-on-surface-variant">
+              <ul className="flex flex-col gap-1 font-body-md text-body-md text-on-surface-variant [&_a]:inline-block [&_a]:py-1.5">
                 <li><Link className="hover:text-primary transition-colors" href="/mentions-legales">Mentions légales</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/cgu">Conditions d&apos;utilisation</Link></li>
                 <li><Link className="hover:text-primary transition-colors" href="/cgv">Conditions de vente</Link></li>

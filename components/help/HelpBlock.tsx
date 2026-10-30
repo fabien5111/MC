@@ -25,7 +25,7 @@ export function HelpBlock({
   if (!block.showText && !block.showVideo) return null;
 
   return (
-    <div className="no-print bg-secondary-container/30 border border-secondary-container rounded-xl p-6">
+    <div className="no-print bg-secondary-container/30 border border-secondary-container rounded-xl p-4 sm:p-6">
       {/* Toute la ligne (pas seulement le titre) replie/déplie — la croix de
           masquage arrête la propagation pour rester une action distincte. */}
       <div
@@ -52,7 +52,7 @@ export function HelpBlock({
           }}
           title="Ne plus afficher cette aide"
           aria-label="Ne plus afficher cette aide"
-          className="text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
+          className="-m-2 p-2 text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
         >
           <span className="material-symbols-outlined text-[20px]">close</span>
         </button>
