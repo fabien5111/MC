@@ -19,7 +19,7 @@ import { AccountSheetButton } from '@/components/account/AccountSheetButton';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { DESTINATIONS, type NavKey } from '@/lib/nav';
 
-const SLOT = 'flex flex-col items-center justify-center';
+const SLOT = 'flex min-w-0 flex-col items-center justify-center';
 
 export async function MobileNav({ current }: { current?: NavKey }) {
   // Même parallélisation que `Header.tsx` : les deux composants sont rendus
@@ -43,7 +43,7 @@ export async function MobileNav({ current }: { current?: NavKey }) {
     // dans `--mobile-nav-h` (app/globals.css) — tout ce qui se pose au-dessus
     // de cette barre s'y réfère.
     <nav
-      className="lg:hidden fixed bottom-0 left-0 w-full bg-surface-container-low border-t border-outline-variant z-50"
+      className="mobile-nav-bar lg:hidden fixed bottom-0 left-0 w-full bg-surface-container-low border-t border-outline-variant z-50"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="grid grid-cols-5 py-3">
@@ -57,7 +57,7 @@ export async function MobileNav({ current }: { current?: NavKey }) {
               aria-current={active ? 'page' : undefined}
               className={`${SLOT} ${active ? 'text-primary' : 'text-on-surface-variant'}`}
             >
-              <span className="relative">
+              <span className="relative flex h-6 items-center">
                 {d.icon ? (
                   <span className="material-symbols-outlined text-[23px]">{d.icon}</span>
                 ) : (
@@ -74,7 +74,7 @@ export async function MobileNav({ current }: { current?: NavKey }) {
                   />
                 )}
               </span>
-              <span className={`mt-1 font-label-md text-[10px] ${active ? 'font-bold' : ''}`}>{d.shortLabel}</span>
+              <span className={`nav-label mt-1 whitespace-nowrap font-label-md text-[10px] leading-tight ${active ? 'font-bold' : ''}`}>{d.shortLabel}</span>
             </Link>
           );
         })}
@@ -93,8 +93,10 @@ export async function MobileNav({ current }: { current?: NavKey }) {
           // Visiteur : la fente garde sa place plutôt que de laisser un trou
           // qui décalerait les quatre autres d'un écran à l'autre.
           <Link href="/connexion" className={`${SLOT} text-on-surface-variant`}>
-            <span className="material-symbols-outlined text-[23px]">person</span>
-            <span className="mt-1 font-label-md text-[10px]">Se connecter</span>
+            <span className="flex h-6 items-center">
+              <span className="material-symbols-outlined text-[23px]">person</span>
+            </span>
+            <span className="nav-label mt-1 whitespace-nowrap font-label-md text-[10px] leading-tight">Se connecter</span>
           </Link>
         )}
       </div>

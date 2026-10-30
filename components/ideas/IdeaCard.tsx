@@ -15,7 +15,7 @@ export function IdeaCard({ idea }: { idea: IdeaCardData }) {
     >
       <VoteButton ideaId={idea.id} initialVotes={idea.votes_count} initialHasVoted={idea.has_voted} />
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-3 mb-1.5">
+        <div className="mb-1.5 flex flex-col-reverse items-start gap-1.5 sm:flex-row sm:justify-between sm:gap-3">
           <h3 className="font-headline-md text-lg text-on-surface">{idea.title}</h3>
           <StatusBadge status={idea.status} />
         </div>

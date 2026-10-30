@@ -536,7 +536,7 @@ function FragmentSection({
         .sort((a, b) => a.orderIndex - b.orderIndex)
         .map((f) => (
           <tr key={f.key} className="border-b border-outline-variant/50">
-            <td className="p-3 text-on-surface-variant" title={f.description ?? undefined}>
+            <td className="sticky left-0 z-10 min-w-[8.5rem] bg-surface p-3 text-on-surface-variant shadow-[2px_0_0_0_rgb(0_0_0/0.06)] sm:shadow-none" title={f.description ?? undefined}>
               {f.label}
             </td>
             {plans.map((p) => {

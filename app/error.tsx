@@ -9,12 +9,14 @@
 // `ErrorShell`, cf. son commentaire de tête.
 import { useEffect } from 'react';
 import { ErrorShell } from '@/components/ErrorShell';
+import { rechargerSiChunk } from '@/lib/rechargement-chunk';
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   // La trace part dans la console du navigateur ; côté serveur, Next l'a déjà
   // journalisée avec le même `digest`, ce qui permet de rapprocher les deux.
   useEffect(() => {
     console.error('Erreur de rendu :', error);
+    rechargerSiChunk(error);
   }, [error]);
 
   return (

@@ -65,7 +65,7 @@ export function ShareButton({
         onClick={shareExternal}
         aria-label={copied ? 'Lien copié' : 'Partager'}
         title={copied ? 'Lien copié' : 'Partager'}
-        className="flex items-center justify-center w-7 h-7 border border-secondary rounded-full hover:bg-secondary-container transition-colors"
+        className="flex items-center justify-center w-10 h-10 sm:w-7 sm:h-7 border border-secondary rounded-full hover:bg-secondary-container transition-colors"
       >
         <span className="material-symbols-outlined text-[16px]">{copied ? 'check' : 'share'}</span>
       </button>
@@ -136,7 +136,7 @@ function OwnerShareButton({
         onClick={() => setOpen(true)}
         aria-label="Partager"
         title="Partager"
-        className="flex items-center justify-center w-7 h-7 border border-secondary rounded-full hover:bg-secondary-container transition-colors"
+        className="flex items-center justify-center w-10 h-10 sm:w-7 sm:h-7 border border-secondary rounded-full hover:bg-secondary-container transition-colors"
       >
         <span className="material-symbols-outlined text-[16px]">share</span>
       </button>

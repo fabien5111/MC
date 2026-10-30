@@ -70,7 +70,7 @@ export function RailSection({
   return (
     <section className="mb-16">
       <div className="flex items-end justify-between gap-4 border-b border-outline-variant pb-4 mb-8">
-        <div>
+        <div className="min-w-0">
           <h2 className="font-headline-lg text-headline-lg text-primary">{title}</h2>
           <div className="h-1 w-12 bg-secondary mt-1.5" />
         </div>
@@ -80,7 +80,7 @@ export function RailSection({
             onClick={() => scroll(-1)}
             disabled={atStart}
             aria-label="Précédent"
-            className="w-9 h-9 rounded-full border border-outline-variant flex items-center justify-center text-primary hover:bg-surface-container transition-colors disabled:opacity-30 disabled:cursor-default"
+            className="hidden sm:flex w-9 h-9 rounded-full border border-outline-variant items-center justify-center text-primary hover:bg-surface-container transition-colors disabled:opacity-30 disabled:cursor-default"
           >
             <span className="material-symbols-outlined text-[20px]">chevron_left</span>
           </button>
@@ -89,7 +89,7 @@ export function RailSection({
             onClick={() => scroll(1)}
             disabled={atEnd}
             aria-label="Suivant"
-            className="w-9 h-9 rounded-full border border-outline-variant flex items-center justify-center text-primary hover:bg-surface-container transition-colors disabled:opacity-30 disabled:cursor-default"
+            className="hidden sm:flex w-9 h-9 rounded-full border border-outline-variant items-center justify-center text-primary hover:bg-surface-container transition-colors disabled:opacity-30 disabled:cursor-default"
           >
             <span className="material-symbols-outlined text-[20px]">chevron_right</span>
           </button>

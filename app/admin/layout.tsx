@@ -11,7 +11,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const role = await getRole(user.id); // mémoïsé : pas de seconde requête
 
   return (
-    <div className="flex min-h-screen bg-background text-on-surface">
+    <div className="flex min-h-screen flex-col bg-background lg:flex-row text-on-surface">
       <AdminSidebar role={role} />
       <div className="flex-1 flex flex-col min-w-0">{children}</div>
     </div>

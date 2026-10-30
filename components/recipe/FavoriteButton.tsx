@@ -65,7 +65,7 @@ export function FavoriteButton({ recipeId, initialFav }: { recipeId: string; ini
       disabled={busy}
       aria-label={fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
       title={fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-      className="flex items-center justify-center w-7 h-7 border border-secondary rounded-full hover:bg-secondary-container transition-colors disabled:opacity-60"
+      className="flex items-center justify-center w-10 h-10 sm:w-7 sm:h-7 border border-secondary rounded-full hover:bg-secondary-container transition-colors disabled:opacity-60"
     >
       <span className="material-symbols-outlined text-[16px] text-error" style={{ fontVariationSettings: fav ? "'FILL' 1" : "'FILL' 0" }}>
         favorite
