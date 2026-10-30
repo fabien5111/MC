@@ -1,7 +1,14 @@
 // Tests de la section « Modération » recomposée à l'envoi (JEP-386) : une
 // ligne fausse ici, c'est un admin envoyé valider ce qui ne l'attend plus.
 import { describe, expect, it } from 'vitest';
-import { filesDuRole, lignesModerationActuelles, TITRES_MAX, type FilesModeration } from './notification-moderation-recap';
+import {
+  FILTRE_HORS_FILES,
+  entreesFilesActuelles,
+  filesDuRole,
+  lignesModerationActuelles,
+  TITRES_MAX,
+  type FilesModeration,
+} from './notification-moderation-recap';
 
 const files = (r: string[], a: string[], totalR = r.length, totalA = a.length): FilesModeration => ({
   recettes: { total: totalR, titres: r },
@@ -60,5 +67,51 @@ describe('lignesModerationActuelles', () => {
   it('sans titre lisible, garde le compte seul', () => {
     const [ligne] = lignesModerationActuelles({ evenements: ['moderation_recette'], role: 'admin', files: files(['  '], [], 1) });
     expect(ligne.corps).toBe('1 recette attend votre validation.');
+  });
+});
+
+describe('entreesFilesActuelles (cloche)', () => {
+  const e = (id: number, kind: string, createdAt: string, readAt: string | null = null) => ({
+    id, kind, title: 'figé', body: 'figé', readAt, createdAt, link: null as string | null,
+  });
+  const lignes = [
+    e(1, 'moderation_recette', '2026-10-01T10:00:00Z', '2026-10-01T11:00:00Z'),
+    e(2, 'moderation_recette', '2026-10-03T10:00:00Z'),
+    e(3, 'moderation_avis', '2026-10-02T10:00:00Z'),
+  ];
+
+  it('garde une seule entrée par file, la plus récente, au texte réel', () => {
+    const r = entreesFilesActuelles(lignes, { role: 'admin', files: files(['Tarte', 'Flan'], ['Éclair']) });
+    expect(r.map((x) => x.id).sort()).toEqual([2, 3]);
+    const rec = r.find((x) => x.id === 2)!;
+    expect(rec.body).toBe('2 recettes attendent votre validation : « Tarte », « Flan ».');
+    expect(rec.link).toBe('/admin/recettes');
+    expect(rec.readAt).toBeNull();
+  });
+
+  it('retire la file vidée (avis validé, membre anonymisé)', () => {
+    const r = entreesFilesActuelles(lignes, { role: 'admin', files: files(['Tarte'], []) });
+    expect(r.map((x) => x.id)).toEqual([2]);
+    expect(entreesFilesActuelles(lignes, { role: 'admin', files: files([], []) })).toEqual([]);
+  });
+
+  it('ferme les avis au gestionnaire et tout à un autre rôle', () => {
+    const f = files(['Tarte'], ['Éclair']);
+    expect(entreesFilesActuelles(lignes, { role: 'gestionnaire', files: f }).map((x) => x.id)).toEqual([2]);
+    expect(entreesFilesActuelles(lignes, { role: 'membre', files: f })).toEqual([]);
+  });
+
+  it('garde l’état lu de l’entrée retenue, pas celui des lignes masquées', () => {
+    const r = entreesFilesActuelles([lignes[0], { ...lignes[1], readAt: '2026-10-03T12:00:00Z' }], {
+      role: 'admin',
+      files: files(['Tarte'], []),
+    });
+    expect(r).toHaveLength(1);
+    expect(r[0].readAt).toBe('2026-10-03T12:00:00Z');
+  });
+
+  it('expose un filtre qui nomme les deux événements de file', () => {
+    expect(FILTRE_HORS_FILES).toContain('moderation_recette');
+    expect(FILTRE_HORS_FILES).toContain('moderation_avis');
   });
 });

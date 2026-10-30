@@ -18,13 +18,8 @@ import { siteUrl } from '@/lib/site-url';
 import { CHEMIN_PREFERENCES, composerRecapitulatif, enTetesDesinscription, type LigneRecap } from '@/lib/notification-email';
 import { definitionEvenement, preferenceEffective, type Categorie, type DonneesEvenement } from '@/lib/notification-events';
 import { lirePreferences, notifier, reserverQuota } from '@/lib/notifier';
-import {
-  estEvenementFile,
-  lignesModerationActuelles,
-  TITRES_MAX,
-  type FileModeration,
-  type FilesModeration,
-} from '@/lib/notification-moderation-recap';
+import { lireFilesModeration } from '@/lib/notification-moderation-data';
+import { estEvenementFile, lignesModerationActuelles, type FilesModeration } from '@/lib/notification-moderation-recap';
 
 type Db = SupabaseClient;
 const vers = (admin: unknown): Db => admin as Db;
@@ -115,46 +110,6 @@ async function viderOutboxSansFile(admin: unknown): Promise<{ traites: number; e
     }
   }
   return { traites, echecs };
-}
-
-/**
- * État réel des files de modération à l'instant de l'envoi (JEP-386), lu une
- * fois par passe. Nul si une lecture échoue : la section est alors omise
- * plutôt que de renvoyer des lignes figées, qui étaient justement fausses.
- */
-async function lireFilesModeration(db: Db): Promise<FilesModeration | null> {
-  const [recettes, avis] = await Promise.all([
-    db
-      .from('recipes')
-      .select('title', { count: 'exact' })
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(TITRES_MAX),
-    db
-      .from('comments')
-      .select('recipes(title)', { count: 'exact' })
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(TITRES_MAX),
-  ]);
-  if (recettes.error || avis.error) {
-    console.error('notifications/recap: files de modération illisibles :', (recettes.error ?? avis.error)?.message);
-    return null;
-  }
-  const file = (total: number | null, titres: (string | null | undefined)[]): FileModeration => ({
-    total: total ?? 0,
-    titres: titres.filter((t): t is string => !!t),
-  });
-  return {
-    recettes: file(recettes.count, (recettes.data ?? []).map((r) => r.title as string | null)),
-    avis: file(
-      avis.count,
-      (avis.data ?? []).map((a) => {
-        const r = (a as { recipes?: { title?: string | null } | { title?: string | null }[] | null }).recipes;
-        return (Array.isArray(r) ? r[0] : r)?.title ?? null;
-      }),
-    ),
-  };
 }
 
 type LigneFile = {

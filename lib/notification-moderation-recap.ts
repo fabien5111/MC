@@ -89,3 +89,48 @@ export function lignesModerationActuelles(opts: {
   }
   return lignes;
 }
+
+/** Types d'entrée de cloche qui décrivent une file de modération (`notifications.kind`). */
+export const KINDS_FILE: string[] = Object.keys(EVENEMENTS_FILE);
+
+/** Filtre PostgREST écartant ces entrées d'une requête sur `notifications`. */
+export const FILTRE_HORS_FILES = `kind.is.null,kind.not.in.(${KINDS_FILE.join(',')})`;
+
+/** Ce que le recalage lit d'une entrée de cloche (sous-ensemble de `NotificationRow`). */
+export type EntreeFile = {
+  kind: string;
+  title: string;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+  link: string | null;
+};
+
+/**
+ * Entrées « file de modération » de la cloche recalées sur l'état réel des
+ * files (JEP-386) : une file est une liste d'actions, pas un historique. Par
+ * file : vide (ou fermée au rôle) = aucune entrée ; sinon UNE entrée, la plus
+ * récente, au texte recomposé (compte réel). Son état lu / non lu est le sien :
+ * c'est l'identifiant de cette ligne que la cloche marque lu à l'ouverture, un
+ * état déduit des lignes masquées reviendrait non lu au rechargement.
+ */
+export function entreesFilesActuelles<T extends EntreeFile>(
+  entrees: T[],
+  opts: { role: string | null | undefined; files: FilesModeration },
+): T[] {
+  const gardees: T[] = [];
+  for (const file of filesDuRole(opts.role)) {
+    const recentes = entrees
+      .filter((e) => EVENEMENTS_FILE[e.kind] === file)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (recentes.length === 0) continue;
+    const [ligne] = lignesModerationActuelles({
+      evenements: recentes.map((e) => e.kind),
+      role: opts.role,
+      files: opts.files,
+    });
+    if (!ligne) continue;
+    gardees.push({ ...recentes[0], title: ligne.titre, body: ligne.corps, link: ligne.lien });
+  }
+  return gardees;
+}

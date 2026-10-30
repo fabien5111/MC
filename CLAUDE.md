@@ -2394,8 +2394,16 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
   et jusqu'à 5 titres. File vidée entre-temps : rien ; plus rien d'autre à
   dire : pas d'e-mail. Le gestionnaire ne reçoit que les recettes (l'écran
   des avis est réservé à l'admin), un rôle retiré ne reçoit rien. Lecture en
-  échec : section omise, jamais les lignes figées. La cloche, elle, garde ses
-  entrées telles qu'elles ont été posées.
+  échec : section omise, jamais les lignes figées. **La cloche suit la même
+  règle, à la lecture** (`lib/notifications-data.ts`, `entreesFilesActuelles`) :
+  une file est une liste d'actions, pas un historique — file vide ou fermée au
+  rôle : aucune entrée (liste, page `/notifications` et pastille comprises) ;
+  sinon UNE entrée, la plus récente, au texte recomposé. Son état lu / non lu
+  est celui de sa propre ligne (c'est elle que l'ouverture marque lue). Seule
+  l'équipe paie la lecture des files, une fois par requête. Contrairement au
+  mail, **lecture en échec : entrées laissées telles quelles** (une alerte
+  passagèrement fausse vaut mieux qu'une alerte perdue). Les push déjà
+  envoyés ne se retirent pas (la modération n'en émet pas par défaut).
 - **Les favoris sont nominatifs pour l'auteur de la recette** (arbitrage
   JEP-280) : ils restent absents du profil public, mais l'auteur voit le
   pseudo. Écrit dans `/confidentialite` ; changer cette règle impose d'y
