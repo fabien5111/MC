@@ -16,6 +16,7 @@ import { UsageCard } from '@/components/profile/UsageCard';
 import { AidesCard } from '@/components/profile/AidesCard';
 import { MesDemandesCard } from '@/components/profile/MesDemandesCard';
 import { DeleteAccountCard } from '@/components/profile/DeleteAccountCard';
+import { ExportDonneesCard } from '@/components/profile/ExportDonneesCard';
 import { getFollowCounts, getFollowing } from '@/lib/follows';
 import { getBookSharesGiven, getRecipeSharesGiven } from '@/lib/shares-data';
 import { countPushDevices, getNotificationPreferences } from '@/lib/notifications-data';
@@ -170,6 +171,8 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
         />
         <AidesCard />
         <MesDemandesCard demandes={mesDemandes} />
+        {/* JEP-362 — ouvert à tous, administrateur compris (droit d'accès). */}
+        <ExportDonneesCard />
         {/* JEP-33 — fermé à l'administrateur (la route le refuse aussi). */}
         {!admin && profile?.full_name && <DeleteAccountCard pseudo={profile.full_name} />}
       </main>

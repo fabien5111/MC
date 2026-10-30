@@ -66,8 +66,12 @@ function absente(e: Erreur): boolean {
   );
 }
 
-/** Taille des lots `in(...)` : une URL PostgREST trop longue est refusée (414). */
-const LOT = 100;
+/**
+ * Taille des lots `in(...)` : une URL PostgREST trop longue est refusée (414).
+ * 100 UUID dépassaient déjà la limite de l'équilibreur (vu sur l'export, JEP-362) :
+ * 40 UUID ≈ 1,5 Ko, large marge.
+ */
+const LOT = 40;
 function enLots<T>(liste: T[], taille = LOT): T[][] {
   const lots: T[][] = [];
   for (let i = 0; i < liste.length; i += taille) lots.push(liste.slice(i, i + taille));

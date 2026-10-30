@@ -123,7 +123,7 @@ export default function ConfidentialitePage() {
         <h1 className="font-headline-lg text-headline-lg-mobile text-primary md:text-headline-lg mb-2">
           Politique de confidentialité
         </h1>
-        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 5 octobre 2026.</p>
+        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 30 octobre 2026.</p>
 
         <Section title="1. Responsable du traitement">
           <p>
@@ -639,6 +639,10 @@ export default function ConfidentialitePage() {
             Pour les exercer : <LienContact /> (type « Mes données personnelles ») ou <LienEmail />. Nous répondons{' '}
             <Fort>sous un mois</Fort>. En cas de doute raisonnable sur votre identité, nous pourrons vous demander de
             la justifier.
+          </p>
+          <p>
+            Vous pouvez aussi télécharger vous-même une copie de vos données, au format JSON, depuis vos réglages
+            (« Télécharger mes données », une fois par jour).
           </p>
           <p>
             Vous pouvez aussi introduire une réclamation auprès de la CNIL :{' '}

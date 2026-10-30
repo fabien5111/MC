@@ -101,6 +101,8 @@ export const LIBELLE_ACTION_JOURNAL: Record<string, string> = {
   relance_confirmation: 'Relance du mail de confirmation',
   // JEP-33 : suppression du compte par un admin (ligne portée par le profil anonyme).
   anonymisation: 'Anonymisation du compte',
+  // JEP-362 : export des données (par l'admin, ou par le membre lui-même si aucun admin n'est nommé).
+  export_donnees: 'Export des données',
 };
 
 export type DemandeModeration = {

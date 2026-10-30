@@ -62,6 +62,8 @@ export type EvenementModeration = {
   jusquAu: string | null;
   createdAt: string;
   adminNom: string | null;
+  /** Geste du membre lui-même (export de ses données, JEP-362) : aucun admin au journal. */
+  parLeMembre: boolean;
   /** Membre prévenu par e-mail (lot 2) ; `null` : action antérieure ou colonne absente. */
   notifie: boolean | null;
   /** Geste sur l'abonnement (`pause`, `resilier`, `reprendre`, suffixe `:echec`), ou `null`. */
@@ -111,6 +113,7 @@ export async function getJournalModeration(memberId: string): Promise<EvenementM
     jusquAu: l.suspended_until,
     createdAt: l.created_at,
     adminNom: l.admin_id ? (noms.get(l.admin_id) ?? null) : null,
+    parLeMembre: !l.admin_id && l.action === 'export_donnees',
     notifie: l.member_notified ?? null,
     abonnement: l.subscription_action ?? null,
   }));

@@ -192,7 +192,7 @@ export function MemberModerationPanel({
                   {e.action === 'suspension' && (e.jusquAu ? ` jusqu'au ${formatDateHeure(e.jusquAu)}` : ' sans limite')}
                 </p>
                 <p className="text-on-surface-variant">
-                  {formatDateHeure(e.createdAt)} · par {e.adminNom ?? 'administrateur supprimé'}
+                  {formatDateHeure(e.createdAt)} · par {e.parLeMembre ? 'le membre' : (e.adminNom ?? 'administrateur supprimé')}
                 </p>
                 {e.motif && <p className="text-on-surface-variant italic whitespace-pre-line">« {e.motif} »</p>}
                 {(e.notifie != null || e.abonnement) && (

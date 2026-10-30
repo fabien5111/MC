@@ -20,6 +20,7 @@ import { useImpersonateLink, ImpersonationLinkPanel } from '@/components/admin/I
 import { MemberSubscriptionPanel } from '@/components/admin/MemberSubscriptionPanel';
 import { MemberModerationPanel } from '@/components/admin/MemberModerationPanel';
 import type { EvenementModeration } from '@/lib/moderation-data';
+import { telechargerExport } from '@/lib/export-donnees-client';
 
 const FIELD = 'border border-outline-variant rounded px-3 py-2 bg-white text-sm w-full focus:outline-none focus:border-primary';
 const LABEL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant';
@@ -80,6 +81,7 @@ export function MemberDetail({
   const [newEmail, setNewEmail] = useState('');
   const [changingEmail, setChangingEmail] = useState(false);
   const [confirmingEmail, setConfirmingEmail] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
 
   const initials = member.fullName
@@ -205,6 +207,26 @@ export function MemberDetail({
     }
   }
 
+  // JEP-362 — export RGPD (art. 15 et 20) : la route trace le geste au journal
+  // de modération, à votre nom, puis rend le fichier JSON.
+  async function exporterDonnees() {
+    if (!member.profileId) return;
+    const ok = await dialog.confirm(
+      `Exporter toutes les données de « ${member.fullName || member.email} » ?\n\n` +
+        'Le fichier contient ses données personnelles (compte, recettes, fournées, demandes de contact, abonnement…). ' +
+        "Il est à transmettre au seul membre, par un canal sûr. Le geste est inscrit au journal de modération, à votre nom.",
+    );
+    if (!ok) return;
+    setExporting(true);
+    const r = await telechargerExport(`/api/admin/membres/${member.profileId}/exporter`);
+    setExporting(false);
+    if (!r.ok) {
+      dialog.alert(r.erreur);
+      return;
+    }
+    router.refresh();
+  }
+
   async function supprimer() {
     const ok = await dialog.confirm(
       `Supprimer « ${member.fullName || member.email} » ?\n\n` +
@@ -285,7 +307,7 @@ export function MemberDetail({
 
   return (
     <main className="flex-1 p-margin-mobile md:p-margin-desktop max-w-[900px] w-full space-y-6">
-      <LoadingOverlay visible={impBusy || deleting || anonymizing || changingEmail || confirmingEmail || resendingEmail} />
+      <LoadingOverlay visible={impBusy || deleting || anonymizing || changingEmail || confirmingEmail || resendingEmail || exporting} />
 
       {/* En-tête : identité + lien vers la vitrine publique */}
       <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 flex items-center gap-4">
@@ -565,6 +587,25 @@ export function MemberDetail({
             className="border border-outline-variant rounded py-2.5 px-6 text-sm font-semibold hover:bg-surface-container-high transition-colors disabled:opacity-50"
           >
             {changingEmail ? 'Changement en cours…' : "Changer l'adresse"}
+          </button>
+        </CollapsibleSection>
+      )}
+
+      {/* JEP-362 — droit d'accès et portabilité (RGPD, art. 15 et 20). */}
+      {member.profileId && member.status !== 'deleted' && (
+        <CollapsibleSection title="Données personnelles" subtitle="RGPD — export">
+          <p className="text-xs text-on-surface-variant">
+            Archive JSON de toutes les données du membre (réponse due sous un mois à une demande d&apos;accès). Les
+            photos n&apos;y figurent que par leur adresse ; aucune donnée d&apos;un autre membre n&apos;y est incluse,
+            hormis le nom affiché des pâtissiers suivis et des personnes avec qui un partage existe.
+          </p>
+          <button
+            type="button"
+            onClick={exporterDonnees}
+            disabled={exporting}
+            className="border border-outline-variant rounded py-2.5 px-6 text-sm font-semibold hover:bg-surface-container-high transition-colors disabled:opacity-50"
+          >
+            Exporter les données
           </button>
         </CollapsibleSection>
       )}
