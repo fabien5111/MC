@@ -34,7 +34,8 @@ function singular(w: string): string {
   return w;
 }
 
-export function ingredientKey(name: string | null | undefined): string {
+// Mots significatifs d'un nom, normalisés mais PAS encore ramenés au singulier.
+function ingredientKeyMots(name: string | null | undefined): string[] {
   return (name ?? '')
     .toLowerCase()
     .replace(/œ/g, 'oe')
@@ -43,9 +44,11 @@ export function ingredientKey(name: string | null | undefined): string {
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
     .split(' ')
-    .filter((w) => w && !STOPWORDS.has(w))
-    .map(singular)
-    .join(' ');
+    .filter((w) => w && !STOPWORDS.has(w));
+}
+
+export function ingredientKey(name: string | null | undefined): string {
+  return ingredientKeyMots(name).map(singular).join(' ');
 }
 
 // Vrai si deux noms désignent le même ingrédient au sens de `ingredientKey`.
@@ -68,6 +71,31 @@ export function ingredientRefDuplicates<T extends { id: number; name: string }>(
     .filter((g) => g.length > 1)
     .map((g) => [...g].sort((a, b) => a.name.localeCompare(b.name, 'fr')))
     .sort((a, b) => a[0].name.localeCompare(b[0].name, 'fr'));
+}
+
+// Entrée à garder de préférence dans un groupe de doublons (JEP-383) : celle
+// dont le libellé est au PLURIEL (« Poudre de pistaches », « Jaunes d'œufs »),
+// parce qu'un ingrédient du référentiel se lit comme ce qu'on achète ou pèse.
+// Le pluriel se reconnaît à ses mots : on compte ceux que `singular` raccourcit
+// (« pistaches » oui, « noix » ou « jus » non, ils sont invariables). Égalité
+// (« Fève de tonka » / « Fève tonka », rien à départager) : la première du
+// groupe, qui est déjà triée par libellé. Une suggestion, jamais un choix
+// imposé : l'admin tranche.
+function motsAuPluriel(name: string): number {
+  return ingredientKeyMots(name).filter((w) => singular(w) !== w).length;
+}
+
+export function entreePlurielPreferee<T extends { name: string }>(group: T[]): T | null {
+  let meilleure: T | null = null;
+  let max = 0;
+  for (const r of group) {
+    const n = motsAuPluriel(r.name);
+    if (n > max) {
+      max = n;
+      meilleure = r;
+    }
+  }
+  return meilleure;
 }
 
 // ---------------------------------------------------------------------------

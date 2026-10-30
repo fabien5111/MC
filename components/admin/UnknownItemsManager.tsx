@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import type { UnknownItem, IgnoredRef } from '@/lib/admin';
 import type { IngredientRefOption } from '@/lib/ingredient-conversions';
+import { entreePlurielPreferee } from '@/lib/ingredient-name';
 import { formatDate } from '@/lib/format';
 import { revalidateReference } from '@/lib/revalidate-reference';
 
@@ -395,26 +396,32 @@ function RefDuplicatesSection({ groups, onKeep }: { groups: IngredientRefOption[
         </h3>
         <p className="text-xs text-on-surface-variant mt-0.5">
           Ingrédients de référence qui ne diffèrent que par le singulier/pluriel, les accents ou « oe »/« œ ». Choisissez le
-          libellé à garder — de préférence au singulier : les autres y seront fusionnés (recettes, fournées, courses,
-          conversions).
+          libellé à garder — de préférence au pluriel, suggéré en tête : les autres y seront fusionnés (recettes,
+          fournées, courses, conversions).
         </p>
       </div>
       <ul className="divide-y divide-outline-variant">
-        {groups.map((g) => (
+        {groups.map((groupe) => {
+          // Le pluriel suggéré passe en tête (JEP-383) ; rien d'automatique.
+          const suggeree = entreePlurielPreferee(groupe);
+          const g = suggeree ? [suggeree, ...groupe.filter((r) => r.id !== suggeree.id)] : groupe;
+          return (
           <li key={g.map((r) => r.id).join('-')} className="px-6 py-4 flex flex-wrap items-center gap-2">
             {g.map((r) => (
               <button
                 key={r.id}
                 onClick={() => onKeep(r, g.filter((x) => x.id !== r.id))}
-                title={`Garder « ${r.name} »`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant text-on-surface text-sm rounded hover:border-primary hover:text-primary transition-all"
+                title={r.id === suggeree?.id ? `Garder « ${r.name} » (pluriel suggéré)` : `Garder « ${r.name} »`}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 border text-on-surface text-sm rounded hover:border-primary hover:text-primary transition-all ${r.id === suggeree?.id ? 'border-primary' : 'border-outline-variant'}`}
               >
                 <span className="material-symbols-outlined text-sm">merge</span>
                 Garder « {r.name} »
+                {r.id === suggeree?.id && <span className="text-xs text-on-surface-variant">· suggéré</span>}
               </button>
             ))}
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );
