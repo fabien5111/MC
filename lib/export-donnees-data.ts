@@ -41,8 +41,19 @@ class LectureEchouee extends Error {}
 /** Lignes par page (plafond par défaut de PostgREST) et garde-fou du nombre de pages. */
 const PAGE = 1000;
 const PAGES_MAX = 50;
-/** Taille des lots `in(...)` : une URL PostgREST trop longue est refusée (414). */
-const LOT = 100;
+/**
+ * Taille des lots `in(...)` : les identifiants voyagent dans l'adresse de la
+ * requête, et l'équilibreur refuse une adresse trop longue (414 « Request-URI
+ * Too Large », vu à 100 UUID sur `recipe_steps`). 40 UUID ≈ 1,5 Ko : large marge.
+ */
+const LOT = 40;
+
+/** Message d'erreur lisible : une page HTML d'erreur (414, 502 de l'équilibreur) est réduite à son titre. */
+function messageLisible(message: string): string {
+  const titre = /<title>([^<]*)<\/title>/i.exec(message)?.[1];
+  if (titre) return titre.trim();
+  return message.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+}
 
 function enLots<T>(liste: T[], taille = LOT): T[][] {
   const lots: T[][] = [];
@@ -82,7 +93,7 @@ async function lirePages(db: Db, table: string, filtrer: (q: Requete) => Requete
         return lirePages(db, table, filtrer, ordre === 'id' ? 'created_at' : null);
       }
       if (absente(error)) return [];
-      throw new LectureEchouee(`${table} : ${error.message}`);
+      throw new LectureEchouee(`${table} : ${messageLisible(error.message)}`);
     }
     const lu = (data ?? []) as Ligne[];
     lignes.push(...lu);
@@ -99,7 +110,7 @@ async function nomsAffiches(db: Db, membres: string[]): Promise<Map<string, stri
   const noms = new Map<string, string>();
   for (const lot of enLots(membres)) {
     const { data, error } = await db.from('profiles').select('id, full_name').in('id', lot);
-    if (error) throw new LectureEchouee(`profiles (noms) : ${error.message}`);
+    if (error) throw new LectureEchouee(`profiles (noms) : ${messageLisible(error.message)}`);
     for (const p of (data ?? []) as { id: string; full_name: string | null }[]) noms.set(p.id, p.full_name ?? 'Membre sans pseudo');
   }
   return noms;
