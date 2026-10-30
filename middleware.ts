@@ -101,6 +101,9 @@ export const config = {
     // était donc un `getUser()` supplémentaire par appel, en pure perte, et
     // doublé sur les routes appelées à la frappe (autocomplétion des
     // ingrédients, des membres, compte de résultats de la recherche…).
-    '/((?!api/|_next/static|_next/image|favicon.ico|manifest.json|robots.txt|sitemap.xml|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff2?|ttf)$).*)',
+    //
+    // `.xml` (JEP-246) : `/recette/sitemap.xml` doit échapper à la page
+    // d'attente, qui le réécrirait en HTML ; le plan décide seul sur `Host`.
+    '/((?!api/|_next/static|_next/image|favicon.ico|manifest.json|robots.txt|sitemap.xml|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff2?|ttf|xml)$).*)',
   ],
 };
