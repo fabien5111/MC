@@ -14,6 +14,7 @@ export function StepVideoPlayer({ url }: { url: string }) {
           <iframe
             src={video.embedUrl}
             title="Vidéo de l'étape"
+            loading="lazy"
             className="w-full h-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
