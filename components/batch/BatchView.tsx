@@ -2354,32 +2354,6 @@ function SummaryPanel({
   lecture: boolean;
   onGlobalComment: (v: string) => void;
 }) {
-  function jalonDate(offset: number): Date | null {
-    if (!batch.degustation_at) return null;
-    const d = new Date(batch.degustation_at);
-    d.setDate(d.getDate() - offset);
-    return d;
-  }
-  const jalons = groupBatchStepsByDay(batch.batch_steps);
-  const all = batch.batch_steps;
-  const done = all.filter((s) => s.done).length;
-  const duree = batch.date_fin && batch.date_debut ? fmtDuree(+new Date(batch.date_fin) - +new Date(batch.date_debut)) : '—';
-  const jalonRows = jalons.map((j, ji) => {
-    const label = j.offset > 0 ? `Jour J − ${j.offset}` : 'Jour J';
-    if (!j.steps.length) return null;
-    if (!j.steps.every((s) => s.done)) return <li key={ji}>{label} : <span className="text-on-surface-variant">non terminé</span></li>;
-    const dates = j.steps.filter((s) => s.done_at).map((s) => new Date(s.done_at!).getTime());
-    if (!dates.length) return <li key={ji}>{label} : terminé</li>;
-    const last = new Date(Math.max(...dates));
-    const deadline = jalonDate(j.offset);
-    const diff = deadline ? Math.round((+last - +deadline) / MIN) : null;
-    return (
-      <li key={ji}>
-        {label} : terminé le {fmtJour(last)} à {fmtHeure(last)}
-        {diff != null && (diff <= 0 ? <> — <span className="text-green-700 font-bold">dans les temps</span></> : <> — <span className="text-error font-bold">en retard de {formatTime(diff)}</span></>)}
-      </li>
-    );
-  });
   const ecarts = batch.batch_ingredients
     .filter((it) => (it.real_quantity != null && it.real_quantity !== it.quantity) || it.commentaire)
     .map((it) => {
@@ -2392,25 +2366,24 @@ function SummaryPanel({
         commentaire: it.commentaire,
       };
     });
-  const comms = batch.batch_steps.filter((s) => s.commentaire).map((s) => ({ key: s.id, titre: s.title, texte: s.commentaire! }));
+  // Commentaires d'étapes ; ceux des sous-étapes, rangés sous l'étape dans un
+  // volet replié (une étape ne portant que des remarques de sous-étapes y figure aussi).
+  const comms = [...batch.batch_steps]
+    .sort((a, b) => a.order_index - b.order_index)
+    .map((s) => ({
+      key: s.id,
+      titre: s.title,
+      texte: s.commentaire,
+      sous: [...s.batch_substeps]
+        .sort((a, b) => a.order_index - b.order_index)
+        .filter((su) => su.commentaire?.trim())
+        .map((su) => ({ key: su.id, texte: su.texte, commentaire: su.commentaire! })),
+    }))
+    .filter((c) => c.texte || c.sous.length > 0);
 
   return (
     <div id="sec-resume" className="scroll-mt-28 mt-6 border border-outline-variant rounded-xl bg-surface-container-lowest p-6 flex flex-col gap-5">
       <h2 className="font-headline-md text-headline-md text-primary">Résumé de la fournée</h2>
-      <div className="flex flex-wrap gap-10">
-        <div>
-          <p className={LBL_CLS}>Durée totale</p>
-          <p className="font-headline-md text-[22px] text-primary">{duree}</p>
-        </div>
-        <div>
-          <p className={LBL_CLS}>Étapes réalisées</p>
-          <p className="font-headline-md text-[22px] text-primary">{done} / {all.length}</p>
-        </div>
-      </div>
-      <div>
-        <p className={`${LBL_CLS} mb-1`}>Respect des jalons</p>
-        <ul className="text-sm flex flex-col gap-1">{jalonRows.length ? jalonRows : <li>—</li>}</ul>
-      </div>
       {ecarts.length > 0 && (
         <div>
           <p className={`${LBL_CLS} mb-1`}>Ajustements d&apos;ingrédients</p>
@@ -2431,7 +2404,21 @@ function SummaryPanel({
           <ul className="text-sm flex flex-col gap-1">
             {comms.map((c) => (
               <li key={c.key}>
-                <span className="font-bold">{c.titre} :</span> {c.texte}
+                <span className="font-bold">{c.titre}{c.texte ? ' :' : ''}</span> {c.texte}
+                {c.sous.length > 0 && (
+                  <details className="mt-1 ml-3 text-on-surface-variant">
+                    <summary className="cursor-pointer text-[12px] font-label-md">
+                      Sous-étapes ({c.sous.length} commentaire{c.sous.length > 1 ? 's' : ''})
+                    </summary>
+                    <ul className="mt-1 flex flex-col gap-0.5 italic">
+                      {c.sous.map((su) => (
+                        <li key={su.key}>
+                          <span className="not-italic text-on-surface">{su.texte}</span> — {su.commentaire}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
               </li>
             ))}
           </ul>
