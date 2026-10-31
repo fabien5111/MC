@@ -2404,16 +2404,26 @@ function SummaryPanel({
           <ul className="text-sm flex flex-col gap-1">
             {comms.map((c) => (
               <li key={c.key}>
-                <span className="font-bold">{c.titre}{c.texte ? ' :' : ''}</span> {c.texte}
+                <p className="font-bold">{c.titre}</p>
+                {c.texte && (
+                  <p>
+                    <span className="text-on-surface-variant">Mon commentaire : </span>
+                    {c.texte}
+                  </p>
+                )}
                 {c.sous.length > 0 && (
                   <details className="mt-1 ml-3 text-on-surface-variant">
                     <summary className="cursor-pointer text-[12px] font-label-md">
                       Sous-étapes ({c.sous.length} commentaire{c.sous.length > 1 ? 's' : ''})
                     </summary>
-                    <ul className="mt-1 flex flex-col gap-0.5 italic">
+                    <ul className="mt-1 flex flex-col gap-2 italic">
                       {c.sous.map((su) => (
                         <li key={su.key}>
-                          <span className="not-italic text-on-surface">{su.texte}</span> — {su.commentaire}
+                          <p className="not-italic text-on-surface">{su.texte}</p>
+                          <p>
+                            <span className="not-italic">Mon commentaire : </span>
+                            {su.commentaire}
+                          </p>
                         </li>
                       ))}
                     </ul>
