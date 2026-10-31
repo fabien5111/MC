@@ -372,7 +372,8 @@ export function BatchStepDonePanel({
   // la réalisation. S'imprime. Placée avant les ingrédients : c'est la
   // première chose à relire en abordant l'étape (matériel à sortir,
   // adaptation…), pas une note de fin de liste.
-  const noteBlock = (
+  // Fournée close sans note : rien à lire ni à ajouter, le bloc est omis.
+  const noteBlock = readOnly && !step.user_note ? null : (
     <div className="border-l-4 border-green-700 bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>

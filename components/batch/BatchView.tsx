@@ -682,6 +682,7 @@ export function BatchView({
             droits={droits}
             panneauAjustement={panneauAjustement}
             help={readOnly ? undefined : help}
+            setBatch={setBatch}
           />
         ) : (
           <PatisserView
@@ -723,6 +724,7 @@ function PreparerView({
   droits,
   panneauAjustement,
   help,
+  setBatch,
 }: {
   batch: BatchFull;
   baseRecipe: BaseRecipeInfo;
@@ -744,6 +746,8 @@ function PreparerView({
   panneauAjustement: React.ReactNode;
   // Aide (JEP-373) : absente sur une fournée close ou en lecture seule.
   help?: HelpBlocksState;
+  // Résumé d'une fournée close, rendu aussi ici : sa leçon se modifie.
+  setBatch: React.Dispatch<React.SetStateAction<BatchFull>>;
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   // Volet « Ajustement par l'IA » sous 1024 px : ouvert par défaut. Au-dessus
@@ -897,6 +901,7 @@ function PreparerView({
   // la fournée n'a rien à faire dans la liste, sous peine de lien mort.
   const tocSections: TocSections = {
     before: [
+      ...(batch.status !== 'planifiee' ? [{ id: 'sec-resume', label: 'Résumé de la fournée', icon: 'insights', level: 1 as const }] : []),
       { id: 'sec-technique', label: 'Bloc technique', icon: 'straighten', level: 1 },
       ...(sortedSteps.length > 0 ? [{ id: 'sec-planning', label: 'Planning de préparation', icon: 'calendar_month', level: 1 as const }] : []),
       ...(batch.recipe_description ? [{ id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 as const }] : []),
@@ -958,6 +963,11 @@ function PreparerView({
       </p>
 
       <BatchNotes batchId={batch.id} notes={batch.user_note} canPersonalNotes={droits.notesPersonnelles} readOnly={readOnly} />
+
+      {/* Résumé de la fournée (le même qu'en mode Pâtisser), au-dessus de la
+          photo, sur une fournée close. Toujours en lecture seule ici : le
+          commentaire global s'écrit en mode Pâtisser, d'où le rappel vide. */}
+      {batch.status !== 'planifiee' && <SummaryPanel batch={batch} setBatch={setBatch} lecture onGlobalComment={() => {}} />}
 
       {/* Photo principale — remontée au-dessus du bloc technique (même ordre
           que la fiche recette), plutôt qu'après la description plus bas. */}
