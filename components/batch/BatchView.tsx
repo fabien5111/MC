@@ -1454,6 +1454,7 @@ function PreparerView({
                   canPersonalNotes={droits.notesPersonnelles}
                   canSubsteps={droits.sousEtapes}
                   readOnly={readOnly}
+                  derniereFois={<DerniereFoisEtape stepId={s.id} />}
                   aideRealise={help && i === 0 ? <HelpBlockSlot blockKey="fournee.deja_realise" help={help} /> : undefined}
                   aideNote={help && i === 0 ? <HelpBlockSlot blockKey="fournee.notes" help={help} /> : undefined}
                   ingredientsEditor={
@@ -1487,7 +1488,6 @@ function PreparerView({
                     </details>
                   )}
                 </BatchStepDonePanel>
-                <DerniereFoisEtape stepId={s.id} />
               </div>
             );
           })}
@@ -1945,8 +1945,8 @@ function PatisserBody({
                 const isPending = !pendingMarked && !s.done;
                 if (isPending) pendingMarked = true;
                 return (
-                  <div key={s.id} className="flex flex-col gap-2">
                   <StepCookCard
+                    key={s.id}
                     step={s}
                     // Tout le contenu de l'étape, y compris ce que « déjà
                     // réalisé » sort des courses et de la mise en place :
@@ -1980,8 +1980,6 @@ function PatisserBody({
                     onStepComment={onStepComment}
                     peutRacheter={peutRacheter}
                   />
-                  <DerniereFoisEtape stepId={s.id} />
-                  </div>
                 );
               })}
             </div>
@@ -2127,6 +2125,11 @@ function StepCookCard({
         <span className={`shrink-0 p-1 material-symbols-outlined text-on-surface-variant transition-transform ${open ? 'rotate-180' : ''}`}>
           expand_more
         </span>
+      </div>
+
+      {/* JEP-381 : juste sous l'en-tête (titre, temps), visible étape repliée. */}
+      <div className="px-4 pt-3 empty:hidden">
+        <DerniereFoisEtape stepId={s.id} />
       </div>
 
       {/* Hors du volet, comme en mode Préparer : la note personnelle est le
