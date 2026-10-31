@@ -32,6 +32,7 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import { moveAt } from '@/lib/photo-reorder';
 import { demanderVignettes, televerserImage } from '@/lib/storage-client';
 import { connexionHref } from '@/lib/nav';
+import { autoGrow, useAutoGrowOnResize } from '@/lib/auto-grow';
 import { PictoAvance } from '@/components/recipe/PictoAvance';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
@@ -253,6 +254,7 @@ export function RelectureEditor({
   ingredientRefIds: IngredientRefOption[];
   helpBlocks?: VisibleHelpBlock[];
 }) {
+  useAutoGrowOnResize();
   const router = useRouter();
   const dialog = useDialog();
   const recette = (importRow.recette ?? {}) as any;
@@ -1435,7 +1437,7 @@ export function RelectureEditor({
           </div>
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Description rapide</span>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={champ} />
+            <textarea ref={autoGrow} value={description} onChange={(e) => { setDescription(e.target.value); autoGrow(e.target); }} rows={2} className={`${champ} resize-none overflow-hidden`} />
           </label>
           <HelpBlockSlot blockKey="relecture.taille" help={help} />
           <div className="flex flex-col gap-1">
@@ -1549,10 +1551,14 @@ export function RelectureEditor({
             <label className="flex flex-col gap-1 mt-4">
               <span className="text-xs text-on-surface-variant">Complément d&apos;informations sur les quantités</span>
               <textarea
+                ref={autoGrow}
                 value={yieldNotes}
-                onChange={(e) => setYieldNotes(e.target.value)}
+                onChange={(e) => {
+                  setYieldNotes(e.target.value);
+                  autoGrow(e.target);
+                }}
                 rows={3}
-                className={`${champ} text-sm`}
+                className={`${champ} text-sm resize-none overflow-hidden`}
                 placeholder="Précisions utiles à un ajustement des quantités par IA (ex : le moule est rempli aux 3/4, prévoir une marge de fonçage…)"
               />
             </label>
@@ -1621,9 +1627,13 @@ export function RelectureEditor({
                     </button>
                   </div>
                   <textarea
+                    ref={autoGrow}
                     value={m.commentaire}
-                    onChange={(e) => patchUtensil(mi, { commentaire: e.target.value })}
-                    className={`${champ} text-sm mt-1 resize-y`}
+                    onChange={(e) => {
+                      patchUtensil(mi, { commentaire: e.target.value });
+                      autoGrow(e.target);
+                    }}
+                    className={`${champ} text-sm mt-1 resize-none overflow-hidden`}
                     rows={1}
                     placeholder="Commentaire (optionnel — taille, réglage…)"
                   />
@@ -1833,13 +1843,21 @@ export function RelectureEditor({
               </label>
               {sp.avance && (
                 <div className="basis-full flex flex-col gap-1">
-                  <input
+                  <textarea
                     id={`avance-note-${sp.key}`}
-                    type="text"
+                    ref={autoGrow}
+                    rows={1}
                     value={sp.avanceNote}
-                    onChange={(e) => patchSp(si, { avanceNote: e.target.value.slice(0, ADVANCE_NOTE_MAX) })}
+                    onChange={(e) => {
+                      patchSp(si, { avanceNote: e.target.value.replace(/\n/g, ' ').slice(0, ADVANCE_NOTE_MAX) });
+                      autoGrow(e.target);
+                    }}
+                    // Entrée n'ajoute pas de ligne : le texte reste une seule phrase.
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.preventDefault();
+                    }}
                     maxLength={ADVANCE_NOTE_MAX}
-                    className={`${champ} w-full`}
+                    className={`${champ} w-full resize-none overflow-hidden`}
                     placeholder="À l'avance : précisions (ex. 3 jours au frais, filmée au contact)"
                     aria-label="Précisions sur la préparation à l'avance"
                   />
@@ -1926,9 +1944,13 @@ export function RelectureEditor({
                           </button>
                         </div>
                         <textarea
+                          ref={autoGrow}
                           value={g.note}
-                          onChange={(e) => patchIng(si, ii, { note: e.target.value })}
-                          className={`${champ} text-sm mt-1 resize-y`}
+                          onChange={(e) => {
+                            patchIng(si, ii, { note: e.target.value });
+                            autoGrow(e.target);
+                          }}
+                          className={`${champ} text-sm mt-1 resize-none overflow-hidden`}
                           rows={1}
                           placeholder="Commentaire (optionnel — pommade, à froid…)"
                         />
@@ -2052,7 +2074,7 @@ export function RelectureEditor({
                         {e.imported ? e.imported : <span className="italic opacity-60">ajoutée</span>}
                       </div>
                       <div className="flex items-start gap-2">
-                        <textarea value={e.texte} onChange={(ev) => patchEtape(si, ei, { texte: ev.target.value })} rows={4} className={`${champ} flex-1`} />
+                        <textarea ref={autoGrow} value={e.texte} onChange={(ev) => { patchEtape(si, ei, { texte: ev.target.value }); autoGrow(ev.target); }} rows={2} className={`${champ} flex-1 resize-none overflow-hidden`} />
                         <div className="flex flex-col gap-1 mt-2 shrink-0">
                           <button
                             type="button"
@@ -2128,10 +2150,14 @@ export function RelectureEditor({
               <div className="mt-6">
                 <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Conseils &amp; astuces de l&apos;étape</p>
                 <textarea
+                  ref={autoGrow}
                   value={sp.tips}
-                  onChange={(e) => patchSp(si, { tips: e.target.value })}
+                  onChange={(e) => {
+                    patchSp(si, { tips: e.target.value });
+                    autoGrow(e.target);
+                  }}
                   rows={3}
-                  className={champ}
+                  className={`${champ} resize-none overflow-hidden`}
                   placeholder="Une astuce particulière pour cette étape ?"
                 />
               </div>
@@ -2154,10 +2180,14 @@ export function RelectureEditor({
       <section id="sec-conseils" className="scroll-mt-28 mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Conseils et astuces de la recette</h2>
         <textarea
+          ref={autoGrow}
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={(e) => {
+            setNotes(e.target.value);
+            autoGrow(e.target);
+          }}
           rows={4}
-          className={champ}
+          className={`${champ} resize-none overflow-hidden`}
           placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)…"
         />
       </section>
@@ -2166,10 +2196,14 @@ export function RelectureEditor({
       <section className="mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
         <h2 className="font-headline-md text-[22px] text-primary mb-4">Conseils de dégustation et de conservation</h2>
         <textarea
+          ref={autoGrow}
           value={servingAdvice}
-          onChange={(e) => setServingAdvice(e.target.value)}
+          onChange={(e) => {
+            setServingAdvice(e.target.value);
+            autoGrow(e.target);
+          }}
           rows={4}
-          className={champ}
+          className={`${champ} resize-none overflow-hidden`}
           placeholder="Température de dégustation, durée et mode de conservation…"
         />
       </section>

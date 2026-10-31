@@ -26,6 +26,7 @@ import { televerserImage } from '@/lib/storage-client';
 import { estDataUrlImage } from '@/lib/storage';
 import type { RecipeFull } from '@/lib/recipes';
 import { stepTimeSums } from '@/lib/recipe-view';
+import { autoGrow } from '@/lib/auto-grow';
 import { useRegisterSection, type SectionRegistry } from '@/components/projets/v2/sections';
 
 type Mutate = ReturnType<typeof useMutation>['mutate'];
@@ -646,11 +647,11 @@ export function ConseilsEditor({
     <div className="space-y-4">
       <div>
         <label className={etiquette}>CONSEILS</label>
-        <textarea value={v.tips} onChange={maj('tips')} rows={3} className={champ} placeholder="Astuces de réalisation, conservation…" />
+        <textarea ref={autoGrow} value={v.tips} onChange={(e) => { maj('tips')(e); autoGrow(e.target); }} rows={3} className={`${champ} resize-none overflow-hidden`} placeholder="Astuces de réalisation, conservation…" />
       </div>
       <div>
         <label className={etiquette}>CONSEILS DE SERVICE</label>
-        <textarea value={v.serving} onChange={maj('serving')} rows={2} className={champ} placeholder="Température de dégustation, accompagnement…" />
+        <textarea ref={autoGrow} value={v.serving} onChange={(e) => { maj('serving')(e); autoGrow(e.target); }} rows={2} className={`${champ} resize-none overflow-hidden`} placeholder="Température de dégustation, accompagnement…" />
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>

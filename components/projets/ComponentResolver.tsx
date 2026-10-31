@@ -46,16 +46,7 @@ import type { IngredientView, RecipeStepView } from '@/lib/recipes';
 import { StepEditorCard } from '@/components/projets/StepEditorCard';
 import { TagFilter, type TagOption } from '@/components/projets/TagFilter';
 import { televerserImage } from '@/lib/storage-client';
-
-// Hauteur d'une zone de texte calée sur son contenu (JEP-254, point 7) : une
-// proposition de l'IA arrive avec des descriptions de plusieurs lignes, qu'un
-// champ de deux lignes tronquait. Même geste que `autoGrow` de CreerForm —
-// appelé depuis une ref, légal dans un `.map()`, là où un hook ne l'est pas.
-function autoGrow(el: HTMLTextAreaElement | null) {
-  if (!el) return;
-  el.style.height = 'auto';
-  el.style.height = `${el.scrollHeight}px`;
-}
+import { autoGrow, useAutoGrowOnResize } from '@/lib/auto-grow';
 
 // Délai avant de lancer la recherche pendant la frappe (JEP-254, point 11) —
 // même valeur que la recherche avancée.
@@ -177,6 +168,7 @@ export function ComponentResolver({
   // jamais d'écriture non resynchronisée côté serveur.
   onReset?: () => void;
 }) {
+  useAutoGrowOnResize();
   const dialog = useDialog();
   const { mutate, busy } = useMutation();
 

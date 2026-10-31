@@ -76,6 +76,7 @@ import { RecipeStep } from '@/components/recipe/RecipeStep';
 import type { ProjectComponent, ProjectFull, ProjectTrial } from '@/lib/projects-data';
 import type { ConversionRef, IngredientRefOption, UnitRef } from '@/lib/ingredient-conversions';
 import type { RecipeFull, RecipeStepView } from '@/lib/recipes';
+import { autoGrow, useAutoGrowOnResize } from '@/lib/auto-grow';
 
 const btnPrimary =
   'rounded-pill bg-primary px-6 py-3 font-label-md text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95 disabled:opacity-40';
@@ -159,6 +160,7 @@ export function ProjectV2({
   // `ProjectReadOnly` ne monte pas ce composant.
   helpBlocks?: VisibleHelpBlock[];
 }) {
+  useAutoGrowOnResize();
   const router = useRouter();
   const help = useHelpBlocks('projet', helpBlocks, true);
   const dialog = useDialog();
@@ -737,11 +739,15 @@ export function ProjectV2({
           <div className="space-y-3">
             <HelpBlockSlot blockKey="projet.intention" help={help} />
             <textarea
+              ref={autoGrow}
               value={intent}
-              onChange={(e) => setIntent(e.target.value.slice(0, INTENT_MAX))}
+              onChange={(e) => {
+                setIntent(e.target.value.slice(0, INTENT_MAX));
+                autoGrow(e.target);
+              }}
               rows={4}
               placeholder="Une tarte au praliné pour huit, avec un croustillant et une crème légère…"
-              className={champ}
+              className={`${champ} resize-none overflow-hidden`}
             />
             <div className="flex flex-wrap items-center gap-3">
               <button
@@ -838,11 +844,15 @@ export function ProjectV2({
               <div>
                 <label className={etiquette}>DESCRIPTION</label>
                 <textarea
+                  ref={autoGrow}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
+                  onChange={(e) => {
+                    setDescription(e.target.value.slice(0, 2000));
+                    autoGrow(e.target);
+                  }}
                   rows={3}
                   placeholder="Ce qui rend ce dessert unique, l’occasion, le goût recherché…"
-                  className={champ}
+                  className={`${champ} resize-none overflow-hidden`}
                 />
               </div>
               {((title.trim() || 'Nouveau projet') !== project.title ||

@@ -10,17 +10,9 @@ import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import { revalidateReference } from '@/lib/revalidate-reference';
+import { autoGrow } from '@/lib/auto-grow';
 
 type BlockInput = { key: string; adminLabel: string; text: string; videoUrl: string };
-
-// Redimensionne le <textarea> à la hauteur de son contenu (motif de
-// `CreerForm.tsx`) : jamais de scroll interne, y compris à l'affichage
-// initial d'un texte déjà rempli.
-function autoGrow(el: HTMLTextAreaElement | null) {
-  if (!el) return;
-  el.style.height = 'auto';
-  el.style.height = `${el.scrollHeight}px`;
-}
 
 export function HelpBlocksManager({ blocks }: { blocks: BlockInput[] }) {
   return (
