@@ -582,6 +582,12 @@ export function BatchWidget({
         {editMode && existingBatch ? "Modifier l'ajustement de la fournée" : 'Lancer une fournée'}
       </h3>
       {!(editMode && existingBatch) && <HelpBlockSlot blockKey="fournee.lancer" help={help} />}
+      {/* JEP-381 : juste sous le bloc d'aide, en tête du panneau. */}
+      {derniereFois && !(editMode && existingBatch) && (
+        <div className="mb-6">
+          <DerniereFoisLancement reference={derniereFois} />
+        </div>
+      )}
       {etapesCochees > 0 && (
         <p className="mb-6 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 font-body-md text-sm text-on-surface">
           <span className="material-symbols-outlined text-[18px] text-amber-700">warning</span>
@@ -815,8 +821,6 @@ export function BatchWidget({
             placeholder="Une note personnelle sur cette fournée…"
           />
         </div>
-
-        {derniereFois && !(editMode && existingBatch) && <DerniereFoisLancement reference={derniereFois} />}
 
         <div className="flex items-center gap-4 flex-wrap pt-2">
           <button
