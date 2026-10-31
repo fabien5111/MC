@@ -1219,8 +1219,9 @@ body[data-impersonation] {
    non superposée à `@layer` pour l'emporter sur les classes `text-sm` & co. */
 @media (max-width: 1023px) {
   input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']):not([type='hidden']),
-  textarea,
-  select {
+  :is(textarea, select):not([type='hidden']) {
+    /* `:not([…])` donne à `textarea` et `select` une spécificité supérieure à
+       celle d'une classe `text-sm` : sans lui, la classe l'emportait. */
     font-size: 16px;
   }
 }
