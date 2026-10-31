@@ -28,6 +28,8 @@ export type EvenementsAudience = {
   retirer_favori: { recipe_id: string };
   creer_fournee: { recipe_id: string };
   terminer_fournee: null;
+  /** « À retenir pour la prochaine fois » saisi ou modifié (JEP-381). */
+  saisir_lecon: null;
   generer_liste_courses: null;
   importer_recette: { source: 'texte' | 'photo' | 'pdf' };
   /** Compte dont l'inscription vient de se terminer (cf. lib/inscription.ts). */

@@ -41,6 +41,8 @@ import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { libelleAjustement, lireAjustementIA, lireAjustementIngredient, type AjustementIA } from '@/lib/batch-ai';
+import type { FourneeReference } from '@/lib/batch-lecons';
+import { DerniereFoisLancement } from '@/components/batch/DerniereFois';
 
 const num = (v: string | number | null | undefined): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -73,7 +75,12 @@ export function BatchWidget({
   peutAjusterIA = false,
   quotaIA = null,
   helpBlocks,
+  derniereFois = null,
 }: {
+  // « La dernière fois » (JEP-381) : dernière fournée terminée de cette
+  // recette, lue par la fiche. Encadré affiché avant le bouton de création ;
+  // jamais en modification d'un ajustement.
+  derniereFois?: FourneeReference | null;
   recipe: RecipeFull;
   moldTypes: { id: number; name: string; forme: string | null }[];
   ingredients: MergedIngredient[];
@@ -808,6 +815,8 @@ export function BatchWidget({
             placeholder="Une note personnelle sur cette fournée…"
           />
         </div>
+
+        {derniereFois && !(editMode && existingBatch) && <DerniereFoisLancement reference={derniereFois} />}
 
         <div className="flex items-center gap-4 flex-wrap pt-2">
           <button

@@ -26,6 +26,7 @@ import { groupPlanningStepsByDate, type PlanningDayGroup } from '@/lib/recipe-pl
 import { LockedAction } from '@/components/LockedAction';
 import type { BatchListRow } from '@/lib/profile';
 import { trackEvent } from '@/lib/analytics';
+import { useDemanderLecon } from '@/lib/batch-lecons-client';
 import { isProjectDraft, type ProjectMarks } from '@/lib/projects';
 
 const dateLabel = (iso: string): string =>
@@ -47,6 +48,7 @@ export function PlanningDayView({
 }) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
+  const demanderLecon = useDemanderLecon();
   const router = useRouter();
   // Distinct de `busy` (qui ne couvre que les écritures de `mutate`) : le
   // renvoi vers la fiche fournée après « je veux laisser un avis » est un
@@ -165,6 +167,9 @@ export function PlanningDayView({
     }
     trackEvent('terminer_fournee');
     setList((prev) => prev.filter((p) => p.id !== batchRow.id));
+    // « À retenir pour la prochaine fois » (JEP-381) — même question que
+    // `BatchView.finishBatch`, facultative.
+    await demanderLecon(batchRow.id);
     if (!batchRow.recipe_id || (await essaiProjetEnCours(batchRow.recipe_id)) || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
     const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?');
     if (wantsReview) {

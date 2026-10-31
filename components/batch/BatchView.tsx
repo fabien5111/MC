@@ -52,6 +52,9 @@ import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
 import { trackEvent } from '@/lib/analytics';
 import { ARacheterButton } from '@/components/batch/ARacheterButton';
+import { DerniereFoisEnTete, DerniereFoisEtape, LeconsProvider } from '@/components/batch/DerniereFois';
+import { leconsPrecedentes, lireLecon, type FourneeReference } from '@/lib/batch-lecons';
+import { useDemanderLecon } from '@/lib/batch-lecons-client';
 import {
   fmtNum,
   BATCH_STATUS_LBL,
@@ -214,7 +217,12 @@ export function BatchView({
   droits,
   ajustement,
   helpBlocks = [],
+  reference = null,
 }: {
+  // « La dernière fois » (JEP-381) : fournée de référence (source « Refaire »,
+  // sinon dernière fournée terminée de la même recette), lue par la page.
+  // `null` : rien à afficher.
+  reference?: FourneeReference | null;
   // « Modifier l'ajustement » : ce que le panneau de lancement lit sur la fiche
   // recette (référentiel des moules, droit et quota d'ajustement par IA).
   // Absent : pas de bouton.
@@ -261,6 +269,13 @@ export function BatchView({
   const impersonationReadOnly = useReadOnly();
   const [batch, setBatch] = useState(initialBatch);
   useEffect(() => setBatch(initialBatch), [initialBatch]);
+  const demanderLecon = useDemanderLecon();
+  // Constats de la fournée de référence, rattachés aux étapes courantes —
+  // recalculés seulement si la structure des étapes change.
+  const leconsValeur = useMemo(
+    () => (reference ? { reference, lecons: leconsPrecedentes(reference, batch.batch_steps, batch.batch_ingredients) } : null),
+    [reference, batch.batch_steps, batch.batch_ingredients],
+  );
   const [mode, setMode] = useState<'preparer' | 'patisser'>(() => initialMode ?? defaultMode(initialBatch));
   const [busy, setBusy] = useState(false);
   // Distinct de `busy` : `router.refresh()` ne rend pas de promesse
@@ -349,6 +364,11 @@ export function BatchView({
     }
     setBatch((b) => ({ ...b, status: 'terminee', date_fin: fin }));
     trackEvent('terminer_fournee');
+    // « À retenir pour la prochaine fois » (JEP-381) : facultatif, posé
+    // après la clôture (une annulation ne la défait pas), modifiable ensuite
+    // depuis le résumé.
+    const lecon = await demanderLecon(batch.id, lireLecon(batch));
+    if (lecon !== undefined) setBatch((b) => ({ ...b, lecon }) as BatchFull);
     router.refresh();
     return true;
   }
@@ -499,7 +519,7 @@ export function BatchView({
   const done = all.filter((s) => s.done).length;
 
   return (
-    <>
+    <LeconsProvider value={leconsValeur}>
       <div className="recipe-print-content max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
@@ -615,6 +635,10 @@ export function BatchView({
           <BatchReview batchId={batch.id} recipeId={batch.recipe_id} myReview={myReview} onDismiss={dismissReview} />
         )}
 
+        {/* « La dernière fois » (JEP-381) : leçon, commentaire global et
+            remarques sans étape retrouvée — dans les deux modes. */}
+        <DerniereFoisEnTete />
+
         <div className="flex items-center gap-2 mb-6">
           <span className="no-print flex items-center gap-2">
             <button
@@ -676,7 +700,7 @@ export function BatchView({
           />
         )}
       </div>
-    </>
+    </LeconsProvider>
   );
 }
 
@@ -1463,6 +1487,7 @@ function PreparerView({
                     </details>
                   )}
                 </BatchStepDonePanel>
+                <DerniereFoisEtape stepId={s.id} />
               </div>
             );
           })}
@@ -1786,7 +1811,7 @@ function PatisserView({
         />
       </div>
 
-      {batch.status !== 'planifiee' && <SummaryPanel batch={batch} lecture={readOnly} onGlobalComment={onGlobalComment} />}
+      {batch.status !== 'planifiee' && <SummaryPanel batch={batch} setBatch={setBatch} lecture={readOnly} onGlobalComment={onGlobalComment} />}
     </>
   );
 }
@@ -1920,8 +1945,8 @@ function PatisserBody({
                 const isPending = !pendingMarked && !s.done;
                 if (isPending) pendingMarked = true;
                 return (
+                  <div key={s.id} className="flex flex-col gap-2">
                   <StepCookCard
-                    key={s.id}
                     step={s}
                     // Tout le contenu de l'étape, y compris ce que « déjà
                     // réalisé » sort des courses et de la mise en place :
@@ -1955,6 +1980,8 @@ function PatisserBody({
                     onStepComment={onStepComment}
                     peutRacheter={peutRacheter}
                   />
+                  <DerniereFoisEtape stepId={s.id} />
+                  </div>
                 );
               })}
             </div>
@@ -2303,7 +2330,17 @@ function StepCookCard({
   );
 }
 
-function SummaryPanel({ batch, lecture, onGlobalComment }: { batch: BatchFull; lecture: boolean; onGlobalComment: (v: string) => void }) {
+function SummaryPanel({
+  batch,
+  setBatch,
+  lecture,
+  onGlobalComment,
+}: {
+  batch: BatchFull;
+  setBatch: React.Dispatch<React.SetStateAction<BatchFull>>;
+  lecture: boolean;
+  onGlobalComment: (v: string) => void;
+}) {
   function jalonDate(offset: number): Date | null {
     if (!batch.degustation_at) return null;
     const d = new Date(batch.degustation_at);
@@ -2387,6 +2424,7 @@ function SummaryPanel({ batch, lecture, onGlobalComment }: { batch: BatchFull; l
           </ul>
         </div>
       )}
+      <LeconResume batch={batch} setBatch={setBatch} />
       <div>
         <p className={`${LBL_CLS} mb-1`}>Commentaire global</p>
         <textarea
@@ -2398,6 +2436,40 @@ function SummaryPanel({ batch, lecture, onGlobalComment }: { batch: BatchFull; l
           className="w-full border border-outline-variant rounded px-3 py-2 font-body-md text-sm bg-surface-container-low focus:ring-1 focus:ring-primary"
         />
       </div>
+    </div>
+  );
+}
+
+// « À retenir pour la prochaine fois » (JEP-381), dans le résumé d'une
+// fournée terminée. Modifiable même en lecture seule (`?lecture=1`, fournée
+// close) : comme l'avis, ce n'est pas modifier la fournée mais préparer la
+// suivante. Seule l'impersonation lecture seule bloque. Colonne absente
+// (migration pas jouée) : rien d'affiché.
+function LeconResume({ batch, setBatch }: { batch: BatchFull; setBatch: React.Dispatch<React.SetStateAction<BatchFull>> }) {
+  const impersonationReadOnly = useReadOnly();
+  const demanderLecon = useDemanderLecon();
+  if (batch.status !== 'terminee' || !('lecon' in batch)) return null;
+  const lecon = lireLecon(batch);
+  const modifiable = !impersonationReadOnly;
+  if (!lecon && !modifiable) return null;
+  async function modifier() {
+    const nouvelle = await demanderLecon(batch.id, lecon, false);
+    if (nouvelle !== undefined) setBatch((b) => ({ ...b, lecon: nouvelle }) as BatchFull);
+  }
+  return (
+    <div>
+      <p className={`${LBL_CLS} mb-1`}>À retenir pour la prochaine fois</p>
+      {lecon ? (
+        <p className="text-sm whitespace-pre-line">{lecon}</p>
+      ) : (
+        <p className="text-sm italic text-on-surface-variant">Rien de noté pour l’instant.</p>
+      )}
+      {modifiable && (
+        <button type="button" onClick={modifier} className="no-print mt-1 flex items-center gap-1 font-label-md text-[12px] text-primary hover:underline">
+          <span className="material-symbols-outlined text-[16px]">edit</span>
+          {lecon ? 'Modifier' : 'Ajouter'}
+        </button>
+      )}
     </div>
   );
 }
