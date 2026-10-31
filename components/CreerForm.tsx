@@ -47,6 +47,7 @@ import { capitalizeSentences, fixOeufLigature } from '@/lib/text';
 import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import { connexionHref } from '@/lib/nav';
+import { autoGrow, useAutoGrowOnResize } from '@/lib/auto-grow';
 import { PictoAvance } from '@/components/recipe/PictoAvance';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
@@ -109,19 +110,6 @@ function splitSousEtapes(description: string): string[] {
 
 let uid = 0;
 const key = () => `k${uid++}`;
-
-// Redimensionne un <textarea> à la hauteur de son contenu — jamais de scroll
-// interne, y compris pour du texte déjà rempli en modification. Fonction
-// simple (pas un hook d'état) : utilisable en `ref` comme en gestionnaire
-// d'événement, y compris à l'intérieur des `.map()` d'étapes/ingrédients où
-// un hook ne serait pas légal (ordre d'appel instable selon leur nombre).
-function autoGrow(el: HTMLTextAreaElement | null) {
-  if (!el) return;
-  el.style.height = 'auto';
-  // `scrollHeight` ne compte pas la bordure : sans elle, un champ en
-  // `border-box` restait 2 px trop court (donc désaligné de ses voisins).
-  el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
-}
 
 // Slug généré depuis un libellé (même règle que le back-office des listes) :
 // la colonne `tags.slug` est NOT NULL et n'est pas saisie dans l'éditeur.
@@ -251,6 +239,7 @@ export function CreerForm({
   // tout masqué), le composant ne rend alors rien.
   helpBlocks?: VisibleHelpBlock[];
 }) {
+  useAutoGrowOnResize();
   const router = useRouter();
   const dialog = useDialog();
   const editingId = editRecipe?.id ?? null;
@@ -1718,8 +1707,12 @@ export function CreerForm({
                       autoComplete="off"
                     />
                     <textarea
+                      ref={autoGrow}
                       value={u.comment}
-                      onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))}
+                      onChange={(e) => {
+                        setUtensils((p) => p.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)));
+                        autoGrow(e.target);
+                      }}
                       onKeyDown={(e) => {
                         // Tab (sans Maj) depuis le dernier champ de la dernière
                         // ligne → ouvrir une nouvelle ligne d'ustensile et y
@@ -1733,7 +1726,7 @@ export function CreerForm({
                           }, 0);
                         }
                       }}
-                      className="editorial-input text-on-surface w-full resize-y"
+                      className="editorial-input text-on-surface w-full resize-none overflow-hidden"
                       rows={1}
                       placeholder="Commentaire (optionnel)"
                     />
@@ -1937,12 +1930,20 @@ export function CreerForm({
                   </label>
                   {st.prepAhead && (
                     <div className="flex flex-col gap-1">
-                      <input
+                      <textarea
                         id={`avance-note-${st.key}`}
+                        ref={autoGrow}
+                        rows={1}
                         value={st.prepAheadNote}
-                        onChange={(e) => patchStep(si, { prepAheadNote: e.target.value.slice(0, ADVANCE_NOTE_MAX) })}
-                        className="editorial-input text-on-surface w-full"
-                        type="text"
+                        onChange={(e) => {
+                          patchStep(si, { prepAheadNote: e.target.value.replace(/\n/g, ' ').slice(0, ADVANCE_NOTE_MAX) });
+                          autoGrow(e.target);
+                        }}
+                        // Entrée n'ajoute pas de ligne : le texte reste une seule phrase.
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.preventDefault();
+                        }}
+                        className="editorial-input text-on-surface w-full resize-none overflow-hidden"
                         maxLength={ADVANCE_NOTE_MAX}
                         placeholder="Précisions : conservation, précautions… (ex. 3 jours au frais, filmée au contact)"
                         aria-label="Précisions sur la préparation à l'avance"

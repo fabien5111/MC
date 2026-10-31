@@ -14,6 +14,7 @@ import { ImageSlot } from '@/components/ImageSlot';
 import { DureeInput } from '@/components/DureeInput';
 import type { ComponentStepDraft } from '@/lib/projects';
 import { ADVANCE_NOTE_MAX } from '@/lib/recipe-view';
+import { autoGrow } from '@/lib/auto-grow';
 
 type Ingredient = ComponentStepDraft['ingredients'][number];
 
@@ -40,12 +41,6 @@ const joinAllergens = (l: string[]): string | null => (l.length ? l.join(', ') :
 const label = 'font-label-md text-label-md text-outline';
 const zone =
   'w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors resize-none overflow-hidden';
-
-function autoGrow(el: HTMLTextAreaElement | null) {
-  if (!el) return;
-  el.style.height = 'auto';
-  el.style.height = `${el.scrollHeight}px`;
-}
 
 function entier(v: string): number | null {
   const n = parseInt(v, 10);
@@ -239,12 +234,20 @@ export function StepEditorCard({
       </label>
       {step.can_prepare_ahead === true && (
         <div className="flex flex-col gap-1">
-          <input
+          <textarea
             id={`avance-note-${index}`}
+            ref={autoGrow}
+            rows={1}
             value={step.advance_note ?? ''}
-            onChange={(e) => onChange({ advance_note: e.target.value.slice(0, ADVANCE_NOTE_MAX) })}
-            className="editorial-input text-on-surface w-full"
-            type="text"
+            onChange={(e) => {
+              onChange({ advance_note: e.target.value.replace(/\n/g, ' ').slice(0, ADVANCE_NOTE_MAX) });
+              autoGrow(e.target);
+            }}
+            // Entrée n'ajoute pas de ligne : le texte reste une seule phrase.
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.preventDefault();
+            }}
+            className="editorial-input text-on-surface w-full resize-none overflow-hidden"
             maxLength={ADVANCE_NOTE_MAX}
             placeholder="Précisions : conservation, précautions… (ex. 3 jours au frais, filmée au contact)"
             aria-label="Précisions sur la préparation à l'avance"
