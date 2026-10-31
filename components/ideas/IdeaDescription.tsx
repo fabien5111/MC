@@ -33,7 +33,7 @@ export function IdeaDescription({ text }: { text: string }) {
           type="button"
           onClick={() => setOuvert((v) => !v)}
           aria-expanded={ouvert}
-          className="mt-1 text-sm font-semibold text-primary hover:underline"
+          className="mt-1 -mb-2 py-2 text-sm font-semibold text-primary hover:underline"
         >
           {ouvert ? 'Voir moins' : 'Voir plus'}
         </button>

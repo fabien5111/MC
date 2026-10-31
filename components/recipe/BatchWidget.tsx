@@ -585,11 +585,11 @@ export function BatchWidget({
         </p>
       )}
       <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <label className={LBL} htmlFor="plan-date">
             Date de dégustation
           </label>
-          <input id="plan-date" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} className={INPUT} style={{ width: '10rem' }} />
+          <input id="plan-date" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} className={INPUT} style={{ width: '10rem', maxWidth: '100%' }} />
         </div>
 
         {/* Rappel de la production d'origine, au-dessus du choix d'ajustement */}
@@ -640,7 +640,7 @@ export function BatchWidget({
               </div>
             ) : (
               <div className="flex flex-wrap items-end gap-4">
-                <div className="flex flex-col gap-2">
+                <div className="flex min-w-0 max-w-full flex-col gap-2">
                   <label className={LBL}>Ingrédient</label>
                   <select
                     value={ingIdx}
@@ -649,8 +649,8 @@ export function BatchWidget({
                       setIngIdx(i);
                       setIngQty(String(num(numeric[i]?.qty) || ''));
                     }}
-                    className={INPUT}
-                    style={{ minWidth: '14rem' }}
+                    className={`${INPUT} max-w-full`}
+                    style={{ minWidth: 'min(14rem, 100%)' }}
                   >
                     {numeric.map((m, i) => (
                       <option key={i} value={i}>
@@ -712,8 +712,8 @@ export function BatchWidget({
                       setTargetType(e.target.value);
                       setDims({});
                     }}
-                    className={`${INPUT} flex-1`}
-                    style={{ minWidth: '220px' }}
+                    className={`${INPUT} min-w-0 max-w-full flex-1`}
+                    style={{ minWidth: 'min(220px, 100%)' }}
                   >
                     <option value="">{moldSummary ? `Moule de la recette — ${moldSummary}` : 'Moule de la recette'}</option>
                     {moldTypes.map((t) => (

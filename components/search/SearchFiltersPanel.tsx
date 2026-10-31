@@ -127,7 +127,7 @@ export function SearchFiltersPanel({ refs }: { refs: FacetRefs }) {
               type="button"
               onClick={() => setDraft(resetFacets(draft))}
               disabled={draftCount === 0}
-              className="font-label-md text-[11.5px] uppercase tracking-wider text-secondary disabled:opacity-40"
+              className="font-label-md text-[12px] uppercase tracking-wider text-primary underline underline-offset-2 disabled:opacity-60 disabled:no-underline py-2 px-1"
             >
               Réinitialiser
             </button>

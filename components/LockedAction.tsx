@@ -216,11 +216,9 @@ function Bulle({ message, pos }: { message: string; pos: Position }) {
  * popover au tap. Le `tabIndex` porté par l'enveloppe reste atteignable au
  * clavier, contrairement au contrôle désactivé qu'elle entoure.
  *
- * **Connu, non traité ici** : sur mobile, sans survol, cette bulle reste
- * silencieuse au tap — moins grave que l'ancien défaut de `LockedAction`
- * (elle ne navigue nulle part par erreur), mais elle n'informe pas non plus.
- * Un vrai correctif demanderait un mécanisme différent, hors du périmètre
- * de cette demande.
+ * **Au toucher** (audit mobile du 30/10/2026) : l'enveloppe ouvre la bulle au
+ * tap (`onClick`), les enfants désactivés étant rendus insensibles au pointeur
+ * pour que le tap lui parvienne ; elle se referme à la perte du focus.
  */
 export function LockedHint({
   message,
@@ -245,7 +243,11 @@ export function LockedHint({
   return (
     <span
       tabIndex={0}
-      className={`relative inline-flex ${className ?? ''}`}
+      // `[&>*]:pointer-events-none` : un contrôle `disabled` n'émet aucun
+      // clic, donc le tap ne remontait jamais à l'enveloppe. Désactivé de
+      // toute façon, il n'a rien à recevoir ; l'enveloppe porte le tap.
+      className={`relative inline-flex [&>*]:pointer-events-none ${className ?? ''}`}
+      onClick={(e) => montrer(e.currentTarget)}
       onMouseEnter={(e) => montrer(e.currentTarget)}
       onMouseLeave={cacher}
       onFocus={(e) => montrer(e.currentTarget)}

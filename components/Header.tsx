@@ -74,7 +74,7 @@ export async function Header({ current, className }: { current?: NavKey; classNa
       {liensSociaux.length > 0 && <SocialBandeMobile liens={liensSociaux} />}
       <div className="max-w-[1200px] mx-auto flex justify-between items-center px-margin-mobile rail:px-margin-desktop py-4">
         <div className="flex items-center gap-6 xl:gap-10 min-w-0">
-          <Link className="maryse-logo-font text-4xl text-primary leading-none whitespace-nowrap shrink-0" href="/">
+          <Link className="maryse-logo-font text-[1.7rem] min-[360px]:text-[2rem] sm:text-4xl text-primary leading-none whitespace-nowrap shrink-0 pr-2" href="/">
             Je pâtisse !
           </Link>
           <nav className="hidden lg:flex gap-6 xl:gap-8 items-center whitespace-nowrap">
@@ -100,7 +100,7 @@ export async function Header({ current, className }: { current?: NavKey; classNa
           </nav>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <HeaderSearch suggestions={suggestions} />
           {/* Partage du site (JEP-21) : même fenêtre que « Partager Je pâtisse ! »
               du pied de page, à côté de la loupe et avec son style. Masquée sous
@@ -144,7 +144,7 @@ export async function Header({ current, className }: { current?: NavKey; classNa
               </Link>
               <Link
                 href="/connexion?inscription=1"
-                className="font-label-md bg-primary text-on-primary px-4 py-2 rounded-pill text-sm whitespace-nowrap hover:shadow-lg transition-all active:scale-95"
+                className="font-label-md bg-primary text-on-primary px-3 sm:px-4 py-2 rounded-pill text-sm whitespace-nowrap hover:shadow-lg transition-all active:scale-95"
               >
                 Créer un compte
               </Link>

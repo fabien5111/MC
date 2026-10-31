@@ -1848,7 +1848,7 @@ export function CreerForm({
                 <div className="space-y-8 mt-8">
                   {si === 0 && <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} />}
                   <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
-                    <label className="font-label-md text-label-md text-outline shrink-0 uppercase">Ajustement des quantités de cette étape</label>
+                    <label className="font-label-md text-label-md text-outline uppercase">Ajustement des quantités de cette étape</label>
                     <select
                       value={st.scaling}
                       onChange={(e) => patchStep(si, { scaling: e.target.value })}
@@ -1912,7 +1912,7 @@ export function CreerForm({
 
                   {si === 0 && <HelpBlockSlot blockKey="creer.jour_et_avance" help={help} />}
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <label className="font-label-md text-label-md text-outline whitespace-nowrap">À PRÉPARER LE JOUR J −</label>
                     <input
                       value={st.dayOffset}

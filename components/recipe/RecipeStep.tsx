@@ -5,6 +5,7 @@
 // divergent jamais. Pas de `'use client'` : un Server Component peut le
 // rendre ; seul `qty` (rendu d'une quantité, qui dépend des conversions de
 // l'appelant) est fourni par l'appelant.
+import { TapTip } from '@/components/TapTip';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
 import type { ReactNode } from 'react';
 import { formatTime } from '@/lib/format';
@@ -61,13 +62,10 @@ export function RecipeStep({
           {/* JEP-19 : picto seul, l'explication est dans l'infobulle (même
               repère que la carte recette). */}
           {s.can_prepare_ahead && (
-            <span
-              className="bg-surface-variant px-2 py-1 flex items-center"
-              title="Cette étape peut être préparée à l'avance"
-              aria-label="Cette étape peut être préparée à l'avance"
-              role="img"
-            >
-              <span className="material-symbols-outlined text-[16px] leading-none text-primary">event_upcoming</span>
+            <span className="bg-surface-variant px-2 py-1 flex items-center">
+              <TapTip message="Cette étape peut être préparée à l'avance">
+                <span className="material-symbols-outlined text-[16px] leading-none text-primary">event_upcoming</span>
+              </TapTip>
             </span>
           )}
           {badges.map((b, k) => (

@@ -49,7 +49,7 @@ export function TagPicker({
 
   return (
     <div>
-      <p className="facet-h mb-3">Catégories</p>
+      <p className="facet-h mb-3 sr-only">Catégories</p>
 
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">

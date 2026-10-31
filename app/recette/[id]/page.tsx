@@ -475,13 +475,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 {/* Version imprimée : le nom de l'auteur reste, sans avatar ni lien. */}
                 <span className="hidden print:inline">{recipe.profiles?.full_name || 'Auteur'}</span>
               </span>
-              <span className="w-1 h-1 bg-outline-variant rounded-full" />
+              <span className="hidden w-1 h-1 bg-outline-variant rounded-full sm:inline-block" />
               <span>
                 {(recipe.status === 'published' ? 'Publié le ' : 'Créée le ') + formatDate(recipe.created_at)}
               </span>
               {recipe.updated_at && recipe.updated_at !== recipe.created_at && (
                 <>
-                  <span className="w-1 h-1 bg-outline-variant rounded-full" />
+                  <span className="hidden w-1 h-1 bg-outline-variant rounded-full sm:inline-block" />
                   <span className="text-[12px] font-normal">Dernière modification le {formatDateHeure(recipe.updated_at)}</span>
                 </>
               )}
@@ -604,7 +604,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               </div>
             </div>
             {recipe.yield_notes && (
-              <div className="pt-2 border-t border-outline-variant/40 text-center">
+              <div className="pt-2 border-t border-outline-variant/40 text-left sm:text-center print:text-center">
                 <span className="print-fs-11 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px] block mb-1">
                   Complément d&apos;informations sur les quantités
                 </span>

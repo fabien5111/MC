@@ -1728,7 +1728,7 @@ export function RelectureEditor({
                 importée arrivait donc toujours en ajustement proportionnel,
                 sans moyen de le corriger avant sa création. */}
             <div className="px-6 py-3 border-b border-outline-variant/50 flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span className="font-label-md text-[9px] uppercase tracking-widest text-on-surface-variant shrink-0">
+              <span className="font-label-md text-[9px] uppercase tracking-widest text-on-surface-variant">
                 Ajustement des quantités de cette étape
               </span>
               <select

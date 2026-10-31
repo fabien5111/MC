@@ -6,6 +6,7 @@
 // Un gestionnaire ne voit que les entrées de son périmètre. Ce filtrage est
 // un confort d'affichage, pas une sécurité : l'accès réel est refermé côté
 // serveur par `requireFullAdmin()` dans chaque page concernée.
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SignOutButton } from '@/components/SignOutButton';
@@ -14,10 +15,34 @@ import type { AppRole } from '@/lib/auth';
 
 export function AdminSidebar({ role = 'admin' }: { role?: AppRole }) {
   const pathname = usePathname();
+  const [ouvert, setOuvert] = useState(false);
   const nav = role === 'admin' ? ADMIN_NAV : ADMIN_NAV.filter((item) => item.manager);
 
+  // Sous 1024 px, le menu devient un tiroir ouvert par un bouton : fixe, il
+  // laissait ~100 px au contenu d'un téléphone. Il se referme à chaque
+  // navigation.
+  useEffect(() => setOuvert(false), [pathname]);
+
   return (
-    <aside className="flex flex-col h-screen w-64 border-r border-outline-variant bg-surface-container-low z-30 shrink-0 sticky top-0">
+    <>
+    <div className="lg:hidden sticky top-0 z-40 flex items-center gap-3 border-b border-outline-variant bg-surface-container-low px-4 py-2">
+      <button
+        type="button"
+        onClick={() => setOuvert(true)}
+        aria-label="Ouvrir le menu d'administration"
+        aria-expanded={ouvert}
+        className="flex h-11 w-11 items-center justify-center rounded text-primary"
+      >
+        <span className="material-symbols-outlined">menu</span>
+      </button>
+      <span className="maryse-logo-font text-2xl text-primary leading-none">Je pâtisse !</span>
+    </div>
+    {ouvert && (
+      <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setOuvert(false)} aria-hidden="true" />
+    )}
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 flex h-dvh w-64 max-w-[85vw] shrink-0 flex-col border-r border-outline-variant bg-surface-container-low transition-transform lg:sticky lg:top-0 lg:z-30 lg:h-screen lg:max-w-none lg:translate-x-0 ${ouvert ? 'translate-x-0' : '-translate-x-full'}`}
+    >
       <Link className="p-8 border-b border-outline-variant block" href="/">
         <span className="maryse-logo-font text-3xl text-primary leading-none block">Je pâtisse !</span>
         <p className="text-xs font-medium text-on-surface-variant uppercase tracking-widest mt-1">
@@ -53,5 +78,6 @@ export function AdminSidebar({ role = 'admin' }: { role?: AppRole }) {
         <SignOutButton className="w-full text-left font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors px-4 py-2" />
       </div>
     </aside>
+    </>
   );
 }

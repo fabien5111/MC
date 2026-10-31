@@ -53,9 +53,10 @@ export default async function EnCuisinePage() {
       <main className="mx-auto mb-24 max-w-[1200px] px-margin-mobile md:px-margin-desktop">
         <div className="pb-2 pt-12">
           <p className="font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">En cuisine</p>
-          {/* Une seule ligne, quelle que soit la largeur : coupé en deux, le
-              titre perd son rythme. 26 px sur mobile, 38 px au bureau. */}
-          <h1 className="whitespace-nowrap font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[38px]">
+          {/* Une seule ligne dès 768 px : coupé en deux, le titre perd son rythme.
+              Sous 768 px il passe à la ligne — sur une ligne il débordait de
+              l'écran (et élargissait la barre basse). 26 px / 38 px. */}
+          <h1 className="font-headline-lg text-[26px] md:whitespace-nowrap font-bold leading-tight text-primary md:text-[38px]">
             À vos maryses, prêt(e)s&nbsp;? pâtissez&nbsp;!
           </h1>
         </div>

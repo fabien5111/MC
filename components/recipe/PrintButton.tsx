@@ -50,7 +50,7 @@ export function PrintButton({ capHref }: { capHref?: string } = {}) {
     };
   }, [ouvert]);
 
-  const bouton = 'flex items-center justify-center w-7 h-7 border border-secondary rounded-full hover:bg-secondary-container transition-colors';
+  const bouton = 'flex items-center justify-center w-10 h-10 sm:w-7 sm:h-7 border border-secondary rounded-full hover:bg-secondary-container transition-colors';
   if (!capHref) {
     return (
       <button type="button" onClick={() => window.print()} aria-label="Imprimer" title="Imprimer" className={bouton}>
