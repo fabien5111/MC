@@ -1491,6 +1491,40 @@ directes :
   que soit le propriétaire. `owns_execution()` ne sert plus qu'aux policies
   des tables `*_legacy`.
 
+## « La dernière fois » : leçons de la fournée précédente (JEP-381)
+
+Remet sous les yeux, au moment où ça sert, ce que le membre a constaté la
+dernière fois qu'il a fait cette recette. **Rien n'est copié : tout est LU**
+depuis une fournée de référence, donc corriger un constat après coup se
+reflète partout. Plan gratuit, sans IA.
+
+- **Fournée de référence** (`getFourneeReference`, `lib/batch-lecons-data.ts`,
+  sous la session, RLS) : la fournée source (`source_plan_id`, « Refaire ») si
+  elle est lisible, sinon la plus récente fournée `terminee` du membre sur la
+  même recette, hors la fournée courante. Une lecture de plus à l'ouverture
+  d'une fournée et sur la fiche recette (membre connecté). Rien à dire
+  (`referenceAffichable` faux) : rien d'affiché.
+- **Appariement des étapes** (`leconsPrecedentes`, `lib/batch-lecons.ts`, pur
+  et testé) — les id des étapes changent à chaque enregistrement de `/creer` :
+  même `source_step_id`, sinon même titre normalisé (`normSearch`, dans
+  l'ordre du déroulé), sinon bloc « Autres remarques de la dernière fois » en
+  tête de fournée. Un constat n'est jamais perdu en silence. Ingrédients :
+  dans l'étape appariée, par `ingredientKey` + unité.
+- **Affichage** (`components/batch/DerniereFois.tsx`) : encadré au lancement
+  (`BatchWidget`, jamais en modification d'un ajustement) ; en tête de la
+  fournée (leçon, commentaire global, autres remarques) et sous chaque étape
+  (commentaire d'étape, de sous-étapes et d'ingrédients, écart « 180 g
+  utilisés au lieu de 200 g »), en Préparer ET Pâtisser, fournée close
+  comprise, par contexte (`LeconsProvider`). `no-print`.
+- **« À retenir pour la prochaine fois »** (`batches.lecon`, 500 caractères,
+  `lib/batch-lecons-client.ts`) : question facultative après « Terminer »
+  (`BatchView.finishBatch` ET `PlanningDayView`), modifiable depuis le résumé
+  (`LeconResume`, même sur une fournée close — seule l'impersonation lecture
+  seule bloque). Colonne posée par `psql` (nœud 216075), absente des types :
+  lue par `select('*')`, écrite à part ; avant la migration, la question n'est
+  pas posée (sonde `select('lecon')`) et le résumé ne montre rien. « Refaire »
+  ne la recopie pas (elle reste lue sur la source). Événement GA `saisir_lecon`.
+
 ## Avis sur une recette (note + commentaire)
 
 Une fournée **terminée** (`batches.status = 'terminee'`) propose de noter et

@@ -70,6 +70,7 @@ export function BatchStepDonePanel({
   ingredientsEditor,
   aideRealise,
   aideNote,
+  derniereFois,
 }: {
   step: StepFlags;
   ingredients: IngRow[];
@@ -116,6 +117,9 @@ export function BatchStepDonePanel({
   // avant la case « réalisée » et avant « Ma note ».
   aideRealise?: ReactNode;
   aideNote?: ReactNode;
+  // « La dernière fois » (JEP-381) : constats de la fournée précédente, posés
+  // juste sous la date et les badges de l'étape, visibles étape repliée.
+  derniereFois?: ReactNode;
 }) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
@@ -688,6 +692,7 @@ export function BatchStepDonePanel({
           {dayControl}
           {meta}
         </div>
+        {derniereFois}
       </div>
       {/* Reste visible même étape repliée (`collapsible`) : contrairement aux
           ingrédients/sous-étapes (qui n'ont plus d'utilité une fois l'étape

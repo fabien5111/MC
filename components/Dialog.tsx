@@ -194,6 +194,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                 autoFocus
                 rows={3}
                 value={state.value}
+                maxLength={state.maxLength}
                 placeholder={placeholder}
                 onChange={(e) => setState((prev) => (prev?.kind === 'prompt' ? { ...prev, value: e.target.value } : prev))}
                 className="mt-3 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface focus:outline-none focus:border-primary"

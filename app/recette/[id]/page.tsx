@@ -13,6 +13,8 @@ import { IngredientTotalList } from '@/components/IngredientTotalList';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { getFourneeReference } from '@/lib/batch-lecons-data';
+import { referenceAffichable } from '@/lib/batch-lecons';
 import { getVisibleHelpBlocksForPages } from '@/lib/help';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements, checkQuota } from '@/lib/entitlements-data';
@@ -156,7 +158,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // dépendent pas les unes des autres — regroupées en un seul `Promise.all`
   // plutôt qu'enchaînées en `await` successifs, qui coûtaient un aller-retour
   // en série par lecture sur la page la plus consultée du site.
-  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials, entitlements, helpPages] = await Promise.all([
+  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials, entitlements, helpPages, referenceBrute] = await Promise.all([
     // Réservé au propriétaire : un visiteur n'a pas à savoir avec qui la
     // recette est partagée (lib/shares.ts — à tenir synchrone avec la policy
     // RLS `recipes_partagees`).
@@ -181,7 +183,11 @@ export default async function RecettePage({ params, searchParams }: Params) {
     // d'extraction (page `recette`), en une seule lecture de masquages.
     // Membres connectés seulement.
     getVisibleHelpBlocksForPages(['fournee', 'recette'], user?.id ?? null),
+    // « La dernière fois » (JEP-381) : dernière fournée terminée du membre sur
+    // cette recette, rappelée dans le panneau « Lancer une fournée ».
+    user ? getFourneeReference({ userId: user.id, recipeId: recipe.id }) : Promise.resolve(null),
   ]);
+  const derniereFois = referenceAffichable(referenceBrute) ? referenceBrute : null;
   const peutAjusterIA = canAccess(entitlements, 'ajustement_ia_mensuel');
   // Extraire des étapes en recette (JEP-258, plan Pro) : les masses
   // volumiques (référentiel en cache) ne servent qu'à proposer le poids de la
@@ -514,7 +520,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
               rail. Une fournée créée quitte cette fiche pour vivre sur son
               propre écran (/fournee/[id]) — voir CLAUDE.md « Fournées ». */}
           <div className="no-print">
-          <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} peutAjusterIA={peutAjusterIA} quotaIA={quotaIA} helpBlocks={helpPages.fournee ?? []} />
+          <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} peutAjusterIA={peutAjusterIA} quotaIA={quotaIA} helpBlocks={helpPages.fournee ?? []} derniereFois={derniereFois} />
           {isProject && isOwner && (
             // Historique des essais (spec §7.5 : reste consultable après
             // validation) — `canLaunch={false}` : lancer une fournée passe
