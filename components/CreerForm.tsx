@@ -1852,7 +1852,7 @@ export function CreerForm({
                     <select
                       value={st.scaling}
                       onChange={(e) => patchStep(si, { scaling: e.target.value })}
-                      className="editorial-input text-on-surface cursor-pointer shrink-0"
+                      className="editorial-input max-w-full text-on-surface cursor-pointer shrink-0"
                       style={{ width: 'auto' }}
                     >
                       {scalingOptions.map(([v, l]) => (

@@ -162,7 +162,7 @@ export function StepEditorCard({
             <select
               value={step.scaling_mode ?? 'simple'}
               onChange={(e) => onChange({ scaling_mode: e.target.value })}
-              className="editorial-input text-on-surface cursor-pointer shrink-0"
+              className="editorial-input max-w-full text-on-surface cursor-pointer shrink-0"
               style={{ width: 'auto' }}
             >
               {SCALING_OPTIONS.map(([v, l]) => (
