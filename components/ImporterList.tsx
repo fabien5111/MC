@@ -25,8 +25,8 @@ const STATUT_LBL: Record<string, [string, string]> = {
 
 // Grille alignant les colonnes entre les lignes (colonne coût en plus pour un
 // admin) : titre | source | alertes | [coût] | date | action | chevron.
-const GRID_COLS = 'grid-cols-[minmax(0,1fr)_110px_44px_72px_28px_20px]';
-const GRID_COLS_ADMIN = 'grid-cols-[minmax(0,1fr)_110px_44px_80px_72px_28px_20px]';
+const SM_COLS = 'sm:grid-cols-[minmax(0,1fr)_110px_44px_72px_28px_20px]';
+const SM_COLS_ADMIN = 'sm:grid-cols-[minmax(0,1fr)_110px_44px_80px_72px_28px_20px]';
 
 export function ImporterList({ imports, isAdmin }: { imports: ImportRow[]; isAdmin: boolean }) {
   const { mutate, busy } = useMutation();
@@ -75,64 +75,79 @@ export function ImporterList({ imports, isAdmin }: { imports: ImportRow[]; isAdm
             /* URL invalide : on garde le type de source */
           }
         }
+        const dateSuppr = suppressionProche(i.updated_at);
         return (
+          // Ligne entière cliquable : le lien du titre s'étire sur toute la
+          // ligne (`after:absolute after:inset-0`), les gestes distincts
+          // (voir la recette, supprimer) restent au-dessus (`z-10`).
+          // Sous 640 px : titre + geste sur une ligne, détails dessous ;
+          // dès `sm`, la grille d'origine (le bloc des détails devient
+          // `contents`, ses éléments retrouvent leur colonne).
           <div
             key={i.id}
-            className={`grid ${isAdmin ? GRID_COLS_ADMIN : GRID_COLS} items-center gap-3 py-3 border-b border-outline-variant/30`}
+            className={`relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-3 border-b border-outline-variant/30 transition-colors hover:bg-surface-container/40 sm:gap-y-0 ${isAdmin ? SM_COLS_ADMIN : SM_COLS}`}
           >
-            <Link href={`/relecture/${i.id}`} className="flex items-center gap-3 min-w-0 group hover:text-primary">
+            <Link
+              href={`/relecture/${i.id}`}
+              className="col-start-1 row-start-1 flex min-w-0 items-start gap-3 group hover:text-primary after:absolute after:inset-0 after:content-[''] sm:col-auto sm:row-auto sm:items-center"
+            >
               <span className={`shrink-0 font-label-md text-[11px] px-2.5 py-0.5 rounded-full text-white ${cls}`}>
                 {lbl}
               </span>
-              <span className="font-body-md truncate group-hover:text-primary">{recette.titre || 'Sans titre'}</span>
+              <span className="min-w-0 font-body-md line-clamp-2 break-words group-hover:text-primary sm:truncate">
+                {recette.titre || 'Sans titre'}
+              </span>
             </Link>
-            <span className="text-sm text-on-surface-variant truncate">{host}</span>
-            <span className="text-sm text-error">
-              {alertes.length > 0 && <span title={alertes.join('\n')}>⚠ {alertes.length}</span>}
-            </span>
-            {isAdmin && (
-              <span className="text-sm text-on-surface-variant" title="Coût IA de cet import (admin uniquement)">
-                {i.cost_usd != null ? `${i.cost_usd.toFixed(3)} $` : '— $'}
+            <div className="col-span-2 row-start-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 sm:contents">
+              <span className="min-w-0 max-w-[55%] truncate text-xs text-on-surface-variant sm:max-w-none sm:text-sm">{host}</span>
+              <span className="text-xs text-error sm:text-sm">
+                {alertes.length > 0 && <span title={alertes.join('\n')}>⚠ {alertes.length}</span>}
               </span>
-            )}
-            {suppressionProche(i.updated_at) ? (
-              <span
-                className="text-sm text-error"
-                title={`Sans modification, cet import sera supprimé le ${dateSuppression(i.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}. Le rouvrir repart pour ${RETENTION_JOURS} jours.`}
-              >
-                ⌛ {dateSuppression(i.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-              </span>
-            ) : (
-              <span className="text-sm text-on-surface-variant">
-                {new Date(i.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-              </span>
-            )}
+              {isAdmin && (
+                <span className="text-xs text-on-surface-variant sm:text-sm" title="Coût IA de cet import (admin uniquement)">
+                  {i.cost_usd != null ? `${i.cost_usd.toFixed(3)} $` : '— $'}
+                </span>
+              )}
+              {dateSuppr ? (
+                <span
+                  className="text-xs text-error sm:text-sm"
+                  title={`Sans modification, cet import sera supprimé le ${dateSuppression(i.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}. Le rouvrir repart pour ${RETENTION_JOURS} jours.`}
+                >
+                  ⌛ {dateSuppression(i.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                </span>
+              ) : (
+                <span className="text-xs text-on-surface-variant sm:text-sm">
+                  {new Date(i.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                </span>
+              )}
+            </div>
+            {/* Zone de toucher de 44 px sur mobile ; l'icône reste à 18 px
+                (la feuille des icônes impose `inline-block` : le centrage
+                est porté par l'enveloppe, pas par l'icône). */}
             {i.recipe_id ? (
               <Link
                 href={`/recette/${i.recipe_id}`}
-                className="material-symbols-outlined text-[18px] text-primary hover:text-primary/70"
+                className="relative z-10 col-start-2 row-start-1 -my-2 -mr-2 flex h-11 w-11 items-center justify-center text-primary hover:text-primary/70 sm:col-auto sm:row-auto sm:m-0 sm:h-auto sm:w-auto"
                 title="Voir la recette"
                 aria-label="Voir la recette"
               >
-                menu_book
+                <span className="material-symbols-outlined text-[18px]">menu_book</span>
               </Link>
             ) : (
               <button
                 type="button"
                 onClick={() => supprimer(i.id)}
-                className="material-symbols-outlined text-[18px] text-on-surface-variant hover:text-error transition-colors"
+                className="relative z-10 col-start-2 row-start-1 -my-2 -mr-2 flex h-11 w-11 items-center justify-center text-on-surface-variant hover:text-error transition-colors sm:col-auto sm:row-auto sm:m-0 sm:h-auto sm:w-auto"
                 title="Supprimer cet import"
                 aria-label="Supprimer cet import"
               >
-                delete
+                <span className="material-symbols-outlined text-[18px]">delete</span>
               </button>
             )}
-            <Link
-              href={`/relecture/${i.id}`}
-              className="material-symbols-outlined text-[18px] text-on-surface-variant hover:text-primary"
-            >
-              chevron_right
-            </Link>
+            {/* Décoratif : toute la ligne est déjà le lien. */}
+            <span aria-hidden="true" className="hidden text-on-surface-variant sm:block">
+              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+            </span>
           </div>
         );
       })}
