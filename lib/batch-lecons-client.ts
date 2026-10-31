@@ -11,7 +11,7 @@ import { useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
 import { trackEvent } from '@/lib/analytics';
-import { LECON_MAX, normaliserLecon } from '@/lib/batch-lecons';
+import { LECON_MAX, ligneDecision, normaliserLecon, type Remarque, type StatutRemarque } from '@/lib/batch-lecons';
 
 const QUESTION = 'Qu’est-ce que vous changeriez la prochaine fois ?\n\nFacultatif — ce rappel s’affichera au lancement de votre prochaine fournée de cette recette.';
 
@@ -65,4 +65,23 @@ export function useDemanderLecon() {
     },
     [dialog],
   );
+}
+
+// ── Garder / écarter une remarque (`remarques_gardees`) ─────────────────
+// Écrit sous la session du membre (RLS : ses propres lignes). `statut` nul :
+// le choix est retiré, la remarque redevient « par défaut ».
+export async function enregistrerChoix(
+  userId: string,
+  recipeId: string,
+  r: Remarque,
+  statut: StatutRemarque | null,
+): Promise<string | null> {
+  // Table absente des types générés : accès non typé.
+  const table = (createClient() as unknown as { from: (t: string) => any }).from('remarques_gardees');
+  if (statut == null) {
+    const { error } = await table.delete().eq('user_id', userId).eq('nature', r.nature).eq('ligne_id', r.ligneId);
+    return error ? error.message : null;
+  }
+  const { error } = await table.upsert({ ...ligneDecision(r, statut), user_id: userId, recipe_id: recipeId }, { onConflict: 'user_id,nature,ligne_id' });
+  return error ? error.message : null;
 }

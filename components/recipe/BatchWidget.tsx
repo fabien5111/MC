@@ -41,7 +41,6 @@ import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { libelleAjustement, lireAjustementIA, lireAjustementIngredient, type AjustementIA } from '@/lib/batch-ai';
-import type { FourneeReference } from '@/lib/batch-lecons';
 import { DerniereFoisLancement } from '@/components/batch/DerniereFois';
 
 const num = (v: string | number | null | undefined): number | null => {
@@ -75,12 +74,11 @@ export function BatchWidget({
   peutAjusterIA = false,
   quotaIA = null,
   helpBlocks,
-  derniereFois = null,
+  derniereFois = false,
 }: {
-  // « La dernière fois » (JEP-381) : dernière fournée terminée de cette
-  // recette, lue par la fiche. Encadré affiché avant le bouton de création ;
-  // jamais en modification d'un ajustement.
-  derniereFois?: FourneeReference | null;
+  // « La dernière fois » (JEP-381) : encadré en tête du panneau, lu dans le
+  // `LeconsProvider` posé par la fiche. Jamais en modification d'un ajustement.
+  derniereFois?: boolean;
   recipe: RecipeFull;
   moldTypes: { id: number; name: string; forme: string | null }[];
   ingredients: MergedIngredient[];
@@ -584,8 +582,8 @@ export function BatchWidget({
       {!(editMode && existingBatch) && <HelpBlockSlot blockKey="fournee.lancer" help={help} />}
       {/* JEP-381 : juste sous le bloc d'aide, en tête du panneau. */}
       {derniereFois && !(editMode && existingBatch) && (
-        <div className="mb-6">
-          <DerniereFoisLancement reference={derniereFois} />
+        <div className="mb-6 empty:hidden">
+          <DerniereFoisLancement />
         </div>
       )}
       {etapesCochees > 0 && (

@@ -52,8 +52,9 @@ import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
 import { trackEvent } from '@/lib/analytics';
 import { ARacheterButton } from '@/components/batch/ARacheterButton';
-import { DerniereFoisEnTete, DerniereFoisEtape, LeconsProvider } from '@/components/batch/DerniereFois';
-import { leconsPrecedentes, lireLecon, type FourneeReference } from '@/lib/batch-lecons';
+import { ChoixRemarque, DerniereFoisEnTete, DerniereFoisEtape, LeconsProvider } from '@/components/batch/DerniereFois';
+import { cleRemarque, lireLecon, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
+import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import { useDemanderLecon } from '@/lib/batch-lecons-client';
 import {
   fmtNum,
@@ -83,6 +84,8 @@ import {
 } from '@/lib/recipe-plan';
 
 const MIN = 60000;
+// Référence stable : un `[]` littéral relancerait la resynchronisation du fournisseur à chaque rendu.
+const AUCUNE_DECISION: DecisionRemarque[] = [];
 const numify = (v: unknown): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
   return isNaN(n) ? null : n;
@@ -217,12 +220,12 @@ export function BatchView({
   droits,
   ajustement,
   helpBlocks = [],
-  reference = null,
+  remarques = null,
 }: {
   // « La dernière fois » (JEP-381) : fournée de référence (source « Refaire »,
-  // sinon dernière fournée terminée de la même recette), lue par la page.
-  // `null` : rien à afficher.
-  reference?: FourneeReference | null;
+  // sinon dernière fournée terminée de la même recette) et choix du membre,
+  // lus par la page. `null` : rien à afficher.
+  remarques?: DonneesRemarques | null;
   // « Modifier l'ajustement » : ce que le panneau de lancement lit sur la fiche
   // recette (référentiel des moules, droit et quota d'ajustement par IA).
   // Absent : pas de bouton.
@@ -270,12 +273,6 @@ export function BatchView({
   const [batch, setBatch] = useState(initialBatch);
   useEffect(() => setBatch(initialBatch), [initialBatch]);
   const demanderLecon = useDemanderLecon();
-  // Constats de la fournée de référence, rattachés aux étapes courantes —
-  // recalculés seulement si la structure des étapes change.
-  const leconsValeur = useMemo(
-    () => (reference ? { reference, lecons: leconsPrecedentes(reference, batch.batch_steps, batch.batch_ingredients) } : null),
-    [reference, batch.batch_steps, batch.batch_ingredients],
-  );
   const [mode, setMode] = useState<'preparer' | 'patisser'>(() => initialMode ?? defaultMode(initialBatch));
   const [busy, setBusy] = useState(false);
   // Distinct de `busy` : `router.refresh()` ne rend pas de promesse
@@ -519,7 +516,16 @@ export function BatchView({
   const done = all.filter((s) => s.done).length;
 
   return (
-    <LeconsProvider value={leconsValeur}>
+    <LeconsProvider
+      reference={remarques?.reference ?? null}
+      decisions={remarques?.decisions ?? AUCUNE_DECISION}
+      choixDisponibles={!!remarques?.choixDisponibles}
+      courantes={batch.batch_steps}
+      ingredientsCourants={batch.batch_ingredients}
+      userId={batch.user_id ?? ''}
+      recipeId={batch.recipe_id}
+      auteur={!!baseRecipe?.authorId && baseRecipe.authorId === batch.user_id}
+    >
       <div className="recipe-print-content max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
@@ -2381,6 +2387,14 @@ function SummaryPanel({
     }))
     .filter((c) => c.texte || c.sous.length > 0);
 
+  // Remarques de CETTE fournée, pour les gestes « garder / écarter » (JEP-381) :
+  // elles décident de ce que la prochaine fournée affichera.
+  const remarquesIci = new Map(remarquesDeFournee(versReference(batch)).map((r) => [r.cle, r]));
+  const choix = (nature: NatureRemarque, id: number) => {
+    const r = remarquesIci.get(cleRemarque(nature, id));
+    return r ? <ChoixRemarque r={r} /> : null;
+  };
+
   return (
     <div id="sec-resume" className="scroll-mt-28 mt-6 border border-outline-variant rounded-xl bg-surface-container-lowest p-6 flex flex-col gap-5">
       <h2 className="font-headline-md text-headline-md text-primary">Résumé de la fournée</h2>
@@ -2393,6 +2407,7 @@ function SummaryPanel({
                 {e.nom} : prévu {e.prev}
                 {e.reel && <> → utilisé <span className="font-bold text-primary">{e.reel}</span></>}
                 {e.commentaire && <span className="italic text-on-surface-variant"> — {e.commentaire}</span>}
+                {choix('ingredient', e.key)}
               </li>
             ))}
           </ul>
@@ -2409,6 +2424,7 @@ function SummaryPanel({
                   <p>
                     <span className="text-on-surface-variant">Mon commentaire : </span>
                     {c.texte}
+                    {choix('etape', c.key)}
                   </p>
                 )}
                 {c.sous.length > 0 && (
@@ -2423,6 +2439,7 @@ function SummaryPanel({
                           <p>
                             <span className="not-italic">Mon commentaire : </span>
                             {su.commentaire}
+                            {choix('sous_etape', su.key)}
                           </p>
                         </li>
                       ))}
@@ -2436,7 +2453,10 @@ function SummaryPanel({
       )}
       <LeconResume batch={batch} setBatch={setBatch} />
       <div>
-        <p className={`${LBL_CLS} mb-1`}>Commentaire global</p>
+        <p className={`${LBL_CLS} mb-1 flex items-center`}>
+          Commentaire global
+          {choix('global', batch.id)}
+        </p>
         <textarea
           rows={3}
           disabled={lecture}
@@ -2468,7 +2488,10 @@ function LeconResume({ batch, setBatch }: { batch: BatchFull; setBatch: React.Di
   }
   return (
     <div>
-      <p className={`${LBL_CLS} mb-1`}>À retenir pour la prochaine fois</p>
+      <p className={`${LBL_CLS} mb-1 flex items-center`}>
+        À retenir pour la prochaine fois
+        {lecon && <ChoixLecon batch={batch} />}
+      </p>
       {lecon ? (
         <p className="text-sm whitespace-pre-line">{lecon}</p>
       ) : (
@@ -2482,4 +2505,11 @@ function LeconResume({ batch, setBatch }: { batch: BatchFull; setBatch: React.Di
       )}
     </div>
   );
+}
+
+// Pictos de la leçon : lue sur la fournée elle-même, donc recalculée ici à
+// chaque modification (la Map du résumé est figée au rendu de celui-ci).
+function ChoixLecon({ batch }: { batch: BatchFull }) {
+  const r = remarquesDeFournee(versReference(batch)).find((x) => x.nature === 'lecon');
+  return r ? <ChoixRemarque r={r} /> : null;
 }

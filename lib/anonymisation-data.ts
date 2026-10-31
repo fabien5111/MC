@@ -84,6 +84,7 @@ const listeOr = (valeurs: string[]) => `(${valeurs.map((v) => `"${v.replace(/"/g
 /** Tables vidées de toute ligne du membre (colonne qui le désigne). Ordre indifférent. */
 const TABLES_A_VIDER: [table: string, colonne: string][] = [
   ['batches', 'user_id'],
+  ['remarques_gardees', 'user_id'],
   ['shopping_lists', 'user_id'],
   ['shopping_items', 'user_id'],
   ['favorites', 'user_id'],

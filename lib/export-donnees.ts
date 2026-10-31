@@ -82,6 +82,13 @@ export const RUBRIQUES = [
       'avancement, notes et commentaires du jour J.',
   },
   {
+    cle: 'remarques_de_fournees',
+    titre: 'Remarques gardées ou écartées',
+    description:
+      'Les remarques de vos fournées que vous avez choisi de garder pour les prochaines fois ou de ne plus ' +
+      'afficher, avec la recette concernée et une copie du texte au moment du choix.',
+  },
+  {
     cle: 'avis',
     titre: 'Avis',
     description: 'Les notes et commentaires que vous avez laissés sur des recettes, avec leur statut de modération.',

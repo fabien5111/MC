@@ -1491,39 +1491,72 @@ directes :
   que soit le propriétaire. `owns_execution()` ne sert plus qu'aux policies
   des tables `*_legacy`.
 
-## « La dernière fois » : leçons de la fournée précédente (JEP-381)
+## « La dernière fois » : leçons des fournées précédentes (JEP-381)
 
-Remet sous les yeux, au moment où ça sert, ce que le membre a constaté la
-dernière fois qu'il a fait cette recette. **Rien n'est copié : tout est LU**
-depuis une fournée de référence, donc corriger un constat après coup se
-reflète partout. Plan gratuit, sans IA.
+Remet sous les yeux, au moment où ça sert, ce que le membre a constaté lors de
+ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
+`lib/batch-lecons.ts` (testée) ; lecture : `lib/batch-lecons-data.ts`
+(`getRemarques`) ; écriture : `lib/batch-lecons-client.ts` ; affichage :
+`components/batch/DerniereFois.tsx`.
 
-- **Fournée de référence** (`getFourneeReference`, `lib/batch-lecons-data.ts`,
-  sous la session, RLS) : la fournée source (`source_plan_id`, « Refaire ») si
-  elle est lisible, sinon la plus récente fournée `terminee` du membre sur la
-  même recette, hors la fournée courante. Une lecture de plus à l'ouverture
-  d'une fournée et sur la fiche recette (membre connecté). Rien à dire
-  (`referenceAffichable` faux) : rien d'affiché.
-- **Appariement des étapes** (`leconsPrecedentes`, `lib/batch-lecons.ts`, pur
-  et testé) — les id des étapes changent à chaque enregistrement de `/creer` :
-  même `source_step_id`, sinon même titre normalisé (`normSearch`, dans
-  l'ordre du déroulé), sinon bloc « Autres remarques de la dernière fois » en
-  tête de fournée. Un constat n'est jamais perdu en silence. Ingrédients :
-  dans l'étape appariée, par `ingredientKey` + unité.
-- **Affichage** (`components/batch/DerniereFois.tsx`) : encadré au lancement
-  (`BatchWidget`, jamais en modification d'un ajustement) ; en tête de la
-  fournée (leçon, commentaire global, autres remarques) et sous chaque étape
-  (commentaire d'étape, de sous-étapes et d'ingrédients, écart « 180 g
-  utilisés au lieu de 200 g »), en Préparer ET Pâtisser, fournée close
-  comprise, par contexte (`LeconsProvider`). `no-print`.
-- **« À retenir pour la prochaine fois »** (`batches.lecon`, 500 caractères,
-  `lib/batch-lecons-client.ts`) : question facultative après « Terminer »
-  (`BatchView.finishBatch` ET `PlanningDayView`), modifiable depuis le résumé
-  (`LeconResume`, même sur une fournée close — seule l'impersonation lecture
-  seule bloque). Colonne posée par `psql` (nœud 216075), absente des types :
-  lue par `select('*')`, écrite à part ; avant la migration, la question n'est
-  pas posée (sonde `select('lecon')`) et le résumé ne montre rien. « Refaire »
-  ne la recopie pas (elle reste lue sur la source). Événement GA `saisir_lecon`.
+- **Une remarque** = un constat identifiable (`nature` + id de la ligne qui la
+  porte) : commentaire d'étape, de sous-étape, d'ingrédient (et écart « 180 g
+  utilisés au lieu de 200 g »), commentaire global, leçon. **Rien n'est copié
+  dans la fournée suivante : tout est LU.**
+- **Fournée de référence** (sous la session, RLS) : la fournée source
+  (`source_plan_id`, « Refaire ») si elle est lisible, sinon la plus récente
+  fournée `terminee` du membre sur la même recette, hors la fournée courante.
+- **Règle d'affichage unique** (`remarquesAffichees`, arbitrage du 31/10/2026) :
+  les remarques de la fournée de référence **en entier par défaut**, SAUF celles
+  que le membre a **écartées**, PLUS celles qu'il a **gardées** dans des
+  fournées plus anciennes. Même règle pour l'auteur et les autres ; seul le sens
+  du geste change : pour l'auteur, écarter = « corrigé dans ma recette », garder
+  = « jusqu'à correction » ; pour un autre membre, garder = « pour mes
+  prochaines fournées », écarter = « ne m'intéresse pas ».
+- **Table `remarques_gardees`** (une ligne par choix, `unique (user_id, nature,
+  ligne_id)`, statut `gardee` / `ecartee`), et non une colonne sur les tables
+  `batch_*` : une fournée se supprime d'un geste, en cascade, et ce que le
+  membre a demandé de garder ne doit pas partir avec elle. `batch_id` en `on
+  delete set null` ; la ligne porte une **copie** du texte (`texte`, `libelle`,
+  `ecart`, titre d'étape), qui ne sert que si la fournée d'origine a disparu —
+  sinon le texte vivant est relu (`rafraichir`), un commentaire corrigé s'y
+  reflète, et un commentaire effacé fait disparaître la remarque. Écriture par
+  le navigateur sous RLS (propriétaire seul, + `impersonation_ro_*` et
+  `blocked_user_*`), optimiste dans `LeconsProvider` (aucune resynchronisation
+  serveur). **Table absente** (migration pas jouée) : remarques affichées comme
+  avant, pictos masqués (`choixDisponibles`). Absente des types générés : accès
+  non typé. **RGPD** : dans `TABLES_A_VIDER` et dans l'export (rubrique
+  `remarques_de_fournees`).
+- **Appariement aux étapes courantes** (`leconsPrecedentes`) — les id d'étape
+  changent à chaque enregistrement de `/creer` : par fournée d'origine, même
+  `source_step_id`, sinon même titre normalisé (`normSearch`, dans l'ordre du
+  déroulé), sinon bloc « Autres remarques ». Une remarque n'est jamais perdue en
+  silence. Ingrédients : `ingredientKey` + unité. Remarques de plusieurs
+  fournées sous une même étape : la plus récente d'abord, la date rappelée pour
+  les anciennes.
+- **Où** (`LeconsProvider` + contexte) : encadré en tête du panneau « Lancer
+  une fournée », sous « Aides et conseils » (`BatchWidget`, prop `derniereFois`,
+  jamais en modification d'un ajustement) ; en tête de la fournée (leçon,
+  commentaire global, autres remarques) ; **sous la date de chaque étape**, en
+  Préparer (`BatchStepDonePanel`, prop `derniereFois`) et en Pâtisser (sous
+  l'en-tête de la carte, visible étape repliée) ; **pour l'auteur seul**, bloc
+  « Retours de mes fournées » sur la fiche recette (`RetoursAuteur`, étape par
+  étape avec « Modifier cette étape » vers `/creer`). Les pictos (épingle,
+  œil barré) sont aussi dans le **résumé** d'une fournée close (`SummaryPanel`,
+  `ChoixRemarque`) : on y trie à chaud ce que la fournée suivante affichera, et
+  on y rétablit une remarque écartée. `no-print` partout.
+- **Résumé de la fournée** (`SummaryPanel`) : affiché en Pâtisser ET en
+  Préparer (au-dessus de la photo) sur une fournée close. Plus de durée,
+  d'étapes réalisées ni de jalons ; commentaires d'étape sur deux lignes
+  (titre, « Mon commentaire : … ») ; ceux des sous-étapes dans un volet replié.
+  Sur une fournée close, les blocs « Ma note » vides sont omis.
+- **« À retenir pour la prochaine fois »** (`batches.lecon`, 500 caractères) :
+  question facultative après « Terminer » (`BatchView.finishBatch` ET
+  `PlanningDayView`), modifiable depuis le résumé (`LeconResume`, même sur une
+  fournée close — seule l'impersonation lecture seule bloque). Colonne posée par
+  `psql` (nœud 216075) : lue par `select('*')`, écrite à part ; avant la
+  migration, la question n'est pas posée (sonde `select('lecon')`). « Refaire »
+  ne la recopie pas. Événement GA `saisir_lecon`.
 
 ## Avis sur une recette (note + commentaire)
 
