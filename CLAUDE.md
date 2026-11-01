@@ -1904,7 +1904,7 @@ essais et la validation arrivent par lots successifs.
   d'une recette ordinaire (`lib/batch-write.ts`, extrait de `BatchWidget` pour
   être partagé), avec un facteur de **1** : les quantités du projet sont déjà
   celles du format visé, un second coefficient les fausserait.
-- **Pas de « Reprendre ces quantités »** (retiré le 01/11/2026) : le bouton qui recopiait les quantités réellement utilisées d'un essai dans le projet (`promoteTrialQuantities`, `lib/projects-write.ts`, appariement par `batch_steps.source_step_id` → groupe d'ingrédients → nom, et `base_quantity` réécrite) a été ôté de `ProjectTrials` : les quantités du projet se corrigent à la main avant de relancer une fournée. La fonction reste en base de code, sans appelant. Il reste, par essai, le verdict, les retours et « Comparer » (tableau des quantités réelles de deux essais).
+- **Pas de « Reprendre ces quantités »** (retiré le 01/11/2026) : le bouton qui recopiait les quantités réellement utilisées d'un essai dans le projet (appariement par `batch_steps.source_step_id` → groupe d'ingrédients → nom, et `base_quantity` réécrite) a été ôté de `ProjectTrials`, et sa fonction `promoteTrialQuantities` supprimée : les quantités du projet se corrigent à la main avant de relancer une fournée. Il reste, par essai, le verdict, les retours et « Comparer » (tableau des quantités réelles de deux essais).
 - **Validation** (§8) : `projectValidationBlockers()` (`lib/projects.ts`)
   liste ce qui bloque — format non renseigné, composant non résolu — recalculé
   côté client à l'affichage ET reposé côté serveur avant l'écriture (un projet
