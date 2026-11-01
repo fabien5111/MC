@@ -304,10 +304,15 @@ export function RetoursAuteur({ recipeId, etapes }: { recipeId: string; etapes: 
       </summary>
       <div className="p-4 bg-white flex flex-col gap-4 text-sm">
         <p className="text-xs text-on-surface-variant">
-          Remarques de votre dernière fournée et celles que vous avez gardées. Une fois l&apos;étape corrigée, l&apos;œil barré
-          retire la remarque ; l&apos;épingle la garde d&apos;une fournée à l&apos;autre.
+          Remarques de votre dernière fournée et celles que vous avez gardées. Une fois l&apos;étape corrigée, décochez
+          l&apos;épingle pour retirer la remarque ; épinglée, elle est rappelée d&apos;une fournée à l&apos;autre.
         </p>
-        {lecons.generales.length > 0 && <ListeRemarques remarques={lecons.generales} />}
+        {lecons.generales.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <p className="font-bold text-on-surface">Retours global recette</p>
+            <ListeRemarques remarques={lecons.generales} />
+          </div>
+        )}
         {etapes.map((e, i) => {
           const c = lecons.parEtape[e.id];
           if (!c) return null;
