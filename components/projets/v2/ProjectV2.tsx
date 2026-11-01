@@ -75,6 +75,7 @@ import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { RecipeStep } from '@/components/recipe/RecipeStep';
 import { LeconsProvider, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
+import type { Remarque } from '@/lib/batch-lecons';
 import type { ProjectComponent, ProjectFull, ProjectTrial } from '@/lib/projects-data';
 import type { ConversionRef, IngredientRefOption, UnitRef } from '@/lib/ingredient-conversions';
 import type { RecipeFull, RecipeStepView } from '@/lib/recipes';
@@ -128,6 +129,7 @@ export function ProjectV2({
   referenceAllergenes,
   trials,
   remarques = null,
+  remarquesEssais,
   userId,
   peutGenererIA,
   quotaProjetIA,
@@ -153,6 +155,7 @@ export function ProjectV2({
   // Retours de mes fournées d'essai (JEP-381), lus par la page ; `null` = aucun.
   remarques?: DonneesRemarques | null;
   userId: string;
+  remarquesEssais?: Record<number, Remarque[]>;
   peutGenererIA: boolean;
   quotaProjetIA: { allowed: boolean; limit?: number; usage?: number } | null;
   // Quota `ajustement_ia_mensuel`, affichage seulement (« Ajuster avec l'IA »).
@@ -1104,6 +1107,7 @@ export function ProjectV2({
                 trials={trials}
                 unresolved={ordered.filter((c) => !c.resolved).map((c) => c.name)}
                 pointsRestants={pointsRestants(todo)}
+                retoursEssais={remarquesEssais}
               />
             )}
             <div className="border-t border-outline-variant pt-5">

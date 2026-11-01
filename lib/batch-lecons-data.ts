@@ -5,7 +5,16 @@
 // `remarques_gardees`) ne laisse lire que ses propres données.
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
-import { ecartQuantite, lireLecon, type DecisionRemarque, type FourneeReference, type RefIngredient, type RefStep } from '@/lib/batch-lecons';
+import {
+  ecartQuantite,
+  lireLecon,
+  remarquesDeFournee,
+  type DecisionRemarque,
+  type FourneeReference,
+  type RefIngredient,
+  type RefStep,
+  type Remarque,
+} from '@/lib/batch-lecons';
 
 // `*` sur `batches` (et non une liste de colonnes) : `lecon` est posée à la
 // main (DDL par psql) — la nommer ferait échouer la lecture avant la
@@ -167,4 +176,24 @@ export async function getRemarques(opts: {
     console.error('getRemarques (rafraîchir):', e);
   }
   return { reference, plusRecenteId, decisions, choixDisponibles: decisionsBrutes != null };
+}
+
+// Remarques de CHAQUE fournée d'une recette (essais d'un projet), par id de
+// fournée : ce que le membre a constaté à cet essai, sans épingle ni règle
+// d'affichage — lecture seule. Best-effort : un échec rend `{}`.
+export async function getRemarquesEssais(recipeId: string): Promise<Record<number, Remarque[]>> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.from('batches').select(REFERENCE_SELECT).eq('recipe_id', recipeId);
+    if (error) {
+      console.error('getRemarquesEssais:', error.message);
+      return {};
+    }
+    const out: Record<number, Remarque[]> = {};
+    for (const row of (data ?? []) as unknown as Brut[]) out[row.id] = remarquesDeFournee(versReference(row));
+    return out;
+  } catch (e) {
+    console.error('getRemarquesEssais:', e);
+    return {};
+  }
 }

@@ -26,6 +26,8 @@ import { formatDate } from '@/lib/format';
 import { connexionHref } from '@/lib/nav';
 import type { ProjectTrial } from '@/lib/projects-data';
 import type { RecipeFull } from '@/lib/recipes';
+import { RetoursEssai } from '@/components/batch/DerniereFois';
+import type { Remarque } from '@/lib/batch-lecons';
 import { translateQuotaError } from '@/lib/quota-message-client';
 
 // Appréciation globale, volontairement à trois valeurs (spec §7.2) : de quoi
@@ -51,6 +53,7 @@ export function ProjectTrials({
   unresolved,
   canLaunch = true,
   pointsRestants,
+  retoursEssais,
 }: {
   // Recette du projet, telle que le moteur de fournée la lit. C'est la même
   // lecture que sur une fiche recette : aucun chemin particulier au projet.
@@ -69,6 +72,9 @@ export function ProjectTrials({
   // CHAQUE lancement d'un essai (jamais mémorisés : un oubli ne doit pas passer
   // inaperçu au deuxième essai). Absent (v1, fiche recette) : rien n'est demandé.
   pointsRestants?: string[];
+  // Retours de chaque essai (par id de fournée). Fourni : le bloc complet des
+  // retours remplace le champ de note. Absent : champ de note d'origine.
+  retoursEssais?: Record<number, Remarque[]>;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -290,18 +296,30 @@ export function ProjectTrials({
                   </span>
                 </div>
 
-                <textarea
-                  // `key` porte la note : le champ n'écrit qu'à la sortie, il
-                  // faut le remonter quand la valeur serveur change.
-                  key={`${t.id}-${t.note ?? ''}`}
-                  defaultValue={t.note ?? ''}
-                  onBlur={(e) => {
-                    if ((e.target.value || '') !== (t.note ?? '')) void setNote(t, e.target.value);
-                  }}
-                  rows={2}
-                  placeholder="Ce que vous avez observé — texture, cuisson, équilibre…"
-                  className={`${champ} mb-2 w-full`}
-                />
+                {retoursEssais ? (
+                  <>
+                    <RetoursEssai remarques={retoursEssais[t.id] ?? []} />
+                    <p className="mb-2 text-[12.5px] text-on-surface-variant">
+                      {(retoursEssais[t.id] ?? []).length ? '' : 'Aucun commentaire sur cet essai. '}
+                      <a href={`/fournee/${t.id}`} className="text-primary underline underline-offset-2">
+                        Ouvrir la fournée pour en ajouter ou les modifier
+                      </a>
+                    </p>
+                  </>
+                ) : (
+                  <textarea
+                    // `key` porte la note : le champ n'écrit qu'à la sortie, il
+                    // faut le remonter quand la valeur serveur change.
+                    key={`${t.id}-${t.note ?? ''}`}
+                    defaultValue={t.note ?? ''}
+                    onBlur={(e) => {
+                      if ((e.target.value || '') !== (t.note ?? '')) void setNote(t, e.target.value);
+                    }}
+                    rows={2}
+                    placeholder="Ce que vous avez observé — texture, cuisson, équilibre…"
+                    className={`${champ} mb-2 w-full`}
+                  />
+                )}
 
                 <div className="flex flex-wrap items-center gap-3">
                   <button type="button" onClick={() => void promouvoir(t)} className={btnGhost}>

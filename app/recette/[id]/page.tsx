@@ -13,7 +13,7 @@ import { IngredientTotalList } from '@/components/IngredientTotalList';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
-import { getRemarques } from '@/lib/batch-lecons-data';
+import { getRemarques, getRemarquesEssais } from '@/lib/batch-lecons-data';
 import { LeconsProvider, RetoursAuteur } from '@/components/batch/DerniereFois';
 import { getVisibleHelpBlocksForPages } from '@/lib/help';
 import { canAccess } from '@/lib/entitlements';
@@ -158,7 +158,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // dépendent pas les unes des autres — regroupées en un seul `Promise.all`
   // plutôt qu'enchaînées en `await` successifs, qui coûtaient un aller-retour
   // en série par lecture sur la page la plus consultée du site.
-  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials, entitlements, helpPages, remarques] = await Promise.all([
+  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials, entitlements, helpPages, remarques, remarquesEssais] = await Promise.all([
     // Réservé au propriétaire : un visiteur n'a pas à savoir avec qui la
     // recette est partagée (lib/shares.ts — à tenir synchrone avec la policy
     // RLS `recipes_partagees`).
@@ -187,6 +187,8 @@ export default async function RecettePage({ params, searchParams }: Params) {
     // cette recette et ses choix « garder / écarter » — encadré du panneau
     // « Lancer une fournée » et, pour l'auteur, « Retours de mes fournées ».
     user ? getRemarques({ userId: user.id, recipeId: recipe.id }) : Promise.resolve(null),
+    // Retours de chaque essai d'un projet validé (lecture seule, bloc des essais).
+    isProject && isOwner ? getRemarquesEssais(recipe.id) : Promise.resolve(undefined),
   ]);
   const peutAjusterIA = canAccess(entitlements, 'ajustement_ia_mensuel');
   // Extraire des étapes en recette (JEP-258, plan Pro) : les masses
@@ -538,7 +540,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
             // déjà par le geste normal ci-dessus (BatchWidget), pas par une
             // seconde porte d'entrée.
             <div className="no-print mt-6">
-              <ProjectTrials recipe={recipe} trials={projectTrials} unresolved={[]} canLaunch={false} />
+              <ProjectTrials recipe={recipe} trials={projectTrials} unresolved={[]} canLaunch={false} retoursEssais={remarquesEssais} />
             </div>
           )}
           </div>

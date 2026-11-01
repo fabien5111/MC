@@ -180,10 +180,10 @@ export function ChoixRemarque({ r }: { r: Remarque }) {
 
 // Une remarque, quelle que soit sa nature. La date n'est rappelée que pour
 // une remarque gardée d'une fournée plus ancienne que la référence.
-function RemarqueLigne({ r }: { r: Remarque }) {
+function RemarqueLigne({ r, sansDate = false }: { r: Remarque; sansDate?: boolean }) {
   const v = useLecons();
   const ancienne = v?.reference ? r.batchId !== v.reference.id : true;
-  const d = ancienne ? dateCourte(r.date) : null;
+  const d = ancienne && !sansDate ? dateCourte(r.date) : null;
   return (
     <li className="flex flex-col">
       {(r.nature === 'sous_etape' || r.nature === 'ingredient') && (
@@ -208,11 +208,11 @@ function RemarqueLigne({ r }: { r: Remarque }) {
   );
 }
 
-function ListeRemarques({ remarques }: { remarques: Remarque[] }) {
+function ListeRemarques({ remarques, sansDate = false }: { remarques: Remarque[]; sansDate?: boolean }) {
   return (
     <ul className="flex flex-col gap-1.5">
       {remarques.map((r) => (
-        <RemarqueLigne key={r.cle} r={r} />
+        <RemarqueLigne key={r.cle} r={r} sansDate={sansDate} />
       ))}
     </ul>
   );
@@ -395,5 +395,48 @@ export function RetoursEtape({ stepId }: { stepId: number }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+// Essais d'un projet : le bloc complet des retours d'UNE fournée (commentaire
+// global, leçon, étapes, sous-étapes, ingrédients), en lecture seule — sans
+// fournisseur, sans épingle ni date (tout vient du même essai).
+export function RetoursEssai({ remarques }: { remarques: Remarque[] }) {
+  if (!remarques.length) return null;
+  const generales = remarques.filter((r) => r.nature === 'global' || r.nature === 'lecon');
+  const groupes = new Map<string, { titre: string; ordre: number; remarques: Remarque[] }>();
+  for (const r of remarques) {
+    if (r.nature === 'global' || r.nature === 'lecon') continue;
+    const cle = String(r.etapeId ?? r.etapeTitre ?? '');
+    const g = groupes.get(cle) ?? { titre: r.etapeTitre ?? 'Étape', ordre: r.ordre, remarques: [] };
+    g.remarques.push(r);
+    groupes.set(cle, g);
+  }
+  const etapes = [...groupes.values()].sort((a, b) => a.ordre - b.ordre);
+  return (
+    <details open className="no-print group mb-3 border border-outline-variant">
+      <summary className="flex items-center justify-between p-3 cursor-pointer bg-surface-container-low list-none">
+        <span className="flex items-center gap-2 font-label-md text-label-md text-primary">
+          <span className="material-symbols-outlined text-[18px]">history</span>
+          RETOURS DE CET ESSAI ({remarques.length})
+        </span>
+        <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+      </summary>
+      <div className="p-3 bg-white flex flex-col gap-4 text-sm">
+        {generales.length > 0 && (
+          <div className="italic font-normal text-primary">
+            <ListeRemarques remarques={generales} sansDate />
+          </div>
+        )}
+        {etapes.map((e, k) => (
+          <div key={k} className="flex flex-col gap-1">
+            <p className="font-bold text-on-surface">{e.titre}</p>
+            <div className="italic font-normal text-primary">
+              <ListeRemarques remarques={e.remarques} sansDate />
+            </div>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
