@@ -318,6 +318,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // la liste, sous peine de lien mort (pas de scroll-spy possible non plus).
   const tocSections: TocSections = {
     before: [
+      { id: 'sec-haut', label: 'Haut de la recette', icon: 'vertical_align_top', level: 1 },
       { id: 'sec-technique', label: 'Bloc technique', icon: 'straighten', level: 1 },
       ...(recipe.description ? [{ id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 as const }] : []),
       ...(steps.length > 0 ? [{ id: 'sec-planning', label: 'Planning de préparation', icon: 'calendar_month', level: 1 as const }] : []),
@@ -360,7 +361,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
       </div>
 
       <div className="recette-page">
-      <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <main id="sec-haut" className="scroll-mt-28 max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <PlanProvider autoOpen={planifier === '1'}>
         <RecetteToc
           recipeId={recipe.id}
