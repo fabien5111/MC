@@ -198,7 +198,7 @@ function RemarqueLigne({ r }: { r: Remarque }) {
           {r.nature === 'lecon' && <span className="not-italic font-bold text-primary">À retenir : </span>}
           {r.nature === 'global' && <span className="not-italic font-bold text-primary">Commentaire global : </span>}
           {r.texte && (r.nature === 'etape' || r.nature === 'sous_etape' || r.nature === 'ingredient') && (
-            <span className="not-italic font-bold text-primary">Mon commentaire : </span>
+            <span className="not-italic font-normal text-primary">Mon commentaire : </span>
           )}
           {r.texte && <span className="whitespace-pre-line">{r.texte}</span>}
           {d && <span className="not-italic text-[11px] text-outline"> · fournée du {d}</span>}
