@@ -1571,6 +1571,7 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
   dans le bloc. L'épingle est aussi dans le **résumé** d'une fournée close (`SummaryPanel`,
   `ChoixRemarque`) : on y trie à chaud ce que la fournée suivante affichera, et
   on y rétablit une remarque écartée. `no-print` partout.
+- **En fournée, les retours se posent sous la ligne qu'ils concernent** (Préparer et Pâtisser, tout membre, auteur ou non) : `RetoursSousEtape` sous chaque sous-étape, `RetoursIngredient` sous chaque ingrédient (`BatchStepDonePanel`, `BatchIngredientsEditor`, `StepCookCard`), comme dans `/creer` ; le bloc sous la date de l'étape (`DerniereFoisEtape`) ne garde que le commentaire de l'étape. Une remarque qui ne s'apparie à aucune ligne affichée reste dans le bloc de tête (`RetoursAuteur`).
 - **Sommaire de la fiche recette : entrée « Haut de la recette »** (`sec-haut`, posée sur le `<main>` de `app/recette/[id]/page.tsx`), comme « Haut de la fournée » dans `BatchView` ; même entrée dans l'éditeur `/creer` (`CREER_SECTIONS`, ancre posée sur le `<main>` de `app/creer/page.tsx`).
 - **Habillage des retours (01/11/2026)** : texte en bordeaux (`text-primary`), italique conservé, graisse normale, libellés « Retours de mes fournées : » en gras (« Mon commentaire », « À retenir » et « Commentaire global » en normal), liseré gauche bordeaux atténué (`border-primary/50`) ; liseré gauche bordeaux atténué. Un seul fichier : `DerniereFois.tsx`.
 - **Résumé de la fournée** (`SummaryPanel`) : affiché en Pâtisser ET en

@@ -219,10 +219,13 @@ function ListeRemarques({ remarques }: { remarques: Remarque[] }) {
 }
 
 // Sous la date d'une étape : discret, repliable (ouvert par défaut).
+// En fournée, les remarques de sous-étape et d'ingrédient ne sont plus ici :
+// elles se posent sous la ligne qu'elles concernent (`RetoursSousEtape`,
+// `RetoursIngredient`), comme dans l'éditeur. Reste le commentaire de l'étape.
 export function DerniereFoisEtape({ stepId }: { stepId: number }) {
   const v = useLecons();
-  const c = v?.lecons.parEtape[stepId];
-  if (!c) return null;
+  const rs = (v?.lecons.parEtape[stepId]?.remarques ?? []).filter((r) => r.nature === 'etape');
+  if (!rs.length) return null;
   return (
     <details open className="no-print text-sm italic font-normal text-primary border-l-2 border-primary/50 pl-3">
       <summary className="cursor-pointer not-italic flex items-center gap-1 text-[12px] font-label-md text-primary list-none [&::-webkit-details-marker]:hidden">
@@ -230,7 +233,7 @@ export function DerniereFoisEtape({ stepId }: { stepId: number }) {
         Retours de mes fournées
       </summary>
       <div className="mt-1">
-        <ListeRemarques remarques={c.remarques} />
+        <ListeRemarques remarques={rs} />
       </div>
     </details>
   );
@@ -345,11 +348,11 @@ export function RetoursSousEtape({ stepId, texte }: { stepId: number; texte: str
 
 // Sous un ingrédient : écart de quantité avec le coefficient de la fournée et
 // la quantité à coefficient 1, puis le commentaire.
-export function RetoursIngredient({ stepId, ingredientId }: { stepId: number; ingredientId: number }) {
+export function RetoursIngredient({ stepId, ingredientId, enListe = false }: { stepId: number; ingredientId: number; enListe?: boolean }) {
   const v = useLecons();
   const rs = (v?.lecons.parEtape[stepId]?.remarques ?? []).filter((r) => r.nature === 'ingredient' && r.ingredientId === ingredientId);
   if (!rs.length) return null;
-  return (
+  const liste = (
     <ul className="no-print mt-1 flex flex-col gap-1 text-sm italic font-normal text-primary border-l-2 border-primary/50 pl-3">
       {rs.map((r) => {
         const quantite = libelleCoefficient(r) ?? r.ecart;
@@ -365,6 +368,14 @@ export function RetoursIngredient({ stepId, ingredientId }: { stepId: number; in
         );
       })}
     </ul>
+  );
+  // Dans une grille de lignes (<ul> en sous-grille) : une ligne pleine largeur.
+  return enListe ? (
+    <li className="pb-2" style={{ gridColumn: '1/-1' }}>
+      {liste}
+    </li>
+  ) : (
+    liste
   );
 }
 

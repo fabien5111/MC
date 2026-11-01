@@ -14,6 +14,7 @@
 // modification, contrairement à l'ancien modèle plan + session séparés.
 import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
+import { RetoursIngredient } from '@/components/batch/DerniereFois';
 import { Fragment, useId, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -455,6 +456,7 @@ export function BatchStepIngredients({
                     </span>
                   </div>
                 </li>
+                <RetoursIngredient stepId={step.id} ingredientId={row.id} enListe />
                 {expanded && (
                   <li className="pb-2 -mt-1" style={{ gridColumn: '1/-1' }}>
                     <span className="font-body-md text-[12px] text-green-700 flex items-center gap-1.5">

@@ -19,6 +19,7 @@
 // proposer de supprimer après un déplacement de jour ou l'ajout d'une
 // sous-étape.
 import { NomIngredient } from '@/components/IngredientNomsProvider';
+import { RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -491,6 +492,9 @@ export function BatchStepDonePanel({
                         <NomIngredient nom={it.name} quantite={it.quantity ?? it.quantity_text} unite={it.unit} refId={it.ref_id} />
                         {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                       </span>
+                      <div style={{ gridColumn: '1/-1' }} className="empty:hidden">
+                        <RetoursIngredient stepId={step.id} ingredientId={it.id} />
+                      </div>
                       {replaced && (
                         <span className="font-body-md text-[12px] text-green-700" style={{ gridColumn: '1/-1' }}>
                           Fabriqué à partir de{' '}
@@ -538,8 +542,9 @@ export function BatchStepDonePanel({
                     moveSubstep(dragSubstep, idx);
                     setDragSubstep(null);
                   }}
-                  className={`flex gap-1.5 items-start${dragSubstep === idx ? ' opacity-50' : ''}`}
+                  className={`flex flex-col${dragSubstep === idx ? ' opacity-50' : ''}`}
                 >
+                  <div className="flex gap-1.5 items-start">
                   {readOnly ? (
                     <span className="no-print shrink-0 w-[18px]" />
                   ) : (
@@ -591,6 +596,9 @@ export function BatchStepDonePanel({
                       <span className="material-symbols-outlined text-[18px]">delete</span>
                     </button>
                   )}
+                  </div>
+                  {/* JEP-381 : le retour de fournée sous la sous-étape qu'il concerne. */}
+                  <RetoursSousEtape stepId={step.id} texte={su.texte} />
                 </li>
               );
             })}

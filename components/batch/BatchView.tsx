@@ -52,7 +52,7 @@ import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
 import { trackEvent } from '@/lib/analytics';
 import { ARacheterButton } from '@/components/batch/ARacheterButton';
-import { ChoixRemarque, DerniereFoisEtape, LeconsProvider, RetoursAuteur } from '@/components/batch/DerniereFois';
+import { ChoixRemarque, DerniereFoisEtape, LeconsProvider, RetoursAuteur, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import { cleRemarque, lireLecon, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import { useDemanderLecon } from '@/lib/batch-lecons-client';
@@ -2273,6 +2273,9 @@ function StepCookCard({
                 <span className={`font-label-md text-label-md text-on-surface-variant ml-9${struck}`}>
                   prévu {prevTxt} {conv && <span className="text-[14px]">({conv})</span>}
                 </span>
+                <div className="ml-9 empty:hidden">
+                  <RetoursIngredient stepId={s.id} ingredientId={ing.id} />
+                </div>
                 <div className="flex items-center gap-2 sm:gap-3 ml-9">
                   {realInput}
                   <span className="text-sm text-on-surface-variant shrink-0">{ing.unit ? shortUnitLbl(ing.unit) : ''}</span>
@@ -2309,6 +2312,7 @@ function StepCookCard({
                   />
                   <span className={`font-body-md text-[16px] leading-relaxed${su.done || subExcluded ? ' line-through opacity-50' : ''}`}>{su.texte}</span>
                 </label>
+                <RetoursSousEtape stepId={s.id} texte={su.texte} />
                 {subIngredients.length > 0 && (
                   <ul className="ml-9 flex flex-col gap-1">
                     {subIngredients.map((it) => {
