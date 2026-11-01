@@ -41,7 +41,7 @@ import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { libelleAjustement, lireAjustementIA, lireAjustementIngredient, type AjustementIA } from '@/lib/batch-ai';
-import { DerniereFoisLancement } from '@/components/batch/DerniereFois';
+import { RetoursAuteur } from '@/components/batch/DerniereFois';
 
 const num = (v: string | number | null | undefined): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -580,10 +580,17 @@ export function BatchWidget({
         {editMode && existingBatch ? "Modifier l'ajustement de la fournée" : 'Lancer une fournée'}
       </h3>
       {!(editMode && existingBatch) && <HelpBlockSlot blockKey="fournee.lancer" help={help} />}
-      {/* JEP-381 : juste sous le bloc d'aide, en tête du panneau. */}
+      {/* JEP-381 : le même bloc « Retours de mes fournées » que sur la fiche,
+          juste sous le bloc d'aide, en tête du panneau. */}
       {derniereFois && !(editMode && existingBatch) && (
         <div className="mb-6 empty:hidden">
-          <DerniereFoisLancement />
+          <RetoursAuteur
+            recipeId={recipe.id}
+            etapes={[...(recipe.recipe_steps || [])]
+              .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+              .map((st) => ({ id: st.id, title: st.title }))}
+            compact
+          />
         </div>
       )}
       {etapesCochees > 0 && (

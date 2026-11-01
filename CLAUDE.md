@@ -1542,9 +1542,11 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
   silence. Ingrédients : `ingredientKey` + unité. Remarques de plusieurs
   fournées sous une même étape : la plus récente d'abord, la date rappelée pour
   les anciennes.
-- **Où** (`LeconsProvider` + contexte) : encadré en tête du panneau « Lancer
-  une fournée », sous « Aides et conseils » (`BatchWidget`, prop `derniereFois`,
-  jamais en modification d'un ajustement) ; en tête de la fournée (leçon,
+- **Où** (`LeconsProvider` + contexte) : en tête du panneau « Lancer une
+  fournée », sous « Aides et conseils », **le même bloc « Retours de mes
+  fournées » que sur la fiche** (`RetoursAuteur`, `BatchWidget`, prop
+  `derniereFois`, jamais en modification d'un ajustement ; le lien « Modifier
+  cette étape » n'y est offert qu'à l'auteur) ; en tête de la fournée (leçon,
   commentaire global, autres remarques) ; **sous la date de chaque étape**, en
   Préparer (`BatchStepDonePanel`, prop `derniereFois`) et en Pâtisser (sous
   l'en-tête de la carte, visible étape repliée) ; **pour l'auteur seul**, bloc

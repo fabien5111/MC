@@ -6,10 +6,10 @@
 // Un seul fournisseur (`LeconsProvider`) tient les choix du membre en état
 // local (écriture optimiste, sans resynchronisation serveur) et calcule ce
 // qui s'affiche ; les présentations le lisent par contexte :
-//   • `DerniereFoisLancement` — encadré du panneau « Lancer une fournée » ;
+//   • `RetoursAuteur` — le bloc « Retours de mes fournées », sur la fiche recette
+//     ET dans le panneau « Lancer une fournée » ;
 //   • `DerniereFoisEnTete` — en tête de la fournée ;
 //   • `DerniereFoisEtape` — sous la date de chaque étape (Préparer, Pâtisser) ;
-//   • `RetoursAuteur` — fiche recette, pour son auteur ;
 //   • `ChoixRemarque` — l'épingle, aussi posée dans le résumé.
 import Link from 'next/link';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -21,7 +21,6 @@ import {
   dateCourte,
   leconsPrecedentes,
   ligneDecision,
-  nombreEtapesAnnotees,
   remarquesAffichees,
   type DecisionRemarque,
   type EtapeCourante,
@@ -206,32 +205,6 @@ function ListeRemarques({ remarques }: { remarques: Remarque[] }) {
   );
 }
 
-// Encadré du lancement : leçon et commentaire global en tête, puis l'annonce
-// des remarques d'étapes qui attendent dans la fournée. Lecture seule.
-export function DerniereFoisLancement() {
-  const v = useLecons();
-  if (!v || !v.remarques.length) return null;
-  const n = nombreEtapesAnnotees(v.remarques);
-  return (
-    <div className="p-4 bg-surface-container-low border-l-4 border-secondary rounded flex flex-col gap-2">
-      <p className="flex items-center gap-1.5 font-label-md text-label-md text-secondary">
-        <span className="material-symbols-outlined text-[18px]">history</span>
-        {titreDerniereFois(v.reference)}
-      </p>
-      {v.lecons.generales.length > 0 && (
-        <div className="text-sm">
-          <ListeRemarques remarques={v.lecons.generales} />
-        </div>
-      )}
-      {n > 0 && (
-        <p className="text-xs italic text-on-surface-variant">
-          {n === 1 ? '1 étape porte une remarque' : `${n} étapes portent une remarque`} : vous la retrouverez sous l&apos;étape, dans la fournée.
-        </p>
-      )}
-    </div>
-  );
-}
-
 // En tête de la fournée : leçon, commentaire global, et « Autres remarques »
 // (étape non retrouvée — jamais perdues en silence).
 export function DerniereFoisEnTete() {
@@ -289,12 +262,21 @@ export function DerniereFoisEtape({ stepId }: { stepId: number }) {
 
 // Fiche recette, pour son auteur : les retours de ses fournées, étape par
 // étape, avec le lien pour corriger l'étape et « Corrigé » pour l'écarter.
-export function RetoursAuteur({ recipeId, etapes }: { recipeId: string; etapes: { id: number; title: string | null }[] }) {
+export function RetoursAuteur({
+  recipeId,
+  etapes,
+  compact = false,
+}: {
+  recipeId: string;
+  etapes: { id: number; title: string | null }[];
+  // Dans le panneau « Lancer une fournée » : marge réduite.
+  compact?: boolean;
+}) {
   const v = useLecons();
   if (!v || !v.remarques.length) return null;
   const { lecons } = v;
   return (
-    <details open className="no-print group border border-outline-variant mb-12">
+    <details open className={`no-print group border border-outline-variant ${compact ? '' : 'mb-12'}`}>
       <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
         <span className="flex items-center gap-2 font-label-md text-label-md text-primary">
           <span className="material-symbols-outlined text-[18px]">history</span>
@@ -322,9 +304,11 @@ export function RetoursAuteur({ recipeId, etapes }: { recipeId: string; etapes: 
                 <span className="font-bold text-on-surface">
                   Étape {i + 1} · {e.title || 'Sans titre'}
                 </span>
-                <Link href={`/creer?id=${recipeId}#sec-etape-${i + 1}`} className="text-[12px] text-primary underline underline-offset-2">
-                  Modifier cette étape
-                </Link>
+                {v.auteur && (
+                  <Link href={`/creer?id=${recipeId}#sec-etape-${i + 1}`} className="text-[12px] text-primary underline underline-offset-2">
+                    Modifier cette étape
+                  </Link>
+                )}
               </p>
               <div className="italic text-on-surface-variant">
                 <ListeRemarques remarques={c.remarques} />
