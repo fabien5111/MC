@@ -171,7 +171,7 @@ export function PlanningDayView({
     // `BatchView.finishBatch`, facultative.
     await demanderLecon(batchRow.id);
     if (!batchRow.recipe_id || (await essaiProjetEnCours(batchRow.recipe_id)) || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
-    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?');
+    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?', { okLabel: 'Oui', cancelLabel: 'Non' });
     if (wantsReview) {
       setNavigating(true);
       router.push(`/fournee/${batchRow.id}?mode=preparer#sec-avis`);

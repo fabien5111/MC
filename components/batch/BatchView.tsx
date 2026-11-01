@@ -1624,7 +1624,7 @@ function PatisserView({
     }
     const ok = await finishBatch();
     if (!ok || !reviewEligible) return;
-    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?');
+    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?', { okLabel: 'Oui', cancelLabel: 'Non' });
     if (wantsReview) {
       setTimeout(() => document.getElementById('sec-avis')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } else {
