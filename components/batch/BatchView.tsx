@@ -2273,13 +2273,13 @@ function StepCookCard({
                 <span className={`font-label-md text-label-md text-on-surface-variant ml-9${struck}`}>
                   prévu {prevTxt} {conv && <span className="text-[14px]">({conv})</span>}
                 </span>
-                <div className="ml-9 empty:hidden">
-                  <RetoursIngredient stepId={s.id} ingredientId={ing.id} />
-                </div>
                 <div className="flex items-center gap-2 sm:gap-3 ml-9">
                   {realInput}
                   <span className="text-sm text-on-surface-variant shrink-0">{ing.unit ? shortUnitLbl(ing.unit) : ''}</span>
                   {commentInput}
+                </div>
+                <div className="ml-9 empty:hidden">
+                  <RetoursIngredient stepId={s.id} ingredientId={ing.id} />
                 </div>
               </li>
             );
