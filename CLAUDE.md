@@ -1555,7 +1555,7 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
 - **Résumé de la fournée** (`SummaryPanel`) : affiché en Pâtisser ET en
   Préparer (au-dessus de la photo) sur une fournée close. Plus de durée,
   d'étapes réalisées ni de jalons ; commentaires d'étape sur deux lignes
-  (titre, « Mon commentaire : … ») ; ceux des sous-étapes dans un volet replié.
+  (titre, « Mon commentaire : … ») ; ceux des sous-étapes dans un volet déplié par défaut.
   Sur une fournée close, les blocs « Ma note » vides sont omis.
 - **« À retenir pour la prochaine fois »** (`batches.lecon`, 500 caractères) :
   question facultative après « Terminer » (`BatchView.finishBatch` ET

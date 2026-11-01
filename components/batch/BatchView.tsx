@@ -2429,7 +2429,7 @@ function SummaryPanel({
                   </p>
                 )}
                 {c.sous.length > 0 && (
-                  <details className="mt-1 ml-3 text-on-surface-variant">
+                  <details open className="mt-1 ml-3 text-on-surface-variant">
                     <summary className="cursor-pointer text-[12px] font-label-md">
                       Sous-étapes ({c.sous.length} commentaire{c.sous.length > 1 ? 's' : ''})
                     </summary>
