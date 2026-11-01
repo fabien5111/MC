@@ -1571,7 +1571,7 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
   dans le bloc. L'épingle est aussi dans le **résumé** d'une fournée close (`SummaryPanel`,
   `ChoixRemarque`) : on y trie à chaud ce que la fournée suivante affichera, et
   on y rétablit une remarque écartée. `no-print` partout.
-- **Habillage des retours (01/11/2026)** : texte en bordeaux (`text-primary`), italique conservé, graisse moyenne, liseré gauche bordeaux atténué (`border-primary/50`) ; libellés en bordeaux léger, écarts de quantité en gras. Un seul fichier : `DerniereFois.tsx`.
+- **Habillage des retours (01/11/2026)** : texte en bordeaux (`text-primary`), italique conservé, graisse normale, libellés « Retours de mes fournées : » en gras, liseré gauche bordeaux atténué (`border-primary/50`) ; liseré gauche bordeaux atténué. Un seul fichier : `DerniereFois.tsx`.
 - **Résumé de la fournée** (`SummaryPanel`) : affiché en Pâtisser ET en
   Préparer (au-dessus de la photo) sur une fournée close. Plus de durée,
   d'étapes réalisées ni de jalons ; commentaires d'étape sur deux lignes

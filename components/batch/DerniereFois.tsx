@@ -187,7 +187,7 @@ function RemarqueLigne({ r }: { r: Remarque }) {
   return (
     <li className="flex flex-col">
       {(r.nature === 'sous_etape' || r.nature === 'ingredient') && (
-        <span className="not-italic font-medium text-primary">
+        <span className="not-italic font-normal text-primary">
           {r.libelle}
           {r.nature === 'ingredient' && r.ecart ? ` : ${r.ecart}` : ''}
         </span>
@@ -195,10 +195,10 @@ function RemarqueLigne({ r }: { r: Remarque }) {
       {(r.texte || d || v?.gestion) && (
         <span>
           <ChoixRemarque r={r} />
-          {r.nature === 'lecon' && <span className="not-italic font-normal text-primary/70">À retenir : </span>}
-          {r.nature === 'global' && <span className="not-italic font-normal text-primary/70">Commentaire global : </span>}
+          {r.nature === 'lecon' && <span className="not-italic font-bold text-primary">À retenir : </span>}
+          {r.nature === 'global' && <span className="not-italic font-bold text-primary">Commentaire global : </span>}
           {r.texte && (r.nature === 'etape' || r.nature === 'sous_etape' || r.nature === 'ingredient') && (
-            <span className="not-italic font-normal text-primary/70">Mon commentaire : </span>
+            <span className="not-italic font-bold text-primary">Mon commentaire : </span>
           )}
           {r.texte && <span className="whitespace-pre-line">{r.texte}</span>}
           {d && <span className="not-italic text-[11px] text-outline"> · fournée du {d}</span>}
@@ -224,7 +224,7 @@ export function DerniereFoisEtape({ stepId }: { stepId: number }) {
   const c = v?.lecons.parEtape[stepId];
   if (!c) return null;
   return (
-    <details open className="no-print text-sm italic font-medium text-primary border-l-2 border-primary/50 pl-3">
+    <details open className="no-print text-sm italic font-normal text-primary border-l-2 border-primary/50 pl-3">
       <summary className="cursor-pointer not-italic flex items-center gap-1 text-[12px] font-label-md text-primary list-none [&::-webkit-details-marker]:hidden">
         <span className="material-symbols-outlined text-[16px]">history</span>
         Retours de mes fournées
@@ -296,7 +296,7 @@ export function RetoursAuteur({
                   </Link>
                 )}
               </p>
-              <div className="italic font-medium text-primary">
+              <div className="italic font-normal text-primary">
                 <ListeRemarques remarques={c.remarques} />
               </div>
             </div>
@@ -308,7 +308,7 @@ export function RetoursAuteur({
             {lecons.autres.map((c, k) => (
               <div key={k}>
                 <p className="font-bold text-on-surface">{c.titre}</p>
-                <div className="italic font-medium text-primary">
+                <div className="italic font-normal text-primary">
                   <ListeRemarques remarques={c.remarques} />
                 </div>
               </div>
@@ -330,11 +330,11 @@ export function RetoursSousEtape({ stepId, texte }: { stepId: number; texte: str
   const rs = remarquesDeSousEtape(v?.lecons.parEtape[stepId], texte);
   if (!rs.length) return null;
   return (
-    <ul className="no-print mt-1 ml-8 flex flex-col gap-1 text-sm italic font-medium text-primary border-l-2 border-primary/50 pl-3">
+    <ul className="no-print mt-1 ml-8 flex flex-col gap-1 text-sm italic font-normal text-primary border-l-2 border-primary/50 pl-3">
       {rs.map((r) => (
         <li key={r.cle}>
           <ChoixRemarque r={r} />
-          <span className="not-italic text-[12px] font-normal text-primary/70">Retours de mes fournées : </span>
+          <span className="not-italic text-[12px] font-bold text-primary">Retours de mes fournées : </span>
           <span className="whitespace-pre-line">{r.texte}</span>
           {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}</span>}
         </li>
@@ -350,14 +350,14 @@ export function RetoursIngredient({ stepId, ingredientId }: { stepId: number; in
   const rs = (v?.lecons.parEtape[stepId]?.remarques ?? []).filter((r) => r.nature === 'ingredient' && r.ingredientId === ingredientId);
   if (!rs.length) return null;
   return (
-    <ul className="no-print mt-1 flex flex-col gap-1 text-sm italic font-medium text-primary border-l-2 border-primary/50 pl-3">
+    <ul className="no-print mt-1 flex flex-col gap-1 text-sm italic font-normal text-primary border-l-2 border-primary/50 pl-3">
       {rs.map((r) => {
         const quantite = libelleCoefficient(r) ?? r.ecart;
         return (
           <li key={r.cle}>
             <ChoixRemarque r={r} />
-            <span className="not-italic text-[12px] font-normal text-primary/70">Retours de mes fournées : </span>
-            {quantite && <span className="not-italic font-bold text-primary">{quantite}</span>}
+            <span className="not-italic text-[12px] font-bold text-primary">Retours de mes fournées : </span>
+            {quantite && <span className="not-italic font-normal text-primary">{quantite}</span>}
             {quantite && r.texte && ' — '}
             {r.texte && <span className="whitespace-pre-line">{r.texte}</span>}
             {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}</span>}
@@ -374,11 +374,11 @@ export function RetoursEtape({ stepId }: { stepId: number }) {
   const rs = (v?.lecons.parEtape[stepId]?.remarques ?? []).filter((r) => r.nature === 'etape');
   if (!rs.length) return null;
   return (
-    <ul className="no-print flex flex-col gap-1 text-sm italic font-medium text-primary border-l-2 border-primary/50 pl-3">
+    <ul className="no-print flex flex-col gap-1 text-sm italic font-normal text-primary border-l-2 border-primary/50 pl-3">
       {rs.map((r) => (
         <li key={r.cle}>
           <ChoixRemarque r={r} />
-          <span className="not-italic text-[12px] font-normal text-primary/70">Retours de mes fournées : </span>
+          <span className="not-italic text-[12px] font-bold text-primary">Retours de mes fournées : </span>
           <span className="whitespace-pre-line">{r.texte}</span>
           {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}</span>}
         </li>
