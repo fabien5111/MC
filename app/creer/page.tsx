@@ -95,7 +95,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
       <div className="creer-page">
       {/* `pb-24` : réserve du bouton flottant du sommaire (52 px + marges) —
           la barre d'actions fixe qui imposait `pb-40` a disparu. */}
-      <main className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-24 md:pb-32">
+      <main id="sec-haut" className="scroll-mt-28 max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-24 md:pb-32">
         <CreerForm
           tags={tags}
           units={units}

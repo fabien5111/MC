@@ -50,6 +50,7 @@ export type TocSections = { before: TocItem[]; after: TocItem[] };
 // suffit à y amener.
 export const CREER_SECTIONS: TocSections = {
   before: [
+    { id: 'sec-haut', label: 'Haut de la recette', icon: 'vertical_align_top', level: 1 },
     { id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 },
     { id: 'sec-taille', label: 'Taille / Portions', icon: 'straighten', level: 1 },
     { id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 },
