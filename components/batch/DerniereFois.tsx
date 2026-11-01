@@ -147,11 +147,6 @@ export function LeconsProvider({
   return <LeconsContext.Provider value={valeur}>{children}</LeconsContext.Provider>;
 }
 
-function titreDerniereFois(reference: FourneeReference | null): string {
-  const d = dateCourte(reference?.date ?? null);
-  return d ? `La dernière fois (${d})` : 'Vos remarques';
-}
-
 // Un seul picto, l'épingle : « cette remarque doit-elle réapparaître ? ».
 // Épinglée par défaut pour les remarques de la dernière fournée (et de la
 // fournée d'origine d'un « Refaire »), non épinglée pour les plus anciennes.
@@ -230,7 +225,7 @@ export function DerniereFoisEtape({ stepId }: { stepId: number }) {
     <details open className="no-print text-sm italic text-on-surface-variant border-l-2 border-outline-variant pl-3">
       <summary className="cursor-pointer not-italic flex items-center gap-1 text-[12px] font-label-md text-on-surface-variant list-none [&::-webkit-details-marker]:hidden">
         <span className="material-symbols-outlined text-[16px]">history</span>
-        {titreDerniereFois(v?.reference ?? null)}
+        Retours de mes fournées
       </summary>
       <div className="mt-1">
         <ListeRemarques remarques={c.remarques} />
@@ -245,15 +240,16 @@ export function RetoursAuteur({
   recipeId,
   etapes,
   compact = false,
-  sansLien = false,
+  ancrePrefixe,
 }: {
   recipeId: string;
   etapes: { id: number; title: string | null }[];
   // Dans le panneau « Lancer une fournée » et en tête d'une fournée : marge réduite.
   compact?: boolean;
   // En fournée, les étapes ne sont pas celles de la recette (insertions,
-  // remplacements) : le numéro d'ancre de `/creer` serait faux.
-  sansLien?: boolean;
+  // remplacements) : pas de lien vers `/creer`, mais vers l'étape de la page
+  // (ancre `<préfixe><id>`).
+  ancrePrefixe?: string;
 }) {
   const v = useLecons();
   if (!v || !v.remarques.length) return null;
@@ -287,7 +283,12 @@ export function RetoursAuteur({
                 <span className="font-bold text-on-surface">
                   Étape {i + 1} · {e.title || 'Sans titre'}
                 </span>
-                {v.auteur && !sansLien && (
+                {ancrePrefixe && (
+                  <a href={`#${ancrePrefixe}${e.id}`} className="text-[12px] text-primary underline underline-offset-2">
+                    Aller à l&apos;étape
+                  </a>
+                )}
+                {v.auteur && !ancrePrefixe && (
                   <Link href={`/creer?id=${recipeId}#sec-etape-${i + 1}`} className="text-[12px] text-primary underline underline-offset-2">
                     Modifier cette étape
                   </Link>

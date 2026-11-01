@@ -649,7 +649,7 @@ export function BatchView({
             recipeId={batch.recipe_id ?? ''}
             etapes={[...batch.batch_steps].sort((a, b) => a.order_index - b.order_index).map((s) => ({ id: s.id, title: s.title }))}
             compact
-            sansLien
+            ancrePrefixe="etape-"
           />
         </div>
 

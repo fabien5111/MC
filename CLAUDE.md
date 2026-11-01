@@ -1551,8 +1551,9 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
   fournées » que sur la fiche** (`RetoursAuteur`, `BatchWidget`, prop
   `derniereFois`, jamais en modification d'un ajustement ; le lien « Modifier
   cette étape » n'y est offert qu'à l'auteur) ; en tête de la fournée, dans les deux modes, **le même bloc « Retours de mes
-  fournées »** (`RetoursAuteur`, sans lien « Modifier cette étape » : les étapes
-  d'une fournée ne sont pas celles de la recette) ; **sous la date de chaque étape**, en
+  fournées »** (`RetoursAuteur`, `ancrePrefixe`, avec un lien « Aller à l'étape » vers
+  l'ancre `#etape-<id>` de la page au lieu de « Modifier cette étape » : les étapes
+  d'une fournée ne sont pas celles de la recette) ; **sous la date de chaque étape** (intitulé « Retours de mes fournées »), en
   Préparer (`BatchStepDonePanel`, prop `derniereFois`) et en Pâtisser (sous
   l'en-tête de la carte, visible étape repliée) ; **pour l'auteur seul**, bloc
   « Retours de mes fournées » sur la fiche recette (`RetoursAuteur`, étape par
