@@ -245,6 +245,10 @@ export function ProjectTrials({
                     {t.status === 'terminee' ? 'Terminée' : t.status === 'abandonnee' ? 'Abandonnée' : 'En cours'}
                     {mesurees ? ` · ${mesurees} quantité${mesurees > 1 ? 's' : ''} mesurée${mesurees > 1 ? 's' : ''}` : ''}
                   </span>
+                  <label className="flex items-center gap-2 text-[12.5px] text-on-surface-variant">
+                    <input type="checkbox" checked={compare.includes(t.id)} onChange={() => toggleCompare(t.id)} />
+                    Comparer
+                  </label>
                   <span className="ml-auto flex flex-wrap items-center gap-1">
                     {VERDICTS.map((v) => (
                       <button
@@ -266,13 +270,9 @@ export function ProjectTrials({
                 {retoursEssais ? (
                   <>
                     <RetoursEssai remarques={retoursEssais[t.id] ?? []} />
-                    <p className="mb-2 text-[12.5px] text-on-surface-variant">
-                      {(retoursEssais[t.id] ?? []).length ? '' : 'Aucun commentaire sur cet essai. '}
-                      <a href={`/fournee/${t.id}`} className="text-primary underline underline-offset-2">
-                        {t.status === 'planifiee' ? 'Ouvrir la fournée pour ajouter ou modifier des commentaires' : 'Ouvrir la fournée'}
-                      </a>
-                      {t.status !== 'planifiee' && ' (verrouillée : « Reprendre cette fournée » permet de la modifier)'}
-                    </p>
+                    {(retoursEssais[t.id] ?? []).length === 0 && (
+                      <p className="text-[12.5px] text-on-surface-variant">Aucun commentaire sur cet essai.</p>
+                    )}
                   </>
                 ) : (
                   <textarea
@@ -288,13 +288,6 @@ export function ProjectTrials({
                     className={`${champ} mb-2 w-full`}
                   />
                 )}
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-2 text-[12.5px] text-on-surface-variant">
-                    <input type="checkbox" checked={compare.includes(t.id)} onChange={() => toggleCompare(t.id)} />
-                    Comparer
-                  </label>
-                </div>
               </li>
             );
           })}
