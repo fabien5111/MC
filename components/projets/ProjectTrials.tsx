@@ -20,8 +20,6 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { insertMaterializedBatch, recipeContentColumns } from '@/lib/batch-write';
-import { promoteTrialQuantities } from '@/lib/projects-write';
-import { scaledQuantityText } from '@/lib/projects';
 import { formatDate } from '@/lib/format';
 import { connexionHref } from '@/lib/nav';
 import type { ProjectTrial } from '@/lib/projects-data';
@@ -38,8 +36,6 @@ const VERDICTS: { value: string; label: string; cls: string }[] = [
   { value: 'validated', label: 'Validé', cls: 'bg-green-700' },
 ];
 
-const btnGhost =
-  'rounded-pill border border-outline-variant px-4 py-2 font-label-md text-[12.5px] font-semibold text-primary transition-colors hover:bg-surface-container disabled:opacity-40';
 const btnPrimary =
   'rounded-pill bg-primary px-5 py-2.5 font-label-md text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95 disabled:opacity-40';
 const champ =
@@ -186,35 +182,6 @@ export function ProjectTrials({
     );
   }
 
-  async function promouvoir(t: ProjectTrial) {
-    const mesurees = t.lines.filter((l) => l.realQuantity != null).length;
-    if (!mesurees) {
-      dialog.alert('Cet essai ne porte aucune quantité réellement utilisée : rien à reprendre.');
-      return;
-    }
-    const ok = await dialog.confirm(
-      `Reprendre les ${mesurees} quantité${mesurees > 1 ? 's' : ''} mesurée${mesurees > 1 ? 's' : ''} de cet essai comme quantités de référence du projet ?\nL’essai reste conservé dans l’historique.`,
-    );
-    if (!ok) return;
-
-    let appliquees = 0;
-    await mutate(
-      async () => {
-        const supabase = createClient();
-        try {
-          appliquees = await promoteTrialQuantities(supabase, recipe.id, t.lines, scaledQuantityText);
-        } catch (e) {
-          return { error: { message: (e as Error).message } };
-        }
-        return { error: null };
-      },
-      { errorLabel: 'Reprise des quantités' },
-    );
-    if (appliquees === 0) {
-      dialog.alert('Aucune quantité n’a pu être rattachée : les étapes du projet ont peut-être changé depuis cet essai.');
-    }
-  }
-
   function toggleCompare(id: number) {
     setCompare((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id].slice(-2)));
   }
@@ -323,9 +290,6 @@ export function ProjectTrials({
                 )}
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <button type="button" onClick={() => void promouvoir(t)} className={btnGhost}>
-                    Reprendre ces quantités
-                  </button>
                   <label className="flex items-center gap-2 text-[12.5px] text-on-surface-variant">
                     <input type="checkbox" checked={compare.includes(t.id)} onChange={() => toggleCompare(t.id)} />
                     Comparer

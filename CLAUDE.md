@@ -1904,13 +1904,7 @@ essais et la validation arrivent par lots successifs.
   d'une recette ordinaire (`lib/batch-write.ts`, extrait de `BatchWidget` pour
   être partagé), avec un facteur de **1** : les quantités du projet sont déjà
   celles du format visé, un second coefficient les fausserait.
-- **Promouvoir les quantités d'un essai** (§7.4) apparie les lignes par
-  `batch_steps.source_step_id` → étape du projet → son groupe d'ingrédients
-  (par `order_index`) → le nom à l'intérieur du groupe. S'appuyer sur le seul
-  nom confondrait deux « Sucre » appartenant à deux composants différents. La
-  quantité mesurée devient aussi la nouvelle `base_quantity` : ce qui a
-  réellement fonctionné devient la référence, et un futur changement de format
-  repart de là.
+- **Pas de « Reprendre ces quantités »** (retiré le 01/11/2026) : le bouton qui recopiait les quantités réellement utilisées d'un essai dans le projet (`promoteTrialQuantities`, `lib/projects-write.ts`, appariement par `batch_steps.source_step_id` → groupe d'ingrédients → nom, et `base_quantity` réécrite) a été ôté de `ProjectTrials` : les quantités du projet se corrigent à la main avant de relancer une fournée. La fonction reste en base de code, sans appelant. Il reste, par essai, le verdict, les retours et « Comparer » (tableau des quantités réelles de deux essais).
 - **Validation** (§8) : `projectValidationBlockers()` (`lib/projects.ts`)
   liste ce qui bloque — format non renseigné, composant non résolu — recalculé
   côté client à l'affichage ET reposé côté serveur avant l'écriture (un projet
@@ -1939,8 +1933,7 @@ essais et la validation arrivent par lots successifs.
   sur la fiche recette (propriétaire uniquement), avec `canLaunch={false}` —
   lancer une fournée y passe déjà par le geste normal de la fiche
   (`BatchWidget`) ; en proposer un second aurait fait deux portes d'entrée
-  pour le même geste. Seuls l'historique, la comparaison et la promotion des
-  quantités restent affichés.
+  pour le même geste. Seuls l'historique et la comparaison restent affichés.
 - **`duplicate_recipe` recopie les composants** et la correspondance ancien →
   nouveau composant sur les étapes : un duplicata est une vraie variante du
   projet. Sans ça, dupliquer puis publier effaçait les crédits.
