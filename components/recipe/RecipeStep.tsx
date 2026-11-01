@@ -22,6 +22,9 @@ export function RecipeStep({
   qty,
   last,
   action,
+  retoursEtape,
+  retoursIngredient,
+  retoursSousEtape,
 }: {
   step: RecipeStepView;
   index: number;
@@ -34,6 +37,11 @@ export function RecipeStep({
   // Action facultative à droite du titre (picto « modifier » du mode projet) ;
   // absente, l'étape se rend comme sur la fiche recette.
   action?: ReactNode;
+  // Retours de mes fournées (JEP-381) : posés sous la ligne qu'ils concernent.
+  // Absents, l'étape se rend comme sur la fiche recette.
+  retoursEtape?: ReactNode;
+  retoursIngredient?: (it: IngredientView) => ReactNode;
+  retoursSousEtape?: (texte: string) => ReactNode;
 }) {
   const ings = [...ingredients].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -80,6 +88,7 @@ export function RecipeStep({
       </div>
       {/* JEP-19 : précisions de l'auteur, seulement si l'étape peut se faire à
           l'avance (une note laissée sur une étape décochée reste masquée). */}
+      {retoursEtape}
       {s.can_prepare_ahead && s.advance_note && (
         <p className="font-body-md text-body-md text-on-surface-variant -mt-2 flex items-start gap-2">
           <span className="material-symbols-outlined text-[18px] leading-none text-primary mt-1 shrink-0" aria-hidden="true">
@@ -109,6 +118,11 @@ export function RecipeStep({
                     <NomIngredient nom={it.name} quantite={it.quantity} unite={it.unit} refId={it.ref_id} />
                     {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                   </span>
+                  {retoursIngredient?.(it) && (
+                    <div style={{ gridColumn: '1/-1' }} className="empty:hidden">
+                      {retoursIngredient(it)}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -120,9 +134,12 @@ export function RecipeStep({
       {Array.isArray(s.sous_etapes) && s.sous_etapes.length > 0 ? (
         <ul className="flex flex-col gap-3 font-body-lg text-body-md leading-relaxed text-on-surface">
           {s.sous_etapes.map((t, k) => (
-            <li key={k} className="flex gap-3">
-              <span className="text-primary shrink-0">–</span>
-              <span>{t}</span>
+            <li key={k} className="flex flex-col">
+              <div className="flex gap-3">
+                <span className="text-primary shrink-0">–</span>
+                <span>{t}</span>
+              </div>
+              {retoursSousEtape?.(t)}
             </li>
           ))}
         </ul>

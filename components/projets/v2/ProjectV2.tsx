@@ -73,6 +73,8 @@ import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { RecipeStep } from '@/components/recipe/RecipeStep';
+import { LeconsProvider, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
+import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import type { ProjectComponent, ProjectFull, ProjectTrial } from '@/lib/projects-data';
 import type { ConversionRef, IngredientRefOption, UnitRef } from '@/lib/ingredient-conversions';
 import type { RecipeFull, RecipeStepView } from '@/lib/recipes';
@@ -125,6 +127,8 @@ export function ProjectV2({
   ingredientRefs,
   referenceAllergenes,
   trials,
+  remarques = null,
+  userId,
   peutGenererIA,
   quotaProjetIA,
   quotaAjustementIA = null,
@@ -146,6 +150,9 @@ export function ProjectV2({
   ingredientRefs: IngredientRefOption[];
   referenceAllergenes?: { names: string[]; byIngredient: Record<string, string> };
   trials: ProjectTrial[];
+  // Retours de mes fournées d'essai (JEP-381), lus par la page ; `null` = aucun.
+  remarques?: DonneesRemarques | null;
+  userId: string;
   peutGenererIA: boolean;
   quotaProjetIA: { allowed: boolean; limit?: number; usage?: number } | null;
   // Quota `ajustement_ia_mensuel`, affichage seulement (« Ajuster avec l'IA »).
@@ -603,8 +610,8 @@ export function ProjectV2({
     // l'assemblage, qui n'appartient à aucune préparation.
     const comp = ordered.find((c) => c.id === componentOf(s));
     return (
+      <div key={s.id} id={`etape-${s.id}`} className="scroll-mt-28">
       <RecipeStep
-        key={s.id}
         step={s}
         action={
           comp ? (
@@ -620,6 +627,9 @@ export function ProjectV2({
             </button>
           ) : undefined
         }
+        retoursEtape={<RetoursEtape stepId={s.id} />}
+        retoursIngredient={(it) => <RetoursIngredient stepId={s.id} ingredientId={it.id} />}
+        retoursSousEtape={(t) => <RetoursSousEtape stepId={s.id} texte={t} />}
         index={i}
         anchorId={stepAnchorId(i)}
         ingredients={groupByOrder.get(s.order_index ?? -1)?.ingredients ?? []}
@@ -634,6 +644,7 @@ export function ProjectV2({
         }}
         last={dernier}
       />
+      </div>
     );
   }
 
@@ -695,6 +706,19 @@ export function ProjectV2({
   const sansRecette = <p className="text-sm text-on-surface-variant">La recette du projet n’a pas pu être lue.</p>;
 
   return (
+    <LeconsProvider
+      reference={remarques?.reference ?? null}
+      decisions={remarques?.decisions ?? []}
+      choixDisponibles={!!remarques?.choixDisponibles}
+      plusRecenteId={remarques?.plusRecenteId ?? null}
+      courantes={steps.map((st) => ({ id: st.id, source_step_id: st.id, title: st.title, order_index: st.order_index ?? 0 }))}
+      ingredientsCourants={steps.flatMap((st) =>
+        (groupByOrder.get(st.order_index ?? -1)?.ingredients ?? []).map((it) => ({ id: it.id, batch_step_id: st.id, name: it.name, unit: it.unit })),
+      )}
+      userId={userId}
+      recipeId={project.id}
+      auteur
+    >
     <>
       <LoadingOverlay
         visible={busy || thinking || consultBusy || leaving}
@@ -896,6 +920,7 @@ export function ProjectV2({
           recipe ? (
             <div className="space-y-8">
               <DessertVise project={project} formatLabel={formatLabel} />
+              <RetoursAuteur recipeId={project.id} etapes={steps.map((st) => ({ id: st.id, title: st.title }))} compact ancrePrefixe="etape-" />
               {ordered.map((c, ci) => {
                 const own = steps.filter((s) => componentOf(s) === c.id);
                 return (
@@ -1127,5 +1152,6 @@ export function ProjectV2({
         />
       )}
     </>
+    </LeconsProvider>
   );
 }

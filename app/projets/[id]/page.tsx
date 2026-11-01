@@ -10,6 +10,7 @@ import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getRecipeFull } from '@/lib/recipes';
 import { getAllergenRefs, getDifficulties, getIngredientRefAllergens, getIngredientRefsList, getTags, getUtensilRefNames } from '@/lib/data/reference';
 import { createClient } from '@/lib/supabase/server';
+import { getRemarques } from '@/lib/batch-lecons-data';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -91,6 +92,9 @@ export default async function ProjetPage({ params }: Params) {
   const quotaAjustementIA = canAccess(droits, 'ajustement_ia_mensuel')
     ? await checkQuota(user.id, 'ajustement_ia_mensuel')
     : null;
+  // Retours de mes fournées d'essai (JEP-381) : un essai est une fournée du
+  // projet. Best-effort : un échec ne coûte que ces retours.
+  const remarques = await getRemarques({ userId: user.id, recipeId: id }).catch(() => null);
   const ligne = (ids.data ?? null) as { difficulty_id: number | null } | null;
 
   return (
@@ -107,6 +111,8 @@ export default async function ProjetPage({ params }: Params) {
           ingredientRefs={ingredientRefs}
           referenceAllergenes={{ names: allergenRefs.map((a) => a.name), byIngredient: refAllergens }}
           trials={trials}
+          remarques={remarques}
+          userId={user.id}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
           quotaAjustementIA={quotaAjustementIA}
