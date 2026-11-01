@@ -291,6 +291,17 @@ export function BatchView({
     window.scrollTo(0, 0);
   }, []);
 
+  // Après CHAQUE changement de mode, une fois la nouvelle vue rendue : le
+  // `scrollTo` de `switchMode` part avant le rendu (et avant l'écriture
+  // asynchrone de `date_debut` à l'entrée en Pâtisser), la page pouvait alors
+  // se retrouver au milieu de la nouvelle vue.
+  const modePrecedent = useRef(mode);
+  useEffect(() => {
+    if (modePrecedent.current === mode) return;
+    modePrecedent.current = mode;
+    window.scrollTo(0, 0);
+  }, [mode]);
+
   // `?lecture=1` (consultation depuis « Fournées terminées ») tenu en état
   // local, et non lu directement de la prop : reprendre une fournée close
   // repasse `status` à `planifiee`, mais le paramètre d'URL, lui, resterait —
@@ -405,6 +416,10 @@ export function BatchView({
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('mode', m);
+      // L'ancre d'une étape (`#etape-<id>`, lien « Aller à l'étape ») ne doit
+      // pas survivre au changement de mode : le navigateur re-défilait sur
+      // l'étape au rendu de la nouvelle vue au lieu de rester en haut.
+      url.hash = '';
       window.history.replaceState(null, '', url);
       window.scrollTo(0, 0);
     }
