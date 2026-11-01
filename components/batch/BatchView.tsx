@@ -527,7 +527,7 @@ export function BatchView({
       recipeId={batch.recipe_id}
       auteur={!!baseRecipe?.authorId && baseRecipe.authorId === batch.user_id}
     >
-      <div className="recipe-print-content max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-6 pb-32">
+      <div id="sec-haut" className="recipe-print-content scroll-mt-28 max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
         {/* Retour contextuel : vers l'écran de liste d'où l'on vient quand il
@@ -915,6 +915,7 @@ function PreparerView({
   // la fournée n'a rien à faire dans la liste, sous peine de lien mort.
   const tocSections: TocSections = {
     before: [
+      { id: 'sec-haut', label: 'Haut de la fournée', icon: 'vertical_align_top', level: 1 },
       ...(batch.status !== 'planifiee' ? [{ id: 'sec-resume', label: 'Résumé de la fournée', icon: 'insights', level: 1 as const }] : []),
       { id: 'sec-technique', label: 'Bloc technique', icon: 'straighten', level: 1 },
       ...(sortedSteps.length > 0 ? [{ id: 'sec-planning', label: 'Planning de préparation', icon: 'calendar_month', level: 1 as const }] : []),
@@ -1746,7 +1747,7 @@ function PatisserView({
   const showResume = batch.status !== 'planifiee';
   const tocSteps = useMemo(() => jalons.map((j, ji) => ({ key: String(ji), title: jalonLabel(j) })), [jalons]);
   const tocSections: TocSections = useMemo(
-    () => ({ before: [], after: showResume ? [{ id: 'sec-resume', label: 'Résumé de la fournée', icon: 'insights', level: 1 }] : [] }),
+    () => ({ before: [{ id: 'sec-haut', label: 'Haut de la fournée', icon: 'vertical_align_top', level: 1 }], after: showResume ? [{ id: 'sec-resume', label: 'Résumé de la fournée', icon: 'insights', level: 1 }] : [] }),
     [showResume],
   );
   // Symétrique du bouton « Passer en mode Pâtisser » du rail Préparer : le
