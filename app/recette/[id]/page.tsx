@@ -523,6 +523,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
             reference={remarques?.reference ?? null}
             decisions={remarques?.decisions ?? []}
             choixDisponibles={!!remarques?.choixDisponibles}
+            plusRecenteId={remarques?.plusRecenteId ?? null}
             courantes={steps.map((st) => ({ id: st.id, source_step_id: st.id, title: st.title, order_index: st.order_index ?? 0 }))}
             userId={user?.id ?? ''}
             recipeId={recipe.id}

@@ -66,6 +66,24 @@ async function lireReference(
   return row ? versReference(row) : null;
 }
 
+// Identifiant de la fournée terminée la plus récente de la recette.
+async function lirePlusRecente(supabase: Supa, userId: string, recipeId: string): Promise<number | null> {
+  const { data, error } = await supabase
+    .from('batches')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('recipe_id', recipeId)
+    .eq('status', 'terminee')
+    .order('date_fin', { ascending: false, nullsFirst: false })
+    .order('planned_date', { ascending: false, nullsFirst: false })
+    .limit(1);
+  if (error) {
+    console.error('getRemarques (plus récente):', error.message);
+    return null;
+  }
+  return (data as { id: number }[] | null)?.[0]?.id ?? null;
+}
+
 // Choix du membre sur cette recette. `null` : table absente (migration pas
 // jouée) — les gestes « garder / écarter » sont alors masqués.
 async function lireDecisions(supabase: Supa, userId: string, recipeId: string): Promise<DecisionRemarque[] | null> {
@@ -118,6 +136,9 @@ async function rafraichir(supabase: Supa, decisions: DecisionRemarque[], refId: 
 
 export type DonneesRemarques = {
   reference: FourneeReference | null;
+  // Fournée terminée la plus récente du membre sur cette recette (la courante
+  // exclue de rien) : ses remarques sont épinglées par défaut.
+  plusRecenteId: number | null;
   decisions: DecisionRemarque[];
   // Table `remarques_gardees` lisible : les gestes peuvent être proposés.
   choixDisponibles: boolean;
@@ -132,9 +153,10 @@ export async function getRemarques(opts: {
   sourcePlanId?: number | null;
 }): Promise<DonneesRemarques> {
   const supabase = await createClient();
-  const [reference, decisionsBrutes] = await Promise.all([
+  const [reference, decisionsBrutes, plusRecenteId] = await Promise.all([
     lireReference(supabase, opts),
     opts.recipeId ? lireDecisions(supabase, opts.userId, opts.recipeId) : Promise.resolve(null),
+    opts.recipeId ? lirePlusRecente(supabase, opts.userId, opts.recipeId) : Promise.resolve(null),
   ]);
   let decisions = decisionsBrutes ?? [];
   try {
@@ -142,5 +164,5 @@ export async function getRemarques(opts: {
   } catch (e) {
     console.error('getRemarques (rafraîchir):', e);
   }
-  return { reference, decisions, choixDisponibles: decisionsBrutes != null };
+  return { reference, plusRecenteId, decisions, choixDisponibles: decisionsBrutes != null };
 }

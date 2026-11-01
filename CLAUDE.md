@@ -1509,10 +1509,18 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
 - **Règle d'affichage unique** (`remarquesAffichees`, arbitrage du 31/10/2026) :
   les remarques de la fournée de référence **en entier par défaut**, SAUF celles
   que le membre a **écartées**, PLUS celles qu'il a **gardées** dans des
-  fournées plus anciennes. Même règle pour l'auteur et les autres ; seul le sens
-  du geste change : pour l'auteur, écarter = « corrigé dans ma recette », garder
-  = « jusqu'à correction » ; pour un autre membre, garder = « pour mes
-  prochaines fournées », écarter = « ne m'intéresse pas ».
+  fournées plus anciennes. Même règle pour l'auteur et les autres ; seul le
+  libellé de l'infobulle change (pour l'auteur : « décochez quand c'est corrigé
+  dans votre recette »).
+- **Un seul picto, l'épingle** (`ChoixRemarque`, arbitrage du 01/11/2026), posé
+  **devant** « Mon commentaire : » (et devant les autres libellés du résumé).
+  Elle dit « cette remarque réapparaîtra-t-elle ? » : **épinglée d'office** pour
+  les remarques de la fournée de référence et de la plus récente fournée
+  terminée (`plusRecenteId`), **non épinglée** pour les plus anciennes. Un clic
+  bascule l'état effectif (`epinglee` / `basculer`, `LeconsProvider`) ; la
+  ligne de `remarques_gardees` n'est écrite que si le choix s'écarte du défaut
+  (`gardee` = épinglée contre le défaut, `ecartee` = décochée contre le défaut),
+  supprimée sinon — la table et la règle d'affichage ne changent pas.
 - **Table `remarques_gardees`** (une ligne par choix, `unique (user_id, nature,
   ligne_id)`, statut `gardee` / `ecartee`), et non une colonne sur les tables
   `batch_*` : une fournée se supprime d'un geste, en cascade, et ce que le
@@ -1541,8 +1549,7 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
   Préparer (`BatchStepDonePanel`, prop `derniereFois`) et en Pâtisser (sous
   l'en-tête de la carte, visible étape repliée) ; **pour l'auteur seul**, bloc
   « Retours de mes fournées » sur la fiche recette (`RetoursAuteur`, étape par
-  étape avec « Modifier cette étape » vers `/creer`). Les pictos (épingle,
-  œil barré) sont aussi dans le **résumé** d'une fournée close (`SummaryPanel`,
+  étape avec « Modifier cette étape » vers `/creer`). L'épingle est aussi dans le **résumé** d'une fournée close (`SummaryPanel`,
   `ChoixRemarque`) : on y trie à chaud ce que la fournée suivante affichera, et
   on y rétablit une remarque écartée. `no-print` partout.
 - **Résumé de la fournée** (`SummaryPanel`) : affiché en Pâtisser ET en

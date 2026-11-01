@@ -520,6 +520,7 @@ export function BatchView({
       reference={remarques?.reference ?? null}
       decisions={remarques?.decisions ?? AUCUNE_DECISION}
       choixDisponibles={!!remarques?.choixDisponibles}
+      plusRecenteId={remarques?.plusRecenteId ?? null}
       courantes={batch.batch_steps}
       ingredientsCourants={batch.batch_ingredients}
       userId={batch.user_id ?? ''}
@@ -2404,10 +2405,10 @@ function SummaryPanel({
           <ul className="text-sm flex flex-col gap-1">
             {ecarts.map((e) => (
               <li key={e.key}>
+                {choix('ingredient', e.key)}
                 {e.nom} : prévu {e.prev}
                 {e.reel && <> → utilisé <span className="font-bold text-primary">{e.reel}</span></>}
                 {e.commentaire && <span className="italic text-on-surface-variant"> — {e.commentaire}</span>}
-                {choix('ingredient', e.key)}
               </li>
             ))}
           </ul>
@@ -2422,9 +2423,9 @@ function SummaryPanel({
                 <p className="font-bold">{c.titre}</p>
                 {c.texte && (
                   <p>
+                    {choix('etape', c.key)}
                     <span className="text-on-surface-variant">Mon commentaire : </span>
                     {c.texte}
-                    {choix('etape', c.key)}
                   </p>
                 )}
                 {c.sous.length > 0 && (
@@ -2437,9 +2438,9 @@ function SummaryPanel({
                         <li key={su.key}>
                           <p className="not-italic text-on-surface">{su.texte}</p>
                           <p>
+                            {choix('sous_etape', su.key)}
                             <span className="not-italic">Mon commentaire : </span>
                             {su.commentaire}
-                            {choix('sous_etape', su.key)}
                           </p>
                         </li>
                       ))}
@@ -2454,8 +2455,8 @@ function SummaryPanel({
       <LeconResume batch={batch} setBatch={setBatch} />
       <div>
         <p className={`${LBL_CLS} mb-1 flex items-center`}>
-          Commentaire global
           {choix('global', batch.id)}
+          Commentaire global
         </p>
         <textarea
           rows={3}
@@ -2489,8 +2490,8 @@ function LeconResume({ batch, setBatch }: { batch: BatchFull; setBatch: React.Di
   return (
     <div>
       <p className={`${LBL_CLS} mb-1 flex items-center`}>
-        À retenir pour la prochaine fois
         {lecon && <ChoixLecon batch={batch} />}
+        À retenir pour la prochaine fois
       </p>
       {lecon ? (
         <p className="text-sm whitespace-pre-line">{lecon}</p>

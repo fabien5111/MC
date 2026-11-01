@@ -1,7 +1,7 @@
 'use client';
 
 // « La dernière fois » (JEP-381) : remarques des fournées précédentes d'une
-// recette, et les gestes « garder / écarter ». Logique : `lib/batch-lecons.ts`.
+// recette, et l'épingle qui les garde ou les écarte. Logique : `lib/batch-lecons.ts`.
 //
 // Un seul fournisseur (`LeconsProvider`) tient les choix du membre en état
 // local (écriture optimiste, sans resynchronisation serveur) et calcule ce
@@ -10,7 +10,7 @@
 //   • `DerniereFoisEnTete` — en tête de la fournée ;
 //   • `DerniereFoisEtape` — sous la date de chaque étape (Préparer, Pâtisser) ;
 //   • `RetoursAuteur` — fiche recette, pour son auteur ;
-//   • `ChoixRemarque` — les deux pictos, aussi posés dans le résumé.
+//   • `ChoixRemarque` — l'épingle, aussi posée dans le résumé.
 import Link from 'next/link';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useDialog } from '@/components/Dialog';
@@ -39,8 +39,10 @@ type Valeur = {
   auteur: boolean;
   // Gestes proposés (table présente, recette connue, session modifiable).
   gestion: boolean;
-  statutDe: (cle: string) => StatutRemarque | null;
-  decider: (r: Remarque, statut: StatutRemarque | null) => void;
+  // La remarque est-elle épinglée (rappelée aux prochaines fournées) ?
+  epinglee: (r: Remarque) => boolean;
+  // Bascule l'épingle (écrit seulement ce qui diffère du défaut).
+  basculer: (r: Remarque) => void;
 };
 
 const LeconsContext = createContext<Valeur | null>(null);
@@ -53,6 +55,7 @@ export function LeconsProvider({
   reference,
   decisions: decisionsInitiales,
   choixDisponibles,
+  plusRecenteId = null,
   courantes,
   ingredientsCourants = [],
   userId,
@@ -63,6 +66,8 @@ export function LeconsProvider({
   reference: FourneeReference | null;
   decisions: DecisionRemarque[];
   choixDisponibles: boolean;
+  // Fournée terminée la plus récente de la recette (remarques épinglées d'office).
+  plusRecenteId?: number | null;
   courantes: EtapeCourante[];
   ingredientsCourants?: IngredientCourant[];
   userId: string;
@@ -79,7 +84,19 @@ export function LeconsProvider({
   const remarques = useMemo(() => remarquesAffichees(reference, decisions), [reference, decisions]);
   const lecons = useMemo(() => leconsPrecedentes(remarques, courantes, ingredientsCourants), [remarques, courantes, ingredientsCourants]);
   const parCle = useMemo(() => new Map(decisions.map((d) => [cleRemarque(d.nature, d.ligne_id), d.statut])), [decisions]);
-  const statutDe = useCallback((cle: string) => parCle.get(cle) ?? null, [parCle]);
+  // Épinglée d'office : remarque de la fournée de référence ou de la plus
+  // récente fournée terminée (celle que la prochaine fournée rappellera).
+  const parDefaut = useCallback(
+    (r: Remarque) => r.batchId != null && (r.batchId === reference?.id || r.batchId === plusRecenteId),
+    [reference, plusRecenteId],
+  );
+  const epinglee = useCallback(
+    (r: Remarque) => {
+      const s = parCle.get(r.cle);
+      return s === 'gardee' ? true : s === 'ecartee' ? false : parDefaut(r);
+    },
+    [parCle, parDefaut],
+  );
 
   const gestion = choixDisponibles && !!recipeId && !lectureSeule;
 
@@ -97,10 +114,20 @@ export function LeconsProvider({
     },
     [gestion, recipeId, decisions, userId, dialog],
   );
+  // Basculer = viser l'état inverse de l'état effectif ; le choix explicite
+  // n'est gardé que s'il s'écarte du défaut (sinon la ligne est supprimée).
+  const basculer = useCallback(
+    (r: Remarque) => {
+      const cible = !epinglee(r);
+      const defaut = parDefaut(r);
+      decider(r, cible === defaut ? null : cible ? 'gardee' : 'ecartee');
+    },
+    [epinglee, parDefaut, decider],
+  );
 
   const valeur = useMemo<Valeur>(
-    () => ({ reference, remarques, lecons, auteur, gestion, statutDe, decider }),
-    [reference, remarques, lecons, auteur, gestion, statutDe, decider],
+    () => ({ reference, remarques, lecons, auteur, gestion, epinglee, basculer }),
+    [reference, remarques, lecons, auteur, gestion, epinglee, basculer],
   );
   return <LeconsContext.Provider value={valeur}>{children}</LeconsContext.Provider>;
 }
@@ -110,37 +137,32 @@ function titreDerniereFois(reference: FourneeReference | null): string {
   return d ? `La dernière fois (${d})` : 'Vos remarques';
 }
 
-// Les deux pictos : garder (épingle) et écarter (œil barré). Le libellé
-// d'« écarter » change pour l'auteur : il a corrigé sa recette.
+// Un seul picto, l'épingle : « cette remarque doit-elle réapparaître ? ».
+// Épinglée par défaut pour les remarques de la dernière fournée (et de la
+// fournée d'origine d'un « Refaire »), non épinglée pour les plus anciennes.
+// Un clic bascule ; le choix n'est écrit que s'il diffère du défaut.
 export function ChoixRemarque({ r }: { r: Remarque }) {
   const v = useLecons();
   if (!v?.gestion) return null;
-  const statut = v.statutDe(r.cle);
-  const garder = v.auteur ? 'Garder jusqu’à ce que j’aie corrigé ma recette' : 'Garder pour mes prochaines fournées';
-  const ecarter = v.auteur ? 'Corrigé dans ma recette : ne plus afficher' : 'Ne plus afficher';
+  const epinglee = v.epinglee(r);
+  const infobulle = epinglee
+    ? v.auteur
+      ? 'Rappelée aux prochaines fournées — décochez quand c’est corrigé dans votre recette'
+      : 'Rappelée aux prochaines fournées — cliquez pour ne plus l’afficher'
+    : v.auteur
+      ? 'Ne sera plus rappelée — cliquez pour la garder'
+      : 'Ne sera plus rappelée — cliquez pour la garder pour vos prochaines fournées';
   return (
-    <span className="no-print not-italic inline-flex items-center gap-1 align-middle ml-1">
-      <button
-        type="button"
-        onClick={() => v.decider(r, statut === 'gardee' ? null : 'gardee')}
-        title={statut === 'gardee' ? 'Ne plus garder' : garder}
-        aria-label={statut === 'gardee' ? 'Ne plus garder' : garder}
-        aria-pressed={statut === 'gardee'}
-        className={`p-0.5 rounded hover:bg-surface-container ${statut === 'gardee' ? 'text-primary' : 'text-outline'}`}
-      >
-        <span className="material-symbols-outlined text-[16px]">push_pin</span>
-      </button>
-      <button
-        type="button"
-        onClick={() => v.decider(r, statut === 'ecartee' ? null : 'ecartee')}
-        title={statut === 'ecartee' ? 'Rétablir' : ecarter}
-        aria-label={statut === 'ecartee' ? 'Rétablir' : ecarter}
-        aria-pressed={statut === 'ecartee'}
-        className={`p-0.5 rounded hover:bg-surface-container ${statut === 'ecartee' ? 'text-primary' : 'text-outline'}`}
-      >
-        <span className="material-symbols-outlined text-[16px]">{statut === 'ecartee' ? 'visibility' : 'visibility_off'}</span>
-      </button>
-    </span>
+    <button
+      type="button"
+      onClick={() => v.basculer(r)}
+      title={infobulle}
+      aria-label={infobulle}
+      aria-pressed={epinglee}
+      className={`no-print not-italic inline-flex align-middle mr-1 p-0.5 rounded hover:bg-surface-container ${epinglee ? 'text-primary' : 'text-outline'}`}
+    >
+      <span className={`material-symbols-outlined text-[16px]${epinglee ? '' : ' -rotate-45'}`}>push_pin</span>
+    </button>
   );
 }
 
@@ -160,12 +182,14 @@ function RemarqueLigne({ r }: { r: Remarque }) {
       )}
       {(r.texte || d || v?.gestion) && (
         <span>
+          <ChoixRemarque r={r} />
           {r.nature === 'lecon' && <span className="not-italic text-on-surface-variant">À retenir : </span>}
           {r.nature === 'global' && <span className="not-italic text-on-surface-variant">Commentaire global : </span>}
-          {r.texte && (r.nature === 'sous_etape' || r.nature === 'ingredient') && <span className="not-italic text-on-surface-variant">Mon commentaire : </span>}
+          {r.texte && (r.nature === 'etape' || r.nature === 'sous_etape' || r.nature === 'ingredient') && (
+            <span className="not-italic text-on-surface-variant">Mon commentaire : </span>
+          )}
           {r.texte && <span className="whitespace-pre-line">{r.texte}</span>}
           {d && <span className="not-italic text-[11px] text-outline"> · fournée du {d}</span>}
-          <ChoixRemarque r={r} />
         </span>
       )}
     </li>
