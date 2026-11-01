@@ -5,11 +5,13 @@ import {
   ecartQuantite,
   leconsPrecedentes,
   ligneDecision,
+  libelleCoefficient,
   lireLecon,
   nombreEtapesAnnotees,
   normaliserLecon,
   remarquesAffichees,
   remarquesDeFournee,
+  remarquesDeSousEtape,
   type DecisionRemarque,
   type FourneeReference,
   type RefIngredient,
@@ -215,5 +217,35 @@ describe('leçon', () => {
     expect(lireLecon({})).toBeNull();
     expect(lireLecon({ lecon: ' ok ' })).toBe('ok');
     expect(lireLecon(null)).toBeNull();
+  });
+});
+
+describe('libelleCoefficient', () => {
+  it('donne le coefficient et la quantité à ×1', () => {
+    expect(libelleCoefficient({ facteur: 1.5, prevu: 200, reel: 180, unite: 'g', ecart: 'x' })).toBe('×1,5 : 180 g utilisés (120 g à coefficient 1)');
+  });
+  it('sans quantité réelle : la quantité prévue', () => {
+    expect(libelleCoefficient({ facteur: 2, prevu: 300, reel: null, unite: 'g', ecart: null })).toBe('×2 : 300 g prévus (150 g à coefficient 1)');
+  });
+  it('à ×1 ou sans coefficient : l’écart ordinaire, ou rien', () => {
+    expect(libelleCoefficient({ facteur: 1, prevu: 200, reel: 180, unite: 'g', ecart: '180 g utilisés au lieu de 200 g' })).toBe('180 g utilisés au lieu de 200 g');
+    expect(libelleCoefficient({ facteur: null, prevu: 200, reel: null, unite: 'g', ecart: null })).toBeNull();
+  });
+  it('remarquesDeRef porte le coefficient', () => {
+    const r = ref([step({ id: 10, title: 'Pâte' })], [ing({ id: 50, batch_step_id: 10, name: 'Sucre', quantity: 200, real_quantity: 180 })], { facteur: 1.5 });
+    const [x] = remarquesDeFournee(r);
+    expect(x).toMatchObject({ facteur: 1.5, prevu: 200, reel: 180 });
+  });
+});
+
+describe('remarquesDeSousEtape', () => {
+  it('apparie par texte normalisé dans l’étape retrouvée', () => {
+    const rs = remarquesDeFournee(
+      ref([step({ id: 10, title: 'Pâte', batch_substeps: [{ id: 5, texte: 'Crémer le beurre', commentaire: 'pas assez', order_index: 0 }] })]),
+    );
+    const l = leconsPrecedentes(rs, [etape(1, 'Pâte')]);
+    expect(remarquesDeSousEtape(l.parEtape[1], 'CREMER le beurre').map((x) => x.texte)).toEqual(['pas assez']);
+    expect(remarquesDeSousEtape(l.parEtape[1], 'Autre')).toEqual([]);
+    expect(remarquesDeSousEtape(undefined, 'Crémer')).toEqual([]);
   });
 });

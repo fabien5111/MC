@@ -9,6 +9,7 @@ import { getUnits } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getTags, getDifficulties } from '@/lib/taxonomy';
 import { getVisibleHelpBlocks } from '@/lib/help';
+import { getRemarques } from '@/lib/batch-lecons-data';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
@@ -81,6 +82,11 @@ export default async function CreerPage({ searchParams }: SearchParams) {
   // Volontairement isolé d'`isAdmin` (bouton « Ajouter au référentiel »,
   // publication directe, création de tag) : ces écritures restent réservées
   // à l'admin complet dans SA PROPRE session, conformément à CLAUDE.md.
+  // Retours de mes fournées (JEP-381) : l'auteur seul, sur une recette
+  // enregistrée. Best-effort : un échec de lecture ne coûte que ces retours.
+  const remarques =
+    owned && owned.author_id === user.id ? await getRemarques({ userId: user.id, recipeId: owned.id }).catch(() => null) : null;
+
   const highlightUnknownRefs = admin || (await getImpersonationContext()) !== null;
 
   return (
@@ -107,6 +113,8 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           ingredientRefIds={ingredientRefIds}
           initialStep={owned ? initialStep : null}
           helpBlocks={helpBlocks}
+          remarques={remarques}
+          userId={user.id}
         />
       </main>
       </div>

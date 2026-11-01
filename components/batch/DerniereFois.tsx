@@ -19,8 +19,10 @@ import {
   cleRemarque,
   dateCourte,
   leconsPrecedentes,
+  libelleCoefficient,
   ligneDecision,
   remarquesAffichees,
+  remarquesDeSousEtape,
   type DecisionRemarque,
   type EtapeCourante,
   type FourneeReference,
@@ -315,5 +317,53 @@ export function RetoursAuteur({
         )}
       </div>
     </details>
+  );
+}
+
+// ── Éditeur de recette (/creer) : remarques sous la ligne qu'elles concernent ──
+// Lecture seule, dans la même provision que le bloc `RetoursAuteur`. L'étape est
+// désignée par l'id qu'a donné `CreerForm` à l'étape courante (rang + 1).
+
+// Sous une sous-étape : ses commentaires de fournée, appariés par le texte.
+export function RetoursSousEtape({ stepId, texte }: { stepId: number; texte: string }) {
+  const v = useLecons();
+  const rs = remarquesDeSousEtape(v?.lecons.parEtape[stepId], texte);
+  if (!rs.length) return null;
+  return (
+    <ul className="no-print mt-1 ml-8 flex flex-col gap-1 text-sm italic text-on-surface-variant border-l-2 border-outline-variant pl-3">
+      {rs.map((r) => (
+        <li key={r.cle}>
+          <ChoixRemarque r={r} />
+          <span className="not-italic text-[12px]">Retours de mes fournées : </span>
+          <span className="whitespace-pre-line">{r.texte}</span>
+          {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Sous un ingrédient : écart de quantité avec le coefficient de la fournée et
+// la quantité à coefficient 1, puis le commentaire.
+export function RetoursIngredient({ stepId, ingredientId }: { stepId: number; ingredientId: number }) {
+  const v = useLecons();
+  const rs = (v?.lecons.parEtape[stepId]?.remarques ?? []).filter((r) => r.nature === 'ingredient' && r.ingredientId === ingredientId);
+  if (!rs.length) return null;
+  return (
+    <ul className="no-print mt-1 flex flex-col gap-1 text-sm italic text-on-surface-variant border-l-2 border-outline-variant pl-3">
+      {rs.map((r) => {
+        const quantite = libelleCoefficient(r) ?? r.ecart;
+        return (
+          <li key={r.cle}>
+            <ChoixRemarque r={r} />
+            <span className="not-italic text-[12px]">Retours de mes fournées : </span>
+            {quantite && <span className="not-italic text-on-surface">{quantite}</span>}
+            {quantite && r.texte && ' — '}
+            {r.texte && <span className="whitespace-pre-line">{r.texte}</span>}
+            {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}</span>}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

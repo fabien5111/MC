@@ -14,7 +14,10 @@
 // la volée d'un libellé inconnu au référentiel réservé aux administrateurs
 // (bouton « Ajouter au référentiel »).
 import { saisieIngredient } from '@/lib/saisie-ingredient';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LeconsProvider, RetoursAuteur, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
+import type { DonneesRemarques } from '@/lib/batch-lecons-data';
+import type { DecisionRemarque } from '@/lib/batch-lecons';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -59,6 +62,9 @@ const MAX_ALLERGENS = 3;
 type IngLine = { key: string; name: string; qty: string; unit: string; comment: string; allergen: string[] };
 type StepState = {
   key: string;
+  // Id de l'étape en base à l'ouverture (JEP-381) : sert à apparier les retours
+  // de fournées ; absent pour une étape ajoutée dans l'éditeur.
+  srcId?: number;
   title: string;
   dayOffset: string;
   // JEP-19 : l'étape peut être faite en amont (possibilité, pas le jour prévu).
@@ -80,6 +86,9 @@ type StepState = {
   photos: (StepPhoto | null)[];
   collapsed: boolean;
 };
+
+// Référence stable : le fournisseur se resynchronise sur l'identité du tableau.
+const AUCUNE_DECISION_RETOURS: DecisionRemarque[] = [];
 
 type StepPhoto = { url: string; original_url: string; ai_retouched: boolean };
 
@@ -167,6 +176,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       .map((p) => ({ url: p.url, original_url: p.original_url || p.url, ai_retouched: p.ai_retouched ?? false }));
     return {
       key: key(),
+      srcId: s.id,
       title: s.title || '',
       dayOffset: s.day_offset ? String(s.day_offset) : '',
       prepAhead: s.can_prepare_ahead === true,
@@ -206,6 +216,8 @@ export function CreerForm({
   ingredientRefIds,
   initialStep,
   helpBlocks,
+  remarques = null,
+  userId = '',
 }: {
   tags: Tag[];
   units: Unit[];
@@ -238,6 +250,10 @@ export function CreerForm({
   // lib/help.ts. Tableau vide la plupart du temps (aucun bloc défini, ou
   // tout masqué), le composant ne rend alors rien.
   helpBlocks?: VisibleHelpBlock[];
+  // Retours de mes fournées (JEP-381), lus par la page pour l'auteur d'une
+  // recette déjà enregistrée ; `null` : rien à afficher.
+  remarques?: DonneesRemarques | null;
+  userId?: string;
 }) {
   useAutoGrowOnResize();
   const router = useRouter();
@@ -1201,8 +1217,35 @@ export function CreerForm({
   else if (editRecipe?.status === 'rejected') statusBadge = { label: 'Publication refusée', cls: 'bg-error text-white' };
   else if (editRecipe?.status === 'published') statusBadge = { label: 'Publiée', cls: 'bg-green-700 text-white' };
 
+  // Retours de mes fournées : les étapes et ingrédients de l'éditeur vus comme
+  // des « étapes courantes » (id = rang + 1 ; ingrédient = (rang + 1) × 1000 +
+  // rang dans l'étape), appariés par `source_step_id` puis par titre.
+  const idEtapeRetours = (si: number) => si + 1;
+  const idIngredientRetours = (si: number, ii: number) => (si + 1) * 1000 + ii;
+  const signatureRetours = steps.map((st) => `${st.srcId ?? ''}|${st.title}|${st.ings.map((g) => `${g.name}/${g.unit}`).join(',')}`).join('§');
+  const { courantesRetours, ingredientsRetours } = useMemo(
+    () => ({
+      courantesRetours: steps.map((st, si) => ({ id: idEtapeRetours(si), source_step_id: st.srcId ?? null, title: st.title, order_index: si })),
+      ingredientsRetours: steps.flatMap((st, si) =>
+        st.ings.map((g, ii) => ({ id: idIngredientRetours(si, ii), batch_step_id: idEtapeRetours(si), name: g.name, unit: g.unit })),
+      ),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [signatureRetours],
+  );
+
   return (
-    <>
+    <LeconsProvider
+      reference={remarques?.reference ?? null}
+      decisions={remarques?.decisions ?? AUCUNE_DECISION_RETOURS}
+      choixDisponibles={!!remarques?.choixDisponibles}
+      plusRecenteId={remarques?.plusRecenteId ?? null}
+      courantes={courantesRetours}
+      ingredientsCourants={ingredientsRetours}
+      userId={userId}
+      recipeId={editRecipe?.id ?? null}
+      auteur
+    >
       {/* `mobile="drawer"` : sous 700 px le rail disparaît, et le bouton
           flottant reprend le sommaire *et* ces actions — c'est ce qui a
           remplacé la barre d'actions fixe de bas d'écran, qui n'offrait aucune
@@ -1312,6 +1355,18 @@ export function CreerForm({
             </span>{' '}
             {editRecipe.moderation_note}
           </p>
+        </div>
+      )}
+
+      {/* Retours de mes fournées (JEP-381) : lecture seule, recette déjà enregistrée. */}
+      {editRecipe && (
+        <div className="mb-8">
+          <RetoursAuteur
+            recipeId={editRecipe.id}
+            etapes={courantesRetours.map((c) => ({ id: c.id, title: c.title }))}
+            compact
+            ancrePrefixe="sec-etape-"
+          />
         </div>
       )}
 
@@ -2190,6 +2245,7 @@ export function CreerForm({
                             Ajouter «&nbsp;{g.name.trim()}&nbsp;» au référentiel
                           </button>
                         )}
+                        <RetoursIngredient stepId={idEtapeRetours(si)} ingredientId={idIngredientRetours(si, ii)} />
                         </div>
                       ))}
                     </div>
@@ -2239,8 +2295,8 @@ export function CreerForm({
                       // ajout à la volée et retour possible au texte libre.
                       <div className="space-y-3">
                         {st.subSteps.map((t, idx) => (
+                          <Fragment key={idx}>
                           <div
-                            key={idx}
                             className={`flex items-start gap-2 ${dragSub?.si === si && dragSub.idx === idx ? 'opacity-50' : ''}`}
                             onDragOver={(e) => {
                               if (!dragSub || dragSub.si !== si) return;
@@ -2299,6 +2355,8 @@ export function CreerForm({
                               <span className="material-symbols-outlined text-[18px]">delete</span>
                             </button>
                           </div>
+                          <RetoursSousEtape stepId={idEtapeRetours(si)} texte={t} />
+                          </Fragment>
                         ))}
                         <div className="flex flex-wrap items-center gap-6">
                           <button
@@ -2704,6 +2762,6 @@ export function CreerForm({
       {/* Enregistrement en cours (écriture puis navigation ou bascule en mode
           édition) : overlay « Le Fouet » plein écran, cf. CLAUDE.md. */}
       <LoadingOverlay visible={busy || leaving} label={leaving ? 'Retour au profil…' : 'Enregistrement de la recette…'} />
-    </>
+    </LeconsProvider>
   );
 }

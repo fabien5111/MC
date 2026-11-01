@@ -21,6 +21,7 @@ type Brut = {
   date_fin: string | null;
   planned_date: string | null;
   commentaire_global: string | null;
+  factor: number | null;
   batch_steps: RefStep[] | null;
   batch_ingredients: RefIngredient[] | null;
 };
@@ -33,6 +34,7 @@ function versReference(row: Brut): FourneeReference {
     date: row.date_fin ?? row.planned_date,
     commentaire_global: row.commentaire_global,
     lecon: lireLecon(row),
+    facteur: row.factor && row.factor > 0 ? row.factor : null,
     batch_steps: (row.batch_steps ?? []).map((s) => ({ ...s, batch_substeps: s.batch_substeps ?? [] })),
     batch_ingredients: row.batch_ingredients ?? [],
   };

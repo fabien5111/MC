@@ -53,6 +53,8 @@ export type FourneeReference = {
   commentaire_global: string | null;
   // `batches.lecon` — absente avant la migration : `null`.
   lecon: string | null;
+  // Coefficient de la fournée (`batches.factor`) ; absent/nul = ×1.
+  facteur?: number | null;
   batch_steps: RefStep[];
   batch_ingredients: RefIngredient[];
 };
@@ -86,6 +88,11 @@ export type Remarque = {
   statut: StatutRemarque | null;
   // Ingrédient de la fournée courante qui correspond (appariement).
   ingredientId?: number | null;
+  // Ingrédients seulement : coefficient de la fournée, quantité prévue (déjà
+  // multipliée par le coefficient) et quantité réellement utilisée.
+  facteur?: number | null;
+  prevu?: number | null;
+  reel?: number | null;
 };
 
 // Ligne de `remarques_gardees` telle que lue en base (texte éventuellement
@@ -148,7 +155,14 @@ export function remarquesDeFournee(ref: FourneeReference): Remarque[] {
     for (const it of ref.batch_ingredients.filter((i) => i.batch_step_id === s.id).sort((a, b) => a.order_index - b.order_index)) {
       const ci = texte(it.commentaire);
       const ecart = ecartQuantite(it);
-      if (ci || ecart) out.push({ ...base, ...etape, cle: cleRemarque('ingredient', it.id), nature: 'ingredient', ligneId: it.id, libelle: it.name, unite: it.unit, texte: ci, ecart });
+      if (ci || ecart) {
+        out.push({
+          ...base, ...etape, cle: cleRemarque('ingredient', it.id), nature: 'ingredient', ligneId: it.id, libelle: it.name, unite: it.unit, texte: ci, ecart,
+          facteur: ref.facteur && ref.facteur > 0 ? ref.facteur : null,
+          prevu: it.quantity,
+          reel: it.real_quantity,
+        });
+      }
     }
   }
   return out;
@@ -289,6 +303,30 @@ export function leconsPrecedentes(remarques: Remarque[], courantes: EtapeCourant
   return { parEtape, autres, generales };
 }
 
+// Éditeur de recette : l'écart de quantité d'un ingrédient, avec le coefficient
+// de la fournée et la quantité ramenée à un coefficient 1.
+//   « ×1,5 : 180 g utilisés (120 g à coefficient 1) »
+// Sans coefficient connu ou à ×1, le libellé d'écart ordinaire est repris ;
+// sans quantité réelle, la quantité prévue est donnée de la même façon.
+export function libelleCoefficient(r: Pick<Remarque, 'facteur' | 'prevu' | 'reel' | 'unite' | 'ecart'>): string | null {
+  const f = r.facteur && r.facteur > 0 ? r.facteur : 1;
+  const u = texte(r.unite) ? ' ' + texte(r.unite) : '';
+  const utilise = r.reel != null && r.prevu != null && Math.abs(r.reel - r.prevu) >= 1e-9;
+  if (f === 1) return utilise ? r.ecart : null;
+  const q = utilise ? r.reel : r.prevu;
+  if (q == null) return null;
+  const mot = utilise ? 'utilisés' : 'prévus';
+  return `×${fmtNum(f)} : ${fmtNum(q)}${u} ${mot} (${fmtNum(q / f)}${u} à coefficient 1)`;
+}
+
+// Éditeur de recette : remarques de sous-étape d'une étape appariée, pour une
+// sous-étape donnée (même texte, casse et accents ignorés).
+export function remarquesDeSousEtape(constat: ConstatEtape | undefined, texteSousEtape: string): Remarque[] {
+  const t = normSearch(texteSousEtape).trim();
+  if (!t || !constat) return [];
+  return constat.remarques.filter((r) => r.nature === 'sous_etape' && normSearch(r.libelle ?? '').trim() === t);
+}
+
 // Nombre d'étapes porteuses d'une remarque (encadré du lancement).
 export function nombreEtapesAnnotees(remarques: Remarque[]): number {
   const etapes = new Set(remarques.filter((r) => r.etapeId != null || r.etapeTitre).map((r) => `${r.batchId}:${r.etapeId ?? r.etapeTitre}`));
@@ -301,6 +339,7 @@ export function versReference(b: {
   date_fin: string | null;
   planned_date: string | null;
   commentaire_global: string | null;
+  factor?: number | null;
   batch_steps: RefStep[];
   batch_ingredients: RefIngredient[];
 }): FourneeReference {
@@ -309,6 +348,7 @@ export function versReference(b: {
     date: b.date_fin ?? b.planned_date,
     commentaire_global: b.commentaire_global,
     lecon: lireLecon(b),
+    facteur: b.factor && b.factor > 0 ? b.factor : null,
     batch_steps: b.batch_steps,
     batch_ingredients: b.batch_ingredients,
   };
