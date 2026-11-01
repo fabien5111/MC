@@ -1560,7 +1560,7 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
   étape avec « Modifier cette étape » vers `/creer`) ; **dans l'éditeur
   `/creer`** d'une recette déjà enregistrée, pour son auteur : le même bloc en tête
   (`ancrePrefixe="sec-etape-"` : lien « Aller à l'étape »), et les remarques **sous la
-  ligne qu'elles concernent** — sous chaque sous-étape (`RetoursSousEtape`, appariée
+  ligne qu'elles concernent** — sous le titre de l'étape (`RetoursEtape`), sous chaque sous-étape (`RetoursSousEtape`, appariée
   par son texte normalisé dans l'étape retrouvée, `remarquesDeSousEtape`) et sous
   chaque ingrédient (`RetoursIngredient`) avec le coefficient de la fournée et la
   quantité à coefficient 1 (« ×1,5 : 180 g utilisés (120 g à coefficient 1) »,

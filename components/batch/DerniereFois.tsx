@@ -367,3 +367,22 @@ export function RetoursIngredient({ stepId, ingredientId }: { stepId: number; in
     </ul>
   );
 }
+
+// Sous le titre d'une étape de l'éditeur : son commentaire de fournée.
+export function RetoursEtape({ stepId }: { stepId: number }) {
+  const v = useLecons();
+  const rs = (v?.lecons.parEtape[stepId]?.remarques ?? []).filter((r) => r.nature === 'etape');
+  if (!rs.length) return null;
+  return (
+    <ul className="no-print flex flex-col gap-1 text-sm italic text-on-surface-variant border-l-2 border-outline-variant pl-3">
+      {rs.map((r) => (
+        <li key={r.cle}>
+          <ChoixRemarque r={r} />
+          <span className="not-italic text-[12px]">Retours de mes fournées : </span>
+          <span className="whitespace-pre-line">{r.texte}</span>
+          {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}

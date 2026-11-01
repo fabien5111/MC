@@ -14,7 +14,7 @@
 // la volée d'un libellé inconnu au référentiel réservé aux administrateurs
 // (bouton « Ajouter au référentiel »).
 import { saisieIngredient } from '@/lib/saisie-ingredient';
-import { LeconsProvider, RetoursAuteur, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
+import { LeconsProvider, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import type { DecisionRemarque } from '@/lib/batch-lecons';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1894,6 +1894,7 @@ export function CreerForm({
 
               {!st.collapsed && (
                 <div className="space-y-8 mt-8">
+                  <RetoursEtape stepId={idEtapeRetours(si)} />
                   {si === 0 && <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} />}
                   <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
                     <label className="font-label-md text-label-md text-outline uppercase">Ajustement des quantités de cette étape</label>
