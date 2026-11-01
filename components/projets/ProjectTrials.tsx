@@ -32,8 +32,8 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 // retrouver d'un coup d'œil l'essai qui a marché, pas une échelle de notation.
 const VERDICTS: { value: string; label: string; cls: string }[] = [
   { value: 'to_review', label: 'À revoir', cls: 'bg-error/90' },
-  { value: 'ok', label: 'Correct', cls: 'bg-secondary/90' },
-  { value: 'validated', label: 'Validé', cls: 'bg-green-700' },
+  { value: 'ok', label: 'Correcte', cls: 'bg-secondary/90' },
+  { value: 'validated', label: 'Validée', cls: 'bg-green-700' },
 ];
 
 const btnPrimary =
@@ -239,7 +239,7 @@ export function ProjectTrials({
               <li key={t.id} className="rounded-xl border border-outline-variant p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-3">
                   <a href={`/fournee/${t.id}`} className="font-body-md text-[15px] font-semibold text-primary">
-                    Essai du {t.plannedDate ? formatDate(t.plannedDate) : formatDate(t.createdAt)}
+                    Fournée d’essai du {t.plannedDate ? formatDate(t.plannedDate) : formatDate(t.createdAt)}
                   </a>
                   <span className="text-[12px] text-on-surface-variant">
                     {t.status === 'terminee' ? 'Terminée' : t.status === 'abandonnee' ? 'Abandonnée' : 'En cours'}
