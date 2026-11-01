@@ -302,8 +302,9 @@ export function ProjectTrials({
                     <p className="mb-2 text-[12.5px] text-on-surface-variant">
                       {(retoursEssais[t.id] ?? []).length ? '' : 'Aucun commentaire sur cet essai. '}
                       <a href={`/fournee/${t.id}`} className="text-primary underline underline-offset-2">
-                        Ouvrir la fournée pour en ajouter ou les modifier
+                        {t.status === 'planifiee' ? 'Ouvrir la fournée pour ajouter ou modifier des commentaires' : 'Ouvrir la fournée'}
                       </a>
+                      {t.status !== 'planifiee' && ' (verrouillée : « Reprendre cette fournée » permet de la modifier)'}
                     </p>
                   </>
                 ) : (
