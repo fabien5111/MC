@@ -52,7 +52,7 @@ import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
 import { trackEvent } from '@/lib/analytics';
 import { ARacheterButton } from '@/components/batch/ARacheterButton';
-import { ChoixRemarque, DerniereFoisEnTete, DerniereFoisEtape, LeconsProvider } from '@/components/batch/DerniereFois';
+import { ChoixRemarque, DerniereFoisEtape, LeconsProvider, RetoursAuteur } from '@/components/batch/DerniereFois';
 import { cleRemarque, lireLecon, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import { useDemanderLecon } from '@/lib/batch-lecons-client';
@@ -642,9 +642,16 @@ export function BatchView({
           <BatchReview batchId={batch.id} recipeId={batch.recipe_id} myReview={myReview} onDismiss={dismissReview} />
         )}
 
-        {/* « La dernière fois » (JEP-381) : leçon, commentaire global et
-            remarques sans étape retrouvée — dans les deux modes. */}
-        <DerniereFoisEnTete />
+        {/* « Retours de mes fournées » (JEP-381) : le même bloc que sur la fiche
+            et au lancement, dans les deux modes. */}
+        <div className="mb-6 empty:hidden">
+          <RetoursAuteur
+            recipeId={batch.recipe_id ?? ''}
+            etapes={[...batch.batch_steps].sort((a, b) => a.order_index - b.order_index).map((s) => ({ id: s.id, title: s.title }))}
+            compact
+            sansLien
+          />
+        </div>
 
         <div className="flex items-center gap-2 mb-6">
           <span className="no-print flex items-center gap-2">

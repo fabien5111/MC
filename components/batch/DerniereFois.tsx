@@ -6,9 +6,8 @@
 // Un seul fournisseur (`LeconsProvider`) tient les choix du membre en état
 // local (écriture optimiste, sans resynchronisation serveur) et calcule ce
 // qui s'affiche ; les présentations le lisent par contexte :
-//   • `RetoursAuteur` — le bloc « Retours de mes fournées », sur la fiche recette
-//     ET dans le panneau « Lancer une fournée » ;
-//   • `DerniereFoisEnTete` — en tête de la fournée ;
+//   • `RetoursAuteur` — le bloc « Retours de mes fournées » : fiche recette,
+//     panneau « Lancer une fournée » et en tête de la fournée (Préparer, Pâtisser) ;
 //   • `DerniereFoisEtape` — sous la date de chaque étape (Préparer, Pâtisser) ;
 //   • `ChoixRemarque` — l'épingle, aussi posée dans le résumé.
 import Link from 'next/link';
@@ -205,43 +204,6 @@ function ListeRemarques({ remarques }: { remarques: Remarque[] }) {
   );
 }
 
-// En tête de la fournée : leçon, commentaire global, et « Autres remarques »
-// (étape non retrouvée — jamais perdues en silence).
-export function DerniereFoisEnTete() {
-  const v = useLecons();
-  if (!v) return null;
-  const { lecons } = v;
-  if (!lecons.generales.length && !lecons.autres.length) return null;
-  return (
-    <div className="no-print mb-6 p-3 bg-surface-container-low border-l-4 border-secondary rounded flex flex-col gap-2">
-      <p className="flex items-center gap-1.5 font-label-md text-[12px] uppercase tracking-widest text-secondary">
-        <span className="material-symbols-outlined text-[18px]">history</span>
-        {titreDerniereFois(v.reference)}
-      </p>
-      {lecons.generales.length > 0 && (
-        <div className="text-sm">
-          <ListeRemarques remarques={lecons.generales} />
-        </div>
-      )}
-      {lecons.autres.length > 0 && (
-        <details>
-          <summary className="cursor-pointer font-label-md text-[11px] uppercase tracking-widest text-on-surface-variant">
-            Autres remarques de la dernière fois ({lecons.autres.length})
-          </summary>
-          <div className="mt-2 flex flex-col gap-2 text-sm italic text-on-surface-variant">
-            {lecons.autres.map((c, k) => (
-              <div key={k}>
-                <p className="not-italic font-bold text-on-surface">{c.titre}</p>
-                <ListeRemarques remarques={c.remarques} />
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-    </div>
-  );
-}
-
 // Sous la date d'une étape : discret, repliable (ouvert par défaut).
 export function DerniereFoisEtape({ stepId }: { stepId: number }) {
   const v = useLecons();
@@ -266,11 +228,15 @@ export function RetoursAuteur({
   recipeId,
   etapes,
   compact = false,
+  sansLien = false,
 }: {
   recipeId: string;
   etapes: { id: number; title: string | null }[];
-  // Dans le panneau « Lancer une fournée » : marge réduite.
+  // Dans le panneau « Lancer une fournée » et en tête d'une fournée : marge réduite.
   compact?: boolean;
+  // En fournée, les étapes ne sont pas celles de la recette (insertions,
+  // remplacements) : le numéro d'ancre de `/creer` serait faux.
+  sansLien?: boolean;
 }) {
   const v = useLecons();
   if (!v || !v.remarques.length) return null;
@@ -304,7 +270,7 @@ export function RetoursAuteur({
                 <span className="font-bold text-on-surface">
                   Étape {i + 1} · {e.title || 'Sans titre'}
                 </span>
-                {v.auteur && (
+                {v.auteur && !sansLien && (
                   <Link href={`/creer?id=${recipeId}#sec-etape-${i + 1}`} className="text-[12px] text-primary underline underline-offset-2">
                     Modifier cette étape
                   </Link>
