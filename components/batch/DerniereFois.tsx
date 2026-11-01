@@ -40,7 +40,7 @@ type Valeur = {
   // La remarque est-elle épinglée (rappelée aux prochaines fournées) ?
   epinglee: (r: Remarque) => boolean;
   // Bascule l'épingle (écrit seulement ce qui diffère du défaut).
-  basculer: (r: Remarque) => void;
+  basculer: (r: Remarque) => void | Promise<void>;
 };
 
 const LeconsContext = createContext<Valeur | null>(null);
@@ -79,7 +79,16 @@ export function LeconsProvider({
   const [decisions, setDecisions] = useState(decisionsInitiales);
   useEffect(() => setDecisions(decisionsInitiales), [decisionsInitiales]);
 
-  const remarques = useMemo(() => remarquesAffichees(reference, decisions), [reference, decisions]);
+  // Ce qui était affiché à l'ouverture de la page : une remarque désépinglée
+  // reste visible (picto éteint) jusqu'au prochain rechargement.
+  const [decisionsOuverture] = useState(decisionsInitiales);
+  const remarques = useMemo(() => {
+    const vivantes = remarquesAffichees(reference, decisions);
+    const parCleVivante = new Map(vivantes.map((x) => [x.cle, x]));
+    const base = remarquesAffichees(reference, decisionsOuverture);
+    const vues = new Set(base.map((x) => x.cle));
+    return [...base.map((x) => parCleVivante.get(x.cle) ?? x), ...vivantes.filter((x) => !vues.has(x.cle))];
+  }, [reference, decisions, decisionsOuverture]);
   const lecons = useMemo(() => leconsPrecedentes(remarques, courantes, ingredientsCourants), [remarques, courantes, ingredientsCourants]);
   const parCle = useMemo(() => new Map(decisions.map((d) => [cleRemarque(d.nature, d.ligne_id), d.statut])), [decisions]);
   // Épinglée d'office : remarque de la fournée de référence ou de la plus
@@ -115,12 +124,20 @@ export function LeconsProvider({
   // Basculer = viser l'état inverse de l'état effectif ; le choix explicite
   // n'est gardé que s'il s'écarte du défaut (sinon la ligne est supprimée).
   const basculer = useCallback(
-    (r: Remarque) => {
+    async (r: Remarque) => {
       const cible = !epinglee(r);
+      // Désépingler : confirmer, et dire ce qui se passe.
+      if (!cible) {
+        const ok = await dialog.confirm(
+          'Ce commentaire ne s’affichera plus lors de vos prochaines fournées.\n\nIl reste visible jusqu’au prochain rechargement de la page, et vous pouvez le réépingler d’ici là.',
+          { okLabel: 'Ne plus l’afficher', cancelLabel: 'Annuler' },
+        );
+        if (!ok) return;
+      }
       const defaut = parDefaut(r);
       decider(r, cible === defaut ? null : cible ? 'gardee' : 'ecartee');
     },
-    [epinglee, parDefaut, decider],
+    [epinglee, parDefaut, decider, dialog],
   );
 
   const valeur = useMemo<Valeur>(

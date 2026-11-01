@@ -1521,6 +1521,10 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
   ligne de `remarques_gardees` n'est écrite que si le choix s'écarte du défaut
   (`gardee` = épinglée contre le défaut, `ecartee` = décochée contre le défaut),
   supprimée sinon — la table et la règle d'affichage ne changent pas.
+  **Désépingler demande confirmation** (« ne s'affichera plus lors de vos prochaines
+  fournées ») et la remarque **reste affichée, picto éteint, jusqu'au prochain
+  rechargement** (`decisionsOuverture` : la liste est celle de l'ouverture de la page,
+  plus les remarques épinglées depuis) ; la réépingler est possible d'ici là.
 - **Table `remarques_gardees`** (une ligne par choix, `unique (user_id, nature,
   ligne_id)`, statut `gardee` / `ecartee`), et non une colonne sur les tables
   `batch_*` : une fournée se supprime d'un geste, en cascade, et ce que le
