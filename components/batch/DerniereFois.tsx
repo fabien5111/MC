@@ -195,8 +195,8 @@ function RemarqueLigne({ r }: { r: Remarque }) {
       {(r.texte || d || v?.gestion) && (
         <span>
           <ChoixRemarque r={r} />
-          {r.nature === 'lecon' && <span className="not-italic font-bold text-primary">À retenir : </span>}
-          {r.nature === 'global' && <span className="not-italic font-bold text-primary">Commentaire global : </span>}
+          {r.nature === 'lecon' && <span className="not-italic font-normal text-primary">À retenir : </span>}
+          {r.nature === 'global' && <span className="not-italic font-normal text-primary">Commentaire global : </span>}
           {r.texte && (r.nature === 'etape' || r.nature === 'sous_etape' || r.nature === 'ingredient') && (
             <span className="not-italic font-normal text-primary">Mon commentaire : </span>
           )}
