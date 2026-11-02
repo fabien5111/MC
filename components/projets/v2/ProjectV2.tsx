@@ -754,7 +754,7 @@ export function ProjectV2({
         <h1 className="mb-3 font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[34px]">
           {project.title === 'Nouveau projet' ? 'Nouveau projet' : project.title}
         </h1>
-        <div className="mb-3 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="bg-secondary px-3 py-1 font-label-md text-[10px] uppercase tracking-widest text-white">Brouillon</span>
           {anyDirty ? (
             <span className="border border-error px-3 py-1 font-label-md text-[10px] uppercase tracking-widest text-error">
@@ -763,14 +763,6 @@ export function ProjectV2({
           ) : (
             <span className="font-label-md text-[12px] text-green-700">Tout est enregistré</span>
           )}
-        </div>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <span className="flex items-center gap-2 text-[12px] text-on-surface-variant">
-            <span className="inline-block h-3 w-3 rounded border border-outline-variant bg-surface-container-low" />
-            Recette
-            <span className="ml-3 inline-block h-3 w-3 rounded border border-dashed border-secondary/40 bg-surface-container-lowest" />
-            Atelier projet
-          </span>
         </div>
       </header>
 
