@@ -16,6 +16,8 @@ import { useDialog } from '@/components/Dialog';
 import { useReadOnly } from '@/components/ImpersonationProvider';
 import { enregistrerChoix } from '@/lib/batch-lecons-client';
 import { fmtNum } from '@/lib/recipe-plan';
+import { ingredientKey } from '@/lib/ingredient-name';
+import { normSearch } from '@/lib/text-search';
 import {
   cleRemarque,
   coefficientEcart,
@@ -386,6 +388,48 @@ export function RetoursIngredient({ stepId, ingredientId, enListe = false }: { s
     </li>
   ) : (
     liste
+  );
+}
+
+// Fenêtre d'édition d'une préparation (mode projet) : ses lignes n'ont pas
+// d'identifiant. L'étape est retrouvée par l'id relu en base, sinon par son
+// titre ; l'ingrédient par son nom (`ingredientKey`) et son unité.
+export function useEtapeRetours(etapeId: number | null | undefined, titre: string | null): number | null {
+  const v = useLecons();
+  if (!v) return null;
+  if (etapeId != null && v.lecons.parEtape[etapeId]) return etapeId;
+  const t = normSearch(titre ?? '').trim();
+  if (!t) return null;
+  const trouve = Object.entries(v.lecons.parEtape).find(([, c]) => normSearch(c.titre).trim() === t);
+  return trouve ? Number(trouve[0]) : null;
+}
+
+export function RetoursIngredientNom({ stepId, nom, unite }: { stepId: number; nom: string; unite: string | null }) {
+  const v = useLecons();
+  const k = ingredientKey(nom);
+  const u = (unite ?? '').trim().toLowerCase();
+  const rs = k
+    ? (v?.lecons.parEtape[stepId]?.remarques ?? []).filter(
+        (r) => r.nature === 'ingredient' && ingredientKey(r.libelle) === k && (r.unite ?? '').trim().toLowerCase() === u,
+      )
+    : [];
+  if (!rs.length) return null;
+  return (
+    <ul className="no-print mt-1 flex flex-col gap-1 text-sm italic font-normal text-primary border-l-2 border-primary/50 pl-3">
+      {rs.map((r) => {
+        const quantite = libelleCoefficient(r) ?? r.ecart;
+        return (
+          <li key={r.cle}>
+            <ChoixRemarque r={r} />
+            <span className="not-italic text-[12px] font-bold text-primary">Retours de mes fournées : </span>
+            {quantite && <span className="not-italic font-normal text-primary">{quantite}</span>}
+            {quantite && r.texte && ' — '}
+            {r.texte && <span className="whitespace-pre-line">{r.texte}</span>}
+            {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}</span>}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

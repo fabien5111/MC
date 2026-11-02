@@ -44,6 +44,7 @@ import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredie
 import { RecipeStep } from '@/components/recipe/RecipeStep';
 import type { IngredientView, RecipeStepView } from '@/lib/recipes';
 import { StepEditorCard } from '@/components/projets/StepEditorCard';
+import { RetoursEtape, RetoursIngredientNom, RetoursSousEtape, useEtapeRetours } from '@/components/batch/DerniereFois';
 import { TagFilter, type TagOption } from '@/components/projets/TagFilter';
 import { televerserImage } from '@/lib/storage-client';
 import { autoGrow, useAutoGrowOnResize } from '@/lib/auto-grow';
@@ -906,7 +907,7 @@ export function ComponentResolver({
 
             <div className="space-y-12">
               {draft.map((st, i) => (
-                <StepEditorCard
+                <StepEditorCardAvecRetours
                   key={i}
                   step={st}
                   index={i}
@@ -1025,5 +1026,24 @@ export function ComponentResolver({
         )}
       </div>
     </div>
+  );
+}
+
+// Carte d'étape de la fenêtre d'édition, avec les retours des fournées
+// d'essai du projet (JEP-381) sous le titre, chaque ingrédient et chaque
+// sous-étape — lecture seule, épingle comprise. Rien hors de la page projet
+// (pas de `LeconsProvider`) ni sans fournée annotée. Pas de bouton
+// d'ajustement : une quantité retouchée ici sort la ligne du recalcul, la
+// préparation s'ajuste par son volet « Ajustement des quantités ».
+function StepEditorCardAvecRetours(props: ComponentProps<typeof StepEditorCard>) {
+  const id = useEtapeRetours(props.step.etape_id, props.step.title);
+  if (id == null) return <StepEditorCard {...props} />;
+  return (
+    <StepEditorCard
+      {...props}
+      retoursEtape={<RetoursEtape stepId={id} />}
+      retoursIngredient={(g) => <RetoursIngredientNom stepId={id} nom={g.name} unite={g.unit} />}
+      retoursSousEtape={(t) => <RetoursSousEtape stepId={id} texte={t} />}
+    />
   );
 }

@@ -188,6 +188,7 @@ export async function readComponentDraft(
       photos: [...(d?.step_photos ?? [])]
         .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
         .map((p) => ({ url: p.url, original_url: p.original_url, ai_retouched: p.ai_retouched })),
+      etape_id: s.id,
     };
   });
 }

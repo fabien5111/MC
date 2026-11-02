@@ -451,6 +451,10 @@ export type ComponentStepDraft = {
   // relues par `readComponentDraft` pour qu'une modification du composant
   // ne les efface pas (ses étapes sont supprimées puis réécrites).
   photos?: ComponentStepPhoto[];
+  // Étape du projet relue par `readComponentDraft` : sert à rattacher les
+  // retours des fournées d'essai dans la fenêtre d'édition (JEP-381).
+  // Jamais écrit (les étapes sont supprimées puis réinsérées).
+  etape_id?: number | null;
 };
 
 // Recette source telle que la lit le sélecteur, réduite à ce que la copie
