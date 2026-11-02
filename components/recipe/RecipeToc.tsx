@@ -114,6 +114,9 @@ type Props = {
   // Appelé avec l'index de l'étape visée avant le défilement, pour la déplier
   // si elle est repliée.
   onNavigateToStep?: (index: number) => void;
+  // Idem pour une entrée de section (hors étape) : permet de rouvrir un bloc
+  // replié avant le défilement.
+  onNavigateToSection?: (id: string) => void;
   // Ancre de l'entrée d'étape numéro `index`. Par défaut `stepAnchorId` (fiche,
   // éditeur) ; la fournée n'a pas ces ancres — ses blocs portent `etape-<id>`
   // (Préparer) ou `sec-jalon-<n>` (Pâtisser) — et nomme les siennes.
@@ -137,6 +140,7 @@ export function RecipeToc({
   sections,
   steps,
   onNavigateToStep,
+  onNavigateToSection,
   anchorFor = stepAnchorId,
   actions,
   mobile = 'none',
@@ -163,8 +167,9 @@ export function RecipeToc({
     (id: string) => {
       const item = items.find((it) => it.id === id);
       if (item?.stepIndex !== undefined) onNavigateToStep?.(item.stepIndex);
+      else onNavigateToSection?.(id);
     },
-    [items, onNavigateToStep],
+    [items, onNavigateToStep, onNavigateToSection],
   );
 
   const { activeId, pinned, typing, togglePin, navigate, refresh } = useToc(ids, onBeforeNavigate);

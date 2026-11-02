@@ -558,13 +558,17 @@ export function ProjectV2({
   // ce que le membre vient d'ouvrir). « Reste à faire » : replié une fois tout
   // fait (seule la jauge reste). « Votre intention » : replié dès qu'elle est
   // écrite. « Structure » : repliée quand toutes les recettes sont choisies.
-  const repliesInitiaux = useRef<{ todo: boolean; intention: boolean; structure: boolean } | null>(null);
+  const repliesInitiaux = useRef<{ todo: boolean; intention: boolean; structure: boolean; ingredients: boolean; organisation: boolean } | null>(null);
   if (repliesInitiaux.current == null) {
     const recettes = todo.filter((i) => i.id === 'preparations' || i.id.startsWith('recette-'));
     repliesInitiaux.current = {
       todo: todo.length > 0 && todo.every((i) => i.etat === 'fait'),
       intention: !!project.intent?.trim(),
       structure: recettes.length > 1 && recettes.every((i) => i.etat === 'fait'),
+      // Consultation : la liste totale des ingrédients et le bloc ustensiles /
+      // difficulté / temps sont repliés par défaut.
+      ingredients: true,
+      organisation: true,
     };
   }
   const replies = repliesInitiaux.current;
@@ -707,7 +711,17 @@ export function ProjectV2({
       titre={BLOCS[key].titre}
       apercu={BLOCS[key].apercu}
       state={states[key]}
-      replie={key === 'intention' ? replies.intention : key === 'structure' ? replies.structure : undefined}
+      replie={
+        key === 'intention'
+          ? replies.intention
+          : key === 'structure'
+            ? replies.structure
+            : key === 'ingredients'
+              ? replies.ingredients
+              : key === 'organisation'
+                ? replies.organisation
+                : undefined
+      }
     >
       {children}
     </ProjectV2Block>
@@ -790,6 +804,12 @@ export function ProjectV2({
           for (let d = document.getElementById(stepAnchorId(i))?.closest('details') ?? null; d; d = d.parentElement?.closest('details') ?? null) {
             d.open = true;
           }
+        }}
+        // Un bloc replié (intention, structure, ingrédients, ustensiles et temps)
+        // se rouvre avant le défilement, sinon le clic ne montre que son titre.
+        onNavigateToSection={(id) => {
+          const el = document.getElementById(id);
+          el?.querySelector<HTMLDetailsElement>(':scope > details')?.setAttribute('open', '');
         }}
       />
 
