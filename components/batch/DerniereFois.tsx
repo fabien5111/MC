@@ -581,31 +581,31 @@ export function NombreRetours({
   lignes,
 }: {
   stepIds: number[];
-  // Lignes actuellement affichées de chaque étape : sert à repérer les retours
-  // dont la ligne a été retouchée ou supprimée depuis la fournée (comptés, mais
-  // posés sous aucune ligne).
+  // Lignes actuellement affichées de chaque étape : sert à écarter du compte les
+  // retours dont la ligne a été retouchée ou supprimée depuis la fournée.
   lignes?: { id: number; sousEtapes: string[]; ingredientIds: number[] }[];
 }) {
   const v = useLecons();
   // Une remarque désépinglée reste affichée (picto éteint) jusqu'au rechargement,
   // mais ne compte plus : le nombre annonce ce qui sera rappelé.
-  const comptees = stepIds.flatMap((id) => (v?.lecons.parEtape[id]?.remarques ?? []).filter((r) => !v?.gestion || v.epinglee(r)).map((r) => ({ id, r })));
+  const toutes = stepIds.flatMap((id) => (v?.lecons.parEtape[id]?.remarques ?? []).filter((r) => !v?.gestion || v.epinglee(r)).map((r) => ({ id, r })));
+  // Un retour dont la ligne a été retouchée ou supprimée depuis la fournée n'est
+  // plus compté : il ne se pose sous aucune ligne de l'étape.
+  const comptees = lignes
+    ? toutes.filter(({ id, r }) => {
+        const l = lignes.find((x) => x.id === id);
+        if (!l) return true;
+        if (r.nature === 'sous_etape') return l.sousEtapes.some((t) => remarquesDeSousEtape({ titre: '', remarques: [r] }, t).length);
+        if (r.nature === 'ingredient') return r.ingredientId != null && l.ingredientIds.includes(r.ingredientId);
+        return true;
+      })
+    : toutes;
   const n = comptees.length;
   if (!n) return null;
-  const sansLigne = lignes
-    ? comptees.filter(({ id, r }) => {
-        const l = lignes.find((x) => x.id === id);
-        if (!l) return false;
-        if (r.nature === 'sous_etape') return !l.sousEtapes.some((t) => remarquesDeSousEtape({ titre: '', remarques: [r] }, t).length);
-        if (r.nature === 'ingredient') return r.ingredientId == null || !l.ingredientIds.includes(r.ingredientId);
-        return false;
-      }).length
-    : 0;
   return (
     <span className="text-primary">
       {' '}
       · {n} retour{n > 1 ? 's' : ''} de fournée
-      {sansLigne > 0 && ` (dont ${sansLigne} sur une ligne modifiée ou supprimée)`}
     </span>
   );
 }
