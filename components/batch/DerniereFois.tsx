@@ -576,19 +576,36 @@ export function RetoursEssai({ remarques }: { remarques: Remarque[] }) {
 // En-tête d'un volet d'étapes (mode projet) : combien de retours de fournée
 // portent sur ces étapes. Rien tant qu'il n'y en a pas ; les remarques qui ne
 // s'apparient à aucune étape (bloc de tête) ne sont pas comptées ici.
-export function NombreRetours({ stepIds }: { stepIds: number[] }) {
+export function NombreRetours({
+  stepIds,
+  lignes,
+}: {
+  stepIds: number[];
+  // Lignes actuellement affichées de chaque étape : sert à repérer les retours
+  // dont la ligne a été retouchée ou supprimée depuis la fournée (comptés, mais
+  // posés sous aucune ligne).
+  lignes?: { id: number; sousEtapes: string[]; ingredientIds: number[] }[];
+}) {
   const v = useLecons();
   // Une remarque désépinglée reste affichée (picto éteint) jusqu'au rechargement,
   // mais ne compte plus : le nombre annonce ce qui sera rappelé.
-  const n = stepIds.reduce(
-    (t, id) => t + (v?.lecons.parEtape[id]?.remarques.filter((r) => !v.gestion || v.epinglee(r)).length ?? 0),
-    0,
-  );
+  const comptees = stepIds.flatMap((id) => (v?.lecons.parEtape[id]?.remarques ?? []).filter((r) => !v?.gestion || v.epinglee(r)).map((r) => ({ id, r })));
+  const n = comptees.length;
   if (!n) return null;
+  const sansLigne = lignes
+    ? comptees.filter(({ id, r }) => {
+        const l = lignes.find((x) => x.id === id);
+        if (!l) return false;
+        if (r.nature === 'sous_etape') return !l.sousEtapes.some((t) => remarquesDeSousEtape({ titre: '', remarques: [r] }, t).length);
+        if (r.nature === 'ingredient') return r.ingredientId == null || !l.ingredientIds.includes(r.ingredientId);
+        return false;
+      }).length
+    : 0;
   return (
     <span className="text-primary">
       {' '}
       · {n} retour{n > 1 ? 's' : ''} de fournée
+      {sansLigne > 0 && ` (dont ${sansLigne} sur une ligne modifiée ou supprimée)`}
     </span>
   );
 }

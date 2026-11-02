@@ -1058,7 +1058,14 @@ export function ProjectV2({
                           <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
                             Étapes · {own.length}
                             {verifDe(c.id, 'etapes')?.etat === 'fait' && <span className="text-green-700"> · relues</span>}
-                            <NombreRetours stepIds={own.map((st) => st.id)} />
+                            <NombreRetours
+                              stepIds={own.map((st) => st.id)}
+                              lignes={own.map((st) => ({
+                                id: st.id,
+                                sousEtapes: st.sous_etapes ?? [],
+                                ingredientIds: (groupByOrder.get(st.order_index ?? -1)?.ingredients ?? []).map((it) => it.id),
+                              }))}
+                            />
                           </span>
                           <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                         </summary>
