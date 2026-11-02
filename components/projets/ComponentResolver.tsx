@@ -44,6 +44,7 @@ import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredie
 import { RecipeStep } from '@/components/recipe/RecipeStep';
 import type { IngredientView, RecipeStepView } from '@/lib/recipes';
 import { StepEditorCard } from '@/components/projets/StepEditorCard';
+import { apparier } from '@/lib/batch-lecons';
 import { RetoursEtape, RetoursIngredientNom, RetoursSousEtape, useEtapeRetours } from '@/components/batch/DerniereFois';
 import { TagFilter, type TagOption } from '@/components/projets/TagFilter';
 import { televerserImage } from '@/lib/storage-client';
@@ -908,7 +909,7 @@ export function ComponentResolver({
             <div className="space-y-12">
               {draft.map((st, i) => (
                 <StepEditorCardAvecRetours
-                  key={i}
+                  key={st.etape_id != null ? `e${st.etape_id}` : i}
                   step={st}
                   index={i}
                   count={draft.length}
@@ -1037,13 +1038,33 @@ export function ComponentResolver({
 // préparation s'ajuste par son volet « Ajustement des quantités ».
 function StepEditorCardAvecRetours(props: ComponentProps<typeof StepEditorCard>) {
   const id = useEtapeRetours(props.step.etape_id, props.step.title);
+  // Ce que l'étape contenait à l'ouverture (la carte est montée une fois par
+  // étape enregistrée, `key` = son id) : les retours restent sous leur ligne
+  // pendant qu'on la corrige, au lieu de s'effacer à la première lettre.
+  const origine = useRef<{ sous: string[]; ings: { nom: string; unite: string | null }[] } | null>(null);
+  if (origine.current === null) {
+    origine.current = {
+      sous: props.step.sous_etapes ?? [],
+      ings: props.step.ingredients.map((g) => ({ nom: g.name, unite: g.unit })),
+    };
+  }
+  const o = origine.current;
   if (id == null) return <StepEditorCard {...props} />;
+  const sousCourantes = props.step.sous_etapes ?? [];
+  const lienSous = apparier(sousCourantes, o.sous);
+  const lienIngs = apparier(
+    props.step.ingredients.map((g) => `${g.name}|${g.unit ?? ''}`),
+    o.ings.map((g) => `${g.nom}|${g.unite ?? ''}`),
+  );
   return (
     <StepEditorCard
       {...props}
       retoursEtape={<RetoursEtape stepId={id} />}
-      retoursIngredient={(g) => <RetoursIngredientNom stepId={id} nom={g.name} unite={g.unit} />}
-      retoursSousEtape={(t) => <RetoursSousEtape stepId={id} texte={t} />}
+      retoursIngredient={(g, j) => {
+        const a = lienIngs[j] != null ? o.ings[lienIngs[j] as number] : null;
+        return <RetoursIngredientNom stepId={id} nom={a ? a.nom : g.name} unite={a ? a.unite : g.unit} />;
+      }}
+      retoursSousEtape={(t, k) => <RetoursSousEtape stepId={id} texte={lienSous[k] != null ? o.sous[lienSous[k] as number] : t} />}
     />
   );
 }

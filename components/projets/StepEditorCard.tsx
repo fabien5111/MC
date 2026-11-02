@@ -93,8 +93,8 @@ export function StepEditorCard({
   // Retours des fournées d'essai (JEP-381), en lecture seule : sous le titre,
   // sous chaque ingrédient et sous chaque sous-étape. Absents : rien.
   retoursEtape?: React.ReactNode;
-  retoursIngredient?: (g: Ingredient) => React.ReactNode;
-  retoursSousEtape?: (texte: string) => React.ReactNode;
+  retoursIngredient?: (g: Ingredient, j: number) => React.ReactNode;
+  retoursSousEtape?: (texte: string, k: number) => React.ReactNode;
 }) {
   const photos = step.photos ?? [];
   const sous = step.sous_etapes;
@@ -458,7 +458,7 @@ export function StepEditorCard({
                     <span className="material-symbols-outlined text-[18px]">delete</span>
                   </button>
                 </div>
-                {retoursIngredient?.(g)}
+                {retoursIngredient?.(g, j)}
               </div>
             );
           })}
@@ -579,7 +579,7 @@ export function StepEditorCard({
                   <span className="material-symbols-outlined text-[18px]">delete</span>
                 </button>
               </div>
-              {retoursSousEtape?.(t)}
+              {retoursSousEtape?.(t, k)}
               </div>
             ))}
             <div className="flex flex-wrap items-center gap-6">

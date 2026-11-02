@@ -407,6 +407,32 @@ export function leconsPrecedentes(remarques: Remarque[], courantes: EtapeCourant
   return { parEtape, autres, generales };
 }
 
+// Fenêtre d'édition d'une préparation : rattache chaque ligne COURANTE (sous-
+// étape, ingrédient) à la ligne d'ORIGINE qu'elle était à l'ouverture, pour que
+// son retour de fournée reste dessous pendant qu'on la corrige — rattaché au
+// texte courant, il disparaissait dès la première lettre tapée. Les lignes
+// identiques d'abord (dans l'ordre), puis ce qui reste d'un côté et de l'autre,
+// pris dans l'ordre : une ligne retouchée prend la place de son original. Une
+// ligne ajoutée (plus de lignes courantes que d'origines) n'a pas d'origine.
+// Retour : pour chaque ligne courante, l'indice de son origine, ou `null`.
+export function apparier(courantes: string[], origines: string[]): (number | null)[] {
+  const res: (number | null)[] = courantes.map(() => null);
+  const prises = new Set<number>();
+  courantes.forEach((c, i) => {
+    const k = origines.findIndex((o, j) => !prises.has(j) && o === c);
+    if (k >= 0) {
+      res[i] = k;
+      prises.add(k);
+    }
+  });
+  const libres = origines.map((_, j) => j).filter((j) => !prises.has(j));
+  let n = 0;
+  courantes.forEach((_, i) => {
+    if (res[i] == null && n < libres.length) res[i] = libres[n++];
+  });
+  return res;
+}
+
 // Éditeur de recette : l'écart de quantité d'un ingrédient, avec le coefficient
 // de la fournée et la quantité ramenée à un coefficient 1.
 //   « ×1,5 : 180 g utilisés (120 g à coefficient 1) »

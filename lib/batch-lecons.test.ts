@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   LECON_MAX,
+  apparier,
   arrondiQuantite,
   cleRemarque,
   coefficientEcart,
@@ -312,5 +313,24 @@ describe('quantité obtenue (écart de production)', () => {
     expect(arrondiQuantite(42.17, 'g')).toBe(42);
     expect(arrondiQuantite(4.26, 'g')).toBe(4.3);
     expect(arrondiQuantite(1.666, 'unité(s)')).toBe(1.67);
+  });
+});
+
+describe('apparier (fenêtre d’édition)', () => {
+  it('une ligne retouchée garde son origine', () => {
+    expect(apparier(['a', 'bX', 'c'], ['a', 'b', 'c'])).toEqual([0, 1, 2]);
+  });
+  it('une ligne supprimée ne décale pas les autres', () => {
+    expect(apparier(['a', 'c'], ['a', 'b', 'c'])).toEqual([0, 2]);
+  });
+  it('une ligne ajoutée n’a pas d’origine', () => {
+    expect(apparier(['a', 'b', 'neuf'], ['a', 'b'])).toEqual([0, 1, null]);
+  });
+  it('un déplacement garde chaque origine', () => {
+    expect(apparier(['c', 'a', 'b'], ['a', 'b', 'c'])).toEqual([2, 0, 1]);
+  });
+  it('vide', () => {
+    expect(apparier([], ['a'])).toEqual([]);
+    expect(apparier(['a'], [])).toEqual([null]);
   });
 });
