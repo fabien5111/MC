@@ -16,7 +16,8 @@
 import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { LeconsProvider, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
-import type { DecisionRemarque } from '@/lib/batch-lecons';
+import { arrondiQuantite, libelleEcartProduit, nombre, type DecisionRemarque, type Remarque } from '@/lib/batch-lecons';
+import { fmtNum } from '@/lib/recipe-plan';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -1221,6 +1222,34 @@ export function CreerForm({
   // des « étapes courantes » (id = rang + 1 ; ingrédient = (rang + 1) × 1000 +
   // rang dans l'étape), appariés par `source_step_id` puis par titre.
   const idEtapeRetours = (si: number) => si + 1;
+  // Quantité obtenue en fournée (« 50 g en trop ») : le coefficient calculé
+  // par `RetoursEtape` est appliqué aux quantités chiffrées de l'étape, dans
+  // le formulaire seulement — rien n'est écrit avant « Enregistrer ». Les
+  // quantités non chiffrées (« 1 pincée ») restent telles quelles.
+  const ajusterEtape = async (si: number, coef: number, r: Remarque) => {
+    const st = steps[si];
+    if (!st) return;
+    const chiffrees = st.ings.filter((g) => nombre(g.qty) != null).length;
+    if (!chiffrees) return;
+    const ok = await dialog.confirm(
+      `Fournée : ${libelleEcartProduit(r.ecartProduit) ?? 'écart'}.\n\nMultiplier les ${chiffrees} quantité${chiffrees > 1 ? 's' : ''} de cette étape par ${fmtNum(coef)} ? La modification n’est enregistrée qu’avec la recette.`,
+      { okLabel: 'Ajuster', cancelLabel: 'Annuler' },
+    );
+    if (!ok) return;
+    setSteps((s) =>
+      s.map((x, k) =>
+        k !== si
+          ? x
+          : {
+              ...x,
+              ings: x.ings.map((g) => {
+                const q = nombre(g.qty);
+                return q == null ? g : { ...g, qty: fmtNum(arrondiQuantite(q * coef, g.unit)) };
+              }),
+            },
+      ),
+    );
+  };
   const idIngredientRetours = (si: number, ii: number) => (si + 1) * 1000 + ii;
   const signatureRetours = steps.map((st) => `${st.srcId ?? ''}|${st.title}|${st.ings.map((g) => `${g.name}/${g.unit}`).join(',')}`).join('§');
   const { courantesRetours, ingredientsRetours } = useMemo(
@@ -1894,7 +1923,14 @@ export function CreerForm({
 
               {!st.collapsed && (
                 <div className="space-y-8 mt-8">
-                  <RetoursEtape stepId={idEtapeRetours(si)} />
+                  <RetoursEtape
+                    stepId={idEtapeRetours(si)}
+                    ajustement={{
+                      lignes: st.ings.map((g) => ({ quantity: g.qty, unit: g.unit })),
+                      libelle: 'Ajuster les ingrédients de cette étape',
+                      onAjuster: (coef, r) => void ajusterEtape(si, coef, r),
+                    }}
+                  />
                   {si === 0 && <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} />}
                   <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
                     <label className="font-label-md text-label-md text-outline uppercase">Ajustement des quantités de cette étape</label>

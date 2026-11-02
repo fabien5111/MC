@@ -7,6 +7,7 @@ import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import {
   ecartQuantite,
+  libelleEcartProduit,
   lireLecon,
   remarquesDeFournee,
   type DecisionRemarque,
@@ -18,11 +19,12 @@ import {
 
 // `*` sur `batches` (et non une liste de colonnes) : `lecon` est posée à la
 // main (DDL par psql) — la nommer ferait échouer la lecture avant la
-// migration. Même doctrine que `adjust_ai`.
+// migration. Même doctrine que `adjust_ai`. Idem pour `batch_steps` :
+// `ecart_produit_g` (quantité obtenue) est posée de la même façon.
 const REFERENCE_SELECT = `
   *,
-  batch_steps(id, source_step_id, title, order_index, commentaire, batch_substeps(id, texte, commentaire, order_index)),
-  batch_ingredients(id, batch_step_id, name, unit, quantity, real_quantity, commentaire, order_index)
+  batch_steps(*, batch_substeps(id, texte, commentaire, order_index)),
+  batch_ingredients(id, batch_step_id, name, unit, quantity, real_quantity, commentaire, order_index, removed)
 `;
 
 type Brut = {
@@ -121,7 +123,7 @@ async function rafraichir(supabase: Supa, decisions: DecisionRemarque[], refId: 
   if (!aLire.length) return decisions;
   const ids = (n: DecisionRemarque['nature'][]) => [...new Set(aLire.filter((d) => n.includes(d.nature)).map((d) => d.ligne_id))];
   const [etapes, sousEtapes, ingredients, fournees] = await Promise.all([
-    ids(['etape']).length ? supabase.from('batch_steps').select('id, commentaire').in('id', ids(['etape'])) : null,
+    ids(['etape']).length ? supabase.from('batch_steps').select('*').in('id', ids(['etape'])) : null,
     ids(['sous_etape']).length ? supabase.from('batch_substeps').select('id, commentaire').in('id', ids(['sous_etape'])) : null,
     ids(['ingredient']).length
       ? supabase.from('batch_ingredients').select('id, commentaire, quantity, real_quantity, unit').in('id', ids(['ingredient']))
@@ -129,7 +131,9 @@ async function rafraichir(supabase: Supa, decisions: DecisionRemarque[], refId: 
     ids(['global', 'lecon']).length ? supabase.from('batches').select('*').in('id', ids(['global', 'lecon'])) : null,
   ]);
   const vivant = new Map<string, { texte: string | null; ecart?: string | null }>();
-  for (const r of (etapes?.data ?? []) as { id: number; commentaire: string | null }[]) vivant.set(`etape:${r.id}`, { texte: r.commentaire });
+  for (const r of (etapes?.data ?? []) as { id: number; commentaire: string | null; ecart_produit_g?: number | null }[]) {
+    vivant.set(`etape:${r.id}`, { texte: r.commentaire, ecart: libelleEcartProduit(r.ecart_produit_g) });
+  }
   for (const r of (sousEtapes?.data ?? []) as { id: number; commentaire: string | null }[]) vivant.set(`sous_etape:${r.id}`, { texte: r.commentaire });
   for (const r of (ingredients?.data ?? []) as { id: number; commentaire: string | null; quantity: number | null; real_quantity: number | null; unit: string | null }[]) {
     vivant.set(`ingredient:${r.id}`, { texte: r.commentaire, ecart: ecartQuantite(r) });

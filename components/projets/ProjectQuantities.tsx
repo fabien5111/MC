@@ -141,6 +141,7 @@ export function QuantitiesStep({
   componentId,
   pied,
   quotaAjustementIA = null,
+  suggestion = null,
 }: {
   project: ProjectFull;
   targetForme: string | null;
@@ -159,6 +160,11 @@ export function QuantitiesStep({
   // avec l'IA » une fois le quota atteint. `null` = pas de droit, ou lecture
   // absente : rien n'est affiché. La vraie garde reste `mc_consume` côté route.
   quotaAjustementIA?: { allowed: boolean; limit?: number; usage?: number } | null;
+  // v2 : coefficient proposé depuis l'extérieur (quantité obtenue d'une
+  // fournée d'essai, « 50 g en trop ») pour la préparation `componentId`.
+  // Prérempli comme une saisie à la main (perte à 0 % : l'écart mesuré
+  // l'inclut déjà), jamais appliqué tout seul. `n` change à chaque demande.
+  suggestion?: { factor: number; reason: string; n: number } | null;
   // Format visé, en clair (« Cercle Ø 20 × 4 cm ») : sert à décrire la cible
   // à l'IA quand la géométrie ne suffit pas.
   formatLabel: string;
@@ -198,6 +204,16 @@ export function QuantitiesStep({
     const v = parseFloat((pertes[id] ?? '10').replace(',', '.'));
     return isFinite(v) && v >= 0 ? v : 0;
   };
+
+  useEffect(() => {
+    if (!suggestion || componentId == null) return;
+    const prop: ScaleProposal = { factor: suggestion.factor, moldCoefs: null, reason: suggestion.reason };
+    setSaisie((p) => ({ ...p, [componentId]: fr(suggestion.factor) }));
+    setBasesSansPerte((p) => ({ ...p, [componentId]: prop }));
+    setPropositions((p) => ({ ...p, [componentId]: prop }));
+    setPertes((p) => ({ ...p, [componentId]: '0' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestion?.n]);
 
   const cible = targetFormat(project, targetForme);
   // Empreinte du format enregistré, posée à chaque ajustement appliqué.

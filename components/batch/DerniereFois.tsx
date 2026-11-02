@@ -15,9 +15,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useDialog } from '@/components/Dialog';
 import { useReadOnly } from '@/components/ImpersonationProvider';
 import { enregistrerChoix } from '@/lib/batch-lecons-client';
+import { fmtNum } from '@/lib/recipe-plan';
 import {
   cleRemarque,
+  coefficientEcart,
   dateCourte,
+  masseGrammes,
   leconsPrecedentes,
   libelleCoefficient,
   ligneDecision,
@@ -192,11 +195,18 @@ function RemarqueLigne({ r, sansDate = false }: { r: Remarque; sansDate?: boolea
           {r.nature === 'ingredient' && r.ecart ? ` : ${r.ecart}` : ''}
         </span>
       )}
-      {(r.texte || d || v?.gestion) && (
+      {(r.texte || r.ecart || d || v?.gestion) && (
         <span>
           <ChoixRemarque r={r} />
           {r.nature === 'lecon' && <span className="not-italic font-normal text-primary">À retenir : </span>}
           {r.nature === 'global' && <span className="not-italic font-normal text-primary">Commentaire global : </span>}
+          {r.nature === 'etape' && r.ecart && (
+            <>
+              <span className="not-italic font-normal text-primary">Quantité obtenue : </span>
+              <span>{r.ecart}</span>
+              {r.texte && ' — '}
+            </>
+          )}
           {r.texte && (r.nature === 'etape' || r.nature === 'sous_etape' || r.nature === 'ingredient') && (
             <span className="not-italic font-normal text-primary">Mon commentaire : </span>
           )}
@@ -379,8 +389,56 @@ export function RetoursIngredient({ stepId, ingredientId, enListe = false }: { s
   );
 }
 
-// Sous le titre d'une étape de l'éditeur : son commentaire de fournée.
-export function RetoursEtape({ stepId }: { stepId: number }) {
+// Ajustement proposé à partir d'une quantité obtenue (« 50 g en trop ») :
+// l'écran qui monte `RetoursEtape` donne les lignes ACTUELLES de l'étape et
+// ce que fait le bouton (éditeur : réécrire les quantités du formulaire ;
+// mode projet : préremplir le coefficient de la préparation).
+export type AjustementEcart = {
+  lignes: { quantity: string | number | null; unit: string | null }[];
+  libelle: string;
+  onAjuster: (coef: number, r: Remarque) => void;
+  // Raison pour laquelle le geste n'est pas proposé ici (le coefficient est
+  // alors seulement indiqué).
+  indisponible?: string | null;
+};
+
+function PropositionEcart({ r, ajustement }: { r: Remarque; ajustement: AjustementEcart }) {
+  const masse = masseGrammes(ajustement.lignes);
+  const coef = coefficientEcart(r, masse.grammes);
+  if (coef == null) return null;
+  if (Math.abs(coef - 1) < 0.005) {
+    return <p className="not-italic text-[12px] text-on-surface-variant">Les quantités actuelles tiennent déjà compte de cet écart.</p>;
+  }
+  const horsMasse = Math.max(r.nonPesees ?? 0, masse.nonPesees);
+  return (
+    <div className="not-italic mt-1 flex flex-col gap-1">
+      {ajustement.indisponible ? (
+        <p className="text-[12px] text-on-surface-variant">
+          Soit ×{fmtNum(coef)} sur les ingrédients de cette étape. {ajustement.indisponible}
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={() => ajustement.onAjuster(coef, r)}
+          className="self-start inline-flex items-center gap-1 rounded border border-primary px-2 py-1 text-[12px] font-label-md text-primary hover:bg-primary/5"
+        >
+          <span className="material-symbols-outlined text-[16px]">balance</span>
+          {ajustement.libelle} (×{fmtNum(coef)})
+        </button>
+      )}
+      {horsMasse > 0 && (
+        <p className="text-[11px] text-outline">
+          Calcul sur les seuls ingrédients en grammes — {horsMasse} ligne{horsMasse > 1 ? 's' : ''} dans une autre unité, ajustée
+          {horsMasse > 1 ? 's' : ''} au même coefficient.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Sous le titre d'une étape de l'éditeur : son commentaire de fournée, et la
+// quantité obtenue avec l'ajustement qu'elle appelle.
+export function RetoursEtape({ stepId, ajustement }: { stepId: number; ajustement?: AjustementEcart }) {
   const v = useLecons();
   const rs = (v?.lecons.parEtape[stepId]?.remarques ?? []).filter((r) => r.nature === 'etape');
   if (!rs.length) return null;
@@ -390,8 +448,16 @@ export function RetoursEtape({ stepId }: { stepId: number }) {
         <li key={r.cle}>
           <ChoixRemarque r={r} />
           <span className="not-italic text-[12px] font-bold text-primary">Retours de mes fournées : </span>
+          {r.ecart && (
+            <>
+              <span className="not-italic font-normal">Quantité obtenue : </span>
+              <span>{r.ecart}</span>
+              {r.texte && ' — '}
+            </>
+          )}
           <span className="whitespace-pre-line">{r.texte}</span>
           {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}</span>}
+          {ajustement && <PropositionEcart r={r} ajustement={ajustement} />}
         </li>
       ))}
     </ul>

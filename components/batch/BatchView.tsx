@@ -53,7 +53,7 @@ import type { AllergenRef } from '@/lib/recipes';
 import { trackEvent } from '@/lib/analytics';
 import { ARacheterButton } from '@/components/batch/ARacheterButton';
 import { ChoixRemarque, DerniereFoisEtape, LeconsProvider, RetoursAuteur, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
-import { cleRemarque, lireLecon, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
+import { cleRemarque, libelleEcartProduit, lireLecon, normaliserEcartProduit, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import { useDemanderLecon } from '@/lib/batch-lecons-client';
 import {
@@ -1674,6 +1674,15 @@ function PatisserView({
     }, 800);
   }
 
+  // Quantité obtenue à l'étape (« 50 g en trop »), en grammes signés :
+  // colonne posée à la main (DDL par psql), absente des types générés.
+  async function onStepEcart(id: number, value: number | null) {
+    if (readOnly) return;
+    setBatch((prev) => ({ ...prev, batch_steps: prev.batch_steps.map((s) => (s.id !== id ? s : { ...s, ecart_produit_g: value })) }));
+    const { error } = await createClient().from('batch_steps').update({ ecart_produit_g: value } as never).eq('id', id);
+    if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
+  }
+
   async function updateSubstep(id: number, patch: Partial<Pick<BatchSubstepRow, 'done' | 'commentaire'>>) {
     if (readOnly) return;
     setBatch((prev) => ({
@@ -1847,6 +1856,7 @@ function PatisserView({
           onIngReal={(id, value) => updateIngredient(id, { real_quantity: numify(value) })}
           onIngComment={onIngComment}
           onStepComment={onStepComment}
+          onStepEcart={onStepEcart}
           peutRacheter={peutRacheter}
         />
       </div>
@@ -1872,6 +1882,7 @@ function PatisserBody({
   onIngReal,
   onIngComment,
   onStepComment,
+  onStepEcart,
   peutRacheter,
 }: {
   batch: BatchFull;
@@ -1889,6 +1900,7 @@ function PatisserBody({
   onIngReal: (id: number, value: string) => void;
   onIngComment: (id: number, value: string) => void;
   onStepComment: (id: number, value: string) => void;
+  onStepEcart: (id: number, value: number | null) => void;
   peutRacheter: boolean;
 }) {
   const all = jalons.flatMap((j) => j.steps);
@@ -2018,6 +2030,7 @@ function PatisserBody({
                     onIngReal={onIngReal}
                     onIngComment={onIngComment}
                     onStepComment={onStepComment}
+                    onStepEcart={onStepEcart}
                     peutRacheter={peutRacheter}
                   />
                 );
@@ -2045,6 +2058,7 @@ function StepCookCard({
   onIngReal,
   onIngComment,
   onStepComment,
+  onStepEcart,
   peutRacheter,
 }: {
   step: BatchStepRow & { batch_substeps: BatchSubstepRow[] };
@@ -2062,6 +2076,7 @@ function StepCookCard({
   onIngReal: (id: number, value: string) => void;
   onIngComment: (id: number, value: string) => void;
   onStepComment: (id: number, value: string) => void;
+  onStepEcart: (id: number, value: number | null) => void;
   peutRacheter: boolean;
 }) {
   // Repliée par défaut : le mode Pâtisser sert à avancer étape par étape, et
@@ -2371,8 +2386,68 @@ function StepCookCard({
             s.commentaire ? 'border-green-700 bg-green-50' : 'border-outline-variant bg-surface-container-low'
           }`}
         />
+        {/* Colonne absente (migration pas jouée) : le `*` ne la renvoie pas,
+            le champ n'est pas proposé. */}
+        {'ecart_produit_g' in s && (
+          <EcartProduitChamp
+            valeur={(s as { ecart_produit_g?: number | null }).ecart_produit_g ?? null}
+            disabled={readOnly}
+            onChange={(v) => onStepEcart(s.id, v)}
+          />
+        )}
       </div>
         </div>
+    </div>
+  );
+}
+
+// « Quantité obtenue » d'une étape : ce qu'elle a produit de trop ou de
+// moins que nécessaire, en grammes. Un nombre et non une phrase : l'éditeur de
+// la recette (et le mode projet) en tire un coefficient pour les ingrédients
+// de l'étape. Écrit à la sortie du champ (ou au changement de sens).
+function EcartProduitChamp({ valeur, disabled, onChange }: { valeur: number | null; disabled: boolean; onChange: (v: number | null) => void }) {
+  const [grammes, setGrammes] = useState(valeur ? String(Math.abs(valeur)) : '');
+  const [sens, setSens] = useState<'trop' | 'manque'>(valeur != null && valeur < 0 ? 'manque' : 'trop');
+  useEffect(() => {
+    setGrammes(valeur ? String(Math.abs(valeur)) : '');
+    if (valeur) setSens(valeur < 0 ? 'manque' : 'trop');
+  }, [valeur]);
+  const ecrire = (g: string, sn: 'trop' | 'manque') => {
+    const v = normaliserEcartProduit(g, sn);
+    if (v !== valeur) onChange(v);
+  };
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+      <label className="font-label-md text-[12px] uppercase tracking-widest text-outline" title="Ce que l’étape a produit de trop ou de moins que nécessaire : sert à ajuster les ingrédients de l’étape dans la recette.">
+        Quantité obtenue
+      </label>
+      <input
+        inputMode="decimal"
+        disabled={disabled}
+        value={grammes}
+        placeholder="—"
+        onChange={(e) => setGrammes(e.target.value)}
+        onBlur={() => ecrire(grammes, sens)}
+        aria-label="Écart en grammes"
+        className={`w-20 border rounded px-2 py-1 text-right focus:ring-1 focus:ring-primary ${
+          valeur ? 'border-green-700 bg-green-50' : 'border-outline-variant bg-surface-container-low'
+        }`}
+      />
+      <span className="text-on-surface-variant">g</span>
+      <select
+        disabled={disabled}
+        value={sens}
+        onChange={(e) => {
+          const sn = e.target.value as 'trop' | 'manque';
+          setSens(sn);
+          ecrire(grammes, sn);
+        }}
+        className="border border-outline-variant rounded px-2 py-1 bg-surface-container-low"
+      >
+        <option value="trop">en trop</option>
+        <option value="manque">manquants</option>
+      </select>
+      <span className="text-[12px] text-outline">par rapport à ce qu’il fallait</span>
     </div>
   );
 }
@@ -2408,12 +2483,13 @@ function SummaryPanel({
       key: s.id,
       titre: s.title,
       texte: s.commentaire,
+      ecart: libelleEcartProduit((s as { ecart_produit_g?: number | null }).ecart_produit_g),
       sous: [...s.batch_substeps]
         .sort((a, b) => a.order_index - b.order_index)
         .filter((su) => su.commentaire?.trim())
         .map((su) => ({ key: su.id, texte: su.texte, commentaire: su.commentaire! })),
     }))
-    .filter((c) => c.texte || c.sous.length > 0);
+    .filter((c) => c.texte || c.ecart || c.sous.length > 0);
 
   // Remarques de CETTE fournée, pour les gestes « garder / écarter » (JEP-381) :
   // elles décident de ce que la prochaine fournée affichera.
@@ -2448,11 +2524,22 @@ function SummaryPanel({
             {comms.map((c) => (
               <li key={c.key}>
                 <p className="font-bold">{c.titre}</p>
-                {c.texte && (
+                {(c.texte || c.ecart) && (
                   <p>
                     {choix('etape', c.key)}
-                    <span className="text-on-surface-variant">Mon commentaire : </span>
-                    {c.texte}
+                    {c.ecart && (
+                      <>
+                        <span className="text-on-surface-variant">Quantité obtenue : </span>
+                        {c.ecart}
+                        {c.texte && ' — '}
+                      </>
+                    )}
+                    {c.texte && (
+                      <>
+                        <span className="text-on-surface-variant">Mon commentaire : </span>
+                        {c.texte}
+                      </>
+                    )}
                   </p>
                 )}
                 {c.sous.length > 0 && (

@@ -34,6 +34,10 @@ export type RefStep = {
   title: string | null;
   order_index: number;
   commentaire: string | null;
+  // Quantité obtenue à cette étape, en grammes, par rapport à ce qu'il
+  // fallait : > 0 = en trop, < 0 = manquante (`batch_steps.ecart_produit_g`,
+  // colonne posée par psql — absente avant la migration : `undefined`).
+  ecart_produit_g?: number | null;
   batch_substeps: RefSubstep[];
 };
 export type RefIngredient = {
@@ -45,6 +49,8 @@ export type RefIngredient = {
   real_quantity: number | null;
   commentaire: string | null;
   order_index: number;
+  // Ligne retirée à la main de la fournée : hors de la masse de l'étape.
+  removed?: boolean;
 };
 export type FourneeReference = {
   id: number;
@@ -93,6 +99,13 @@ export type Remarque = {
   facteur?: number | null;
   prevu?: number | null;
   reel?: number | null;
+  // Étapes seulement : quantité obtenue par rapport à ce qu'il fallait, en
+  // grammes (> 0 en trop, < 0 manquante), masse des ingrédients pesables de
+  // l'étape telle que réalisée (quantité réelle, sinon prévue) et nombre de
+  // lignes non pesables (hors g / kg / mg), qui n'y sont pas comptées.
+  ecartProduit?: number | null;
+  masseFournee?: number | null;
+  nonPesees?: number;
 };
 
 // Ligne de `remarques_gardees` telle que lue en base (texte éventuellement
@@ -133,6 +146,83 @@ export function ecartQuantite(it: Pick<RefIngredient, 'quantity' | 'real_quantit
   return `${fmtNum(it.real_quantity)}${u} utilisés au lieu de ${fmtNum(it.quantity)}${u}`;
 }
 
+// ── Quantité obtenue (écart de production d'une étape) ──────────────────
+// Le membre note en fournée que l'étape a produit « 50 g de trop » : un
+// nombre, pas une phrase, pour que l'éditeur de la recette (et le mode projet)
+// puisse en tirer un coefficient d'ajustement des ingrédients de l'étape.
+
+// Valeur à écrire dans `batch_steps.ecart_produit_g` : grammes signés,
+// arrondis au gramme ; vide, nul ou illisible → `null`.
+export function normaliserEcartProduit(grammes: string, sens: 'trop' | 'manque'): number | null {
+  const v = nombre(grammes);
+  if (v == null || v <= 0) return null;
+  const g = Math.round(v);
+  if (!g) return null;
+  return sens === 'trop' ? g : -g;
+}
+
+// « 50 g en trop » / « 30 g manquants ».
+export function libelleEcartProduit(g: number | null | undefined): string | null {
+  if (g == null || !isFinite(g) || g === 0) return null;
+  const n = fmtNum(Math.abs(g));
+  return g > 0 ? `${n} g en trop` : `${n} g manquant${Math.abs(g) > 1 ? 's' : ''}`;
+}
+
+// Lecture tolérante d'une quantité (« 50,5 », 50.5) ; tout autre texte
+// (« 1 pincée », « 1 + 2 ») est ignoré plutôt que lu à moitié.
+export function nombre(v: string | number | null | undefined): number | null {
+  if (v == null) return null;
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  const s = v.trim();
+  if (!/^\d+([.,]\d+)?$/.test(s)) return null;
+  return parseFloat(s.replace(',', '.'));
+}
+
+const VERS_GRAMMES: Record<string, number> = { g: 1, gr: 1, gramme: 1, grammes: 1, kg: 1000, mg: 0.001 };
+
+// Masse des lignes pesables (g, kg, mg) et nombre de lignes qui ne le sont
+// pas (unités, volumes, quantités non chiffrées) : aucune conversion par
+// masse volumique — les deux côtés d'une comparaison suivent la même règle,
+// c'est ce qui compte pour un rapport.
+export function masseGrammes(lignes: { quantity: string | number | null; unit: string | null }[]): { grammes: number; nonPesees: number } {
+  let grammes = 0;
+  let nonPesees = 0;
+  for (const l of lignes) {
+    const q = nombre(l.quantity);
+    const k = VERS_GRAMMES[uniteCle(l.unit)];
+    if (q == null || q <= 0 || k == null) {
+      if (q != null || texte(typeof l.quantity === 'string' ? l.quantity : null)) nonPesees++;
+      continue;
+    }
+    grammes += q * k;
+  }
+  return { grammes: Math.round(grammes * 100) / 100, nonPesees };
+}
+
+// Coefficient à appliquer aux ingrédients ACTUELS de l'étape pour obtenir ce
+// qu'il fallait : la masse visée est celle de la fournée moins l'écart,
+// ramenée à coefficient 1 (une fournée ×1,5 a produit une fois et demie la
+// recette), puis comparée à la masse actuelle — un calcul en masse absolue,
+// juste même si les quantités ont été retouchées depuis la fournée.
+// `null` : rien à calculer (pas d'écart, masse inconnue, cible nulle).
+export function coefficientEcart(r: Pick<Remarque, 'ecartProduit' | 'masseFournee' | 'facteur'>, masseCourante: number): number | null {
+  if (!r.ecartProduit || !r.masseFournee || r.masseFournee <= 0 || !(masseCourante > 0)) return null;
+  const f = r.facteur && r.facteur > 0 ? r.facteur : 1;
+  const cible = (r.masseFournee - r.ecartProduit) / f;
+  if (!(cible > 0)) return null;
+  const coef = cible / masseCourante;
+  return isFinite(coef) ? Math.round(coef * 1000) / 1000 : null;
+}
+
+// Quantité ajustée, arrondie comme on pèse : au gramme dès 20 g, au
+// dixième en dessous ; deux décimales dans les autres unités.
+export function arrondiQuantite(q: number, unite: string | null): number {
+  const k = VERS_GRAMMES[uniteCle(unite)];
+  if (k === 1 && q >= 20) return Math.round(q);
+  if (k === 1) return Math.round(q * 10) / 10;
+  return Math.round(q * 100) / 100;
+}
+
 const ORDRE_NATURE: Record<NatureRemarque, number> = { lecon: 0, global: 1, etape: 2, sous_etape: 3, ingredient: 4 };
 
 // Toutes les remarques d'une fournée (sans décision).
@@ -147,7 +237,21 @@ export function remarquesDeFournee(ref: FourneeReference): Remarque[] {
   for (const s of steps) {
     const etape = { etapeId: s.id, etapeTitre: texte(s.title), sourceStepId: s.source_step_id, ordre: s.order_index };
     const c = texte(s.commentaire);
-    if (c) out.push({ ...base, ...etape, cle: cleRemarque('etape', s.id), nature: 'etape', ligneId: s.id, texte: c });
+    const ecartProduit = s.ecart_produit_g && isFinite(s.ecart_produit_g) ? s.ecart_produit_g : null;
+    if (c || ecartProduit) {
+      const lignes = ref.batch_ingredients
+        .filter((i) => i.batch_step_id === s.id && !i.removed)
+        .map((i) => ({ quantity: i.real_quantity ?? i.quantity, unit: i.unit }));
+      const m = masseGrammes(lignes);
+      out.push({
+        ...base, ...etape, cle: cleRemarque('etape', s.id), nature: 'etape', ligneId: s.id, texte: c,
+        ecart: libelleEcartProduit(ecartProduit),
+        ecartProduit,
+        masseFournee: m.grammes || null,
+        nonPesees: m.nonPesees,
+        facteur: ref.facteur && ref.facteur > 0 ? ref.facteur : null,
+      });
+    }
     for (const su of [...(s.batch_substeps ?? [])].sort((a, b) => a.order_index - b.order_index)) {
       const cs = texte(su.commentaire);
       if (cs) out.push({ ...base, ...etape, cle: cleRemarque('sous_etape', su.id), nature: 'sous_etape', ligneId: su.id, libelle: su.texte, texte: cs });

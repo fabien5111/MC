@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   LECON_MAX,
+  arrondiQuantite,
   cleRemarque,
+  coefficientEcart,
+  libelleEcartProduit,
+  masseGrammes,
+  normaliserEcartProduit,
   ecartQuantite,
   leconsPrecedentes,
   ligneDecision,
@@ -247,5 +252,65 @@ describe('remarquesDeSousEtape', () => {
     expect(remarquesDeSousEtape(l.parEtape[1], 'CREMER le beurre').map((x) => x.texte)).toEqual(['pas assez']);
     expect(remarquesDeSousEtape(l.parEtape[1], 'Autre')).toEqual([]);
     expect(remarquesDeSousEtape(undefined, 'Crémer')).toEqual([]);
+  });
+});
+
+describe('quantité obtenue (écart de production)', () => {
+  it('normalise la saisie en grammes signés', () => {
+    expect(normaliserEcartProduit('50', 'trop')).toBe(50);
+    expect(normaliserEcartProduit('30,4', 'manque')).toBe(-30);
+    expect(normaliserEcartProduit('', 'trop')).toBeNull();
+    expect(normaliserEcartProduit('0', 'trop')).toBeNull();
+    expect(normaliserEcartProduit('beaucoup', 'trop')).toBeNull();
+  });
+  it('libellé', () => {
+    expect(libelleEcartProduit(50)).toBe('50 g en trop');
+    expect(libelleEcartProduit(-30)).toBe('30 g manquants');
+    expect(libelleEcartProduit(-1)).toBe('1 g manquant');
+    expect(libelleEcartProduit(null)).toBeNull();
+  });
+  it('masse : g, kg, mg comptés, le reste à part', () => {
+    expect(
+      masseGrammes([
+        { quantity: '50,5', unit: 'g' },
+        { quantity: 0.1, unit: 'kg' },
+        { quantity: '2', unit: 'unité(s)' },
+        { quantity: '1 pincée', unit: null },
+        { quantity: null, unit: 'g' },
+      ]),
+    ).toEqual({ grammes: 150.5, nonPesees: 2 });
+  });
+  it('remarque d’étape : écart seul, masse réalisée hors lignes retirées', () => {
+    const r = remarquesDeFournee(
+      ref(
+        [step({ id: 1, title: 'Croustillant', ecart_produit_g: 50 })],
+        [
+          ing({ id: 1, batch_step_id: 1, name: 'Chocolat', quantity: 50.5 }),
+          ing({ id: 2, batch_step_id: 1, name: 'Praliné', quantity: 151.5, real_quantity: 150 }),
+          ing({ id: 3, batch_step_id: 1, name: 'Crêpes', quantity: 101 }),
+          ing({ id: 4, batch_step_id: 1, name: 'Retiré', quantity: 999, removed: true }),
+        ],
+      ),
+    );
+    const e = r.filter((x) => x.nature === 'etape');
+    expect(e).toHaveLength(1);
+    expect(e[0]).toMatchObject({ nature: 'etape', texte: null, ecart: '50 g en trop', ecartProduit: 50, masseFournee: 301.5, nonPesees: 0 });
+  });
+  it('coefficient : masse visée ramenée à ×1, comparée à la masse actuelle', () => {
+    // 303 g réalisés, 50 g de trop : il fallait 253 g.
+    expect(coefficientEcart({ ecartProduit: 50, masseFournee: 303, facteur: null }, 303)).toBe(0.835);
+    // Fournée ×2 : 606 g pour 100 g de trop → 253 g à ×1.
+    expect(coefficientEcart({ ecartProduit: 100, masseFournee: 606, facteur: 2 }, 303)).toBe(0.835);
+    // Quantités déjà retouchées depuis (253 g) : plus rien à corriger.
+    expect(coefficientEcart({ ecartProduit: 50, masseFournee: 303, facteur: 1 }, 253)).toBe(1);
+    // Manquant : on augmente.
+    expect(coefficientEcart({ ecartProduit: -30, masseFournee: 300, facteur: 1 }, 300)).toBe(1.1);
+    expect(coefficientEcart({ ecartProduit: 400, masseFournee: 303, facteur: 1 }, 303)).toBeNull();
+    expect(coefficientEcart({ ecartProduit: 50, masseFournee: null, facteur: 1 }, 303)).toBeNull();
+  });
+  it('arrondi des quantités ajustées', () => {
+    expect(arrondiQuantite(42.17, 'g')).toBe(42);
+    expect(arrondiQuantite(4.26, 'g')).toBe(4.3);
+    expect(arrondiQuantite(1.666, 'unité(s)')).toBe(1.67);
   });
 });

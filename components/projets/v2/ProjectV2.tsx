@@ -66,14 +66,15 @@ import { PlanningTimeline } from '@/components/recipe/PlanningTimeline';
 import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
-import { ProjectTodo } from '@/components/projets/v2/ProjectTodo';
+import { ProjectTodo, allerA } from '@/components/projets/v2/ProjectTodo';
 import { VerifCase } from '@/components/projets/v2/VerifCase';
 import { mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { RecipeStep } from '@/components/recipe/RecipeStep';
-import { LeconsProvider, NombreRetours, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
+import { LeconsProvider, NombreRetours, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape, type AjustementEcart } from '@/components/batch/DerniereFois';
+import { libelleEcartProduit } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import type { Remarque } from '@/lib/batch-lecons';
 import type { ProjectComponent, ProjectFull, ProjectTrial } from '@/lib/projects-data';
@@ -180,6 +181,9 @@ export function ProjectV2({
   const { registry: sectionRegistry, dirtyLabels, saveAll } = useSectionRegistry();
   const anyDirty = dirtyLabels.length > 0;
   const [leaving, setLeaving] = useState(false);
+  // Coefficient proposé par la quantité obtenue d'une fournée d'essai, par
+  // préparation : prérempli dans son volet « Ajustement des quantités ».
+  const [suggestions, setSuggestions] = useState<Record<number, { factor: number; reason: string; n: number }>>({});
   const states = projectV2BlockStates({ ...project, intent: project.intent });
 
   const composants = useProjectComponents(project, mutate, dialog);
@@ -621,6 +625,34 @@ export function ProjectV2({
     );
   }
 
+  // Quantité obtenue en essai (« 50 g en trop ») → coefficient de la
+  // préparation. Un seul coefficient par préparation : le geste n'a de sens
+  // que si l'étape porte TOUS ses ingrédients (sinon l'écart d'une étape ne
+  // dit rien des autres) ; à défaut, le coefficient est seulement indiqué.
+  function ajustementEcart(comp: ProjectComponent, s: RecipeStepView): AjustementEcart {
+    const ings = groupByOrder.get(s.order_index ?? -1)?.ingredients ?? [];
+    const autres = steps.filter((x) => componentOf(x) === comp.id && x.id !== s.id && (groupByOrder.get(x.order_index ?? -1)?.ingredients ?? []).length > 0);
+    return {
+      lignes: ings.map((it) => ({ quantity: it.quantity, unit: it.unit })),
+      libelle: 'Préparer l’ajustement de la préparation',
+      indisponible: autres.length
+        ? 'D’autres étapes de cette préparation ont des ingrédients : ajustez-la dans « Ajustement des quantités ».'
+        : null,
+      onAjuster: (coef, r) => {
+        const factor = Math.round((comp.scaleFactor ?? 1) * coef * 100) / 100;
+        setSuggestions((p) => ({
+          ...p,
+          [comp.id]: {
+            factor,
+            reason: `Fournée d’essai : ${libelleEcartProduit(r.ecartProduit) ?? 'écart'} sur « ${s.title || 'cette étape'} » → ×${String(factor).replace('.', ',')}.`,
+            n: Date.now(),
+          },
+        }));
+        allerA(`prep-${comp.id}-quantites`);
+      },
+    };
+  }
+
   // Même présentation que la fiche recette (`RecipeStep`, partagé). `dernier`
   // : pas de filet sous la dernière étape d'un groupe.
   function etape(s: RecipeStepView, i: number, dernier: boolean) {
@@ -646,7 +678,7 @@ export function ProjectV2({
             </button>
           ) : undefined
         }
-        retoursEtape={<RetoursEtape stepId={s.id} />}
+        retoursEtape={<RetoursEtape stepId={s.id} ajustement={comp ? ajustementEcart(comp, s) : undefined} />}
         retoursIngredient={(it) => <RetoursIngredient stepId={s.id} ingredientId={it.id} />}
         retoursSousEtape={(t) => <RetoursSousEtape stepId={s.id} texte={t} />}
         index={i}
@@ -977,6 +1009,7 @@ export function ProjectV2({
                           <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel}
                             componentId={c.id}
                             quotaAjustementIA={quotaAjustementIA}
+                            suggestion={suggestions[c.id] ?? null}
                             pied={<VerifCase item={verifDe(c.id, 'quantites')} onToggle={(it) => void basculerVerif(it)} busy={busy} />}
                           />
                         </div>
