@@ -6,6 +6,7 @@
 // relues, quantités vérifiées) sont des cases, valables tant que le contenu
 // vérifié n'a pas changé (cf. `projectTodo`, `lib/projects.ts`). Rendu pur :
 // l'écriture est faite par le parent.
+import { useEffect, useRef, useState } from 'react';
 import type { TodoItem } from '@/lib/projects';
 
 // Défile jusqu'à l'ancre ; un volet replié qui la porte (« Ajustement des
@@ -35,7 +36,8 @@ export function ProjectTodo({
   ouvert = true,
 }: {
   id?: string;
-  // État initial du volet (fixé par l'appelant au chargement).
+  // État initial du volet (fixé par l'appelant au chargement). Il se replie
+  // aussi tout seul au moment où le dernier point passe à « fait ».
   ouvert?: boolean;
   items: TodoItem[];
   onToggle: (it: TodoItem) => void;
@@ -44,6 +46,17 @@ export function ProjectTodo({
   const faits = items.filter((i) => i.etat === 'fait').length;
   const total = items.length;
   const pct = total ? Math.round((faits / total) * 100) : 0;
+  const toutFait = total > 0 && faits === total;
+  // Volet piloté : replié dès que le dernier point est coché (transition
+  // « pas tout fait » → « tout fait », jamais à chaque rendu : le membre garde
+  // la main s'il le rouvre). `onToggle` garde l'état aligné sur ses clics et sur
+  // `allerA`, qui ouvre le volet directement dans le DOM.
+  const [open, setOpen] = useState(ouvert);
+  const etaitFait = useRef(toutFait);
+  useEffect(() => {
+    if (toutFait && !etaitFait.current) setOpen(false);
+    etaitFait.current = toutFait;
+  }, [toutFait]);
   const prochain = items.find((i) => i.etat !== 'fait');
   const groupes: { nom: string; items: TodoItem[] }[] = [];
   for (const it of items) {
@@ -53,7 +66,7 @@ export function ProjectTodo({
   }
 
   return (
-    <details id={id} open={ouvert} className="mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest p-4">
+    <details id={id} open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className="mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest p-4">
       <summary className="flex cursor-pointer flex-wrap items-center gap-3">
         <span className="font-label-md text-[13px] uppercase tracking-widest text-secondary">Reste à faire</span>
         <span className="font-label-md text-[12px] text-on-surface-variant">
