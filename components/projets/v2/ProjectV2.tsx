@@ -73,7 +73,7 @@ import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { RecipeStep } from '@/components/recipe/RecipeStep';
-import { LeconsProvider, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
+import { LeconsProvider, NombreRetours, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import type { Remarque } from '@/lib/batch-lecons';
 import type { ProjectComponent, ProjectFull, ProjectTrial } from '@/lib/projects-data';
@@ -999,6 +999,7 @@ export function ProjectV2({
                           <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
                             Étapes · {own.length}
                             {verifDe(c.id, 'etapes')?.etat === 'fait' && <span className="text-green-700"> · relues</span>}
+                            <NombreRetours stepIds={own.map((st) => st.id)} />
                           </span>
                           <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                         </summary>

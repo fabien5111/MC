@@ -440,3 +440,18 @@ export function RetoursEssai({ remarques }: { remarques: Remarque[] }) {
     </details>
   );
 }
+
+// En-tête d'un volet d'étapes (mode projet) : combien de retours de fournée
+// portent sur ces étapes. Rien tant qu'il n'y en a pas ; les remarques qui ne
+// s'apparient à aucune étape (bloc de tête) ne sont pas comptées ici.
+export function NombreRetours({ stepIds }: { stepIds: number[] }) {
+  const v = useLecons();
+  const n = stepIds.reduce((t, id) => t + (v?.lecons.parEtape[id]?.remarques.length ?? 0), 0);
+  if (!n) return null;
+  return (
+    <span className="text-primary">
+      {' '}
+      · {n} retour{n > 1 ? 's' : ''} de fournée
+    </span>
+  );
+}
