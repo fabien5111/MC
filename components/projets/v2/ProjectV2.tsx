@@ -777,7 +777,21 @@ export function ProjectV2({
         label={thinking ? 'Composition du projet…' : undefined}
       />
 
-      <RecipeToc sections={tocSections} steps={tocSteps} actions={tocActions} mobile="drawer" mobileInset="nav" />
+      <RecipeToc
+        sections={tocSections}
+        steps={tocSteps}
+        actions={tocActions}
+        mobile="drawer"
+        mobileInset="nav"
+        // Les étapes d'une préparation vivent dans un volet « Étapes » qui peut
+        // être replié (étapes relues) : sans le rouvrir AVANT de défiler, la
+        // cible n'a pas de position et le défilement se cale sur ce qui suit.
+        onNavigateToStep={(i) => {
+          for (let d = document.getElementById(stepAnchorId(i))?.closest('details') ?? null; d; d = d.parentElement?.closest('details') ?? null) {
+            d.open = true;
+          }
+        }}
+      />
 
       <header className="mb-8">
         <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
