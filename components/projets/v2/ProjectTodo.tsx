@@ -66,8 +66,8 @@ export function ProjectTodo({
   }
 
   return (
-    <details id={id} open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className="mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest p-4">
-      <summary className="flex cursor-pointer flex-wrap items-center gap-3">
+    <details id={id} open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className="mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest p-4 group">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 [&::-webkit-details-marker]:hidden">
         <span className="font-label-md text-[13px] uppercase tracking-widest text-secondary">Reste à faire</span>
         <span className="font-label-md text-[12px] text-on-surface-variant">
           {faits} / {total}
@@ -75,6 +75,9 @@ export function ProjectTodo({
         </span>
         <span className="h-2 min-w-[8rem] flex-1 overflow-hidden rounded-full bg-surface-container-high" aria-hidden="true">
           <span className="block h-full rounded-full bg-green-700 transition-all" style={{ width: `${pct}%` }} />
+        </span>
+        <span className="material-symbols-outlined transition-transform group-open:rotate-180" aria-hidden="true">
+          expand_more
         </span>
       </summary>
 
