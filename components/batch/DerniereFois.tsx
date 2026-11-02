@@ -578,7 +578,12 @@ export function RetoursEssai({ remarques }: { remarques: Remarque[] }) {
 // s'apparient à aucune étape (bloc de tête) ne sont pas comptées ici.
 export function NombreRetours({ stepIds }: { stepIds: number[] }) {
   const v = useLecons();
-  const n = stepIds.reduce((t, id) => t + (v?.lecons.parEtape[id]?.remarques.length ?? 0), 0);
+  // Une remarque désépinglée reste affichée (picto éteint) jusqu'au rechargement,
+  // mais ne compte plus : le nombre annonce ce qui sera rappelé.
+  const n = stepIds.reduce(
+    (t, id) => t + (v?.lecons.parEtape[id]?.remarques.filter((r) => !v.gestion || v.epinglee(r)).length ?? 0),
+    0,
+  );
   if (!n) return null;
   return (
     <span className="text-primary">
