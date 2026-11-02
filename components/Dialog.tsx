@@ -19,6 +19,8 @@ type DialogState =
       cancelLabel: string;
       large: boolean;
       focusCancel: boolean;
+      caseACocher: { libelle: string; siCocheeEtConfirme: () => void } | null;
+      coche: boolean;
       resolve: (ok: boolean) => void;
     }
   | {
@@ -36,7 +38,16 @@ type DialogState =
 // lignes longues, listes) ; `focus: 'annuler'` met le focus d'ouverture sur
 // « Annuler » — pour une action qu'un Entrée distrait ne doit pas lancer. Par
 // défaut rien ne change : fenêtre étroite, focus sur la confirmation.
-type ConfirmOpts = { okLabel?: string; cancelLabel?: string; largeur?: 'large'; focus?: 'annuler' };
+// `caseACocher` : une case sous le message (décochée à l'ouverture) ;
+// `siCocheeEtConfirme` n'est appelé que si elle est cochée ET que la
+// confirmation est acceptée — une annulation n'enregistre jamais le choix.
+type ConfirmOpts = {
+  okLabel?: string;
+  cancelLabel?: string;
+  largeur?: 'large';
+  focus?: 'annuler';
+  caseACocher?: { libelle: string; siCocheeEtConfirme: () => void };
+};
 
 type DialogApi = {
   alert: (message: string) => Promise<void>;
@@ -82,6 +93,8 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
           cancelLabel: opts?.cancelLabel ?? 'Annuler',
           large: opts?.largeur === 'large',
           focusCancel: opts?.focus === 'annuler',
+          caseACocher: opts?.caseACocher ?? null,
+          coche: false,
           resolve,
         }),
       ),
@@ -114,7 +127,10 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
       setState((prev) => {
         if (!prev) return prev;
         if (prev.kind === 'alert') prev.resolve();
-        else if (prev.kind === 'confirm') prev.resolve(ok);
+        else if (prev.kind === 'confirm') {
+          if (ok && prev.coche) prev.caseACocher?.siCocheeEtConfirme();
+          prev.resolve(ok);
+        }
         else if (prev.kind === 'prompt') prev.resolve(ok ? prev.value : null);
         return null;
       });
@@ -173,6 +189,20 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
             <p className={`font-body-md text-body-md text-on-surface whitespace-pre-line${state.kind === 'choice' ? ' pr-6' : ''}`}>
               {state.message}
             </p>
+            {state.kind === 'confirm' && state.caseACocher && (
+              <label className="mt-4 flex cursor-pointer items-start gap-2 font-body-md text-sm text-on-surface-variant">
+                <input
+                  type="checkbox"
+                  checked={state.coche}
+                  onChange={(e) => {
+                    const coche = e.target.checked;
+                    setState((prev) => (prev?.kind === 'confirm' ? { ...prev, coche } : prev));
+                  }}
+                  className="mt-0.5 accent-primary"
+                />
+                {state.caseACocher.libelle}
+              </label>
+            )}
             {state.kind === 'prompt' && state.singleLine && (
               <input
                 autoFocus

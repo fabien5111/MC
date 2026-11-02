@@ -14,7 +14,7 @@
 // la volée d'un libellé inconnu au référentiel réservé aux administrateurs
 // (bouton « Ajouter au référentiel »).
 import { saisieIngredient } from '@/lib/saisie-ingredient';
-import { LeconsProvider, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
+import { LeconsProvider, PorteeEdition, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import { arrondiQuantite, libelleEcartProduit, nombre, type DecisionRemarque, type Remarque } from '@/lib/batch-lecons';
 import { fmtNum } from '@/lib/recipe-plan';
@@ -1275,6 +1275,10 @@ export function CreerForm({
       recipeId={editRecipe?.id ?? null}
       auteur
     >
+      {/* Portée de l'édition : la case « ne plus afficher ce message » du
+          désépinglage vaut tant que cette page reste ouverte ; `key` : une
+          autre recette ouverte sans quitter la page la rétablit. */}
+      <PorteeEdition key={editRecipe?.id ?? 'nouvelle'}>
       {/* `mobile="drawer"` : sous 700 px le rail disparaît, et le bouton
           flottant reprend le sommaire *et* ces actions — c'est ce qui a
           remplacé la barre d'actions fixe de bas d'écran, qui n'offrait aucune
@@ -2799,6 +2803,7 @@ export function CreerForm({
       {/* Enregistrement en cours (écriture puis navigation ou bascule en mode
           édition) : overlay « Le Fouet » plein écran, cf. CLAUDE.md. */}
       <LoadingOverlay visible={busy || leaving} label={leaving ? 'Retour au profil…' : 'Enregistrement de la recette…'} />
+      </PorteeEdition>
     </LeconsProvider>
   );
 }

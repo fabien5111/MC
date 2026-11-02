@@ -46,11 +46,25 @@ type Valeur = {
   gestion: boolean;
   // La remarque est-elle épinglée (rappelée aux prochaines fournées) ?
   epinglee: (r: Remarque) => boolean;
-  // Bascule l'épingle (écrit seulement ce qui diffère du défaut).
-  basculer: (r: Remarque) => void | Promise<void>;
+  // Bascule l'épingle (écrit seulement ce qui diffère du défaut). `portee` :
+  // écran d'édition en cours (`PorteeEdition`), qui peut couper la question.
+  basculer: (r: Remarque, portee?: Portee | null) => void | Promise<void>;
 };
 
 const LeconsContext = createContext<Valeur | null>(null);
+
+// Écran d'édition (fenêtre « Modifier cette préparation », `/creer`) : la
+// confirmation du désépinglage porte une case « ne plus afficher ce message »,
+// retenue tant que l'écran reste monté — rien n'est stocké. Rouvrir l'écran
+// (une autre préparation, la même, une autre recette) la rétablit.
+type Portee = { silence: boolean; couper: () => void };
+const PorteeContext = createContext<Portee | null>(null);
+
+export function PorteeEdition({ children }: { children: React.ReactNode }) {
+  const [silence, setSilence] = useState(false);
+  const valeur = useMemo(() => ({ silence, couper: () => setSilence(true) }), [silence]);
+  return <PorteeContext.Provider value={valeur}>{children}</PorteeContext.Provider>;
+}
 
 export function useLecons() {
   return useContext(LeconsContext);
@@ -131,13 +145,20 @@ export function LeconsProvider({
   // Basculer = viser l'état inverse de l'état effectif ; le choix explicite
   // n'est gardé que s'il s'écarte du défaut (sinon la ligne est supprimée).
   const basculer = useCallback(
-    async (r: Remarque) => {
+    async (r: Remarque, portee?: Portee | null) => {
       const cible = !epinglee(r);
-      // Désépingler : confirmer, et dire ce qui se passe.
-      if (!cible) {
+      // Désépingler : confirmer, et dire ce qui se passe — sauf si l'écran
+      // d'édition en cours a coupé la question.
+      if (!cible && !portee?.silence) {
         const ok = await dialog.confirm(
           'Ce commentaire ne s’affichera plus lors de vos prochaines fournées.\n\nIl reste visible jusqu’au prochain rechargement de la page, et vous pouvez le réépingler d’ici là.',
-          { okLabel: 'Ne plus l’afficher', cancelLabel: 'Annuler' },
+          {
+            okLabel: 'Ne plus l’afficher',
+            cancelLabel: 'Annuler',
+            ...(portee
+              ? { caseACocher: { libelle: 'Ne plus afficher ce message pour les modifications en cours', siCocheeEtConfirme: portee.couper } }
+              : {}),
+          },
         );
         if (!ok) return;
       }
@@ -160,6 +181,7 @@ export function LeconsProvider({
 // Un clic bascule ; le choix n'est écrit que s'il diffère du défaut.
 export function ChoixRemarque({ r }: { r: Remarque }) {
   const v = useLecons();
+  const portee = useContext(PorteeContext);
   if (!v?.gestion) return null;
   const epinglee = v.epinglee(r);
   const infobulle = epinglee
@@ -172,7 +194,7 @@ export function ChoixRemarque({ r }: { r: Remarque }) {
   return (
     <button
       type="button"
-      onClick={() => v.basculer(r)}
+      onClick={() => v.basculer(r, portee)}
       title={infobulle}
       aria-label={infobulle}
       aria-pressed={epinglee}

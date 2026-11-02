@@ -1525,6 +1525,13 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
   fournées ») et la remarque **reste affichée, picto éteint, jusqu'au prochain
   rechargement** (`decisionsOuverture` : la liste est celle de l'ouverture de la page,
   plus les remarques épinglées depuis) ; la réépingler est possible d'ici là.
+  **Dans un écran d'édition** (`/creer`, fenêtre « Modifier cette préparation » du mode
+  projet), la confirmation porte une case « Ne plus afficher ce message pour les
+  modifications en cours » (`dialog.confirm`, option `caseACocher`, retenue seulement si
+  la confirmation est acceptée) : `PorteeEdition` (`DerniereFois.tsx`, état React, rien
+  de stocké) coupe alors la question tant que l'écran reste monté. Rouvrir l'écran la
+  rétablit — `key` = la préparation ouverte (`ProjectV2`) ou la recette éditée
+  (`CreerForm`). Ailleurs (fiche, fournée, page projet), la question reste systématique.
 - **Table `remarques_gardees`** (une ligne par choix, `unique (user_id, nature,
   ligne_id)`, statut `gardee` / `ecartee`), et non une colonne sur les tables
   `batch_*` : une fournée se supprime d'un geste, en cascade, et ce que le

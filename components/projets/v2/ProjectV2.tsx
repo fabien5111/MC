@@ -73,7 +73,7 @@ import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { RecipeStep } from '@/components/recipe/RecipeStep';
-import { LeconsProvider, NombreRetours, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape, type AjustementEcart } from '@/components/batch/DerniereFois';
+import { LeconsProvider, NombreRetours, PorteeEdition, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape, type AjustementEcart } from '@/components/batch/DerniereFois';
 import { libelleEcartProduit } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import type { Remarque } from '@/lib/batch-lecons';
@@ -1167,6 +1167,9 @@ export function ProjectV2({
       </div>
 
       {resolving && (
+        // Une portée par préparation ouverte (`key`) : la case « ne plus
+        // afficher ce message » ne survit pas au passage à une autre.
+        <PorteeEdition key={resolving.id}>
         <ComponentResolver
           projectId={project.id}
           projectTitle={project.title}
@@ -1197,6 +1200,7 @@ export function ProjectV2({
             setResolvingInit(null);
           }}
         />
+        </PorteeEdition>
       )}
     </>
     </LeconsProvider>
