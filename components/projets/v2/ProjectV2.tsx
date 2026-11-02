@@ -549,6 +549,22 @@ export function ProjectV2({
   const verifDe = (componentId: number, type: 'etapes' | 'quantites') =>
     todo.find((i) => i.verif?.componentId === componentId && i.verif.type === type);
 
+  // Volets repliés au chargement (jamais recalculés ensuite, comme
+  // `ouvertAuChargement` : un état qui bougerait sous le doigt ferait refermer
+  // ce que le membre vient d'ouvrir). « Reste à faire » : replié une fois tout
+  // fait (seule la jauge reste). « Votre intention » : replié dès qu'elle est
+  // écrite. « Structure » : repliée quand toutes les recettes sont choisies.
+  const repliesInitiaux = useRef<{ todo: boolean; intention: boolean; structure: boolean } | null>(null);
+  if (repliesInitiaux.current == null) {
+    const recettes = todo.filter((i) => i.id === 'preparations' || i.id.startsWith('recette-'));
+    repliesInitiaux.current = {
+      todo: todo.length > 0 && todo.every((i) => i.etat === 'fait'),
+      intention: !!project.intent?.trim(),
+      structure: recettes.length > 1 && recettes.every((i) => i.etat === 'fait'),
+    };
+  }
+  const replies = repliesInitiaux.current;
+
   // Ouverture des volets « quantités » et « étapes » d'une préparation : fixée
   // UNE fois, au premier rendu (chargement ou réouverture de la page) — ouverte
   // tant que le contenu n'est pas vérifié, repliée s'il l'est. Jamais recalculée
@@ -659,6 +675,7 @@ export function ProjectV2({
       titre={BLOCS[key].titre}
       apercu={BLOCS[key].apercu}
       state={states[key]}
+      replie={key === 'intention' ? replies.intention : key === 'structure' ? replies.structure : undefined}
     >
       {children}
     </ProjectV2Block>
@@ -758,7 +775,7 @@ export function ProjectV2({
       </header>
 
       <HelpBlockSlot blockKey="projet.reste_a_faire" help={help} />
-      <ProjectTodo id="reste-a-faire" items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
+      <ProjectTodo id="reste-a-faire" ouvert={!replies.todo} items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
 
       <div className="space-y-6">
         {bloc(
@@ -1079,7 +1096,7 @@ export function ProjectV2({
         {/* Second exemplaire du « Reste à faire », juste avant la validation :
             mêmes `todo`, même écriture, donc synchronisé avec celui du haut.
             Sans `id` : l'ancre `reste-a-faire` (sommaire) reste sur le premier. */}
-        <ProjectTodo items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
+        <ProjectTodo ouvert={!replies.todo} items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
 
         {bloc(
           'validation',

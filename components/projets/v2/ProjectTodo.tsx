@@ -14,6 +14,10 @@ function allerA(ancre: string) {
   const el = document.getElementById(ancre);
   if (!el) return;
   if (el instanceof HTMLDetailsElement) el.open = true;
+  // Un bloc ou une préparation repliés (volet parent) : on les rouvre, sinon on
+  // défilerait vers un élément caché.
+  el.querySelector(':scope > details')?.setAttribute('open', '');
+  for (let d = el.closest('details'); d; d = d.parentElement?.closest('details') ?? null) d.open = true;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -28,8 +32,11 @@ export function ProjectTodo({
   onToggle,
   busy,
   id,
+  ouvert = true,
 }: {
   id?: string;
+  // État initial du volet (fixé par l'appelant au chargement).
+  ouvert?: boolean;
   items: TodoItem[];
   onToggle: (it: TodoItem) => void;
   busy: boolean;
@@ -46,7 +53,7 @@ export function ProjectTodo({
   }
 
   return (
-    <details id={id} open className="mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest p-4">
+    <details id={id} open={ouvert} className="mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest p-4">
       <summary className="flex cursor-pointer flex-wrap items-center gap-3">
         <span className="font-label-md text-[13px] uppercase tracking-widest text-secondary">Reste à faire</span>
         <span className="font-label-md text-[12px] text-on-surface-variant">
