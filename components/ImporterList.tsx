@@ -110,8 +110,9 @@ export function ImporterList({ imports, isAdmin }: { imports: ImportRow[]; isAdm
               )}
               {dateSuppr ? (
                 <span
-                  className="text-xs text-error sm:text-sm"
-                  title={`Sans modification, cet import sera supprimé le ${dateSuppression(i.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}. Le rouvrir repart pour ${RETENTION_JOURS} jours.`}
+                  className="relative z-10 cursor-help text-xs text-error sm:text-sm"
+                  tabIndex={0}
+                  title={`⌛ Suppression prochaine : cet import sera supprimé automatiquement le ${dateSuppression(i.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} (${RETENTION_JOURS} jours sans modification). Rouvrez-le et enregistrez-le pour repartir pour ${RETENTION_JOURS} jours. La recette déjà créée à partir de cet import reste dans votre carnet.`}
                 >
                   ⌛ {dateSuppression(i.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                 </span>
