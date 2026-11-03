@@ -9,7 +9,7 @@
 // qui effacerait les `component_id`.
 import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { ChampSuggestion } from '@/components/ChampSuggestion';
-import { ligneReordonnable, poigneeTactile } from '@/lib/reordonner-tactile';
+import { FlechesDeplacement } from '@/components/FlechesDeplacement';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImageSlot } from '@/components/ImageSlot';
@@ -102,7 +102,6 @@ export function StepEditorCard({
   return (
     <div
       id={idStep}
-      {...ligneReordonnable('etapes-projet', index)}
       onDragOver={(e) => {
         if (!draggingStep && !e.dataTransfer.types.includes('text/projet-etape')) return;
         e.preventDefault();
@@ -119,9 +118,8 @@ export function StepEditorCard({
     >
       <div className="flex flex-wrap md:flex-nowrap items-center gap-4 border-b border-primary pb-4">
         <span
-          className="material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
+          className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
           title="Glisser pour déplacer l'étape"
-          {...poigneeTactile({ groupe: 'etapes-projet', index, onMove: onReorder })}
           draggable
           onDragStart={(e) => {
             setDraggingStep(true);
@@ -132,6 +130,7 @@ export function StepEditorCard({
         >
           drag_indicator
         </span>
+        <FlechesDeplacement index={index} count={count} onMove={onReorder} label="l'étape" />
         <span className="font-display-lg text-headline-lg text-primary">{String(index + 1).padStart(2, '0')}</span>
         <button type="button" onClick={onInsertBefore} title="Insérer une étape avant celle-ci" className="p-1 text-secondary hover:opacity-70 shrink-0 md:order-2">
           <span className="material-symbols-outlined">add_row_above</span>
@@ -507,7 +506,6 @@ export function StepEditorCard({
               <div
                 key={k}
                 className="flex items-start gap-2"
-                {...ligneReordonnable(`sous-projet-${index}`, k)}
                 onDragOver={(e) => {
                   if (!e.dataTransfer.types.includes(`text/projet-sous-${index}`)) return;
                   e.preventDefault();
@@ -525,18 +523,8 @@ export function StepEditorCard({
                 }}
               >
                 <span
-                  className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
+                  className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
                   title="Glisser pour déplacer"
-                  {...poigneeTactile({
-                    groupe: `sous-projet-${index}`,
-                    index: k,
-                    onMove: (from, to) => {
-                      const l = [...(sous ?? [])];
-                      const [deplace] = l.splice(from, 1);
-                      l.splice(to, 0, deplace);
-                      majSous(l);
-                    },
-                  })}
                   draggable
                   onDragStart={(e) => {
                     e.stopPropagation();
@@ -546,6 +534,7 @@ export function StepEditorCard({
                 >
                   drag_indicator
                 </span>
+                <FlechesDeplacement index={k} count={(sous ?? []).length} onMove={(from, to) => { const l = [...(sous ?? [])]; const [deplace] = l.splice(from, 1); l.splice(to, 0, deplace); majSous(l); }} label="la sous-étape" />
                 <textarea
                   ref={autoGrow}
                   value={t}

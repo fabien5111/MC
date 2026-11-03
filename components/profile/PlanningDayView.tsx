@@ -15,7 +15,7 @@
 // dédiée à cet ordre transverse, nulle tant qu'aucun glisser n'a eu lieu ce
 // jour-là.
 import { useEffect, useState } from 'react';
-import { ligneReordonnable, poigneeTactile } from '@/lib/reordonner-tactile';
+import { FlechesDeplacement } from '@/components/FlechesDeplacement';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -235,7 +235,6 @@ export function PlanningDayView({
               return (
                 <li
                   key={it.stepId}
-                  {...ligneReordonnable(`planning-${g.date}`, idx)}
                   onDragOver={(e) => {
                     if (dragId === null) return;
                     e.preventDefault();
@@ -256,8 +255,8 @@ export function PlanningDayView({
                       du titre de la recette au-dessus), puis le temps. */}
                   <div className="flex items-center gap-2">
                     {canReorder ? (
+                      <>
                       <span
-                        {...poigneeTactile({ groupe: `planning-${g.date}`, index: idx, onMove: (from, to) => moveStep(g.date, from, to) })}
                         draggable
                         onDragStart={(e) => {
                           setDragId(it.stepId);
@@ -265,10 +264,12 @@ export function PlanningDayView({
                         }}
                         onDragEnd={() => setDragId(null)}
                         title="Glisser pour réordonner cette étape dans sa journée"
-                        className="material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
+                        className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
                       >
                         drag_indicator
                       </span>
+                      <FlechesDeplacement index={idx} count={g.items.length} onMove={(from, to) => moveStep(g.date, from, to)} label="l'étape" />
+                      </>
                     ) : (
                       // JEP-130 : l'espace était réservé mais vide — une
                       // colonne de 18 px qui ne disait rien. Le repère

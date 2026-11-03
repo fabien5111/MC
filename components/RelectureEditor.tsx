@@ -7,7 +7,7 @@
 // le client Supabase navigateur.
 import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { ChampSuggestion } from '@/components/ChampSuggestion';
-import { ligneReordonnable, poigneeTactile } from '@/lib/reordonner-tactile';
+import { FlechesDeplacement } from '@/components/FlechesDeplacement';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -1675,7 +1675,6 @@ export function RelectureEditor({
           <section
             key={sp.key}
             id={stepAnchorId(si)}
-            {...ligneReordonnable('etapes', si)}
             onDragOver={(e) => {
               if (dragSp === null) return;
               e.preventDefault();
@@ -1691,9 +1690,8 @@ export function RelectureEditor({
           >
             <div className="bg-surface-container-high px-6 py-3 flex items-center gap-3">
               <span
-                className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1"
+                className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1"
                 title="Glisser pour déplacer l'étape"
-                {...poigneeTactile({ groupe: 'etapes', index: si, onMove: moveSp })}
                 draggable
                 onDragStart={(e) => {
                   setDragSp(si);
@@ -1703,6 +1701,7 @@ export function RelectureEditor({
               >
                 drag_indicator
               </span>
+              <FlechesDeplacement index={si} count={sps.length} onMove={moveSp} label="l'étape" />
               <span className="font-headline-md text-[18px] text-primary">{si + 1}.</span>
               <input
                 ref={(el) => {
@@ -2046,7 +2045,6 @@ export function RelectureEditor({
                 {sp.etapes.map((e, ei) => (
                   <div
                     key={e.key}
-                    {...ligneReordonnable(`sous-etapes-${si}`, ei)}
                     onDragOver={(ev) => {
                       if (!dragEtape || dragEtape.si !== si) return;
                       ev.preventDefault();
@@ -2063,9 +2061,8 @@ export function RelectureEditor({
                     }`}
                   >
                     <span
-                      className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
+                      className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
                       title="Glisser pour déplacer la sous-étape"
-                      {...poigneeTactile({ groupe: `sous-etapes-${si}`, index: ei, onMove: (from, to) => moveEtape(si, from, to) })}
                       draggable
                       onDragStart={(ev) => {
                         setDragEtape({ si, ei });
@@ -2075,6 +2072,7 @@ export function RelectureEditor({
                     >
                       drag_indicator
                     </span>
+                    <FlechesDeplacement index={ei} count={sp.etapes.length} onMove={(from, to) => moveEtape(si, from, to)} label="la sous-étape" />
                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 gap-y-1 items-start flex-1">
                       <div className="text-sm text-on-surface-variant lg:pt-2">
                         {e.imported ? e.imported : <span className="italic opacity-60">ajoutée</span>}

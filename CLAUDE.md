@@ -1028,14 +1028,16 @@ ingrédients / ustensiles, ni déplacement par la poignée.
   et testé : `filtrerSuggestions` (`lib/suggestions.ts`), mêmes règles que
   `normSearch`. **Tout nouveau champ de nom d'ingrédient / ustensile l'utilise**,
   jamais un `<datalist>`.
-- **Poignées de déplacement : souris = glisser-déposer natif conservé, doigt /
-  stylet = `lib/reordonner-tactile.ts`** (événements `pointer`, `touch-action:
-  none`, défilement automatique près des bords). La ligne déplaçable porte
-  `ligneReordonnable(groupe, index)` (un `groupe` par liste, distinct pour deux
-  listes imbriquées), la poignée `poigneeTactile({ groupe, index, onMove })`.
-  Branché sur étapes et sous-étapes de `/creer`, de la relecture et du mode
-  projet, sous-étapes de la fournée, composants du projet, planning. L'import par
-  photos avait déjà ses boutons monter / descendre.
+- **Poignées de déplacement : souris = glisser-déposer natif, écran tactile =
+  flèches monter / descendre** (`components/FlechesDeplacement.tsx`). Un premier
+  essai de glissement au doigt par événements `pointer` (03/11/2026) a échoué sur
+  iPad : l'appui long est pris par Safari pour une sélection de texte et le geste
+  est annulé avant tout déplacement. Sur `pointer: coarse` la poignée est masquée
+  (`[@media(pointer:coarse)]:!hidden`) et deux boutons de 36 px prennent la
+  place ; à la souris rien ne change. Branché sur étapes et sous-étapes de
+  `/creer`, de la relecture et du mode projet, sous-étapes de la fournée,
+  composants du projet, planning. L'import par photos avait déjà ses boutons.
+  Toute nouvelle poignée `draggable` doit recevoir ses flèches.
 
 ## Temps d'attente en heures (JEP-20)
 

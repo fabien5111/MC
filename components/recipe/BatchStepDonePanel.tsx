@@ -19,7 +19,7 @@
 // proposer de supprimer après un déplacement de jour ou l'ajout d'une
 // sous-étape.
 import { NomIngredient } from '@/components/IngredientNomsProvider';
-import { ligneReordonnable, poigneeTactile } from '@/lib/reordonner-tactile';
+import { FlechesDeplacement } from '@/components/FlechesDeplacement';
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -523,7 +523,6 @@ export function BatchStepDonePanel({
               return (
                 <li
                   key={su.id}
-                  {...ligneReordonnable(`sous-etapes-${step.id}`, idx)}
                   onDragOver={(e) => {
                     if (dragSubstep === null) return;
                     e.preventDefault();
@@ -540,8 +539,8 @@ export function BatchStepDonePanel({
                   {readOnly ? (
                     <span className="no-print shrink-0 w-[18px]" />
                   ) : (
+                    <>
                     <span
-                      {...poigneeTactile({ groupe: `sous-etapes-${step.id}`, index: idx, onMove: moveSubstep })}
                       draggable
                       onDragStart={(e) => {
                         setDragSubstep(idx);
@@ -549,10 +548,12 @@ export function BatchStepDonePanel({
                       }}
                       onDragEnd={() => setDragSubstep(null)}
                       title="Glisser pour réordonner cette sous-étape"
-                      className="no-print material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
+                      className="[@media(pointer:coarse)]:!hidden no-print material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
                     >
                       drag_indicator
                     </span>
+                    <FlechesDeplacement index={idx} count={sortedSubsteps.length} onMove={moveSubstep} label="la sous-étape" />
+                    </>
                   )}
                   {step.done ? (
                     <input

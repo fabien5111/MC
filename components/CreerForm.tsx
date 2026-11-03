@@ -15,7 +15,7 @@
 // (bouton « Ajouter au référentiel »).
 import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { ChampSuggestion } from '@/components/ChampSuggestion';
-import { ligneReordonnable, poigneeTactile } from '@/lib/reordonner-tactile';
+import { FlechesDeplacement } from '@/components/FlechesDeplacement';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -1781,7 +1781,6 @@ export function CreerForm({
             <div
               key={st.key}
               id={stepAnchorId(si)}
-              {...ligneReordonnable('etapes', si)}
               onDragOver={(e) => {
                 if (dragStep === null) return;
                 e.preventDefault();
@@ -1797,9 +1796,8 @@ export function CreerForm({
             >
               <div className="flex flex-wrap md:flex-nowrap items-center gap-4 border-b border-primary pb-4">
                 <span
-                  className="material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
+                  className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
                   title="Glisser pour déplacer l'étape"
-                  {...poigneeTactile({ groupe: 'etapes', index: si, onMove: moveStep })}
                   draggable
                   onDragStart={(e) => {
                     setDragStep(si);
@@ -1809,6 +1807,7 @@ export function CreerForm({
                 >
                   drag_indicator
                 </span>
+                <FlechesDeplacement index={si} count={steps.length} onMove={moveStep} label="l'étape" />
                 <span className="font-display-lg text-headline-lg text-primary">{String(si + 1).padStart(2, '0')}</span>
                 <button type="button" onClick={() => insertStepBefore(si)} title="Insérer une étape avant celle-ci" className="p-1 text-secondary hover:opacity-70 shrink-0 md:order-2">
                   <span className="material-symbols-outlined">add_row_above</span>
@@ -2245,7 +2244,6 @@ export function CreerForm({
                         {st.subSteps.map((t, idx) => (
                           <div
                             key={idx}
-                            {...ligneReordonnable(`sous-etapes-${si}`, idx)}
                             className={`flex items-start gap-2 ${dragSub?.si === si && dragSub.idx === idx ? 'opacity-50' : ''}`}
                             onDragOver={(e) => {
                               if (!dragSub || dragSub.si !== si) return;
@@ -2260,9 +2258,8 @@ export function CreerForm({
                             }}
                           >
                             <span
-                              className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
+                              className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
                               title="Glisser pour déplacer"
-                              {...poigneeTactile({ groupe: `sous-etapes-${si}`, index: idx, onMove: (from, to) => moveSubstep(si, from, to) })}
                               draggable
                               onDragStart={(e) => {
                                 setDragSub({ si, idx });
@@ -2272,6 +2269,7 @@ export function CreerForm({
                             >
                               drag_indicator
                             </span>
+                            <FlechesDeplacement index={idx} count={(st.subSteps ?? []).length} onMove={(from, to) => moveSubstep(si, from, to)} label="la sous-étape" />
                             <textarea
                               ref={autoGrow}
                               value={t}

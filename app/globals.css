@@ -1229,14 +1229,3 @@ body[data-impersonation] {
     display: none;
   }
 }
-
-/* Réordonnancement au doigt (lib/reordonner-tactile.ts) : la ligne saisie est
-   atténuée, la ligne survolée porte un filet — le dépôt se fait à cet endroit. */
-[data-reordo-source] {
-  opacity: 0.5;
-}
-[data-reordo-cible] {
-  outline: 2px solid #300a12; /* primary */
-  outline-offset: 2px;
-  border-radius: 4px;
-}
