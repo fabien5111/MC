@@ -21,7 +21,7 @@ import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { moldMetrics } from '@/lib/recipe-view';
 import { scalingCoef } from '@/lib/recipe-plan';
-import { applyComponentScale, includeLineInScale, setLineQuantity } from '@/lib/projects-write';
+import { applyComponentScale, setLineQuantity } from '@/lib/projects-write';
 import {
   COMPONENT_SOURCE_LABELS,
   componentScaleProposal,
@@ -45,10 +45,6 @@ const champ =
 
 const fr = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
 
-// Ligne chiffrée sans quantité d'origine : retouchée à la main, donc ignorée par
-// un changement de coefficient (cf. `applyComponentScale`).
-const estFigee = (l: { baseQuantity: number | null; quantity: string | null }) =>
-  l.baseQuantity == null && isFinite(parseFloat(String(l.quantity ?? '').replace(',', '.')));
 
 // Masse totale des lignes exprimées en g ou kg — la « quantité produite »
 // lisible d'une préparation (JEP-254, point 13). Les autres unités (pièce,
@@ -433,7 +429,7 @@ export function QuantitiesStep({
     const reason =
       prop && Math.abs(prop.factor - factor) < 1e-9 ? prop.reason : `Coefficient ×${fr(factor)} saisi à la main.`;
 
-    const ok = await mutate(
+    await mutate(
       async () => {
         const supabase = createClient();
         try {
@@ -464,31 +460,6 @@ export function QuantitiesStep({
         return res;
       },
       { errorLabel: 'Ajustement du composant' },
-    );
-    // Les lignes retouchées à la main ne suivent jamais le coefficient : le dire
-    // tout de suite, sans quoi l'écart passe pour un bug.
-    const figees = c.lines.filter(estFigee);
-    if (ok && figees.length > 0) {
-      dialog.alert(
-        `Coefficient appliqué, sauf ${figees.length === 1 ? 'à une ligne modifiée à la main' : `à ${figees.length} lignes modifiées à la main`} : ${figees
-          .map((l) => l.name)
-          .join(', ')}.\n\nElles gardent leur quantité. Pour les recalculer aussi, utilisez « Recalculer aussi » à côté de la ligne, puis « Appliquer » de nouveau.`,
-      );
-    }
-  }
-
-  async function reintegrer(l: ProjectComponent['lines'][number]) {
-    await mutate(
-      async () => {
-        const supabase = createClient();
-        try {
-          await includeLineInScale(supabase, l.id, l.quantity);
-        } catch (e) {
-          return { error: { message: (e as Error).message } };
-        }
-        return { error: null };
-      },
-      { errorLabel: 'Réintégration de la ligne' },
     );
   }
 
@@ -737,19 +708,6 @@ export function QuantitiesStep({
                             className={`${champ} w-24 py-1`}
                           />
                           <span className="w-20 text-[12.5px] text-on-surface-variant">{l.unit ?? ''}</span>
-                          {estFigee(l) && (
-                            <span className="flex basis-full items-center gap-2 pl-0 text-[11.5px] text-outline">
-                              Modifiée à la main : non recalculée par le coefficient.
-                              <button
-                                type="button"
-                                onClick={() => void reintegrer(l)}
-                                disabled={busy}
-                                className="underline underline-offset-2 hover:text-primary disabled:opacity-40"
-                              >
-                                Recalculer aussi
-                              </button>
-                            </span>
-                          )}
                         </li>
                       );
                     })}

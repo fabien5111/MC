@@ -426,17 +426,6 @@ export async function setLineQuantity(supabase: Supabase, lineId: number, quanti
   if (error) throw error;
 }
 
-// Réintègre une ligne modifiée à la main au recalcul global : sa quantité
-// actuelle devient sa quantité d'origine (`base_quantity`), sans rien changer
-// à ce qui est affiché. Geste explicite, jamais automatique : la valeur voulue
-// par l'utilisateur ne doit pas être écrasée sans qu'il l'ait demandé.
-export async function includeLineInScale(supabase: Supabase, lineId: number, quantity: string | null) {
-  const n = parseFloat(String(quantity ?? '').replace(',', '.'));
-  if (!isFinite(n) || n <= 0) throw new Error('Quantité non chiffrée : rien à recalculer.');
-  const { error } = await supabase.from('ingredients').update({ base_quantity: n } as never).eq('id', lineId);
-  if (error) throw error;
-}
-
 // Applique un coefficient RELATIF à TOUTES les lignes chiffrées d'une
 // préparation, retouchées à la main ou non : quantité × coefficient. Le geste du
 // retour de fournée (« Modifier les quantités avec ce coefficient ») : le
