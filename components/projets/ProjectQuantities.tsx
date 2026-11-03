@@ -713,9 +713,6 @@ export function QuantitiesStep({
                     })}
                   </ul>
                 )}
-                <p className="mt-2 text-[11.5px] text-outline">
-                  Une quantité modifiée à la main n’est plus recalculée par un changement de coefficient.
-                </p>
                 {pied}
               </>
             )}
