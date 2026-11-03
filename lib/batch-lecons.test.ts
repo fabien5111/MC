@@ -254,6 +254,16 @@ describe('remarquesDeSousEtape', () => {
     expect(remarquesDeSousEtape(l.parEtape[1], 'Autre')).toEqual([]);
     expect(remarquesDeSousEtape(undefined, 'Crémer')).toEqual([]);
   });
+
+  it('écarte le retour d’une sous-étape qui n’existe plus dans l’étape courante', () => {
+    const rs = remarquesDeFournee(
+      ref([step({ id: 10, title: 'Pâte', batch_substeps: [{ id: 5, texte: 'Congeler 4 h', commentaire: 'enlever', order_index: 0 }] })]),
+    );
+    const sans = leconsPrecedentes(rs, [{ ...etape(1, 'Pâte'), sousEtapes: ['Crémer le beurre'] }]);
+    expect(sans.parEtape[1]).toBeUndefined();
+    const avec = leconsPrecedentes(rs, [{ ...etape(1, 'Pâte'), sousEtapes: ['congeler 4 H'] }]);
+    expect(avec.parEtape[1].remarques).toHaveLength(1);
+  });
 });
 
 describe('quantité obtenue (écart de production)', () => {

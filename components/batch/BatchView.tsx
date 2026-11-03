@@ -536,7 +536,13 @@ export function BatchView({
       decisions={remarques?.decisions ?? AUCUNE_DECISION}
       choixDisponibles={!!remarques?.choixDisponibles}
       plusRecenteId={remarques?.plusRecenteId ?? null}
-      courantes={batch.batch_steps}
+      courantes={batch.batch_steps.map((st) => ({
+        id: st.id,
+        source_step_id: st.source_step_id,
+        title: st.title,
+        order_index: st.order_index,
+        sousEtapes: st.batch_substeps.map((su) => su.texte),
+      }))}
       ingredientsCourants={batch.batch_ingredients}
       userId={batch.user_id ?? ''}
       recipeId={batch.recipe_id}

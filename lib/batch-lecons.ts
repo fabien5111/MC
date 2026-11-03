@@ -323,7 +323,9 @@ export type Lecons = {
   generales: Remarque[];
 };
 
-export type EtapeCourante = { id: number; source_step_id: number | null; title: string | null; order_index: number };
+// `sousEtapes` (facultatif) : texte des sous-étapes actuelles de l'étape. Fourni,
+// il permet d'écarter les retours d'une sous-étape qui n'existe plus.
+export type EtapeCourante = { id: number; source_step_id: number | null; title: string | null; order_index: number; sousEtapes?: string[] };
 export type IngredientCourant = { id: number; batch_step_id: number | null; name: string; unit: string | null };
 
 // Appariement des étapes : les id des étapes de recette changent à chaque
@@ -400,9 +402,20 @@ export function leconsPrecedentes(remarques: Remarque[], courantes: EtapeCourant
       if (m) pris.add(m.id);
       return { ...r, ingredientId: m?.id ?? null };
     });
-    const titreCourant = steps.find((s) => s.id === id)?.title ?? g.titre ?? 'Étape';
+    const courante = steps.find((s) => s.id === id);
+    // Une ligne supprimée de l'étape n'a plus de raison de rappeler son retour :
+    // sous-étape absente (texte comparé sans casse ni accents), ingrédient dont
+    // le nom ne figure plus dans l'étape (une unité changée le garde).
+    const textes = courante?.sousEtapes?.map((t) => normSearch(t).trim());
+    const gardees = rs.filter((r) => {
+      if (r.nature === 'sous_etape' && textes) return textes.includes(normSearch(r.libelle ?? '').trim());
+      if (r.nature === 'ingredient' && ingredientsCourants.length > 0) return r.ingredientId != null || candidats.some((it) => ingredientKey(it.name) === ingredientKey(r.libelle));
+      return true;
+    });
+    if (!gardees.length) continue;
+    const titreCourant = courante?.title ?? g.titre ?? 'Étape';
     const existant = parEtape[id];
-    parEtape[id] = { titre: titreCourant, remarques: [...(existant?.remarques ?? []), ...rs].sort(tri) };
+    parEtape[id] = { titre: titreCourant, remarques: [...(existant?.remarques ?? []), ...gardees].sort(tri) };
   }
   return { parEtape, autres, generales };
 }
