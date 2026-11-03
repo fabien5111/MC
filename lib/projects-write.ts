@@ -437,6 +437,35 @@ export async function includeLineInScale(supabase: Supabase, lineId: number, qua
   if (error) throw error;
 }
 
+// Applique un coefficient RELATIF à TOUTES les lignes chiffrées d'une
+// préparation, retouchées à la main ou non : quantité × coefficient. Le geste du
+// retour de fournée (« Modifier les quantités avec ce coefficient ») : le
+// coefficient a été calculé sur les quantités ACTUELLES, il s'applique donc à
+// elles, pas à la quantité d'origine. Une ligne sans quantité d'origine (retouchée
+// à la main) en reçoit une, déduite du facteur précédent, de sorte qu'elle suive
+// désormais les ajustements globaux comme les autres. Les lignes non chiffrées
+// (« 1 pincée ») sont laissées telles quelles.
+export async function scaleAllLines(
+  supabase: Supabase,
+  lines: { id: number; quantity: string | null; baseQuantity: number | null }[],
+  coef: number,
+  facteurAvant: number,
+  texte: (base: number | null, coef: number) => string | null,
+) {
+  const avant = facteurAvant > 0 ? facteurAvant : 1;
+  for (const l of lines) {
+    const actuelle = parseFloat(String(l.quantity ?? '').replace(',', '.'));
+    if (!isFinite(actuelle)) continue;
+    const q = texte(actuelle, coef);
+    const base = l.baseQuantity ?? actuelle / avant;
+    const { error } = await supabase
+      .from('ingredients')
+      .update({ quantity: q, base_quantity: base } as never)
+      .eq('id', l.id);
+    if (error) throw error;
+  }
+}
+
 // ── Assemblage final (spec §8.3) ──────────────────────────────────────────
 //
 // « Une section d'assemblage final est ajoutée, reprenant l'ordre des

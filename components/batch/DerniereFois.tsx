@@ -462,7 +462,7 @@ export function RetoursIngredientNom({ stepId, nom, unite }: { stepId: number; n
 export type AjustementEcart = {
   lignes: { quantity: string | number | null; unit: string | null }[];
   libelle: string;
-  onAjuster: (coef: number, r: Remarque) => void;
+  onAjuster: (coef: number, r: Remarque) => void | Promise<void>;
   // Raison pour laquelle le geste n'est pas proposé ici (le coefficient est
   // alors seulement indiqué).
   indisponible?: string | null;

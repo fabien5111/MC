@@ -59,8 +59,9 @@ import {
   pointsRestants,
   projectTodo,
   type TodoItem,
+  scaledQuantityText,
 } from '@/lib/projects';
-import { resequenceProjectSteps, validateProject } from '@/lib/projects-write';
+import { resequenceProjectSteps, scaleAllLines, validateProject } from '@/lib/projects-write';
 import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
 import { PlanningTimeline } from '@/components/recipe/PlanningTimeline';
 import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
@@ -183,7 +184,6 @@ export function ProjectV2({
   const [leaving, setLeaving] = useState(false);
   // Coefficient proposé par la quantité obtenue d'une fournée d'essai, par
   // préparation : prérempli dans son volet « Ajustement des quantités ».
-  const [suggestions, setSuggestions] = useState<Record<number, { factor: number; reason: string; n: number }>>({});
   const states = projectV2BlockStates({ ...project, intent: project.intent });
 
   const composants = useProjectComponents(project, mutate, dialog);
@@ -638,21 +638,39 @@ export function ProjectV2({
     const autres = steps.filter((x) => componentOf(x) === comp.id && x.id !== s.id && (groupByOrder.get(x.order_index ?? -1)?.ingredients ?? []).length > 0);
     return {
       lignes: ings.map((it) => ({ quantity: it.quantity, unit: it.unit })),
-      libelle: 'Préparer l’ajustement de la préparation',
+      libelle: 'Modifier les quantités avec ce coefficient',
       indisponible: autres.length
         ? 'D’autres étapes de cette préparation ont des ingrédients : ajustez-la dans « Ajustement des quantités ».'
         : null,
-      onAjuster: (coef, r) => {
-        const factor = Math.round((comp.scaleFactor ?? 1) * coef * 100) / 100;
-        setSuggestions((p) => ({
-          ...p,
-          [comp.id]: {
-            factor,
-            reason: `Fournée d’essai : ${libelleEcartProduit(r.ecartProduit) ?? 'écart'} sur « ${s.title || 'cette étape'} » → ×${String(factor).replace('.', ',')}.`,
-            n: Date.now(),
+      onAjuster: async (coef, r) => {
+        const factor = Math.round((comp.scaleFactor ?? 1) * coef * 10000) / 10000;
+        const ok = await dialog.confirm(
+          `Multiplier par ×${String(Math.round(coef * 1000) / 1000).replace('.', ',')} toutes les quantités de « ${comp.name} » (${libelleEcartProduit(r.ecartProduit) ?? 'écart constaté'} en essai) ?\n\nLe coefficient de la préparation passe à ×${String(Math.round(factor * 100) / 100).replace('.', ',')}.`,
+          { okLabel: 'Modifier les quantités', cancelLabel: 'Annuler' },
+        );
+        if (!ok) return;
+        await mutate(
+          async () => {
+            const supabase = createClient();
+            try {
+              await scaleAllLines(supabase, comp.lines, coef, comp.scaleFactor ?? 1, scaledQuantityText);
+            } catch (e) {
+              return { error: { message: (e as Error).message } };
+            }
+            const res = await supabase
+              .from('recipe_project_components')
+              .update({
+                scale_factor: factor,
+                scale_reason: `Fournée d’essai : ${libelleEcartProduit(r.ecartProduit) ?? 'écart'} sur « ${s.title || 'cette étape'} » → ×${String(Math.round(coef * 1000) / 1000).replace('.', ',')} sur toutes les quantités.`,
+                manually_adjusted: false,
+              } as never)
+              .eq('id', comp.id);
+            if (res.error) return res;
+            await supabase.from('recipe_project_components').update({ scale_format_key: cleFormat } as never).eq('id', comp.id);
+            return res;
           },
-        }));
-        allerA(`prep-${comp.id}-quantites`);
+          { errorLabel: 'Ajustement des quantités' },
+        );
       },
     };
   }
@@ -1043,7 +1061,6 @@ export function ProjectV2({
                           <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel}
                             componentId={c.id}
                             quotaAjustementIA={quotaAjustementIA}
-                            suggestion={suggestions[c.id] ?? null}
                             pied={<VerifCase item={verifDe(c.id, 'quantites')} onToggle={(it) => void basculerVerif(it)} busy={busy} />}
                           />
                         </div>
