@@ -8,6 +8,8 @@
 // `writeComponentContent` — jamais par l'enregistrement global de CreerForm,
 // qui effacerait les `component_id`.
 import { saisieIngredient } from '@/lib/saisie-ingredient';
+import { ChampSuggestion } from '@/components/ChampSuggestion';
+import { ligneReordonnable, poigneeTactile } from '@/lib/reordonner-tactile';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImageSlot } from '@/components/ImageSlot';
@@ -52,7 +54,7 @@ export function StepEditorCard({
   index,
   count,
   units,
-  datalistId,
+  ingredientOptions,
   allergenNames,
   refAllergens,
   collapsed,
@@ -71,8 +73,8 @@ export function StepEditorCard({
   // plus d'une (comme dans l'éditeur).
   count: number;
   units: string[];
-  // Liste de suggestions d'ingrédients (datalist), absente si pas de référentiel.
-  datalistId?: string;
+  // Noms proposés à la saisie d'un ingrédient (référentiel), absents sans référentiel.
+  ingredientOptions?: readonly string[];
   // Allergènes du référentiel (menu + pastilles, comme dans l'éditeur) et
   // allergènes par ingrédient du référentiel (pré-remplissage au choix du nom).
   // Absents : champ texte libre.
@@ -100,6 +102,7 @@ export function StepEditorCard({
   return (
     <div
       id={idStep}
+      {...ligneReordonnable('etapes-projet', index)}
       onDragOver={(e) => {
         if (!draggingStep && !e.dataTransfer.types.includes('text/projet-etape')) return;
         e.preventDefault();
@@ -118,6 +121,7 @@ export function StepEditorCard({
         <span
           className="material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
           title="Glisser pour déplacer l'étape"
+          {...poigneeTactile({ groupe: 'etapes-projet', index, onMove: onReorder })}
           draggable
           onDragStart={(e) => {
             setDraggingStep(true);
@@ -296,7 +300,8 @@ export function StepEditorCard({
               <div key={j} className="border-l-2 border-outline-variant/50 pl-4 min-[1232px]:border-l-0 min-[1232px]:pl-0">
                 <div className="flex flex-wrap min-[1232px]:flex-nowrap items-center min-[1232px]:items-start gap-x-4 gap-y-1.5">
                   <div className="relative flex-[2] min-w-0">
-                    <input
+                    <ChampSuggestion
+                      options={ingredientOptions ?? []}
                       value={g.name}
                       // Nom saisi ≠ ingrédient rattaché : le rattachement est refait
                       // à l'enregistrement. Un ingrédient du référentiel pré-remplit
@@ -314,8 +319,6 @@ export function StepEditorCard({
                           onIngredientChange(j, { name, ref_id: null });
                         }
                       }}
-                      list={datalistId}
-                      autoComplete="off"
                       placeholder="Ingrédient"
                       className="editorial-input text-on-surface w-full"
                       type="text"
@@ -504,6 +507,7 @@ export function StepEditorCard({
               <div
                 key={k}
                 className="flex items-start gap-2"
+                {...ligneReordonnable(`sous-projet-${index}`, k)}
                 onDragOver={(e) => {
                   if (!e.dataTransfer.types.includes(`text/projet-sous-${index}`)) return;
                   e.preventDefault();
@@ -523,6 +527,16 @@ export function StepEditorCard({
                 <span
                   className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
                   title="Glisser pour déplacer"
+                  {...poigneeTactile({
+                    groupe: `sous-projet-${index}`,
+                    index: k,
+                    onMove: (from, to) => {
+                      const l = [...(sous ?? [])];
+                      const [deplace] = l.splice(from, 1);
+                      l.splice(to, 0, deplace);
+                      majSous(l);
+                    },
+                  })}
                   draggable
                   onDragStart={(e) => {
                     e.stopPropagation();

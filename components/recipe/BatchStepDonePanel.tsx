@@ -19,6 +19,7 @@
 // proposer de supprimer après un déplacement de jour ou l'ajout d'une
 // sous-étape.
 import { NomIngredient } from '@/components/IngredientNomsProvider';
+import { ligneReordonnable, poigneeTactile } from '@/lib/reordonner-tactile';
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -522,6 +523,7 @@ export function BatchStepDonePanel({
               return (
                 <li
                   key={su.id}
+                  {...ligneReordonnable(`sous-etapes-${step.id}`, idx)}
                   onDragOver={(e) => {
                     if (dragSubstep === null) return;
                     e.preventDefault();
@@ -539,6 +541,7 @@ export function BatchStepDonePanel({
                     <span className="no-print shrink-0 w-[18px]" />
                   ) : (
                     <span
+                      {...poigneeTactile({ groupe: `sous-etapes-${step.id}`, index: idx, onMove: moveSubstep })}
                       draggable
                       onDragStart={(e) => {
                         setDragSubstep(idx);

@@ -6,6 +6,8 @@
 // en recette (recipes + steps + groups + ingredients + utensils). Mutations via
 // le client Supabase navigateur.
 import { saisieIngredient } from '@/lib/saisie-ingredient';
+import { ChampSuggestion } from '@/components/ChampSuggestion';
+import { ligneReordonnable, poigneeTactile } from '@/lib/reordonner-tactile';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -1613,8 +1615,8 @@ export function RelectureEditor({
               return (
                 <div key={m.key} className="py-1.5 border-b border-outline-variant/20">
                   <div className="flex items-center gap-2">
-                    <input
-                      list="dl-utensils"
+                    <ChampSuggestion
+                      options={allUtensilRefs}
                       value={m.nom}
                       onChange={(e) => patchUtensil(mi, { nom: e.target.value })}
                       className={champErr(!!(m.nom.trim() && !known))}
@@ -1673,6 +1675,7 @@ export function RelectureEditor({
           <section
             key={sp.key}
             id={stepAnchorId(si)}
+            {...ligneReordonnable('etapes', si)}
             onDragOver={(e) => {
               if (dragSp === null) return;
               e.preventDefault();
@@ -1690,6 +1693,7 @@ export function RelectureEditor({
               <span
                 className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1"
                 title="Glisser pour déplacer l'étape"
+                {...poigneeTactile({ groupe: 'etapes', index: si, onMove: moveSp })}
                 draggable
                 onDragStart={(e) => {
                   setDragSp(si);
@@ -1903,8 +1907,8 @@ export function RelectureEditor({
                       </div>
                       <div>
                         <div className="grid gap-2 items-center" style={{ gridTemplateColumns: '1fr 5.5rem 7rem 2rem' }}>
-                          <input
-                            list="dl-ingredients"
+                          <ChampSuggestion
+                            options={allIngredientRefs}
                             value={g.nom}
                             onChange={(e) => {
                               // Ingrédient choisi dans le référentiel → allergène pré-rempli
@@ -2042,6 +2046,7 @@ export function RelectureEditor({
                 {sp.etapes.map((e, ei) => (
                   <div
                     key={e.key}
+                    {...ligneReordonnable(`sous-etapes-${si}`, ei)}
                     onDragOver={(ev) => {
                       if (!dragEtape || dragEtape.si !== si) return;
                       ev.preventDefault();
@@ -2060,6 +2065,7 @@ export function RelectureEditor({
                     <span
                       className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
                       title="Glisser pour déplacer la sous-étape"
+                      {...poigneeTactile({ groupe: `sous-etapes-${si}`, index: ei, onMove: (from, to) => moveEtape(si, from, to) })}
                       draggable
                       onDragStart={(ev) => {
                         setDragEtape({ si, ei });
@@ -2287,17 +2293,6 @@ export function RelectureEditor({
           </div>
         )}
       </section>
-
-      <datalist id="dl-ingredients">
-        {allIngredientRefs.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
-      <datalist id="dl-utensils">
-        {allUtensilRefs.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
 
       {/* Confirmation d'enregistrement (3 s). Elle vivait dans la barre
           d'actions fixe, donc n'apparaissait déjà plus dès que le rail prenait

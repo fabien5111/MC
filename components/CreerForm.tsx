@@ -14,6 +14,8 @@
 // la volée d'un libellé inconnu au référentiel réservé aux administrateurs
 // (bouton « Ajouter au référentiel »).
 import { saisieIngredient } from '@/lib/saisie-ingredient';
+import { ChampSuggestion } from '@/components/ChampSuggestion';
+import { ligneReordonnable, poigneeTactile } from '@/lib/reordonner-tactile';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -1697,8 +1699,8 @@ export function CreerForm({
                 <span className="material-symbols-outlined text-outline-variant select-none mt-2">drag_indicator</span>
                 <div className="flex-grow">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 items-start">
-                    <input
-                      list="dl-utensils"
+                    <ChampSuggestion
+                      options={allUtensilRefs}
                       data-name-utensil
                       value={u.name}
                       onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))}
@@ -1779,6 +1781,7 @@ export function CreerForm({
             <div
               key={st.key}
               id={stepAnchorId(si)}
+              {...ligneReordonnable('etapes', si)}
               onDragOver={(e) => {
                 if (dragStep === null) return;
                 e.preventDefault();
@@ -1796,6 +1799,7 @@ export function CreerForm({
                 <span
                   className="material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
                   title="Glisser pour déplacer l'étape"
+                  {...poigneeTactile({ groupe: 'etapes', index: si, onMove: moveStep })}
                   draggable
                   onDragStart={(e) => {
                     setDragStep(si);
@@ -2027,8 +2031,8 @@ export function CreerForm({
                         <div key={g.key} className="border-l-2 border-outline-variant/50 pl-4 xl:border-l-0 xl:pl-0">
                         <div className="flex flex-wrap xl:flex-nowrap items-center xl:items-start gap-x-4 gap-y-1.5">
                           <div className="relative flex-[2] min-w-0">
-                            <input
-                              list="dl-ingredients"
+                            <ChampSuggestion
+                              options={allIngredientRefs}
                               value={g.name}
                               onChange={(e) => {
                                 const name = saisieIngredient(e.target);
@@ -2241,6 +2245,7 @@ export function CreerForm({
                         {st.subSteps.map((t, idx) => (
                           <div
                             key={idx}
+                            {...ligneReordonnable(`sous-etapes-${si}`, idx)}
                             className={`flex items-start gap-2 ${dragSub?.si === si && dragSub.idx === idx ? 'opacity-50' : ''}`}
                             onDragOver={(e) => {
                               if (!dragSub || dragSub.si !== si) return;
@@ -2257,6 +2262,7 @@ export function CreerForm({
                             <span
                               className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
                               title="Glisser pour déplacer"
+                              {...poigneeTactile({ groupe: `sous-etapes-${si}`, index: idx, onMove: (from, to) => moveSubstep(si, from, to) })}
                               draggable
                               onDragStart={(e) => {
                                 setDragSub({ si, idx });
@@ -2623,18 +2629,6 @@ export function CreerForm({
           <p className="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Je Pâtisse.</p>
         </section>
       </div>
-
-      <datalist id="dl-ingredients">
-        {allIngredientRefs.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
-
-      <datalist id="dl-utensils">
-        {allUtensilRefs.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
 
       {/* Popup de choix des allergènes d'un ingrédient (max 3). Bascule chaque
           allergène de la table de référence ; les modifications sont live. */}

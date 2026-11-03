@@ -5,6 +5,7 @@
 // de la page projet, qui y branche le statut de résolution et le bouton
 // d'ouverture (`extra`).
 import { useState, type ReactNode } from 'react';
+import { ligneReordonnable, poigneeTactile } from '@/lib/reordonner-tactile';
 import { COMPONENT_ROLES, COMPONENT_SCALING_MODES } from '@/lib/projects';
 import type { ProjectComponent } from '@/lib/projects-data';
 import type { useProjectComponents } from '@/components/projets/useProjectComponents';
@@ -37,6 +38,7 @@ export function ProjectStructureList({
             {ordered.map((c, i) => (
               <li
                 key={c.id}
+                {...ligneReordonnable('composants-projet', i)}
                 onDragOver={(e) => {
                   if (dragIndex === null) return;
                   e.preventDefault();
@@ -56,6 +58,7 @@ export function ProjectStructureList({
                   <span
                     className="material-symbols-outlined shrink-0 cursor-grab text-outline-variant select-none active:cursor-grabbing"
                     title="Glisser pour réordonner"
+                    {...poigneeTactile({ groupe: 'composants-projet', index: i, onMove: (from, to) => void reorder(from, to) })}
                     draggable
                     onDragStart={(e) => {
                       setDragIndex(i);

@@ -27,6 +27,7 @@ import { estDataUrlImage } from '@/lib/storage';
 import type { RecipeFull } from '@/lib/recipes';
 import { stepTimeSums } from '@/lib/recipe-view';
 import { autoGrow } from '@/lib/auto-grow';
+import { ChampSuggestion } from '@/components/ChampSuggestion';
 import { useRegisterSection, type SectionRegistry } from '@/components/projets/v2/sections';
 
 type Mutate = ReturnType<typeof useMutation>['mutate'];
@@ -468,10 +469,10 @@ export function OrganisationEditor({
         <ul className="space-y-2">
           {ustensiles.map((u, i) => (
             <li key={i} className="flex flex-wrap items-center gap-2">
-              <input
+              <ChampSuggestion
+                options={utensilNames}
                 value={u.name}
                 onChange={(e) => setUstensiles((prev) => prev.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))}
-                list="dl-ustensiles-v2"
                 onBlur={() => setUstensiles((prev) => trierUstensiles(prev))}
                 placeholder="Cercle à tarte"
                 className={`${champ} min-w-0 flex-[2]`}
@@ -500,11 +501,6 @@ export function OrganisationEditor({
         >
           + Ustensile
         </button>
-        <datalist id="dl-ustensiles-v2">
-          {utensilNames.map((n) => (
-            <option key={n} value={n} />
-          ))}
-        </datalist>
       </div>
 
       <div>

@@ -15,6 +15,7 @@
 // dédiée à cet ordre transverse, nulle tant qu'aucun glisser n'a eu lieu ce
 // jour-là.
 import { useEffect, useState } from 'react';
+import { ligneReordonnable, poigneeTactile } from '@/lib/reordonner-tactile';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -234,6 +235,7 @@ export function PlanningDayView({
               return (
                 <li
                   key={it.stepId}
+                  {...ligneReordonnable(`planning-${g.date}`, idx)}
                   onDragOver={(e) => {
                     if (dragId === null) return;
                     e.preventDefault();
@@ -255,6 +257,7 @@ export function PlanningDayView({
                   <div className="flex items-center gap-2">
                     {canReorder ? (
                       <span
+                        {...poigneeTactile({ groupe: `planning-${g.date}`, index: idx, onMove: (from, to) => moveStep(g.date, from, to) })}
                         draggable
                         onDragStart={(e) => {
                           setDragId(it.stepId);

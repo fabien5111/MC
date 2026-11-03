@@ -20,7 +20,7 @@
 // `refresh: false` puis rend la main au parent, qui reste monté. Une
 // transition déclarée ici mourrait avec la modale, le spinner s'éteindrait
 // avant le retour du rendu serveur (cf. CLAUDE.md).
-import { useEffect, useRef, useState, type ComponentProps } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
@@ -184,7 +184,7 @@ export function ComponentResolver({
   const [repliees, setRepliees] = useState<Set<number>>(new Set());
   // Aperçu d'une recette trouvée, dans la fenêtre (œil) : ce qui serait copié.
   const [apercu, setApercu] = useState<{ item: Trouvee; steps: ComponentStepDraft[] } | null>(null);
-  const datalistId = `dl-ingredients-composant-${component.id}`;
+  const ingredientOptions = useMemo(() => ingredientRefs.map((r) => r.name), [ingredientRefs]);
   // Consignes pour une nouvelle proposition de l'IA (JEP-254, point 8).
   const [consignes, setConsignes] = useState('');
   // Précision libre saisie avant la PREMIÈRE proposition (JEP-254) — distincte
@@ -937,7 +937,7 @@ export function ComponentResolver({
                     });
                   }}
                   units={units}
-                  datalistId={ingredientRefs.length ? datalistId : undefined}
+                  ingredientOptions={ingredientRefs.length ? ingredientOptions : undefined}
                   onChange={(patch) => majEtape(i, patch)}
                   onIngredientChange={(j, patch) => majIngredient(i, j, patch)}
                   onIngredientAdd={() =>
@@ -977,14 +977,6 @@ export function ComponentResolver({
                 <span className="material-symbols-outlined">add_circle</span> Ajouter une étape
               </button>
             </div>
-
-            {ingredientRefs.length > 0 && (
-              <datalist id={datalistId}>
-                {ingredientRefs.map((r) => (
-                  <option key={r.id} value={r.name} />
-                ))}
-              </datalist>
-            )}
 
             {/* Barre collée en bas de la zone qui défile (même motif que l'aperçu :
                 jamais `fixed`, le backdrop-blur du conteneur en ferait le repère). */}
