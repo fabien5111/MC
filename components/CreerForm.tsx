@@ -102,8 +102,8 @@ const FORME_DIMS: Record<string, { key: string; label: string }[]> = {
 
 function composeMoldDesc(forme: string | null | undefined, dims: Record<string, number>): string | null {
   const keys = (FORME_DIMS[forme || ''] || []).map((d) => d.key);
-  const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k]);
-  return parts.length ? parts.join(' × ') + ' cm' : null;
+  const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k] + ' cm');
+  return parts.length ? parts.join(' × ') : null;
 }
 
 // Éclatement d'un texte de description en sous-étapes : on découpe sur les

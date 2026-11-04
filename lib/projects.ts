@@ -276,8 +276,8 @@ export function formatYieldDesc(
   count: number | null,
 ): string | null {
   const keys = PROJECT_FORMATS[format].dims.map((d) => d.key);
-  const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k]);
-  const txt = parts.length ? `${parts.join(' × ')} cm` : null;
+  const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k] + ' cm');
+  const txt = parts.length ? parts.join(' × ') : null;
   if (!txt) return null;
   return count && count > 1 ? `${count} × ${txt}` : txt;
 }
@@ -559,8 +559,8 @@ const fr1 = (x: number) => String(Math.round(x * 100) / 100).replace('.', ',');
 
 function dimsTexte(forme: string | null, dims: Record<string, number>): string {
   const keys = forme === 'cylindre' ? ['diametre', 'hauteur'] : ['longueur', 'largeur', 'hauteur'];
-  const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k]);
-  return parts.length ? `${parts.join(' × ')} cm` : '';
+  const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k] + ' cm');
+  return parts.join(' × ');
 }
 
 // Une quantité exprimée en poids ou en volume ne se compare pas à un nombre de

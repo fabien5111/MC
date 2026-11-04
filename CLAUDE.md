@@ -1730,6 +1730,7 @@ essais et la validation arrivent par lots successifs.
 - **`lib/projects.ts` (pur) / `lib/projects-data.ts` (base, server-only)** :
   même séparation que `ideas.ts` / `ideas-data.ts`, sans quoi le formulaire
   client tirerait `next/headers` et casserait le build.
+- **Dimensions d'un moule : l'unité suit chaque dimension** (04/11/2026) : « 6 × Ø 8 cm × 2 cm », jamais « Ø 8 × 2 cm ». Même règle aux quatre générateurs de `recipes.yield_desc` (`composeMoldDesc` de `CreerForm` et `RelectureEditor`, `formatYieldDesc` et `dimsTexte` de `lib/projects.ts`) et à l'étiquette « Moule : … » de `BatchWidget`. Le texte étant **enregistré**, les recettes existantes gardent l'ancien format jusqu'au prochain enregistrement ou au rattrapage SQL (pgweb, `yield_desc` seulement).
 - **Le format vit sur `recipes`, jamais dans une table satellite** :
   `measure_type`, `mold_type_id`, `mold_dims`, `servings`, `yield_*`. Tout
   format en moule (rond, cadre, bûche = `demi-cylindre`, empreintes) se
