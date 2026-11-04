@@ -545,8 +545,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
           )}
           </div>
 
-          {/* Retours de mes fournées (JEP-381) : l'auteur seul, pour corriger sa recette. */}
-          {isOwner && <RetoursAuteur recipeId={recipe.id} etapes={steps.map((st) => ({ id: st.id, title: st.title }))} />}
+          {/* Retours de mes fournées (JEP-381) : tout membre connecté voit les siens
+              (lus par membre) ; le lien « Modifier cette étape » reste réservé à
+              l'auteur (`auteur` du LeconsProvider). */}
+          {user && <RetoursAuteur recipeId={recipe.id} etapes={steps.map((st) => ({ id: st.id, title: st.title }))} />}
           </LeconsProvider>
 
           {/* Mes fournées terminées — historique personnel, replié par

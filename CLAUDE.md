@@ -1565,9 +1565,9 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
   l'ancre `#etape-<id>` de la page au lieu de « Modifier cette étape » : les étapes
   d'une fournée ne sont pas celles de la recette) ; **sous la date de chaque étape** (intitulé « Retours de mes fournées »), en
   Préparer (`BatchStepDonePanel`, prop `derniereFois`) et en Pâtisser (sous
-  l'en-tête de la carte, visible étape repliée) ; **pour l'auteur seul**, bloc
+  l'en-tête de la carte, visible étape repliée) ; **pour tout membre connecté**, bloc
   « Retours de mes fournées » sur la fiche recette (`RetoursAuteur`, étape par
-  étape avec « Modifier cette étape » vers `/creer`) ; **dans l'éditeur
+  étape ; les retours sont lus par membre, chacun voit les siens ; le lien « Modifier cette étape » vers `/creer` reste réservé à l'auteur) ; **dans l'éditeur
   `/creer`** d'une recette déjà enregistrée, pour son auteur : le même bloc en tête
   (`ancrePrefixe="sec-etape-"` : lien « Aller à l'étape »), et les remarques **sous la
   ligne qu'elles concernent** — sous le titre de l'étape (`RetoursEtape`), sous chaque sous-étape (`RetoursSousEtape`, appariée
