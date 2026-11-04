@@ -546,7 +546,7 @@ export function RetoursEssai({ remarques }: { remarques: Remarque[] }) {
   }
   const etapes = [...groupes.values()].sort((a, b) => a.ordre - b.ordre);
   return (
-    <details open className="no-print group mb-3 border border-outline-variant">
+    <details className="no-print group mb-3 border border-outline-variant">
       <summary className="flex items-center justify-between p-3 cursor-pointer bg-surface-container-low list-none">
         <span className="flex items-center gap-2 font-label-md text-label-md text-primary">
           <span className="material-symbols-outlined text-[18px]">history</span>
