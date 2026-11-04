@@ -27,6 +27,7 @@ import type { RecipeFull } from '@/lib/recipes';
 import { RetoursEssai } from '@/components/batch/DerniereFois';
 import type { Remarque } from '@/lib/batch-lecons';
 import { translateQuotaError } from '@/lib/quota-message-client';
+import { normSearch } from '@/lib/text-search';
 
 // Appréciation globale, volontairement à trois valeurs (spec §7.2) : de quoi
 // retrouver d'un coup d'œil l'essai qui a marché, pas une échelle de notation.
@@ -209,6 +210,30 @@ export function ProjectTrials({
           .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
       : [];
 
+  // Retours des deux essais : commentaire global, puis une ligne par étape
+  // (commentaire + quantité en trop / manquante). Ni sous-étapes ni
+  // ingrédients : leurs commentaires restent dans le bloc de chaque essai.
+  const retoursComparés = (() => {
+    if (compares.length !== 2 || !retoursEssais) return [];
+    const parEssai = compares.map((t) => (retoursEssais[t.id] ?? []).filter((r) => r.nature === 'global' || r.nature === 'etape'));
+    const texte = (r: Remarque | undefined) => (r ? [r.texte, r.ecart].filter(Boolean).join(' — ') : '');
+    const lignes: { cle: string; titre: string; ordre: number; valeurs: string[] }[] = [];
+    const globaux = parEssai.map((rs) => texte(rs.find((r) => r.nature === 'global')));
+    if (globaux.some(Boolean)) lignes.push({ cle: 'global', titre: 'Commentaire global', ordre: -1, valeurs: globaux });
+    const titres = new Map<string, { titre: string; ordre: number }>();
+    for (const rs of parEssai)
+      for (const r of rs)
+        if (r.nature === 'etape') {
+          const cle = normSearch(r.etapeTitre ?? '');
+          if (!titres.has(cle)) titres.set(cle, { titre: r.etapeTitre ?? 'Étape', ordre: r.ordre });
+        }
+    for (const [cle, info] of titres) {
+      const valeurs = parEssai.map((rs) => texte(rs.find((r) => r.nature === 'etape' && normSearch(r.etapeTitre ?? '') === cle)));
+      if (valeurs.some(Boolean)) lignes.push({ cle, ...info, valeurs });
+    }
+    return lignes.sort((a, b) => a.ordre - b.ordre);
+  })();
+
   return (
     <div className="rounded-xl border border-outline-variant p-4">
       <LoadingOverlay visible={busy || travail} />
@@ -327,6 +352,35 @@ export function ProjectTrials({
             Quantité réellement utilisée quand elle a été notée, sinon quantité prévue. Les lignes qui diffèrent sont
             surlignées.
           </p>
+        </div>
+      )}
+
+      {retoursComparés.length > 0 && (
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[420px] text-[13px]">
+            <thead>
+              <tr className="text-left text-on-surface-variant">
+                <th className="py-1 font-label-md text-[11.5px] uppercase tracking-widest">Retours</th>
+                {compares.map((t) => (
+                  <th key={t.id} className="py-1 font-label-md text-[11.5px] uppercase tracking-widest">
+                    {t.plannedDate ? formatDate(t.plannedDate) : formatDate(t.createdAt)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {retoursComparés.map((l) => (
+                <tr key={l.cle} className="align-top border-t border-outline-variant/40">
+                  <td className="py-1.5 pr-3 font-semibold text-on-surface">{l.titre}</td>
+                  {l.valeurs.map((v, i) => (
+                    <td key={i} className="py-1.5 pr-3 italic text-primary">
+                      {v || <span className="not-italic text-outline">—</span>}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
