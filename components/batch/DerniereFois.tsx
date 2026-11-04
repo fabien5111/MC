@@ -257,9 +257,11 @@ function ListeRemarques({ remarques, sansDate = false, ajustement }: { remarques
 // En fournée, les remarques de sous-étape et d'ingrédient ne sont plus ici :
 // elles se posent sous la ligne qu'elles concernent (`RetoursSousEtape`,
 // `RetoursIngredient`), comme dans l'éditeur. Reste le commentaire de l'étape.
-export function DerniereFoisEtape({ stepId, ajustement }: { stepId: number; ajustement?: AjustementEcart }) {
+// `sansEcart` (Préparer) : les retours qui portent une « Quantité obtenue » ne
+// sont pas ici mais au-dessus des quantités (`RetoursEcartEtape`).
+export function DerniereFoisEtape({ stepId, ajustement, sansEcart = false }: { stepId: number; ajustement?: AjustementEcart; sansEcart?: boolean }) {
   const v = useLecons();
-  const rs = (v?.lecons.parEtape[stepId]?.remarques ?? []).filter((r) => r.nature === 'etape');
+  const rs = (v?.lecons.parEtape[stepId]?.remarques ?? []).filter((r) => r.nature === 'etape' && !(sansEcart && r.ecartProduit));
   if (!rs.length) return null;
   return (
     <details open className="no-print text-sm italic font-normal text-primary border-l-2 border-primary/50 pl-3">
@@ -271,6 +273,23 @@ export function DerniereFoisEtape({ stepId, ajustement }: { stepId: number; ajus
         <ListeRemarques remarques={rs} ajustement={ajustement} />
       </div>
     </details>
+  );
+}
+
+// Préparer : les retours d'étape qui portent une « Quantité obtenue », posés
+// juste au-dessus des quantités de l'étape, avec le bouton d'ajustement.
+export function RetoursEcartEtape({ stepId, ajustement }: { stepId: number; ajustement?: AjustementEcart }) {
+  const v = useLecons();
+  const rs = (v?.lecons.parEtape[stepId]?.remarques ?? []).filter((r) => r.nature === 'etape' && r.ecartProduit);
+  if (!rs.length) return null;
+  return (
+    <div className="no-print mb-4 text-sm italic font-normal text-primary border-l-2 border-primary/50 pl-3">
+      <div className="not-italic flex items-center gap-1 text-[12px] font-label-md text-primary mb-1">
+        <span className="material-symbols-outlined text-[16px]">history</span>
+        Retours de mes fournées
+      </div>
+      <ListeRemarques remarques={rs} ajustement={ajustement} />
+    </div>
   );
 }
 

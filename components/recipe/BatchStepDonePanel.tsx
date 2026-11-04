@@ -69,6 +69,7 @@ export function BatchStepDonePanel({
   canSubsteps = true,
   readOnly = false,
   ingredientsEditor,
+  retoursEcart,
   aideRealise,
   aideNote,
   derniereFois,
@@ -114,6 +115,8 @@ export function BatchStepDonePanel({
   // de l'étape » : les deux montraient les mêmes lignes. Sans lui (fournée
   // close, lecture seule), la liste simple d'origine.
   ingredientsEditor?: ReactNode;
+  // Retours d'une fournée précédente qui portent une quantité obtenue : au-dessus des quantités.
+  retoursEcart?: ReactNode;
   // Blocs d'aide (JEP-373), montés par la page sur la 1ʳᵉ étape seulement :
   // avant la case « réalisée » et avant « Ma note ».
   aideRealise?: ReactNode;
@@ -442,6 +445,7 @@ export function BatchStepDonePanel({
           <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
         </summary>
         <div className="p-4 bg-white">
+          {retoursEcart}
           {ingredientsEditor ?? (
             <>
               {/* Nom en `minmax(0,1fr)` pour qu'il se replie : une grille tout en

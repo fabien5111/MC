@@ -52,7 +52,7 @@ import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
 import { trackEvent } from '@/lib/analytics';
 import { ARacheterButton } from '@/components/batch/ARacheterButton';
-import { type AjustementEcart, ChoixRemarque, DerniereFoisEtape, LeconsProvider, RetoursAuteur, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
+import { type AjustementEcart, ChoixRemarque, DerniereFoisEtape, LeconsProvider, RetoursEcartEtape, RetoursAuteur, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import { arrondiQuantite, cleRemarque, libelleEcartProduit, normaliserEcartProduit, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import { useDemanderBilan } from '@/lib/batch-lecons-client';
@@ -1549,7 +1549,8 @@ function PreparerView({
                   canPersonalNotes={droits.notesPersonnelles}
                   canSubsteps={droits.sousEtapes}
                   readOnly={readOnly}
-                  derniereFois={<DerniereFoisEtape stepId={s.id} ajustement={ajustementDeEtape(s)} />}
+                  derniereFois={<DerniereFoisEtape stepId={s.id} sansEcart />}
+                  retoursEcart={<RetoursEcartEtape stepId={s.id} ajustement={ajustementDeEtape(s)} />}
                   aideRealise={help && i === 0 ? <HelpBlockSlot blockKey="fournee.deja_realise" help={help} /> : undefined}
                   aideNote={help && i === 0 ? <HelpBlockSlot blockKey="fournee.notes" help={help} /> : undefined}
                   ingredientsEditor={
