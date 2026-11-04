@@ -3294,6 +3294,7 @@ Historique de la migration depuis Vercel + Supabase :
   l'étiquette sur la PR courante plutôt que la poser d'emblée — c'est un
   geste délibéré (construction sur une vraie machine avec de vrais secrets),
   pas une étape automatique du push.
+  **Après un push qui a essuyé une erreur 500 de GitHub** (« remote rejected… Internal Server Error », puis réussi au réessai), vérifier que le run « Déploiement — aperçu d'une PR » existe bien pour le SHA poussé (liste des runs de la branche) : le 04/11/2026, l'événement `synchronize` n'a pas été émis et rien ne s'est lancé. Remède : un petit commit réel, ou retirer puis reposer l'étiquette `preview` ; jamais un commit vide.
 - **Ne jamais ajouter de nœud à la couche applicative de `jepatisse-app`.** La
   plateforme régénère `upstream common` à partir de la **couche entière** : un
   nœud ajouté s'y retrouve rangé, et l'équilibreur envoie des visiteurs dessus.
