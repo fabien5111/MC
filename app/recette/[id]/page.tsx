@@ -14,7 +14,7 @@ import { getFavoriteIds } from '@/lib/favorites';
 import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { getRemarques, getRemarquesEssais } from '@/lib/batch-lecons-data';
-import { LeconsProvider, RetoursAuteur } from '@/components/batch/DerniereFois';
+import { LeconsProvider, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import { getVisibleHelpBlocksForPages } from '@/lib/help';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements, checkQuota } from '@/lib/entitlements-data';
@@ -549,7 +549,6 @@ export default async function RecettePage({ params, searchParams }: Params) {
               (lus par membre) ; le lien « Modifier cette étape » reste réservé à
               l'auteur (`auteur` du LeconsProvider). */}
           {user && <RetoursAuteur recipeId={recipe.id} etapes={steps.map((st) => ({ id: st.id, title: st.title }))} />}
-          </LeconsProvider>
 
           {/* Mes fournées terminées — historique personnel, replié par
               défaut. Absent de l'impression : sans intérêt sur la fiche
@@ -860,6 +859,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     ingredients={grp?.ingredients || []}
                     qty={(it) => <Qty quantity={it.quantity} unit={it.unit} refId={it.ref_id} />}
                     last={i === steps.length - 1}
+                    // Retours de mes fournées (JEP-381) sous la ligne qu'ils concernent,
+                    // comme en fournée et dans /creer (tout membre connecté : le
+                    // fournisseur ne porte rien pour un visiteur). Pas de bouton
+                    // d'ajustement ici : il modifie le formulaire de /creer.
+                    retoursEtape={<RetoursEtape stepId={s.id} />}
+                    retoursIngredient={(it) => <RetoursIngredient stepId={s.id} ingredientId={it.id} />}
+                    retoursSousEtape={(t) => <RetoursSousEtape stepId={s.id} texte={t} />}
                   />
                 );
               })}
@@ -896,6 +902,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
           )}
 
           <RecipeComments comments={comments} />
+          </LeconsProvider>
         </div>
         </PlanProvider>
 
