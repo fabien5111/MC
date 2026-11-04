@@ -1,0 +1,90 @@
+{
+  "ticket": "local-ganache-montee-cafe",
+  "recette": {
+    "titre": "Ganache montée café",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Ganache montée au chocolat blanc infusée au café en grains, légère, onctueuse et franchement parfumée, qui se tient assez pour être dressée en insert puis congelée. Elle garnit un entremets, fourre un biscuit ou fait un insert net à la découpe.",
+    "rendement": "1 cercle Ø 18 cm, 4 cm de hauteur — environ 620 g de ganache montée utilisable (744 g d'ingrédients, perte ≈ 17 %)",
+    "ustensiles": [
+      "Casserole",
+      "Rouleau à pâtisserie",
+      "Film alimentaire",
+      "Chinois",
+      "Mixeur plongeant",
+      "Thermomètre",
+      "Batteur avec fouet",
+      "Maryse",
+      "Cercle à entremets"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache montée café",
+        "page": null,
+        "temps_preparation_minutes": 35,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 300,
+            "unite": "g",
+            "commentaire": "pour l'infusion"
+          },
+          {
+            "nom": "Café en grains",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (ajout)",
+            "quantite": 240,
+            "unite": "g",
+            "commentaire": "ajoutée froide"
+          }
+        ],
+        "instructions": [
+          "Concasser grossièrement les grains de café au rouleau.",
+          "Porter les 300 g de crème à frémissement, retirer du feu, ajouter le café, filmer au contact et infuser 15 minutes.",
+          "Parsemer la gélatine sur l'eau d'hydratation froide et laisser gonfler 10 minutes.",
+          "Filtrer l'infusion au chinois en pressant les grains : environ 255 g de crème parfumée doivent être récupérés.",
+          "Réchauffer la crème à 80 °C, y dissoudre la gélatine hydratée, puis verser en trois fois sur le chocolat blanc et mixer jusqu'à une émulsion lisse et brillante.",
+          "Ajouter la crème froide, mixer brièvement, filmer au contact et réserver 12 heures au réfrigérateur (4 °C).",
+          "Monter la ganache très froide au batteur à vitesse moyenne jusqu'à une texture de mousse ferme qui marque le fouet.",
+          "Utiliser aussitôt : étaler à la maryse dans le moule ou le cercle, lisser, puis congeler."
+        ],
+        "conseils_etape": "Le repos de 12 h à 4 °C est indispensable : la matière grasse cristallise et la ganache monte ferme et stable. Monter la ganache bien froide et arrêter dès que le fouet laisse une trace nette : trop montée, elle grainera et ne se lissera plus. La gélatine donne la tenue nécessaire pour un insert congelé qui se démoule et se découpe net.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Avant montage : 48 h au frais, filmée au contact. Une fois montée, à utiliser aussitôt."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, 3 cm de hauteur : ≈ 365 g de ganache, soit ×0,59 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, 3 cm de hauteur : ≈ 575 g de ganache, soit ×0,93 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 3 cm de hauteur : ≈ 825 g de ganache, soit ×1,33 de la recette.",
+      "Utilisation — Insert congelé Ø 16 cm, 2 cm de hauteur : ≈ 245 g de ganache, soit ×0,40 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 3 cm de hauteur : ≈ 70 g par pièce, soit 8 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, en enveloppe (gouttière pleine, volume de l'insert et du biscuit à déduire) : ≈ 235 g de ganache, soit ×0,38 de la recette (bûche 30 x 8 cm : ≈ 460 g, soit ×0,74).",
+      "Utilisation — Cadre carré 18 x 18 cm, 2 cm de hauteur : ≈ 395 g de ganache, soit ×0,64 de la recette.",
+      "Variante — Ganache prise café : même infusion et même chocolat blanc, mais 2 parts de chocolat blanc pour 1 part de crème infusée (ex. 250 g de crème infusée pour 500 g de chocolat blanc), sans crème froide, sans repos de 12 h ni montage ; couler à 35 °C et laisser prendre 3 h au froid. Matière plus dense, environ 1 g/cm³ : prévoir 1,6 fois plus de masse à volume égal, sans foisonnement."
+    ],
+    "conseils_conservation": "Ganache non montée : 48 h au réfrigérateur, filmée au contact. Ganache montée : à utiliser aussitôt. Insert congelé : 1 mois à -18 °C, filmé ; le sortir et le décongeler dans l'entremets au réfrigérateur, 6 à 8 h, ou le monter encore congelé dans un entremets qui sera décongelé au frais."
+  }
+}
