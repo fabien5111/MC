@@ -1014,7 +1014,7 @@ function PreparerView({
       {/* Résumé de la fournée (le même qu'en mode Pâtisser), au-dessus de la
           photo, sur une fournée close. Toujours en lecture seule ici : le
           commentaire global s'écrit en mode Pâtisser, d'où le rappel vide. */}
-      {batch.status !== 'planifiee' && <SummaryPanel batch={batch} setBatch={setBatch} lecture onGlobalComment={() => {}} />}
+      {batch.status !== 'planifiee' && <SummaryPanel batch={batch} setBatch={setBatch} />}
 
       {/* Photo principale — remontée au-dessus du bloc technique (même ordre
           que la fiche recette), plutôt qu'après la description plus bas. */}
@@ -1590,7 +1590,6 @@ function PatisserView({
   const dialog = useDialog();
   const router = useRouter();
   const commentTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const globalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wakeLock = useRef<WakeLockSentinel | null>(null);
   // Jours DÉPLIÉS par défaut : on suit donc les jours que l'utilisateur a
   // repliés, et non l'inverse. L'ancien jeu (« ouvrir seulement le jour
@@ -1734,15 +1733,6 @@ function PatisserView({
     }, 800);
   }
 
-  function onGlobalComment(value: string) {
-    setBatch((prev) => ({ ...prev, commentaire_global: value }));
-    clearTimeout(globalTimer.current ?? undefined);
-    globalTimer.current = setTimeout(async () => {
-      const { error } = await createClient().from('batches').update({ commentaire_global: value }).eq('id', batch.id);
-      if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
-    }, 800);
-  }
-
   // Seul l'abandon reste géré ici : « terminer » passe désormais par
   // `onMarkTerminee` (BatchView), partagé avec le rail Préparer et la
   // proposition automatique de `proposeFinish` ci-dessus.
@@ -1878,7 +1868,7 @@ function PatisserView({
         />
       </div>
 
-      {batch.status !== 'planifiee' && <SummaryPanel batch={batch} setBatch={setBatch} lecture={readOnly} onGlobalComment={onGlobalComment} />}
+      {batch.status !== 'planifiee' && <SummaryPanel batch={batch} setBatch={setBatch} />}
     </>
   );
 }
@@ -2482,14 +2472,24 @@ function EcartProduitChamp({ valeur, disabled, onChange }: { valeur: number | nu
 function SummaryPanel({
   batch,
   setBatch,
-  lecture,
-  onGlobalComment,
 }: {
   batch: BatchFull;
   setBatch: React.Dispatch<React.SetStateAction<BatchFull>>;
-  lecture: boolean;
-  onGlobalComment: (v: string) => void;
 }) {
+  // Le résumé n'existe que sur une fournée close, donc verrouillée : le bilan
+  // s'y écrit quand même (comme « À retenir »), seule l'impersonation lecture
+  // seule bloque. Le champ porte lui-même son enregistrement différé.
+  const impersonationReadOnly = useReadOnly();
+  const dialogResume = useDialog();
+  const timerGlobal = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function onGlobalComment(value: string) {
+    setBatch((prev) => ({ ...prev, commentaire_global: value }));
+    clearTimeout(timerGlobal.current ?? undefined);
+    timerGlobal.current = setTimeout(async () => {
+      const { error } = await createClient().from('batches').update({ commentaire_global: value }).eq('id', batch.id);
+      if (error) dialogResume.alert('Sauvegarde impossible : ' + error.message);
+    }, 800);
+  }
   const ecarts = batch.batch_ingredients
     .filter((it) => (it.real_quantity != null && it.real_quantity !== it.quantity) || it.commentaire)
     .map((it) => {
@@ -2601,7 +2601,7 @@ function SummaryPanel({
         </p>
         <textarea
           rows={3}
-          disabled={lecture}
+          disabled={impersonationReadOnly}
           value={batch.commentaire_global || ''}
           onChange={(ev) => onGlobalComment(ev.target.value)}
           placeholder="Bilan de la fournée (sauvegardé automatiquement)…"
