@@ -1,0 +1,64 @@
+{
+  "ticket": "local-recette-de-test",
+  "recette": {
+    "titre": "Recette de test",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Recette fictive servant de jeu d'essai : une tartelette vanille composée d'une pâte sablée et d'une crème vanille, à supprimer après usage.",
+    "rendement": "6 tartelettes Ø 8 cm",
+    "ustensiles": [
+      "Robot pâtissier avec feuille",
+      "Casserole",
+      "Fouet",
+      "Cercles à tartelette Ø 8 cm"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Pâte sablée",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 1,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 3 jours au frais, filmée au contact",
+        "ingredients": [
+          { "nom": "Farine T55", "quantite": 250, "unite": "g" },
+          { "nom": "Beurre", "quantite": 125, "unite": "g", "commentaire": "mou" },
+          { "nom": "Sucre glace", "quantite": 90, "unite": "g" }
+        ],
+        "instructions": [
+          "Crémer le beurre mou avec le sucre glace à la feuille.",
+          "Ajouter la farine et sabler jusqu'à obtenir une texture de sable fin.",
+          "Fraiser brièvement, filmer et réserver 1 heure au réfrigérateur avant d'abaisser, de foncer et de cuire à blanc."
+        ],
+        "conseils_etape": "Ne pas trop travailler la pâte pour éviter qu'elle ne rétrécisse à la cuisson."
+      },
+      {
+        "nom_etape": "Crème vanille",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          { "nom": "Lait entier", "quantite": 250, "unite": "ml" },
+          { "nom": "Jaune d'œuf", "quantite": 60, "unite": "g" },
+          { "nom": "Sucre semoule", "quantite": 60, "unite": "g" }
+        ],
+        "instructions": [
+          "Porter le lait à frémissement.",
+          "Blanchir les jaunes avec le sucre, puis verser le lait chaud dessus en deux fois.",
+          "Remettre sur le feu et cuire à la nappe sans cesser de remuer, puis filmer au contact et refroidir 2 heures au réfrigérateur."
+        ],
+        "conseils_etape": "Cuire à feu doux en remuant sans arrêt pour éviter que la crème n'accroche."
+      }
+    ],
+    "astuces_recette": [
+      "Astuce — Recette de test : toutes les quantités sont fictives."
+    ],
+    "conseils_conservation": "Déguster dans les 24 heures, conservé au réfrigérateur."
+  }
+}
