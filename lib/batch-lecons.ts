@@ -519,7 +519,7 @@ export function ligneDecision(r: Remarque, statut: StatutRemarque): DecisionRema
 // « (×1,5) » à la suite de la date d'une fournée : son coefficient, quand il est
 // connu (les remarques gardées de l'ancien modèle n'en portent pas).
 export function coefFournee(r: Pick<Remarque, 'facteur'>): string {
-  return r.facteur && r.facteur > 0 ? ` (×${fmtNum(r.facteur)})` : '';
+  return r.facteur && r.facteur > 0 ? ` (coef ×${fmtNum(r.facteur)})` : '';
 }
 
 // « 12/09 » — date courte.
