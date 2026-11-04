@@ -228,7 +228,7 @@ const ORDRE_NATURE: Record<NatureRemarque, number> = { lecon: 0, global: 1, etap
 // Toutes les remarques d'une fournée (sans décision).
 export function remarquesDeFournee(ref: FourneeReference): Remarque[] {
   const out: Remarque[] = [];
-  const base = { batchId: ref.id, date: ref.date, statut: null, libelle: null, unite: null, ecart: null } as const;
+  const base = { batchId: ref.id, date: ref.date, statut: null, libelle: null, unite: null, ecart: null, facteur: ref.facteur && ref.facteur > 0 ? ref.facteur : null } as const;
   const lecon = texte(ref.lecon);
   if (lecon) out.push({ ...base, cle: cleRemarque('lecon', ref.id), nature: 'lecon', ligneId: ref.id, etapeId: null, etapeTitre: null, sourceStepId: null, ordre: -2, texte: lecon });
   const glob = texte(ref.commentaire_global);
@@ -514,6 +514,12 @@ export function ligneDecision(r: Remarque, statut: StatutRemarque): DecisionRema
     texte: r.texte,
     ecart: r.ecart,
   };
+}
+
+// « (×1,5) » à la suite de la date d'une fournée : son coefficient, quand il est
+// connu (les remarques gardées de l'ancien modèle n'en portent pas).
+export function coefFournee(r: Pick<Remarque, 'facteur'>): string {
+  return r.facteur && r.facteur > 0 ? ` (×${fmtNum(r.facteur)})` : '';
 }
 
 // « 12/09 » — date courte.

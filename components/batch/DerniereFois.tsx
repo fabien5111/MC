@@ -25,6 +25,7 @@ import {
   masseGrammes,
   leconsPrecedentes,
   libelleCoefficient,
+  coefFournee,
   ligneDecision,
   remarquesAffichees,
   remarquesDeSousEtape,
@@ -235,7 +236,7 @@ function RemarqueLigne({ r, sansDate = false }: { r: Remarque; sansDate?: boolea
             <span className="not-italic font-normal text-primary">Mon commentaire : </span>
           )}
           {r.texte && <span className="whitespace-pre-line">{r.texte}</span>}
-          {d && <span className="not-italic text-[11px] text-outline"> · fournée du {d}</span>}
+          {d && <span className="not-italic text-[11px] text-outline"> · fournée du {d}{coefFournee(r)}</span>}
         </span>
       )}
     </li>
@@ -373,7 +374,7 @@ export function RetoursSousEtape({ stepId, texte }: { stepId: number; texte: str
           <ChoixRemarque r={r} />
           <span className="not-italic text-[12px] font-bold text-primary">Retours de mes fournées : </span>
           <span className="whitespace-pre-line">{r.texte}</span>
-          {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}</span>}
+          {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}{coefFournee(r)}</span>}
         </li>
       ))}
     </ul>
@@ -397,7 +398,7 @@ export function RetoursIngredient({ stepId, ingredientId, enListe = false }: { s
             {quantite && <span className="not-italic font-normal text-primary">{quantite}</span>}
             {quantite && r.texte && ' — '}
             {r.texte && <span className="whitespace-pre-line">{r.texte}</span>}
-            {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}</span>}
+            {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}{coefFournee(r)}</span>}
           </li>
         );
       })}
@@ -447,7 +448,7 @@ export function RetoursIngredientNom({ stepId, nom, unite }: { stepId: number; n
             {quantite && <span className="not-italic font-normal text-primary">{quantite}</span>}
             {quantite && r.texte && ' — '}
             {r.texte && <span className="whitespace-pre-line">{r.texte}</span>}
-            {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}</span>}
+            {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}{coefFournee(r)}</span>}
           </li>
         );
       })}
@@ -522,7 +523,7 @@ export function RetoursEtape({ stepId, ajustement }: { stepId: number; ajustemen
             </>
           )}
           <span className="whitespace-pre-line">{r.texte}</span>
-          {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}</span>}
+          {dateCourte(r.date) && <span className="not-italic text-[11px] text-outline"> · fournée du {dateCourte(r.date)}{coefFournee(r)}</span>}
           {ajustement && <PropositionEcart r={r} ajustement={ajustement} />}
         </li>
       ))}
