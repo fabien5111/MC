@@ -223,7 +223,6 @@ function RemarqueLigne({ r, sansDate = false }: { r: Remarque; sansDate?: boolea
       {(r.texte || r.ecart || d || v?.gestion) && (
         <span>
           <ChoixRemarque r={r} />
-          {r.nature === 'global' && <span className="not-italic font-normal text-primary">Commentaire global : </span>}
           {r.nature === 'etape' && r.ecart && (
             <>
               <span className="not-italic font-normal text-primary">Quantité obtenue : </span>
@@ -309,7 +308,7 @@ export function RetoursAuteur({
         </p>
         {lecons.generales.length > 0 && (
           <div className="flex flex-col gap-1">
-            <p className="font-bold text-on-surface">Retours global recette</p>
+            <p className="font-bold text-on-surface">Commentaire global</p>
             <ListeRemarques remarques={lecons.generales} />
           </div>
         )}
@@ -556,8 +555,11 @@ export function RetoursEssai({ remarques }: { remarques: Remarque[] }) {
       </summary>
       <div className="p-3 bg-white flex flex-col gap-4 text-sm">
         {generales.length > 0 && (
-          <div className="italic font-normal text-primary">
-            <ListeRemarques remarques={generales} sansDate />
+          <div className="flex flex-col gap-1">
+            <p className="font-bold text-on-surface">Commentaire global</p>
+            <div className="italic font-normal text-primary">
+              <ListeRemarques remarques={generales} sansDate />
+            </div>
           </div>
         )}
         {etapes.map((e, k) => (
