@@ -1333,6 +1333,7 @@ directes :
   non un `<label>`, qui renverrait vers la case à cocher tout clic sur le
   titre, et un `stopPropagation` sur la case — sans lui, cocher une étape la
   replierait au passage.
+- **Le titre de la fournée renvoie à la recette d'origine** (`/recette/<id>`, `BatchView`), seulement si la recette existe encore et reste lisible (`baseRecipe` non nul) : supprimée ou devenue illisible, le titre reste un simple texte, jamais un lien mort. Un projet en cours y est redirigé vers sa page projet par la fiche elle-même.
 - **Cocher une étape depuis son en-tête la replie** (mode Pâtisser, `StepCookCard`) : elle est terminée. Seul ce geste replie — l'auto-coche déclenchée par le dernier ingrédient ou la dernière sous-étape ne referme rien sous le doigt ; la case se décoche sans rouvrir.
 - **Le sommaire de la fournée vise SES ancres, pas celles de la fiche.**
   `RecipeToc` vise par défaut `sec-etape-N` (`stepAnchorId`), qui n'existent que

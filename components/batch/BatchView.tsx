@@ -565,7 +565,18 @@ export function BatchView({
         />
 
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
-          <h1 className="font-headline-lg text-headline-lg-mobile text-primary">{batch.recipe_title || 'Fournée'}</h1>
+          <h1 className="font-headline-lg text-headline-lg-mobile text-primary">
+            {/* Lien vers la recette d'origine, seulement si elle existe encore et
+                reste lisible (`baseRecipe` nul sinon : supprimée, dépubliée ou
+                privée d'un autre auteur) — jamais un lien mort. */}
+            {batch.recipe_id && baseRecipe ? (
+              <Link href={`/recette/${batch.recipe_id}`} className="hover:underline" title="Ouvrir la recette d'origine">
+                {batch.recipe_title || 'Fournée'}
+              </Link>
+            ) : (
+              batch.recipe_title || 'Fournée'
+            )}
+          </h1>
           <span className="flex items-center gap-3">
             <span className={`no-print font-label-md text-[12px] px-3 py-1 rounded-full text-white ${BATCH_STATUS_LBL[batch.status]?.cls || 'bg-secondary'}`}>
               {BATCH_STATUS_LBL[batch.status]?.label || batch.status}
