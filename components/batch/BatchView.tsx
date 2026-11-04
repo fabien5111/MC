@@ -2172,7 +2172,13 @@ function StepCookCard({
             checked={s.done}
             disabled={readOnly}
             aria-label={`Marquer « ${s.title || 'cette étape'} » comme réalisée`}
-            onChange={(ev) => onToggleStep(s.id, ev.target.checked)}
+            onChange={(ev) => {
+              onToggleStep(s.id, ev.target.checked);
+              // Étape cochée depuis son en-tête : on la replie, elle est
+              // terminée. Seulement ce geste — l'auto-coche (dernier
+              // ingrédient / dernière sous-étape) ne replie rien sous le doigt.
+              if (ev.target.checked) setOpen(false);
+            }}
             className={`w-8 h-8 rounded border-outline accent-primary focus:ring-primary shrink-0 ${readOnly ? '' : 'cursor-pointer'}`}
           />
         </span>
