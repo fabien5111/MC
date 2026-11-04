@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  LECON_MAX,
+  BILAN_MAX,
   apparier,
   arrondiQuantite,
   cleRemarque,
@@ -12,9 +12,8 @@ import {
   leconsPrecedentes,
   ligneDecision,
   libelleCoefficient,
-  lireLecon,
   nombreEtapesAnnotees,
-  normaliserLecon,
+  normaliserBilan,
   remarquesAffichees,
   remarquesDeFournee,
   remarquesDeSousEtape,
@@ -31,7 +30,7 @@ function ing(p: Partial<RefIngredient> & { id: number; batch_step_id: number; na
   return { unit: 'g', quantity: null, real_quantity: null, commentaire: null, order_index: 0, ...p };
 }
 function ref(steps: RefStep[], ings: RefIngredient[] = [], extra: Partial<FourneeReference> = {}): FourneeReference {
-  return { id: 1, date: '2026-09-12', commentaire_global: null, lecon: null, batch_steps: steps, batch_ingredients: ings, ...extra };
+  return { id: 1, date: '2026-09-12', commentaire_global: null, batch_steps: steps, batch_ingredients: ings, ...extra };
 }
 function decision(p: Partial<DecisionRemarque> & Pick<DecisionRemarque, 'nature' | 'ligne_id' | 'statut'>): DecisionRemarque {
   return {
@@ -80,10 +79,10 @@ describe('remarquesDeFournee', () => {
         step({ id: 11, title: 'Cuisson' }),
       ],
       [ing({ id: 50, batch_step_id: 10, name: 'Sucre', quantity: 200, real_quantity: 180 }), ing({ id: 51, batch_step_id: 10, name: 'Beurre' })],
-      { commentaire_global: 'Bien', lecon: 'Moins de sucre' },
+      { commentaire_global: 'Bien' },
     );
     const cles = remarquesDeFournee(r).map((x) => x.cle);
-    expect(cles).toEqual(['lecon:1', 'global:1', 'etape:10', 'sous_etape:5', 'ingredient:50']);
+    expect(cles).toEqual(['global:1', 'etape:10', 'sous_etape:5', 'ingredient:50']);
   });
 });
 
@@ -117,8 +116,8 @@ describe('remarquesAffichees', () => {
   });
 
   it('se passe d’une fournée de référence', () => {
-    const out = remarquesAffichees(null, [decision({ nature: 'lecon', ligne_id: 99, statut: 'gardee', texte: 'Moins de sucre' })]);
-    expect(out.map((x) => x.cle)).toEqual(['lecon:99']);
+    const out = remarquesAffichees(null, [decision({ nature: 'global', ligne_id: 99, statut: 'gardee', texte: 'Moins de sucre' })]);
+    expect(out.map((x) => x.cle)).toEqual(['global:99']);
   });
 });
 
@@ -162,10 +161,10 @@ describe('leconsPrecedentes', () => {
     expect(l.parEtape[1].remarques.map((x) => x.texte)).toEqual(['récente', 'ancienne']);
   });
 
-  it('range leçon et commentaire global à part', () => {
-    const rs = remarquesDeFournee(ref([], [], { commentaire_global: 'Bien', lecon: 'Moins de sucre' }));
+  it('range le commentaire global à part', () => {
+    const rs = remarquesDeFournee(ref([], [], { commentaire_global: 'Bien' }));
     const l = leconsPrecedentes(rs, []);
-    expect(l.generales.map((x) => x.nature)).toEqual(['lecon', 'global']);
+    expect(l.generales.map((x) => x.nature)).toEqual(['global']);
   });
 
   it('apparie les ingrédients par clé + unité dans l’étape retrouvée', () => {
@@ -213,16 +212,11 @@ describe('ligneDecision', () => {
   });
 });
 
-describe('leçon', () => {
+describe('bilan', () => {
   it('normalise la saisie', () => {
-    expect(normaliserLecon('  ')).toBeNull();
-    expect(normaliserLecon(' Cuire 3 min de moins ')).toBe('Cuire 3 min de moins');
-    expect(normaliserLecon('x'.repeat(600))).toHaveLength(LECON_MAX);
-  });
-  it('lit la colonne si elle existe', () => {
-    expect(lireLecon({})).toBeNull();
-    expect(lireLecon({ lecon: ' ok ' })).toBe('ok');
-    expect(lireLecon(null)).toBeNull();
+    expect(normaliserBilan('  ')).toBeNull();
+    expect(normaliserBilan(' Cuire 3 min de moins ')).toBe('Cuire 3 min de moins');
+    expect(normaliserBilan('x'.repeat(600))).toHaveLength(BILAN_MAX);
   });
 });
 

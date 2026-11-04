@@ -8,7 +8,6 @@ import { createClient } from '@/lib/supabase/server';
 import {
   ecartQuantite,
   libelleEcartProduit,
-  lireLecon,
   remarquesDeFournee,
   type DecisionRemarque,
   type FourneeReference,
@@ -44,7 +43,6 @@ function versReference(row: Brut): FourneeReference {
     id: row.id,
     date: row.date_fin ?? row.planned_date,
     commentaire_global: row.commentaire_global,
-    lecon: lireLecon(row),
     facteur: row.factor && row.factor > 0 ? row.factor : null,
     batch_steps: (row.batch_steps ?? []).map((s) => ({ ...s, batch_substeps: s.batch_substeps ?? [] })),
     batch_ingredients: row.batch_ingredients ?? [],
@@ -128,7 +126,7 @@ async function rafraichir(supabase: Supa, decisions: DecisionRemarque[], refId: 
     ids(['ingredient']).length
       ? supabase.from('batch_ingredients').select('id, commentaire, quantity, real_quantity, unit').in('id', ids(['ingredient']))
       : null,
-    ids(['global', 'lecon']).length ? supabase.from('batches').select('*').in('id', ids(['global', 'lecon'])) : null,
+    ids(['global']).length ? supabase.from('batches').select('*').in('id', ids(['global'])) : null,
   ]);
   const vivant = new Map<string, { texte: string | null; ecart?: string | null }>();
   for (const r of (etapes?.data ?? []) as { id: number; commentaire: string | null; ecart_produit_g?: number | null }[]) {
@@ -140,7 +138,6 @@ async function rafraichir(supabase: Supa, decisions: DecisionRemarque[], refId: 
   }
   for (const r of (fournees?.data ?? []) as { id: number; commentaire_global: string | null }[]) {
     vivant.set(`global:${r.id}`, { texte: r.commentaire_global });
-    vivant.set(`lecon:${r.id}`, { texte: lireLecon(r) });
   }
   return decisions.map((d) => {
     const v = vivant.get(`${d.nature}:${d.ligne_id}`);

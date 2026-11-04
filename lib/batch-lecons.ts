@@ -21,8 +21,9 @@ import { fmtNum } from '@/lib/recipe-plan';
 import { normSearch } from '@/lib/text-search';
 import { ingredientKey } from '@/lib/ingredient-name';
 
-// Longueur maximale de « À retenir pour la prochaine fois » (`batches.lecon`).
-export const LECON_MAX = 500;
+// Longueur maximale du bilan de la fournée (`batches.commentaire_global`) saisi
+// à la clôture. (L'ancien « À retenir », `batches.lecon`, n'est plus lu.)
+export const BILAN_MAX = 500;
 
 // ── Fournée de référence ────────────────────────────────────────────────
 // Forme étroite : seuls les constats du jour J et ce qu'il faut pour
@@ -57,8 +58,6 @@ export type FourneeReference = {
   // Date de clôture (`date_fin`), à défaut date prévue.
   date: string | null;
   commentaire_global: string | null;
-  // `batches.lecon` — absente avant la migration : `null`.
-  lecon: string | null;
   // Coefficient de la fournée (`batches.factor`) ; absent/nul = ×1.
   facteur?: number | null;
   batch_steps: RefStep[];
@@ -66,7 +65,7 @@ export type FourneeReference = {
 };
 
 // ── Remarques ───────────────────────────────────────────────────────────
-export type NatureRemarque = 'etape' | 'sous_etape' | 'ingredient' | 'global' | 'lecon';
+export type NatureRemarque = 'etape' | 'sous_etape' | 'ingredient' | 'global';
 export type StatutRemarque = 'gardee' | 'ecartee';
 
 export type Remarque = {
@@ -223,14 +222,12 @@ export function arrondiQuantite(q: number, unite: string | null): number {
   return Math.round(q * 100) / 100;
 }
 
-const ORDRE_NATURE: Record<NatureRemarque, number> = { lecon: 0, global: 1, etape: 2, sous_etape: 3, ingredient: 4 };
+const ORDRE_NATURE: Record<NatureRemarque, number> = { global: 1, etape: 2, sous_etape: 3, ingredient: 4 };
 
 // Toutes les remarques d'une fournée (sans décision).
 export function remarquesDeFournee(ref: FourneeReference): Remarque[] {
   const out: Remarque[] = [];
   const base = { batchId: ref.id, date: ref.date, statut: null, libelle: null, unite: null, ecart: null, facteur: ref.facteur && ref.facteur > 0 ? ref.facteur : null } as const;
-  const lecon = texte(ref.lecon);
-  if (lecon) out.push({ ...base, cle: cleRemarque('lecon', ref.id), nature: 'lecon', ligneId: ref.id, etapeId: null, etapeTitre: null, sourceStepId: null, ordre: -2, texte: lecon });
   const glob = texte(ref.commentaire_global);
   if (glob) out.push({ ...base, cle: cleRemarque('global', ref.id), nature: 'global', ligneId: ref.id, etapeId: null, etapeTitre: null, sourceStepId: null, ordre: -1, texte: glob });
   const steps = [...ref.batch_steps].sort((a, b) => a.order_index - b.order_index);
@@ -340,14 +337,14 @@ export type IngredientCourant = { id: number; batch_step_id: number | null; name
 export function leconsPrecedentes(remarques: Remarque[], courantes: EtapeCourante[], ingredientsCourants: IngredientCourant[] = []): Lecons {
   const parEtape: Record<number, ConstatEtape> = {};
   const autres: ConstatEtape[] = [];
-  const generales = remarques.filter((r) => r.nature === 'global' || r.nature === 'lecon');
+  const generales = remarques.filter((r) => r.nature === 'global');
   const steps = [...courantes].sort((a, b) => a.order_index - b.order_index);
 
   // Groupes : une étape d'une fournée d'origine.
   type Groupe = { cleG: string; batch: string; titre: string | null; sourceStepId: number | null; ordre: number; remarques: Remarque[] };
   const groupes = new Map<string, Groupe>();
   for (const r of remarques) {
-    if (r.nature === 'global' || r.nature === 'lecon') continue;
+    if (r.nature === 'global') continue;
     const batch = String(r.batchId ?? `x${r.date ?? ''}`);
     const cleG = `${batch}:${r.etapeId ?? r.etapeTitre ?? ''}`;
     let g = groupes.get(cleG);
@@ -490,7 +487,6 @@ export function versReference(b: {
     id: b.id,
     date: b.date_fin ?? b.planned_date,
     commentaire_global: b.commentaire_global,
-    lecon: lireLecon(b),
     facteur: b.factor && b.factor > 0 ? b.factor : null,
     batch_steps: b.batch_steps,
     batch_ingredients: b.batch_ingredients,
@@ -530,15 +526,10 @@ export function dateCourte(iso: string | null): string | null {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Zurich' });
 }
 
-// Valeur à écrire dans `batches.lecon` : espaces de bord retirés, tronquée,
-// vide → `null`.
-export function normaliserLecon(v: string | null | undefined): string | null {
-  const t = (v ?? '').trim().slice(0, LECON_MAX);
-  return t ? t : null;
-}
 
-// Lecture tolérante de `batches.lecon` (colonne absente avant la migration).
-export function lireLecon(row: unknown): string | null {
-  const v = (row as { lecon?: unknown } | null)?.lecon;
-  return typeof v === 'string' ? texte(v) : null;
+// Valeur à écrire dans `batches.commentaire_global` : espaces de bord retirés,
+// tronquée, vide → `null`.
+export function normaliserBilan(v: string | null | undefined): string | null {
+  const t = (v ?? '').trim().slice(0, BILAN_MAX);
+  return t ? t : null;
 }

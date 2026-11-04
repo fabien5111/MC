@@ -223,7 +223,6 @@ function RemarqueLigne({ r, sansDate = false }: { r: Remarque; sansDate?: boolea
       {(r.texte || r.ecart || d || v?.gestion) && (
         <span>
           <ChoixRemarque r={r} />
-          {r.nature === 'lecon' && <span className="not-italic font-normal text-primary">À retenir : </span>}
           {r.nature === 'global' && <span className="not-italic font-normal text-primary">Commentaire global : </span>}
           {r.nature === 'etape' && r.ecart && (
             <>
@@ -532,14 +531,14 @@ export function RetoursEtape({ stepId, ajustement }: { stepId: number; ajustemen
 }
 
 // Essais d'un projet : le bloc complet des retours d'UNE fournée (commentaire
-// global, leçon, étapes, sous-étapes, ingrédients), en lecture seule — sans
+// global, étapes, sous-étapes, ingrédients), en lecture seule — sans
 // fournisseur, sans épingle ni date (tout vient du même essai).
 export function RetoursEssai({ remarques }: { remarques: Remarque[] }) {
   if (!remarques.length) return null;
-  const generales = remarques.filter((r) => r.nature === 'global' || r.nature === 'lecon');
+  const generales = remarques.filter((r) => r.nature === 'global');
   const groupes = new Map<string, { titre: string; ordre: number; remarques: Remarque[] }>();
   for (const r of remarques) {
-    if (r.nature === 'global' || r.nature === 'lecon') continue;
+    if (r.nature === 'global') continue;
     const cle = String(r.etapeId ?? r.etapeTitre ?? '');
     const g = groupes.get(cle) ?? { titre: r.etapeTitre ?? 'Étape', ordre: r.ordre, remarques: [] };
     g.remarques.push(r);

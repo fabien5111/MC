@@ -53,9 +53,9 @@ import type { AllergenRef } from '@/lib/recipes';
 import { trackEvent } from '@/lib/analytics';
 import { ARacheterButton } from '@/components/batch/ARacheterButton';
 import { ChoixRemarque, DerniereFoisEtape, LeconsProvider, RetoursAuteur, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
-import { cleRemarque, libelleEcartProduit, lireLecon, normaliserEcartProduit, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
+import { cleRemarque, libelleEcartProduit, normaliserEcartProduit, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
-import { useDemanderLecon } from '@/lib/batch-lecons-client';
+import { useDemanderBilan } from '@/lib/batch-lecons-client';
 import {
   fmtNum,
   BATCH_STATUS_LBL,
@@ -272,7 +272,7 @@ export function BatchView({
   const impersonationReadOnly = useReadOnly();
   const [batch, setBatch] = useState(initialBatch);
   useEffect(() => setBatch(initialBatch), [initialBatch]);
-  const demanderLecon = useDemanderLecon();
+  const demanderBilan = useDemanderBilan();
   const [mode, setMode] = useState<'preparer' | 'patisser'>(() => initialMode ?? defaultMode(initialBatch));
   const [busy, setBusy] = useState(false);
   // Distinct de `busy` : `router.refresh()` ne rend pas de promesse
@@ -372,11 +372,11 @@ export function BatchView({
     }
     setBatch((b) => ({ ...b, status: 'terminee', date_fin: fin }));
     trackEvent('terminer_fournee');
-    // « À retenir pour la prochaine fois » (JEP-381) : facultatif, posé
-    // après la clôture (une annulation ne la défait pas), modifiable ensuite
-    // depuis le résumé.
-    const lecon = await demanderLecon(batch.id, lireLecon(batch));
-    if (lecon !== undefined) setBatch((b) => ({ ...b, lecon }) as BatchFull);
+    // Bilan de la fournée (JEP-381) : facultatif, posé après la clôture (une
+    // annulation ne la défait pas), écrit dans le commentaire global et
+    // modifiable ensuite depuis le résumé.
+    const bilan = await demanderBilan(batch.id, batch.commentaire_global);
+    if (bilan !== undefined) setBatch((b) => ({ ...b, commentaire_global: bilan }));
     router.refresh();
     return true;
   }
@@ -2477,7 +2477,7 @@ function SummaryPanel({
   setBatch: React.Dispatch<React.SetStateAction<BatchFull>>;
 }) {
   // Le résumé n'existe que sur une fournée close, donc verrouillée : le bilan
-  // s'y écrit quand même (comme « À retenir »), seule l'impersonation lecture
+  // s'y écrit quand même (comme le bilan demandé à la clôture), seule l'impersonation lecture
   // seule bloque. Le champ porte lui-même son enregistrement différé.
   const impersonationReadOnly = useReadOnly();
   const dialogResume = useDialog();
@@ -2593,7 +2593,6 @@ function SummaryPanel({
           </ul>
         </div>
       )}
-      <LeconResume batch={batch} setBatch={setBatch} />
       <div>
         <p className={`${LBL_CLS} mb-1 flex items-center`}>
           {choix('global', batch.id)}
@@ -2610,48 +2609,4 @@ function SummaryPanel({
       </div>
     </div>
   );
-}
-
-// « À retenir pour la prochaine fois » (JEP-381), dans le résumé d'une
-// fournée terminée. Modifiable même en lecture seule (`?lecture=1`, fournée
-// close) : comme l'avis, ce n'est pas modifier la fournée mais préparer la
-// suivante. Seule l'impersonation lecture seule bloque. Colonne absente
-// (migration pas jouée) : rien d'affiché.
-function LeconResume({ batch, setBatch }: { batch: BatchFull; setBatch: React.Dispatch<React.SetStateAction<BatchFull>> }) {
-  const impersonationReadOnly = useReadOnly();
-  const demanderLecon = useDemanderLecon();
-  if (batch.status !== 'terminee' || !('lecon' in batch)) return null;
-  const lecon = lireLecon(batch);
-  const modifiable = !impersonationReadOnly;
-  if (!lecon && !modifiable) return null;
-  async function modifier() {
-    const nouvelle = await demanderLecon(batch.id, lecon, false);
-    if (nouvelle !== undefined) setBatch((b) => ({ ...b, lecon: nouvelle }) as BatchFull);
-  }
-  return (
-    <div>
-      <p className={`${LBL_CLS} mb-1 flex items-center`}>
-        {lecon && <ChoixLecon batch={batch} />}
-        À retenir pour la prochaine fois
-      </p>
-      {lecon ? (
-        <p className="text-sm whitespace-pre-line">{lecon}</p>
-      ) : (
-        <p className="text-sm italic text-on-surface-variant">Rien de noté pour l’instant.</p>
-      )}
-      {modifiable && (
-        <button type="button" onClick={modifier} className="no-print mt-1 flex items-center gap-1 font-label-md text-[12px] text-primary hover:underline">
-          <span className="material-symbols-outlined text-[16px]">edit</span>
-          {lecon ? 'Modifier' : 'Ajouter'}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// Pictos de la leçon : lue sur la fournée elle-même, donc recalculée ici à
-// chaque modification (la Map du résumé est figée au rendu de celui-ci).
-function ChoixLecon({ batch }: { batch: BatchFull }) {
-  const r = remarquesDeFournee(versReference(batch)).find((x) => x.nature === 'lecon');
-  return r ? <ChoixRemarque r={r} /> : null;
 }
