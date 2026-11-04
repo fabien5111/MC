@@ -18,6 +18,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
+import { useLecons } from '@/components/batch/DerniereFois';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { moldMetrics } from '@/lib/recipe-view';
 import { scalingCoef } from '@/lib/recipe-plan';
@@ -141,6 +142,7 @@ export function QuantitiesStep({
   hideTitle = false,
   componentId,
   pied,
+  etapeIds,
   quotaAjustementIA = null,
   suggestion = null,
 }: {
@@ -156,6 +158,9 @@ export function QuantitiesStep({
   // v2 : contenu posé tout en bas de la préparation (case « Quantités
   // vérifiées »), sous la note sur les quantités modifiées à la main.
   pied?: ReactNode;
+  // v2 : étapes de la préparation. Sert à retirer la justification « Fournée
+  // d’essai : … » quand plus aucun retour épinglé avec un écart ne la porte.
+  etapeIds?: number[];
   // État du quota `ajustement_ia_mensuel` (`mc_check_quota`, affichage seulement,
   // lu par la page) : sert à montrer les crédits restants et à griser « Ajuster
   // avec l'IA » une fois le quota atteint. `null` = pas de droit, ou lecture
@@ -171,6 +176,17 @@ export function QuantitiesStep({
   formatLabel: string;
 }) {
   const dialog = useDialog();
+  const lecons = useLecons();
+  // La justification posée par « Modifier les quantités avec ce coefficient »
+  // (retour de fournée) n'a plus d'objet une fois le retour désépinglé.
+  const raisonVisible = (raison: string | null | undefined) => {
+    if (!raison || !raison.startsWith('Fournée d’essai :')) return raison;
+    if (!lecons?.gestion || !etapeIds) return raison;
+    const porteur = etapeIds.some((id) =>
+      (lecons.lecons.parEtape[id]?.remarques ?? []).some((r) => r.ecartProduit && lecons.epinglee(r)),
+    );
+    return porteur ? raison : null;
+  };
   const { mutate, busy } = useMutation();
   const [travail, setTravail] = useState(false);
   // Ajustements par IA réussis depuis le dernier rendu serveur : la page ne
@@ -606,9 +622,9 @@ export function QuantitiesStep({
                 {/* Justification consultable en une phrase (§6.4) : la
                     proposition du moment, sinon celle qui a été appliquée.
                     Juste au-dessus du coefficient qu'elle explique. */}
-                {(prop?.reason || c.scaleReason) && (
+                {(prop?.reason || raisonVisible(c.scaleReason)) && (
                   <p className="mb-3 rounded-lg bg-surface-container-low px-3 py-2 text-[12.5px] text-on-surface-variant">
-                    {prop?.reason || c.scaleReason}
+                    {prop?.reason || raisonVisible(c.scaleReason)}
                   </p>
                 )}
 

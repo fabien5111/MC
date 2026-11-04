@@ -1060,6 +1060,7 @@ export function ProjectV2({
                         <div className="border-t border-outline-variant/40 px-4 py-4">
                           <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel}
                             componentId={c.id}
+                            etapeIds={own.map((st) => st.id)}
                             quotaAjustementIA={quotaAjustementIA}
                             pied={<VerifCase item={verifDe(c.id, 'quantites')} onToggle={(it) => void basculerVerif(it)} busy={busy} />}
                           />
