@@ -1298,6 +1298,7 @@ directes :
   « Ma note » — la note personnelle, justement celle qu'on écrit pour ajuster
   la recette, y était donc structurellement invisible. Les deux sont
   désormais rendues, sous deux libellés distincts.
+- **Le constat du jour J (« Ce qui s'est passé sur cette étape » + « Quantité obtenue ») reste visible étape repliée** (mode Pâtisser, `StepCookCard`) : hors du volet, comme la note personnelle — on le saisit et on le relit étape par étape, y compris sur une étape terminée.
 - **Une note personnelle n'est jamais repliée avec l'étape.** Une étape
   entièrement traitée se replie (`collapsible`, cf. `stepFullyDone`), mais son
   bloc « Ma note » reste hors du volet : c'est le seul contenu de l'étape qui

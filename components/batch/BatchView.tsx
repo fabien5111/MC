@@ -2377,7 +2377,12 @@ function StepCookCard({
         </div>
       )}
 
-      <div className="px-4 pb-4">
+      </div>
+
+      {/* Hors du volet, comme la note personnelle : le constat du jour J (et la
+          quantité obtenue) se saisit ou se relit étape par étape, y compris sur
+          une étape terminée et repliée. */}
+      <div className="px-4 pb-4 pt-3">
         <textarea
           rows={2}
           placeholder="Ce qui s'est passé sur cette étape (sauvegardé automatiquement)…"
@@ -2402,7 +2407,6 @@ function StepCookCard({
           />
         )}
       </div>
-        </div>
     </div>
   );
 }
