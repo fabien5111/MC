@@ -215,11 +215,13 @@ export function ProjectTrials({
   // ingrédients : leurs commentaires restent dans le bloc de chaque essai.
   const retoursComparés = (() => {
     if (compares.length !== 2 || !retoursEssais) return [];
-    const parEssai = compares.map((t) => (retoursEssais[t.id] ?? []).filter((r) => r.nature === 'global' || r.nature === 'etape'));
+    const parEssai = compares.map((t) => (retoursEssais[t.id] ?? []).filter((r) => r.nature === 'global' || r.nature === 'lecon' || r.nature === 'etape'));
     const texte = (r: Remarque | undefined) => (r ? [r.texte, r.ecart].filter(Boolean).join(' — ') : '');
     const lignes: { cle: string; titre: string; ordre: number; valeurs: string[] }[] = [];
     const globaux = parEssai.map((rs) => texte(rs.find((r) => r.nature === 'global')));
-    if (globaux.some(Boolean)) lignes.push({ cle: 'global', titre: 'Commentaire global', ordre: -1, valeurs: globaux });
+    if (globaux.some(Boolean)) lignes.push({ cle: 'global', titre: 'Commentaire global', ordre: -2, valeurs: globaux });
+    const lecons = parEssai.map((rs) => texte(rs.find((r) => r.nature === 'lecon')));
+    if (lecons.some(Boolean)) lignes.push({ cle: 'lecon', titre: 'À retenir', ordre: -1, valeurs: lecons });
     const titres = new Map<string, { titre: string; ordre: number }>();
     for (const rs of parEssai)
       for (const r of rs)
