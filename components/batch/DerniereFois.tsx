@@ -206,12 +206,13 @@ export function ChoixRemarque({ r }: { r: Remarque }) {
   );
 }
 
-// Une remarque, quelle que soit sa nature. La date n'est rappelée que pour
-// une remarque gardée d'une fournée plus ancienne que la référence.
-function RemarqueLigne({ r, sansDate = false }: { r: Remarque; sansDate?: boolean }) {
+// Une remarque, quelle que soit sa nature. Date et coefficient de la fournée
+// d'origine sont toujours rappelés (« fournée du 04/11 (coef ×1,5) »), comme
+// dans l'éditeur : c'est le coefficient qui donne son sens à une quantité
+// obtenue. `ajustement` : bouton d'ajustement des quantités de l'étape.
+function RemarqueLigne({ r, sansDate = false, ajustement }: { r: Remarque; sansDate?: boolean; ajustement?: AjustementEcart }) {
   const v = useLecons();
-  const ancienne = v?.reference ? r.batchId !== v.reference.id : true;
-  const d = ancienne && !sansDate ? dateCourte(r.date) : null;
+  const d = !sansDate ? dateCourte(r.date) : null;
   return (
     <li className="flex flex-col">
       {(r.nature === 'sous_etape' || r.nature === 'ingredient') && (
@@ -235,17 +236,18 @@ function RemarqueLigne({ r, sansDate = false }: { r: Remarque; sansDate?: boolea
           )}
           {r.texte && <span className="whitespace-pre-line">{r.texte}</span>}
           {d && <span className="not-italic text-[11px] text-outline"> · fournée du {d}{coefFournee(r)}</span>}
+          {ajustement && r.nature === 'etape' && <PropositionEcart r={r} ajustement={ajustement} />}
         </span>
       )}
     </li>
   );
 }
 
-function ListeRemarques({ remarques, sansDate = false }: { remarques: Remarque[]; sansDate?: boolean }) {
+function ListeRemarques({ remarques, sansDate = false, ajustement }: { remarques: Remarque[]; sansDate?: boolean; ajustement?: AjustementEcart }) {
   return (
     <ul className="flex flex-col gap-1.5">
       {remarques.map((r) => (
-        <RemarqueLigne key={r.cle} r={r} sansDate={sansDate} />
+        <RemarqueLigne key={r.cle} r={r} sansDate={sansDate} ajustement={ajustement} />
       ))}
     </ul>
   );
@@ -255,7 +257,7 @@ function ListeRemarques({ remarques, sansDate = false }: { remarques: Remarque[]
 // En fournée, les remarques de sous-étape et d'ingrédient ne sont plus ici :
 // elles se posent sous la ligne qu'elles concernent (`RetoursSousEtape`,
 // `RetoursIngredient`), comme dans l'éditeur. Reste le commentaire de l'étape.
-export function DerniereFoisEtape({ stepId }: { stepId: number }) {
+export function DerniereFoisEtape({ stepId, ajustement }: { stepId: number; ajustement?: AjustementEcart }) {
   const v = useLecons();
   const rs = (v?.lecons.parEtape[stepId]?.remarques ?? []).filter((r) => r.nature === 'etape');
   if (!rs.length) return null;
@@ -266,7 +268,7 @@ export function DerniereFoisEtape({ stepId }: { stepId: number }) {
         Retours de mes fournées
       </summary>
       <div className="mt-1">
-        <ListeRemarques remarques={rs} />
+        <ListeRemarques remarques={rs} ajustement={ajustement} />
       </div>
     </details>
   );

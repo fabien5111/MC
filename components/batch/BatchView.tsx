@@ -52,8 +52,8 @@ import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
 import { trackEvent } from '@/lib/analytics';
 import { ARacheterButton } from '@/components/batch/ARacheterButton';
-import { ChoixRemarque, DerniereFoisEtape, LeconsProvider, RetoursAuteur, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
-import { cleRemarque, libelleEcartProduit, normaliserEcartProduit, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
+import { type AjustementEcart, ChoixRemarque, DerniereFoisEtape, LeconsProvider, RetoursAuteur, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
+import { arrondiQuantite, cleRemarque, libelleEcartProduit, normaliserEcartProduit, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import { useDemanderBilan } from '@/lib/batch-lecons-client';
 import {
@@ -803,6 +803,44 @@ function PreparerView({
   // motif que `expanding` dans BatchStepIngredients.
   const [replacingStep, setReplacingStep] = useState<BatchStepRow | null>(null);
   const { mutate: mutateReplace, busy: busyReplace, refresh: refreshReplace } = useMutation();
+  // Ajustement des quantités d'une étape d'après le retour d'une fournée
+  // précédente (« Quantité obtenue »). Écrit les quantités des lignes d'ingrédients
+  // de l'étape, jamais la recette d'origine : valable aussi pour une recette
+  // dont on n'est pas l'auteur. Proposé seulement sur une fournée en cours.
+  const { mutate: mutateAjuster, busy: busyAjuster } = useMutation();
+  function ajustementDeEtape(s: BatchStepRow): AjustementEcart | undefined {
+    if (readOnly || s.replaced_by_recipe_id != null) return undefined;
+    // Lignes qui font réellement la masse de l'étape : ni retirées, ni
+    // remplacées par une recette, ni ajoutées à la main (leur coefficient est
+    // le leur, `rescaleBatchIngredients` ne les touche jamais non plus).
+    const lignes = batch.batch_ingredients.filter(
+      (it) => it.batch_step_id === s.id && !it.removed && it.expanded_into_recipe_id == null && !it.added && it.quantity != null,
+    );
+    if (!lignes.length) return undefined;
+    return {
+      lignes: lignes.map((it) => ({ quantity: it.quantity, unit: it.unit })),
+      libelle: 'Ajuster les ingrédients de cette étape',
+      onAjuster: async (coef) => {
+        await mutateAjuster(
+          async () => {
+            const supabase = createClient();
+            for (const it of lignes) {
+              const { error } = await supabase
+                .from('batch_ingredients')
+                .update({ quantity: arrondiQuantite(Number(it.quantity) * coef, it.unit), quantity_text: null })
+                .eq('id', it.id);
+              if (error) return { error };
+            }
+            return { error: null };
+          },
+          {
+            confirm: `Multiplier par ×${fmtNum(coef)} les quantités des ${lignes.length} ingrédient${lignes.length > 1 ? 's' : ''} de cette étape ? Un coefficient déjà modifié à la main sur ces lignes sera remplacé.`,
+            errorLabel: 'Ajustement non enregistré',
+          },
+        );
+      },
+    };
+  }
   // Ligne d'ingrédient en cours de remplacement par une recette, ouverte
   // depuis la « Liste totale des ingrédients » (même fenêtre que celle de
   // BatchStepIngredients, cf. `expanding` là-bas) — instance de mutation
@@ -974,7 +1012,7 @@ function PreparerView({
 
   return (
     <div className="flex flex-col gap-8">
-      <LoadingOverlay visible={busyReplace} label="Modification en cours…" />
+      <LoadingOverlay visible={busyReplace || busyAjuster} label="Modification en cours…" />
       {replacingStep && (
         <StepExpandDialog
           batch={batch}
@@ -1511,7 +1549,7 @@ function PreparerView({
                   canPersonalNotes={droits.notesPersonnelles}
                   canSubsteps={droits.sousEtapes}
                   readOnly={readOnly}
-                  derniereFois={<DerniereFoisEtape stepId={s.id} />}
+                  derniereFois={<DerniereFoisEtape stepId={s.id} ajustement={ajustementDeEtape(s)} />}
                   aideRealise={help && i === 0 ? <HelpBlockSlot blockKey="fournee.deja_realise" help={help} /> : undefined}
                   aideNote={help && i === 0 ? <HelpBlockSlot blockKey="fournee.notes" help={help} /> : undefined}
                   ingredientsEditor={
