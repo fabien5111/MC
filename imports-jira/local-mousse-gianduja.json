@@ -1,0 +1,82 @@
+{
+  "ticket": "local-mousse-gianduja",
+  "recette": {
+    "titre": "Mousse gianduja",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse dense et veloutée au gianduja, aux notes de noisette torréfiée et de chocolat au lait, qui se tient bien à la découpe. Elle se marie très bien avec le café et la noisette, et sert de crémeux aérien au cœur d'un entremets ou d'une bûche.",
+    "rendement": "1 cercle Ø 20 cm, 2,5 cm de hauteur — environ 580 g de mousse utilisable (646 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Casserole",
+      "Thermomètre de cuisine",
+      "Cul-de-poule",
+      "Maryse",
+      "Mixeur plongeant",
+      "Fouet",
+      "Batteur électrique",
+      "Couteau",
+      "Cercle à entremets Ø 20 cm"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Mousse gianduja",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Gianduja",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (ganache)",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 18,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (crème montée)",
+            "quantite": 250,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans l'eau froide pendant 10 minutes, jusqu'à ce qu'elle prenne en masse.",
+          "Hacher finement le gianduja et le placer dans un cul-de-poule.",
+          "Chauffer les 125 g de crème à 80 °C dans une casserole, puis y dissoudre la gélatine hydratée.",
+          "Verser la crème chaude sur le gianduja en trois fois, en émulsionnant à la maryse à partir du centre.",
+          "Mixer la ganache au mixeur plongeant, sans incorporer d'air, jusqu'à une texture lisse et brillante, puis laisser tiédir jusqu'à 35-40 °C en contrôlant au thermomètre.",
+          "Monter les 250 g de crème froide au fouet ou au batteur jusqu'à une chantilly souple, qui forme un bec d'oiseau mou.",
+          "Incorporer un tiers de la crème montée à la ganache au fouet pour la détendre, puis ajouter le reste à la maryse, en soulevant la masse, jusqu'à une mousse homogène.",
+          "Couler aussitôt la mousse dans le cercle ou le moule, lisser, puis laisser prendre au froid."
+        ],
+        "conseils_etape": "La ganache doit être à 35-40 °C au moment du mélange : trop chaude, elle fait retomber la crème montée ; trop froide, les graisses du gianduja figent et forment des grains. Garder la crème montée souple, jamais ferme, pour une mousse dense mais lisse, et ne pas réduire la gélatine, car le gianduja est très gras et fige moins qu'un chocolat."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 20 cm, 2,5 cm de mousse : ≈ 580 g de mousse, soit ×1 de la recette.",
+      "Utilisation — Entremets rond Ø 16 cm, 2,5 cm de mousse : ≈ 370 g de mousse, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 2,5 cm de mousse : ≈ 835 g de mousse, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 4 cm de hauteur : ≈ 115 g de mousse par pièce, soit 5 pièces avec la recette entière (×0,20 par pièce).",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, mousse en enveloppe, gouttière pleine (déduire le volume de l'insert) : ≈ 285 g de mousse, soit ×0,49 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, mousse en enveloppe, gouttière pleine (déduire le volume de l'insert) : ≈ 555 g de mousse, soit ×0,96 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 2 cm de mousse : ≈ 480 g de mousse, soit ×0,83 de la recette.",
+      "Variante — Gianduja café : infuser 10 g de grains de café concassés dans les 125 g de crème de la ganache pendant 15 minutes, filtrer, puis rétablir le poids à 125 g avec de la crème.",
+      "Variante — Noisette plus marquée : remplacer 40 g de gianduja par 40 g de praliné noisette."
+    ],
+    "conseils_conservation": "Dans un dessert monté, 3 jours au réfrigérateur sous film. Au congélateur, jusqu'à 1 mois, filmée au contact. Décongeler 4 à 6 heures au réfrigérateur. Idéale en entremets pris au congélateur avant le glaçage, ou comme garniture à consommer sous 24 heures."
+  }
+}
