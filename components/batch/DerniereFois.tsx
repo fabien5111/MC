@@ -486,11 +486,13 @@ export type AjustementEcart = {
   // Raison pour laquelle le geste n'est pas proposé ici (le coefficient est
   // alors seulement indiqué).
   indisponible?: string | null;
+  // Coefficient déjà appliqué aux lignes actuelles (fournée) ; défaut 1.
+  facteurCourant?: number;
 };
 
 function PropositionEcart({ r, ajustement }: { r: Remarque; ajustement: AjustementEcart }) {
   const masse = masseGrammes(ajustement.lignes);
-  const coef = coefficientEcart(r, masse.grammes);
+  const coef = coefficientEcart(r, masse.grammes, ajustement.facteurCourant);
   if (coef == null) return null;
   if (Math.abs(coef - 1) < 0.005) {
     return <p className="not-italic text-[12px] text-on-surface-variant">Les quantités actuelles tiennent déjà compte de cet écart.</p>;

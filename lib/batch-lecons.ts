@@ -204,10 +204,18 @@ export function masseGrammes(lignes: { quantity: string | number | null; unit: s
 // recette), puis comparée à la masse actuelle — un calcul en masse absolue,
 // juste même si les quantités ont été retouchées depuis la fournée.
 // `null` : rien à calculer (pas d'écart, masse inconnue, cible nulle).
-export function coefficientEcart(r: Pick<Remarque, 'ecartProduit' | 'masseFournee' | 'facteur'>, masseCourante: number): number | null {
+export function coefficientEcart(
+  r: Pick<Remarque, 'ecartProduit' | 'masseFournee' | 'facteur'>,
+  masseCourante: number,
+  // Coefficient dont les quantités ACTUELLES sont déjà multipliées : 1 dans
+  // /creer et le mode projet (quantités à coefficient 1), celui de la fournée
+  // dans une fournée refaite à ×1,5 — sans quoi la cible, ramenée à ×1, est
+  // comparée à une masse à ×1,5.
+  facteurCourant = 1,
+): number | null {
   if (!r.ecartProduit || !r.masseFournee || r.masseFournee <= 0 || !(masseCourante > 0)) return null;
   const f = r.facteur && r.facteur > 0 ? r.facteur : 1;
-  const cible = (r.masseFournee - r.ecartProduit) / f;
+  const cible = ((r.masseFournee - r.ecartProduit) / f) * (facteurCourant > 0 ? facteurCourant : 1);
   if (!(cible > 0)) return null;
   const coef = cible / masseCourante;
   return isFinite(coef) ? Math.round(coef * 1000) / 1000 : null;

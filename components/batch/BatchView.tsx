@@ -797,6 +797,17 @@ function PreparerView({
   // de l'étape, jamais la recette d'origine : valable aussi pour une recette
   // dont on n'est pas l'auteur. Proposé seulement sur une fournée en cours.
   const { mutate: mutateAjuster, busy: busyAjuster } = useMutation();
+  // Position de la page avant un ajustement : restaurée quand la
+  // resynchronisation est revenue (le rendu serveur la remettait en haut).
+  const scrollAvantAjuster = useRef<number | null>(null);
+  useEffect(() => {
+    if (busyAjuster || scrollAvantAjuster.current == null) return;
+    const y = scrollAvantAjuster.current;
+    scrollAvantAjuster.current = null;
+    window.scrollTo(0, y);
+    requestAnimationFrame(() => window.scrollTo(0, y));
+  }, [busyAjuster]);
+
   function ajustementDeEtape(s: BatchStepRow): AjustementEcart | undefined {
     if (readOnly || s.replaced_by_recipe_id != null) return undefined;
     // Lignes qui font réellement la masse de l'étape : ni retirées, ni
@@ -809,7 +820,9 @@ function PreparerView({
     return {
       lignes: lignes.map((it) => ({ quantity: it.quantity, unit: it.unit })),
       libelle: 'Ajuster les ingrédients de cette étape',
+      facteurCourant: Number(batch.factor) || 1,
       onAjuster: async (coef) => {
+        scrollAvantAjuster.current = window.scrollY;
         await mutateAjuster(
           async () => {
             const supabase = createClient();
