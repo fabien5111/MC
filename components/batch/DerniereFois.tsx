@@ -78,6 +78,8 @@ export function LeconsProvider({
   decisions: decisionsInitiales,
   choixDisponibles,
   plusRecenteId = null,
+  anciennes = [],
+  toutesEpinglees = false,
   courantes,
   ingredientsCourants = [],
   userId,
@@ -90,6 +92,10 @@ export function LeconsProvider({
   choixDisponibles: boolean;
   // Fournée terminée la plus récente de la recette (remarques épinglées d'office).
   plusRecenteId?: number | null;
+  // Fournée repartant de la recette : autres fournées terminées lues, et
+  // épinglage par défaut de toutes leurs remarques (cf. `getRemarques`).
+  anciennes?: FourneeReference[];
+  toutesEpinglees?: boolean;
   courantes: EtapeCourante[];
   ingredientsCourants?: IngredientCourant[];
   userId: string;
@@ -107,19 +113,21 @@ export function LeconsProvider({
   // reste visible (picto éteint) jusqu'au prochain rechargement.
   const [decisionsOuverture] = useState(decisionsInitiales);
   const remarques = useMemo(() => {
-    const vivantes = remarquesAffichees(reference, decisions);
+    const vivantes = remarquesAffichees(reference, decisions, anciennes);
     const parCleVivante = new Map(vivantes.map((x) => [x.cle, x]));
-    const base = remarquesAffichees(reference, decisionsOuverture);
+    const base = remarquesAffichees(reference, decisionsOuverture, anciennes);
     const vues = new Set(base.map((x) => x.cle));
     return [...base.map((x) => parCleVivante.get(x.cle) ?? x), ...vivantes.filter((x) => !vues.has(x.cle))];
-  }, [reference, decisions, decisionsOuverture]);
+  }, [reference, decisions, decisionsOuverture, anciennes]);
   const lecons = useMemo(() => leconsPrecedentes(remarques, courantes, ingredientsCourants), [remarques, courantes, ingredientsCourants]);
   const parCle = useMemo(() => new Map(decisions.map((d) => [cleRemarque(d.nature, d.ligne_id), d.statut])), [decisions]);
   // Épinglée d'office : remarque de la fournée de référence ou de la plus
   // récente fournée terminée (celle que la prochaine fournée rappellera).
+  // Fournée repartant de la recette : toute remarque d'une fournée lue l'est.
   const parDefaut = useCallback(
-    (r: Remarque) => r.batchId != null && (r.batchId === reference?.id || r.batchId === plusRecenteId),
-    [reference, plusRecenteId],
+    (r: Remarque) =>
+      r.batchId != null && (toutesEpinglees || r.batchId === reference?.id || r.batchId === plusRecenteId),
+    [reference, plusRecenteId, toutesEpinglees],
   );
   const epinglee = useCallback(
     (r: Remarque) => {
@@ -179,8 +187,9 @@ export function LeconsProvider({
 }
 
 // Un seul picto, l'épingle : « cette remarque doit-elle réapparaître ? ».
-// Épinglée par défaut pour les remarques de la dernière fournée (et de la
-// fournée d'origine d'un « Refaire »), non épinglée pour les plus anciennes.
+// Épinglée par défaut pour toutes les fournées lues d'une fournée repartant de
+// la recette ; pour une fournée refaite, pour la fournée d'origine et la plus
+// récente seulement (les plus anciennes non épinglées).
 // Un clic bascule ; le choix n'est écrit que s'il diffère du défaut.
 export function ChoixRemarque({ r }: { r: Remarque }) {
   const v = useLecons();
@@ -498,6 +507,12 @@ export type AjustementEcart = {
 };
 
 function PropositionEcart({ r, ajustement }: { r: Remarque; ajustement: AjustementEcart }) {
+  // Un seul coefficient proposé par étape : celui de la fournée de référence (la
+  // plus récente, ou la fournée d'origine d'un « Refaire »). Les écarts plus
+  // anciens restent affichés, sans bouton — ils proposeraient des coefficients
+  // contradictoires.
+  const v = useLecons();
+  if (v?.reference && r.batchId !== v.reference.id) return null;
   // Masse de l'écart et masse actuelle comptées de la même façon : par le
   // référentiel quand l'écran le connaît (un lait en ml entre dans la masse),
   // sinon par les seules lignes pesables.

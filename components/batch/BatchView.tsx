@@ -538,6 +538,8 @@ export function BatchView({
       decisions={remarques?.decisions ?? AUCUNE_DECISION}
       choixDisponibles={!!remarques?.choixDisponibles}
       plusRecenteId={remarques?.plusRecenteId ?? null}
+      anciennes={remarques?.anciennes ?? []}
+      toutesEpinglees={remarques?.toutesEpinglees ?? false}
       courantes={batch.batch_steps.map((st) => ({
         id: st.id,
         source_step_id: st.source_step_id,

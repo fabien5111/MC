@@ -1510,6 +1510,7 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
 - **Fournée de référence** (sous la session, RLS) : la fournée source
   (`source_plan_id`, « Refaire ») si elle est lisible, sinon la plus récente
   fournée `terminee` du membre sur la même recette, hors la fournée courante.
+- **Fournée repartant de la recette : toutes les fournées terminées** (arbitrage du 05/11/2026). Hors « Refaire », `getRemarques` lit les `FOURNEES_LUES_MAX` (10) fournées `terminee` les plus récentes de la recette (abandonnées exclues) : la plus récente est la référence, les autres `anciennes` ; leurs remarques s'affichent toutes, **épinglées par défaut** (`toutesEpinglees`, `LeconsProvider`), sauf celles qu'on a désépinglées. Vaut pour la fournée, la fiche recette, `/creer` et le mode projet. **Le bouton d'ajustement d'une « Quantité obtenue » n'est proposé que sur l'écart de la fournée de référence** (`PropositionEcart`) : les écarts plus anciens restent affichés, sans bouton, sinon une étape proposerait des coefficients contradictoires. **Une fournée refaite (« Refaire ») ne change pas** : sa seule référence est la fournée d'origine, avec la règle ci-dessous (`toutesEpinglees` faux, `anciennes` vide).
 - **Règle d'affichage unique** (`remarquesAffichees`, arbitrage du 31/10/2026) :
   les remarques de la fournée de référence **en entier par défaut**, SAUF celles
   que le membre a **écartées**, PLUS celles qu'il a **gardées** dans des

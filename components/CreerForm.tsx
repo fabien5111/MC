@@ -1269,6 +1269,8 @@ export function CreerForm({
       decisions={remarques?.decisions ?? AUCUNE_DECISION_RETOURS}
       choixDisponibles={!!remarques?.choixDisponibles}
       plusRecenteId={remarques?.plusRecenteId ?? null}
+      anciennes={remarques?.anciennes ?? []}
+      toutesEpinglees={remarques?.toutesEpinglees ?? false}
       courantes={courantesRetours}
       ingredientsCourants={ingredientsRetours}
       userId={userId}

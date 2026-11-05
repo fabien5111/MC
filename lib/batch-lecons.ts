@@ -316,9 +316,14 @@ function depuisDecision(d: DecisionRemarque): Remarque {
 
 // La règle d'affichage : remarques de la référence moins les écartées, plus
 // les gardées venues d'autres fournées (les plus récentes d'abord).
-export function remarquesAffichees(ref: FourneeReference | null, decisions: DecisionRemarque[]): Remarque[] {
+// `anciennes` (fournée repartant de la recette, 05/11/2026) : les autres fournées
+// terminées de la recette, de la plus récente à la plus ancienne — leurs
+// remarques s'affichent comme celles de la référence, sauf écartées. Vide pour
+// une fournée refaite (« Refaire ») : seule la fournée d'origine compte.
+export function remarquesAffichees(ref: FourneeReference | null, decisions: DecisionRemarque[], anciennes: FourneeReference[] = []): Remarque[] {
   const parCle = new Map(decisions.map((d) => [cleRemarque(d.nature, d.ligne_id), d]));
-  const deRef = ref ? remarquesDeFournee(ref) : [];
+  const fournees = [...(ref ? [ref] : []), ...anciennes.filter((a) => a.id !== ref?.id)];
+  const deRef = fournees.flatMap((f) => remarquesDeFournee(f));
   const vues = new Set(deRef.map((r) => r.cle));
   const out: Remarque[] = [];
   for (const r of deRef) {
@@ -326,13 +331,13 @@ export function remarquesAffichees(ref: FourneeReference | null, decisions: Deci
     if (d?.statut === 'ecartee') continue;
     out.push({ ...r, statut: d?.statut ?? null });
   }
-  const anciennes = decisions
+  const gardees = decisions
     .filter((d) => d.statut === 'gardee' && !vues.has(cleRemarque(d.nature, d.ligne_id)))
     .map(depuisDecision)
     // Commentaire effacé depuis dans la fournée d'origine : plus rien à garder.
     .filter((r) => r.texte || r.ecart)
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '') || a.ordre - b.ordre || ORDRE_NATURE[a.nature] - ORDRE_NATURE[b.nature]);
-  return [...out, ...anciennes];
+  return [...out, ...gardees];
 }
 
 // ── Rattachement aux étapes courantes ───────────────────────────────────

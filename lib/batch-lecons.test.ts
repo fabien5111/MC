@@ -115,6 +115,16 @@ describe('remarquesAffichees', () => {
     expect(out).toEqual([]);
   });
 
+  it('fournée repartant de la recette : remarques des fournées plus anciennes affichées, sauf écartées, sans doublon', () => {
+    const ancienne = ref([step({ id: 20, title: 'Cuisson', commentaire: 'four trop chaud' }), step({ id: 21, title: 'Pâte', commentaire: 'trop collante' })], [], {
+      id: 2,
+      date: '2026-08-01',
+    });
+    const out = remarquesAffichees(r, [decision({ nature: 'etape', ligne_id: 21, statut: 'ecartee', batch_id: 2 }), decision({ nature: 'etape', ligne_id: 20, statut: 'gardee', batch_id: 2 })], [ancienne]);
+    expect(out.map((x) => x.cle)).toEqual(['global:1', 'etape:10', 'etape:20']);
+    expect(out[2]).toMatchObject({ batchId: 2, texte: 'four trop chaud', statut: 'gardee' });
+  });
+
   it('se passe d’une fournée de référence', () => {
     const out = remarquesAffichees(null, [decision({ nature: 'global', ligne_id: 99, statut: 'gardee', texte: 'Moins de sucre' })]);
     expect(out.map((x) => x.cle)).toEqual(['global:99']);

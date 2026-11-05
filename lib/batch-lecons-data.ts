@@ -49,32 +49,39 @@ function versReference(row: Brut): FourneeReference {
   };
 }
 
-// Fournée de référence :
-//   • la fournée source (`source_plan_id`, « Refaire ») si elle est lisible ;
-//   • sinon la plus récente fournée `terminee` du membre sur la même recette,
-//     hors la fournée courante.
-async function lireReference(
+// Nombre de fournées terminées lues pour une fournée repartant de la recette
+// (et pour la fiche, l'éditeur, le mode projet) : la plus récente sert de
+// référence, les suivantes apportent leurs remarques non désépinglées.
+export const FOURNEES_LUES_MAX = 10;
+
+// Fournées lues :
+//   • « Refaire » : la fournée source (`source_plan_id`) si elle est lisible,
+//     seule — rien d'autre ne change pour une fournée refaite ;
+//   • sinon les FOURNEES_LUES_MAX fournées `terminee` les plus récentes du
+//     membre sur la même recette, hors la fournée courante : la première est la
+//     référence, les autres `anciennes`.
+async function lireFournees(
   supabase: Supa,
   opts: { userId: string; recipeId: string | null; excludeId?: number | null; sourcePlanId?: number | null },
-): Promise<FourneeReference | null> {
+): Promise<{ reference: FourneeReference | null; anciennes: FourneeReference[]; refaite: boolean }> {
   if (opts.sourcePlanId != null) {
     const { data, error } = await supabase.from('batches').select(REFERENCE_SELECT).eq('id', opts.sourcePlanId).maybeSingle();
     if (error) console.error('getRemarques (source):', error.message);
-    if (data) return versReference(data as unknown as Brut);
+    if (data) return { reference: versReference(data as unknown as Brut), anciennes: [], refaite: true };
   }
-  if (!opts.recipeId) return null;
+  if (!opts.recipeId) return { reference: null, anciennes: [], refaite: false };
   let q = supabase.from('batches').select(REFERENCE_SELECT).eq('user_id', opts.userId).eq('recipe_id', opts.recipeId).eq('status', 'terminee');
   if (opts.excludeId != null) q = q.neq('id', opts.excludeId);
   const { data, error } = await q
     .order('date_fin', { ascending: false, nullsFirst: false })
     .order('planned_date', { ascending: false, nullsFirst: false })
-    .limit(1);
+    .limit(FOURNEES_LUES_MAX);
   if (error) {
     console.error('getRemarques:', error.message);
-    return null;
+    return { reference: null, anciennes: [], refaite: false };
   }
-  const row = (data as unknown as Brut[] | null)?.[0];
-  return row ? versReference(row) : null;
+  const rows = ((data as unknown as Brut[] | null) ?? []).map(versReference);
+  return { reference: rows[0] ?? null, anciennes: rows.slice(1), refaite: false };
 }
 
 // Identifiant de la fournée terminée la plus récente de la recette.
@@ -116,8 +123,8 @@ async function lireDecisions(supabase: Supa, userId: string, recipeId: string): 
 // Texte vivant des remarques gardées venues d'autres fournées : un
 // commentaire corrigé depuis s'y reflète. Ligne introuvable (fournée
 // supprimée) : la copie de `remarques_gardees` sert.
-async function rafraichir(supabase: Supa, decisions: DecisionRemarque[], refId: number | null): Promise<DecisionRemarque[]> {
-  const aLire = decisions.filter((d) => d.statut === 'gardee' && d.batch_id != null && d.batch_id !== refId);
+async function rafraichir(supabase: Supa, decisions: DecisionRemarque[], lues: Set<number>): Promise<DecisionRemarque[]> {
+  const aLire = decisions.filter((d) => d.statut === 'gardee' && d.batch_id != null && !lues.has(d.batch_id));
   if (!aLire.length) return decisions;
   const ids = (n: DecisionRemarque['nature'][]) => [...new Set(aLire.filter((d) => n.includes(d.nature)).map((d) => d.ligne_id))];
   const [etapes, sousEtapes, ingredients, fournees] = await Promise.all([
@@ -148,6 +155,12 @@ async function rafraichir(supabase: Supa, decisions: DecisionRemarque[], refId: 
 
 export type DonneesRemarques = {
   reference: FourneeReference | null;
+  // Fournée repartant de la recette : les autres fournées terminées lues.
+  anciennes: FourneeReference[];
+  // Fournée repartant de la recette (et fiche, éditeur, mode projet) : toutes
+  // les remarques des fournées lues sont épinglées par défaut. Faux pour une
+  // fournée refaite : règle d'origine (référence + plus récente).
+  toutesEpinglees: boolean;
   // Fournée terminée la plus récente du membre sur cette recette (la courante
   // exclue de rien) : ses remarques sont épinglées par défaut.
   plusRecenteId: number | null;
@@ -165,18 +178,19 @@ export async function getRemarques(opts: {
   sourcePlanId?: number | null;
 }): Promise<DonneesRemarques> {
   const supabase = await createClient();
-  const [reference, decisionsBrutes, plusRecenteId] = await Promise.all([
-    lireReference(supabase, opts),
+  const [{ reference, anciennes, refaite }, decisionsBrutes, plusRecenteId] = await Promise.all([
+    lireFournees(supabase, opts),
     opts.recipeId ? lireDecisions(supabase, opts.userId, opts.recipeId) : Promise.resolve(null),
     opts.recipeId ? lirePlusRecente(supabase, opts.userId, opts.recipeId) : Promise.resolve(null),
   ]);
   let decisions = decisionsBrutes ?? [];
   try {
-    decisions = await rafraichir(supabase, decisions, reference?.id ?? null);
+    const lues = new Set([reference?.id, ...anciennes.map((a) => a.id)].filter((x): x is number => x != null));
+    decisions = await rafraichir(supabase, decisions, lues);
   } catch (e) {
     console.error('getRemarques (rafraîchir):', e);
   }
-  return { reference, plusRecenteId, decisions, choixDisponibles: decisionsBrutes != null };
+  return { reference, anciennes, toutesEpinglees: !refaite, plusRecenteId, decisions, choixDisponibles: decisionsBrutes != null };
 }
 
 // Remarques de CHAQUE fournée d'une recette (essais d'un projet), par id de
