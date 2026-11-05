@@ -1,0 +1,94 @@
+{
+  "ticket": "local-caramel-coulant-cafe",
+  "recette": {
+    "titre": "Caramel coulant café",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Caramel à sec décuit à la crème chaude, relevé de café et enrichi de beurre, légèrement gélifié pour rester coulant en bouche sans s'échapper à la découpe. Il se glisse en insert dans un entremets, une bûche ou un individuel.",
+    "rendement": "1 cercle Ø 20 cm, 1 cm de hauteur — environ 305 g de caramel utilisable (360 g d'ingrédients, perte ≈ 15 %)",
+    "ustensiles": [
+      "Casserole à fond épais",
+      "Petite casserole",
+      "Fouet",
+      "Maryse",
+      "Thermomètre de cuisson",
+      "Mixeur plongeant",
+      "Bac",
+      "Balance"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Caramel coulant café",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 5 jours au frais dans un bac filmé au contact ; lisser à la maryse avant emploi.",
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Extrait de café",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 12,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans l'eau froide et réserver au froid.",
+          "Chauffer la crème avec l'extrait de café et la fleur de sel dans la petite casserole, puis garder au chaud.",
+          "Cuire le sucre à sec dans la casserole à fond épais, en le versant en trois fois, jusqu'à un caramel ambré foncé (environ 185 °C).",
+          "Décuire hors du feu en versant la crème chaude en trois fois, en mélangeant au fouet.",
+          "Recuire à 104 °C en remuant, pour dissoudre les éclats de caramel.",
+          "Ajouter la gélatine hors du feu et mélanger jusqu'à dissolution complète, puis laisser tiédir à 60 °C.",
+          "Ajouter le beurre froid en dés et mixer sans incorporer d'air jusqu'à une émulsion lisse et brillante.",
+          "Débarrasser dans un bac, filmer au contact et laisser prendre au froid au moins 2 h avant emploi."
+        ],
+        "conseils_etape": "Colorer le caramel franchement : un caramel trop clair donne un goût sucré sans profondeur, et le café ne ressort pas. Verser la crème chaude (jamais froide) pour limiter les projections et le choc thermique. Mixer le mélange avec le mixeur plongeant incliné, sans faire émerger la tête, pour ne pas faire de bulles."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert coulé en cercle Ø 20 cm, environ 1 cm de hauteur, pour un entremets Ø 22 cm : ≈ 305 g de caramel, soit ×1 de la recette.",
+      "Utilisation — Insert Ø 18 cm, 1 cm de hauteur, pour un entremets rond Ø 20 cm : ≈ 255 g de caramel, soit ×0,84 de la recette.",
+      "Utilisation — Insert Ø 22 cm, 1 cm de hauteur, pour un entremets rond Ø 24 cm : ≈ 380 g de caramel, soit ×1,25 de la recette.",
+      "Utilisation — Insert Ø 14 cm, 1 cm de hauteur, pour un entremets rond Ø 16 cm : ≈ 155 g de caramel, soit ×0,51 de la recette.",
+      "Utilisation — Insert Ø 16 cm de 0,5 cm de hauteur dans un entremets Ø 20 cm : ≈ 100 g de caramel, soit ×0,33 de la recette.",
+      "Utilisation — Inserts Ø 7 cm, 1 cm de hauteur, pour individuels Ø 8 cm : ≈ 40 g par pièce (×0,13), soit 7 pièces avec la recette entière.",
+      "Utilisation — Insert d'une bûche en gouttière 20 x 7 cm (bande de 4 cm de large, 1 cm de haut, 18 cm de long) : ≈ 70 g de caramel, soit ×0,23 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 1 cm de hauteur : ≈ 325 g de caramel, soit ×1,07 de la recette.",
+      "Variante — Pectine NH : remplacer la gélatine et son eau par 2,5 g de pectine NH mélangée à 10 g de sucre prélevés sur les 150 g, ajoutée à la crème tiède, puis porter à ébullition 1 minute avant de décuire.",
+      "Variante — Café en grains : infuser 20 g de grains concassés dans la crème chaude 30 minutes à couvert, filtrer, compléter à 150 g avec de la crème, et supprimer l'extrait de café."
+    ],
+    "conseils_conservation": "5 jours au réfrigérateur dans un bac filmé au contact ; 2 mois au congélateur, en bac ou en insert coulé dans son cercle. En bac : décongeler 12 h au réfrigérateur et lisser à la maryse. En insert : démouler et insérer encore congelé dans le montage."
+  }
+}
