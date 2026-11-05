@@ -21,6 +21,8 @@ import { normSearch } from '@/lib/text-search';
 import {
   cleRemarque,
   coefficientEcart,
+  type EstimateurMasse,
+  type LigneMasse,
   dateCourte,
   masseGrammes,
   leconsPrecedentes,
@@ -488,16 +490,39 @@ export type AjustementEcart = {
   indisponible?: string | null;
   // Coefficient déjà appliqué aux lignes actuelles (fournée) ; défaut 1.
   facteurCourant?: number;
+  // Masse par le référentiel (conversions, masses volumiques — volumes
+  // compris) : lignes actuelles de l'étape et estimateur. Absents (`/creer`,
+  // mode projet) : seules les lignes en g / kg / mg comptent.
+  lignesMasse?: LigneMasse[];
+  estimerMasse?: EstimateurMasse;
 };
 
 function PropositionEcart({ r, ajustement }: { r: Remarque; ajustement: AjustementEcart }) {
+  // Masse de l'écart et masse actuelle comptées de la même façon : par le
+  // référentiel quand l'écran le connaît (un lait en ml entre dans la masse),
+  // sinon par les seules lignes pesables.
+  const estime =
+    ajustement.estimerMasse && ajustement.lignesMasse && r.lignesMasse
+      ? { ref: ajustement.estimerMasse(r.lignesMasse), cur: ajustement.estimerMasse(ajustement.lignesMasse) }
+      : null;
   const masse = masseGrammes(ajustement.lignes);
-  const coef = coefficientEcart(r, masse.grammes, ajustement.facteurCourant);
+  const coef = estime
+    ? coefficientEcart({ ...r, masseFournee: estime.ref.grammes || null }, estime.cur.grammes, ajustement.facteurCourant)
+    : coefficientEcart(r, masse.grammes, ajustement.facteurCourant);
   if (coef == null) return null;
+  const nonConvertis = estime ? Array.from(new Set([...estime.ref.nonConvertis, ...estime.cur.nonConvertis])) : [];
+  if (nonConvertis.length && Math.abs(coef - 1) >= 0.005) {
+    return (
+      <p className="not-italic text-[12px] text-on-surface-variant">
+        Soit ×{fmtNum(coef)} sur les ingrédients convertibles en grammes, mais le calcul n&apos;est pas fiable : pas de masse volumique ou de conversion
+        pour {nonConvertis.join(', ')}. À renseigner dans le référentiel des ingrédients, ou ajustez les quantités à la main.
+      </p>
+    );
+  }
   if (Math.abs(coef - 1) < 0.005) {
     return <p className="not-italic text-[12px] text-on-surface-variant">Les quantités actuelles tiennent déjà compte de cet écart.</p>;
   }
-  const horsMasse = Math.max(r.nonPesees ?? 0, masse.nonPesees);
+  const horsMasse = estime ? 0 : Math.max(r.nonPesees ?? 0, masse.nonPesees);
   return (
     <div className="not-italic mt-1 flex flex-col gap-1">
       {ajustement.indisponible ? (

@@ -52,7 +52,18 @@ export type RefIngredient = {
   order_index: number;
   // Ligne retirée à la main de la fournée : hors de la masse de l'étape.
   removed?: boolean;
+  // Rattachement au référentiel : sert à convertir la ligne en grammes
+  // (conversion propre à l'ingrédient, masse volumique) — cf. `LigneMasse`.
+  ref_id?: number | null;
 };
+
+// Ligne d'ingrédient telle que la masse d'une étape la compte (conversion en
+// grammes par la table de conversions ou la masse volumique, JEP-381).
+export type LigneMasse = { name: string; quantity: number | null; unit: string | null; ref_id: number | null };
+// Estimation de la masse d'un ensemble de lignes, fournie par l'écran qui
+// connaît le référentiel (conversions, unités, masses volumiques) ; `nonConvertis`
+// nomme les lignes qui n'ont pu entrer dans la masse (aucune conversion connue).
+export type EstimateurMasse = (lignes: LigneMasse[]) => { grammes: number; nonConvertis: string[] };
 export type FourneeReference = {
   id: number;
   // Date de clôture (`date_fin`), à défaut date prévue.
@@ -105,6 +116,9 @@ export type Remarque = {
   ecartProduit?: number | null;
   masseFournee?: number | null;
   nonPesees?: number;
+  // Les lignes de l'étape telles que réalisées (quantité réelle, sinon prévue) :
+  // l'écran les convertit en masse avec le référentiel, volumes compris.
+  lignesMasse?: LigneMasse[];
 };
 
 // Ligne de `remarques_gardees` telle que lue en base (texte éventuellement
@@ -248,12 +262,16 @@ export function remarquesDeFournee(ref: FourneeReference): Remarque[] {
         .filter((i) => i.batch_step_id === s.id && !i.removed)
         .map((i) => ({ quantity: i.real_quantity ?? i.quantity, unit: i.unit }));
       const m = masseGrammes(lignes);
+      const lignesMasse: LigneMasse[] = ref.batch_ingredients
+        .filter((i) => i.batch_step_id === s.id && !i.removed)
+        .map((i) => ({ name: i.name, quantity: i.real_quantity ?? i.quantity, unit: i.unit, ref_id: i.ref_id ?? null }));
       out.push({
         ...base, ...etape, cle: cleRemarque('etape', s.id), nature: 'etape', ligneId: s.id, texte: c,
         ecart: libelleEcartProduit(ecartProduit),
         ecartProduit,
         masseFournee: m.grammes || null,
         nonPesees: m.nonPesees,
+        lignesMasse,
         facteur: ref.facteur && ref.facteur > 0 ? ref.facteur : null,
       });
     }

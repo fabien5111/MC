@@ -43,7 +43,7 @@ import { RecipeToc, type TocSections, type TocAction } from '@/components/recipe
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { formatTime, formatDate } from '@/lib/format';
 import { UNITS_LBL, matchAllergenPictos, tempsCarte } from '@/lib/recipe-view';
-import { ingredientConversionText, shortUnitLbl, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
+import { estimateWeightGrams, ingredientConversionText, shortUnitLbl, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { IngredientTotalList } from '@/components/IngredientTotalList';
@@ -821,6 +821,11 @@ function PreparerView({
       lignes: lignes.map((it) => ({ quantity: it.quantity, unit: it.unit })),
       libelle: 'Ajuster les ingrédients de cette étape',
       facteurCourant: Number(batch.factor) || 1,
+      lignesMasse: lignes.map((it) => ({ name: it.name, quantity: it.quantity, unit: it.unit, ref_id: it.ref_id ?? null })),
+      estimerMasse: (ls) => {
+        const e = estimateWeightGrams(ls, conversions, units, ingredientDensities);
+        return { grammes: e.grams, nonConvertis: e.unconverted.map((u) => u.name) };
+      },
       onAjuster: async (coef) => {
         scrollAvantAjuster.current = window.scrollY;
         await mutateAjuster(

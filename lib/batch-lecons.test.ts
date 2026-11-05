@@ -301,6 +301,27 @@ describe('quantité obtenue (écart de production)', () => {
     expect(e).toHaveLength(1);
     expect(e[0]).toMatchObject({ nature: 'etape', texte: null, ecart: '50 g en trop', ecartProduit: 50, masseFournee: 301.5, nonPesees: 0 });
   });
+  it('remarque d’étape : les lignes (réel sinon prévu, hors retirées) sont transmises pour la masse par le référentiel', () => {
+    const r = remarquesDeFournee(
+      ref(
+        [step({ id: 1, title: 'Crème', ecart_produit_g: -200 })],
+        [
+          ing({ id: 1, batch_step_id: 1, name: 'Lait entier', quantity: 375, unit: 'ml' }),
+          ing({ id: 2, batch_step_id: 1, name: 'Sucre', quantity: 90, real_quantity: 80, unit: 'g' }),
+          ing({ id: 3, batch_step_id: 1, name: 'Retiré', quantity: 5, unit: 'g', removed: true }),
+        ],
+      ),
+    );
+    const e = r.find((x) => x.nature === 'etape');
+    expect(e?.lignesMasse).toEqual([
+      { name: 'Lait entier', quantity: 375, unit: 'ml', ref_id: null },
+      { name: 'Sucre', quantity: 80, unit: 'g', ref_id: null },
+    ]);
+  });
+  it('coefficient : étape mêlant liquide et poudre, masse complète (≈ 566 g) et manque de 200 g à ×1,5', () => {
+    // Lait 375 ml à 1,03 g/ml ≈ 386 g + 180 g de poudres = 566 g, des deux côtés.
+    expect(coefficientEcart({ ecartProduit: -200, masseFournee: 566, facteur: 1.5 }, 566, 1.5)).toBe(1.353);
+  });
   it('coefficient : masse visée ramenée à ×1, comparée à la masse actuelle', () => {
     // 303 g réalisés, 50 g de trop : il fallait 253 g.
     expect(coefficientEcart({ ecartProduit: 50, masseFournee: 303, facteur: null }, 303)).toBe(0.835);

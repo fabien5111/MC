@@ -23,7 +23,7 @@ import {
 const REFERENCE_SELECT = `
   *,
   batch_steps(*, batch_substeps(id, texte, commentaire, order_index)),
-  batch_ingredients(id, batch_step_id, name, unit, quantity, real_quantity, commentaire, order_index, removed)
+  batch_ingredients(id, batch_step_id, name, unit, quantity, real_quantity, commentaire, order_index, removed, ref_id)
 `;
 
 type Brut = {
