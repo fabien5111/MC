@@ -22,6 +22,40 @@ export async function enregistrerBilan(batchId: number, valeur: string | null): 
   return null;
 }
 
+// « À refaire en l'état » (`batches.refaisable`, colonne posée par `psql`) :
+// le membre dit que tout s'est bien passé. Écrit à part ; renvoie le message
+// d'erreur, `null` si tout va bien. Colonne absente (migration pas jouée) :
+// `colonneAbsente` — l'appelant n'affiche alors ni case ni alerte.
+export function colonneRefaisableAbsente(message: string | null): boolean {
+  return !!message && /refaisable/i.test(message);
+}
+export async function enregistrerRefaisable(batchId: number, valeur: boolean): Promise<string | null> {
+  const { error } = await createClient().from('batches').update({ refaisable: valeur } as never).eq('id', batchId);
+  return error ? error.message : null;
+}
+
+// Question de clôture : « Tout s'est bien passé ? » Renvoie `true` si le
+// membre a marqué la fournée refaisable (écrit), `undefined` sinon.
+export function useDemanderRefaisable() {
+  const dialog = useDialog();
+  return useCallback(
+    async (batchId: number): Promise<boolean | undefined> => {
+      const oui = await dialog.confirm(
+        'Tout s’est bien passé ?\n\nMarquez cette fournée « à refaire en l’état » : vous la retrouverez avec un bouton « Refaire » sur la fiche de la recette.',
+        { okLabel: 'Oui, à refaire en l’état', cancelLabel: 'Non' },
+      );
+      if (!oui) return undefined;
+      const erreur = await enregistrerRefaisable(batchId, true);
+      if (erreur) {
+        if (!colonneRefaisableAbsente(erreur)) dialog.alert('La marque n’a pas pu être enregistrée : ' + erreur);
+        return undefined;
+      }
+      return true;
+    },
+    [dialog],
+  );
+}
+
 // Pose la question puis enregistre. Renvoie le bilan enregistré (`null` =
 // effacé), ou `undefined` si rien n'a été écrit (annulation, rien de saisi,
 // échec — signalé par une alerte).

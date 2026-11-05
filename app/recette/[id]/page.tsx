@@ -20,7 +20,8 @@ import { canAccess } from '@/lib/entitlements';
 import { getEntitlements, checkQuota } from '@/lib/entitlements-data';
 import { getActiveAds } from '@/lib/ads';
 import { getUnits, getShoppingListNames, getRecipeCompletedBatches } from '@/lib/profile';
-import { fmtNum, batchFactor } from '@/lib/recipe-plan';
+import { fmtNum } from '@/lib/recipe-plan';
+import { MesFourneesTerminees } from '@/components/recipe/MesFourneesTerminees';
 import { getMoldTypes } from '@/lib/admin';
 import { getRecipeDefaultPhoto } from '@/lib/site';
 import { getApprovedComments } from '@/lib/reviews-data';
@@ -550,34 +551,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
               l'auteur (`auteur` du LeconsProvider). */}
           {user && <RetoursAuteur recipeId={recipe.id} etapes={steps.map((st) => ({ id: st.id, title: st.title }))} />}
 
-          {/* Mes fournées terminées — historique personnel, replié par
-              défaut. Absent de l'impression : sans intérêt sur la fiche
-              papier de la recette. */}
-          {completedBatches.length > 0 && (
-            <details className="no-print group border border-outline-variant mb-12">
-              <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-                <span className="font-label-md text-label-md text-primary">
-                  MES FOURNÉES TERMINÉES ({completedBatches.length})
-                </span>
-                <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
-              </summary>
-              <div className="p-4 bg-white">
-                <ul className="divide-y divide-outline-variant/30">
-                  {completedBatches.map((b) => (
-                    <li key={b.id} className="py-3 flex items-center justify-between gap-4 flex-wrap">
-                      <Link href={`/fournee/${b.id}?mode=preparer`} className="font-body-md text-body-md text-primary underline underline-offset-2 hover:text-secondary">
-                        {formatDate(b.date_fin ?? b.planned_date)}
-                      </Link>
-                      <span className="flex items-center gap-3 text-on-surface-variant font-label-md text-label-md flex-wrap">
-                        <span className="bg-surface-variant px-2 py-1">× {fmtNum(batchFactor(b))}</span>
-                        {b.user_note && <span className="italic">{b.user_note}</span>}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </details>
-          )}
+          {/* Mes fournées terminées — historique personnel, replié par défaut
+              (déplié si une fournée est « à refaire en l'état »), avec le
+              bouton « Refaire ». Absent de l'impression. */}
+          <MesFourneesTerminees batches={completedBatches} recipeTitle={recipe.title} />
 
           {/* Hero */}
           {recipe.hero_image_url && (

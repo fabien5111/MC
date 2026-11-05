@@ -55,7 +55,7 @@ import { ARacheterButton } from '@/components/batch/ARacheterButton';
 import { type AjustementEcart, ChoixRemarque, DerniereFoisEtape, LeconsProvider, RetoursEcartEtape, RetoursAuteur, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import { arrondiQuantite, cleRemarque, libelleEcartProduit, normaliserEcartProduit, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
-import { useDemanderBilan } from '@/lib/batch-lecons-client';
+import { colonneRefaisableAbsente, enregistrerRefaisable, useDemanderBilan, useDemanderRefaisable } from '@/lib/batch-lecons-client';
 import {
   fmtNum,
   BATCH_STATUS_LBL,
@@ -273,6 +273,7 @@ export function BatchView({
   const [batch, setBatch] = useState(initialBatch);
   useEffect(() => setBatch(initialBatch), [initialBatch]);
   const demanderBilan = useDemanderBilan();
+  const demanderRefaisable = useDemanderRefaisable();
   const [mode, setMode] = useState<'preparer' | 'patisser'>(() => initialMode ?? defaultMode(initialBatch));
   const [busy, setBusy] = useState(false);
   // Distinct de `busy` : `router.refresh()` ne rend pas de promesse
@@ -377,6 +378,7 @@ export function BatchView({
     // modifiable ensuite depuis le résumé.
     const bilan = await demanderBilan(batch.id, batch.commentaire_global);
     if (bilan !== undefined) setBatch((b) => ({ ...b, commentaire_global: bilan }));
+    if (!(batch as { refaisable?: boolean }).refaisable && (await demanderRefaisable(batch.id))) setBatch((b) => ({ ...b, refaisable: true }) as BatchFull);
     router.refresh();
     return true;
   }
@@ -2529,6 +2531,18 @@ function SummaryPanel({
       if (error) dialogResume.alert('Sauvegarde impossible : ' + error.message);
     }, 800);
   }
+  // « À refaire en l'état » : colonne `refaisable` posée à la main. Absente
+  // (migration pas jouée) : la case n'est pas proposée.
+  const [refaisableAbsent, setRefaisableAbsent] = useState(false);
+  const refaisable = !!(batch as { refaisable?: boolean }).refaisable;
+  async function onRefaisable(valeur: boolean) {
+    setBatch((prev) => ({ ...prev, refaisable: valeur }) as BatchFull);
+    const erreur = await enregistrerRefaisable(batch.id, valeur);
+    if (!erreur) return;
+    setBatch((prev) => ({ ...prev, refaisable: !valeur }) as BatchFull);
+    if (colonneRefaisableAbsente(erreur)) setRefaisableAbsent(true);
+    else dialogResume.alert('Sauvegarde impossible : ' + erreur);
+  }
   const ecarts = batch.batch_ingredients
     .filter((it) => (it.real_quantity != null && it.real_quantity !== it.quantity) || it.commentaire)
     .map((it) => {
@@ -2568,6 +2582,21 @@ function SummaryPanel({
   return (
     <div id="sec-resume" className="scroll-mt-28 mt-6 border border-outline-variant rounded-xl bg-surface-container-lowest p-6 flex flex-col gap-5">
       <h2 className="font-headline-md text-headline-md text-primary">Résumé de la fournée</h2>
+      {!refaisableAbsent && (
+        <label className="flex items-start gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={refaisable}
+            disabled={impersonationReadOnly}
+            onChange={(e) => onRefaisable(e.target.checked)}
+            className="mt-0.5 w-5 h-5 rounded border-outline accent-primary"
+          />
+          <span>
+            <span className="font-bold text-primary">Tout s’est bien passé : à refaire en l’état.</span>{' '}
+            <span className="text-on-surface-variant">Un bouton « Refaire » sera proposé sur cette fournée, dans la fiche de la recette.</span>
+          </span>
+        </label>
+      )}
       {ecarts.length > 0 && (
         <div>
           <p className={`${LBL_CLS} mb-1`}>Ajustements d&apos;ingrédients</p>
