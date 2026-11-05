@@ -1,0 +1,96 @@
+{
+  "ticket": "local-caramel-coulant-passion",
+  "recette": {
+    "titre": "Caramel coulant passion",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Caramel onctueux, légèrement gélifié, qui reste coulant en bouche sans s'écouler à la découpe. L'acidité franche de la passion équilibre le caramel : idéal en insert ou en cœur coulant d'un entremets.",
+    "rendement": "1 cercle Ø 20 cm, environ 1,3 cm de hauteur — environ 400 g de caramel utilisable (453 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Casserole à fond épais",
+      "Petite casserole",
+      "Thermomètre de cuisson",
+      "Fouet",
+      "Mixeur plongeant",
+      "Petit bol",
+      "Cercle à pâtisserie",
+      "Plaque à pâtisserie",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Caramel coulant passion",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 4 jours au frais, filmé au contact ; à lisser au fouet avant emploi.",
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (pectine)",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine NH",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de passion",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 60,
+            "unite": "g",
+            "commentaire": "en dés, à température ambiante"
+          }
+        ],
+        "instructions": [
+          "Mélanger la pectine NH avec les 10 g de sucre semoule dans un petit bol.",
+          "Chauffer la crème, la purée de passion et le sel à 40 °C dans une petite casserole, puis y fouetter le mélange sucre-pectine en pluie.",
+          "Porter à ébullition 1 minute en fouettant, puis garder au chaud.",
+          "Cuire les 150 g de sucre semoule à sec, en trois fois, dans la casserole à fond épais jusqu'à un caramel ambré foncé (≈ 180 °C).",
+          "Décuire hors du feu en versant le mélange chaud en trois fois, en fouettant (attention aux projections).",
+          "Remettre sur le feu et cuire 1 minute en fouettant, jusqu'à dissolution complète du caramel.",
+          "Laisser tiédir à 40 °C, ajouter le beurre doux en dés, puis mixer 1 minute au mixeur plongeant, sans incorporer d'air.",
+          "Couler dans le cercle à pâtisserie filmé au fond et posé sur une plaque, filmer au contact et réserver 4 heures au froid jusqu'à la prise."
+        ],
+        "conseils_etape": "Stopper le caramel à l'ambré foncé, sans fumée : trop cuit il devient amer et masque la passion. Verser le liquide bien chaud pour éviter le choc thermique et les grumeaux. Mixer le mélange à 40 °C en gardant le mixeur plongé, sans bulles : le beurre s'émulsionne et le caramel reste lisse."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert d'entremets rond Ø 16 cm, 1 cm de hauteur : ≈ 195 g de caramel, soit ×0,49 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, insert de 1 cm de hauteur : ≈ 310 g de caramel, soit ×0,78 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, insert de 1 cm de hauteur : ≈ 445 g de caramel, soit ×1,11 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 1 cm de hauteur : ≈ 320 g de caramel, soit ×0,80 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, insert de 1 cm de hauteur : ≈ 40 g par pièce, soit 10 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert central de 18 x 4 cm, 1 cm de hauteur : ≈ 70 g, soit ×0,18 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert central de 28 x 5 cm, 1 cm de hauteur : ≈ 135 g, soit ×0,34 de la recette.",
+      "Utilisation — Tartelettes Ø 8 cm, garniture de 0,8 cm de hauteur : ≈ 40 g par pièce, soit 10 pièces avec la recette entière.",
+      "Variante — Version gélatine : supprimer la pectine NH et les 10 g de sucre associés ; ajouter 2,5 g de gélatine en poudre 200 Bloom hydratée dans 15 g d'eau, fondue dans le mélange chaud avant le beurre ; prise 12 heures au froid.",
+      "Variante — Plus coulant : ramener la pectine NH à 1,5 g (prise plus souple, à réserver aux montages congelés)."
+    ],
+    "conseils_conservation": "4 jours au réfrigérateur, filmé au contact. Se congèle 2 mois en insert pris ; décongeler au réfrigérateur. Idéal posé sur un biscuit ou une crème dans un montage, congelé avant d'être coulé dans l'entremets."
+  }
+}
