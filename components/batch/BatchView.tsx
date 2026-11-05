@@ -1533,6 +1533,11 @@ function PreparerView({
               </div>
             );
             const photos = baseRecipe && s.source_step_id ? baseRecipe.stepPhotosBySourceStepId[s.source_step_id] || [] : [];
+            // Retours avec écart : sous le bloc d'aide, juste au-dessus du
+            // tableau des ingrédients quand l'éditeur est monté ; en tête du
+            // bloc sinon (fournée close).
+            const editeurMonte = !readOnly && ingredientsOfStep.length > 0;
+            const retoursEcartNode = <RetoursEcartEtape stepId={s.id} ajustement={ajustementDeEtape(s)} />;
             return (
               // `print:hidden` sur une étape remplacée : elle ne sera jamais
               // réalisée telle quelle (fabriquée à partir d'une sous-recette
@@ -1552,13 +1557,14 @@ function PreparerView({
                   canSubsteps={droits.sousEtapes}
                   readOnly={readOnly}
                   derniereFois={<DerniereFoisEtape stepId={s.id} sansEcart />}
-                  retoursEcart={<RetoursEcartEtape stepId={s.id} ajustement={ajustementDeEtape(s)} />}
+                  retoursEcart={editeurMonte ? undefined : retoursEcartNode}
                   aideRealise={help && i === 0 ? <HelpBlockSlot blockKey="fournee.deja_realise" help={help} /> : undefined}
                   aideNote={help && i === 0 ? <HelpBlockSlot blockKey="fournee.notes" help={help} /> : undefined}
                   ingredientsEditor={
                     !readOnly && ingredientsOfStep.length > 0 ? (
                       <>
                       {help && i === 0 && <HelpBlockSlot blockKey="fournee.remplacement" help={help} />}
+                      {retoursEcartNode}
                       <BatchStepIngredients
                         batch={batch}
                         step={s}
