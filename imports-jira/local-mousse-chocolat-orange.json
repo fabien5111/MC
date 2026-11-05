@@ -1,0 +1,78 @@
+{
+  "ticket": "local-mousse-chocolat-orange",
+  "recette": {
+    "titre": "Mousse chocolat-orange",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse aérienne à base de ganache noire montée avec de la crème, parfumée par une infusion de zestes d'orange. Fondante et intense, elle sert de corps ou d'insert dans un entremets ou une bûche, où l'orange relève l'amertume du chocolat.",
+    "rendement": "1 cercle Ø 20 cm, 3,5 cm de hauteur — environ 660 g de mousse utilisable (750 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Zesteur",
+      "Casserole",
+      "Chinois",
+      "Maryse",
+      "Mixeur plongeant",
+      "Thermomètre",
+      "Batteur avec fouet",
+      "Fouet",
+      "Cercle Ø 20 cm"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Mousse chocolat-orange",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 40,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30% (infusion)",
+            "quantite": 220,
+            "unite": "g"
+          },
+          {
+            "nom": "Zestes d'orange",
+            "quantite": 10,
+            "unite": "g",
+            "commentaire": "oranges non traitées"
+          },
+          {
+            "nom": "Chocolat noir 64%",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (montée)",
+            "quantite": 320,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Prélever les zestes de 2 oranges non traitées au zesteur, sans la partie blanche.",
+          "Porter la crème d'infusion à frémissement à la casserole, hors du feu ajouter les zestes, filmer et laisser infuser 15 à 20 min.",
+          "Filtrer la crème au chinois en pressant les zestes : il doit rester environ 200 g, puis la porter de nouveau à frémissement.",
+          "Verser la crème chaude en trois fois sur le chocolat haché, en émulsionnant à la maryse puis au mixeur plongeant jusqu'à une ganache lisse et brillante.",
+          "Laisser la ganache redescendre à 40-45 °C au thermomètre.",
+          "Monter la crème bien froide (4 °C) au batteur en chantilly souple, qui forme un bec d'oiseau mou.",
+          "Incorporer un tiers de la crème montée à la ganache au fouet, vivement, puis le reste délicatement à la maryse jusqu'à un mélange homogène.",
+          "Utiliser aussitôt la mousse, en la coulant dans le cercle Ø 20 cm ou le moule du montage, puis la laisser prendre au froid."
+        ],
+        "conseils_etape": "La ganache doit être à 40-45 °C au moment du mélange : trop chaude elle fait retomber la crème montée, trop froide elle fige au contact de la crème froide et la mousse grène. Montez la crème souple et non ferme, sinon la mousse devient grumeleuse en incorporation. Pour plus d'arôme, la crème peut infuser la veille, filtrée et filmée au frais."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 20 cm, 3,5 cm de hauteur (format de référence) : ≈ 660 g de mousse, soit ×1,00 de la recette.",
+      "Utilisation — Entremets rond Ø 16 cm, 3,5 cm de hauteur : ≈ 420 g de mousse, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 3,5 cm de hauteur : ≈ 950 g de mousse, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 4 cm de hauteur : ≈ 90 g par pièce, soit 7 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, mousse en corps de la bûche, gouttière pleine (insert et fond non déduits) : ≈ 230 g de mousse, soit ×0,35 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, mousse en corps de la bûche, gouttière pleine (insert et fond non déduits) : ≈ 450 g de mousse, soit ×0,68 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 3 cm de hauteur : ≈ 585 g de mousse, soit ×0,89 de la recette.",
+      "Variante — Grand Marnier : remplacer 15 g de crème infusée par 15 g de Grand Marnier, ajouté à la ganache avant de la laisser redescendre à 40-45 °C ; la masse totale reste inchangée.",
+      "Variante — Orange remplacée par de la mandarine ou de la clémentine : même poids de zestes, infusion identique."
+    ],
+    "conseils_conservation": "Réfrigérateur (3 °C) : 48 h, filmée au contact. Congélateur : 1 mois, à décongeler 4 à 6 h au frais. Pour une bûche ou un entremets, la laisser prendre au moins 4 h au réfrigérateur avant de démouler (cercle chemisé de rhodoïd), ou une nuit au congélateur s'il doit être glacé."
+  }
+}
