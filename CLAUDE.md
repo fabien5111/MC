@@ -1221,8 +1221,8 @@ directes :
     confirmation explicite sur une fournée `terminee`, absente pour un
     abandon.
   **Le verrou doit s'énoncer là où il se fait sentir** : un bandeau en tête
-  des deux modes dit pourquoi tout est grisé et porte le bouton de reprise.
-  Le lien de l'en-tête ne suffit pas — il sort du champ dès qu'on a déroulé
+  des deux modes dit pourquoi tout est grisé et porte **seul** le bouton de reprise (l'ancien lien de l'en-tête, en double, a été retiré le 05/11/2026).
+  Le lien de l'en-tête ne suffisait pas — il sort du champ dès qu'on a déroulé
   la page, et une case grisée sans explication ni porte de sortie se lit
   comme une panne, pas comme un état.
   **Lever `?lecture=1` passe par `router.replace`, jamais par `refresh`** :

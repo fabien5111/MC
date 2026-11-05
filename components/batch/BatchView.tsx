@@ -586,22 +586,6 @@ export function BatchView({
             <span className="no-print">
               <PrintButton capHref={`/fournee/${batch.id}/cap`} />
             </span>
-            {/* Volontairement indépendant de `lecture` : « Fournées
-                terminées » (/en-cuisine) n'ouvre QUE en `?lecture=1`, s'y
-                adosser rendait le bouton inatteignable depuis son unique
-                point d'entrée — même raisonnement que la carte d'avis
-                ci-dessous. La propriété de la fournée reste garantie par la
-                RLS, et l'impersonation lecture seule bloque toujours. */}
-            {batch.status !== 'planifiee' && !impersonationReadOnly && (
-              <button
-                type="button"
-                onClick={resumeBatch}
-                className="flex items-center gap-1 font-label-md text-[12px] text-primary"
-              >
-                <span className="material-symbols-outlined text-[16px]">restart_alt</span>
-                <span className="hover:underline">Reprendre cette fournée</span>
-              </button>
-            )}
           </span>
         </div>
         <p className="text-on-surface-variant text-sm mb-4">
@@ -613,11 +597,14 @@ export function BatchView({
             .join(' — ')}
         </p>
 
-        {/* Verrou en lecture seule, énoncé là où il se fait sentir. Le bouton
-            « Reprendre » de l'en-tête ci-dessus est hors champ dès qu'on a
-            déroulé la page : sans ce bandeau, une case grisée n'a aucune
-            explication ni aucune porte de sortie visible — c'est ce qui
-            faisait lire le verrou comme une panne. Affiché dans les DEUX
+        {/* Verrou en lecture seule, énoncé là où il se fait sentir : sans ce
+            bandeau, une case grisée n'a aucune explication ni aucune porte de
+            sortie visible — c'est ce qui faisait lire le verrou comme une
+            panne. Il porte seul le bouton « Reprendre » (l'ancien lien de
+            l'en-tête, en double, a été retiré). Volontairement indépendant de
+            `lecture` : « Fournées terminées » (/en-cuisine) n'ouvre QUE en
+            `?lecture=1`, la propriété de la fournée restant garantie par la
+            RLS. Affiché dans les DEUX
             modes, l'un comme l'autre étant concerné. Exclut l'impersonation
             lecture seule, qui a déjà son propre bandeau (ImpersonationBanner)
             et où rien n'est à rouvrir. */}
