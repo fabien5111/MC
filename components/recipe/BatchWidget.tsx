@@ -719,7 +719,6 @@ export function BatchWidget({
                     {moldTypes.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.name}
-                        {t.forme ? ` (${t.forme})` : ''}
                       </option>
                     ))}
                   </select>
