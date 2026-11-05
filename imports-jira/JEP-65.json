@@ -1,0 +1,342 @@
+{
+  "ticket": "JEP-65",
+  "recette": {
+    "titre": "Bûche de Noël au praliné façon Philippe Conticini",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une bûche de Noël composée d'un biscuit noisette, d'un insert de chantilly vanille et praliné, d'un croustillant praliné, d'une mousse praliné et d'un glaçage miroir.",
+    "rendement": "1 bûche de 25 cm de long (8 personnes)",
+    "ustensiles": [
+      "Bol",
+      "Fouet",
+      "Cul de poule",
+      "Maryse",
+      "Moule à cake",
+      "Fil à génoise ou couteau",
+      "Casserole",
+      "Film alimentaire",
+      "Douille lisse de 20 mm",
+      "Poche à douille",
+      "Papier sulfurisé",
+      "Mixeur plongeant",
+      "Grille de glaçage",
+      "Thermomètre de cuisine"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Le biscuit noisette",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 22,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Sucre roux",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisette",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Blanc d'oeuf",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'oeuf",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel (1 pincée)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Crème liquide entière",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre fondu",
+            "quantite": 85,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique (1/2 paquet)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Blancs d'oeufs",
+            "quantite": 3,
+            "unite": null
+          },
+          {
+            "nom": "Sucre roux (pour les blancs)",
+            "quantite": 15,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans un bol, verser les 25g de blanc d'oeuf, les jaunes d'oeuf, la poudre de noisette, le sucre glace, les premiers 55g de sucre roux et la crème liquide, puis fouetter pour homogénéiser.",
+          "Ajouter le beurre fondu et fouetter à nouveau.",
+          "Tamiser par-dessus la farine et la levure chimique, puis mélanger au fouet.",
+          "Dans un autre cul de poule, monter les 3 blancs d'oeufs en incorporant les 15g de sucre roux en deux à trois fois pour obtenir une texture mousseuse et souple.",
+          "Ajouter un premier tiers des blancs montés au fouet dans la première préparation pour la détendre, puis incorporer la fleur de sel et le reste des blancs délicatement à la maryse.",
+          "Verser l'appareil dans un moule à cake graissé et cuire environ 22 minutes à 180°C.",
+          "Sortir immédiatement de la plaque pour stopper la cuisson, laisser tiédir puis démouler sur une planche à découper.",
+          "Couper aux dimensions du moule à bûche en ajustant pour qu'il rentre à l'intérieur et réserver."
+        ],
+        "conseils_etape": "Utiliser un beurre noisette pour renforcer le goût si souhaité."
+      },
+      {
+        "nom_etape": "La crème chantilly",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Sucre",
+            "quantite": 1,
+            "unite": "c. à s."
+          },
+          {
+            "nom": "Gélatine",
+            "quantite": 0.5,
+            "unite": "feuille"
+          },
+          {
+            "nom": "Poudre de vanille",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Mascarpone",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide (première pesée)",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide (seconde pesée)",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné amandes-noisettes (pour le pochage)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine pendant 10 minutes dans de l'eau bien froide.",
+          "Dans une casserole, verser les 30g de crème liquide, le sucre et la poudre de vanille, puis porter à ébullition.",
+          "Couper le feu et ajouter la gélatine essorée.",
+          "Dans un récipient, placer le mascarpone et les 160g de crème liquide, ajouter le contenu de la casserole et mixer le tout jusqu'à l'obtention d'un mélange lisse.",
+          "Recouvrir d'un film alimentaire au contact et placer au réfrigérateur pendant 3 heures minimum.",
+          "Monter la crème chantilly au batteur jusqu'à l'obtention d'un beau bec d'oiseau.",
+          "Pocher deux cordons de chantilly à l'aide d'une douille lisse de 20 mm sur le biscuit noisette.",
+          "Pocher le praliné amandes-noisettes entre les cordons de chantilly, puis placer au congélateur pendant 1 heure minimum."
+        ],
+        "conseils_etape": "Veiller à ce que la crème soit très froide avant de la monter."
+      },
+      {
+        "nom_etape": "Le croustillant praliné",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Praliné amande-noisette",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel (2 pincées)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Crêpes dentelles brisées",
+            "quantite": 4,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Dans un bol, verser le praliné, la fleur de sel et émietter les crêpes dentelles.",
+          "Ajouter le beurre de cacao fondu et mélanger l'ensemble.",
+          "Étaler la préparation entre deux feuilles de papier sulfurisé aux dimensions de la longueur du moule à bûche, puis placer au congélateur pendant au moins 1 heure."
+        ],
+        "conseils_etape": "Adapter la découpe du croustillant à environ 22 cm de long sur 5 cm de large pour qu'il s'insère parfaitement."
+      },
+      {
+        "nom_etape": "La mousse praliné",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 83,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 4,
+            "unite": "feuilles"
+          },
+          {
+            "nom": "Crème liquide (pour la première base)",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'oeufs (première base)",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné",
+            "quantite": 170,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'oeufs (pour le sabayon)",
+            "quantite": 4,
+            "unite": null
+          },
+          {
+            "nom": "Eau",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait en poudre",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 14,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide (pour la montée finale)",
+            "quantite": 200,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine pendant 10 minutes dans de l'eau froide.",
+          "Porter les 120g de crème liquide à ébullition, en verser la moitié sur les 2 jaunes d'oeufs, puis cuire le tout à la manière d'une crème anglaise sans dépasser 83°C.",
+          "Verser ce mélange sur le chocolat blanc fondu, ajouter le praliné et la gélatine essorée, puis mixer le tout.",
+          "Dans un bain-marie, fouetter les 4 jaunes d'oeufs avec l'eau, le lait en poudre et le glucose jusqu'à atteindre 70°C, puis continuer de fouetter hors du feu jusqu'à ce que le volume triple pour former un sabayon.",
+          "Monter les 200g de crème liquide restante en texture mousseuse.",
+          "Incorporer d'abord un tiers de la crème montée au fouet dans le mélange au praliné, puis ajouter délicatement le sabayon et le reste de la crème montée à la maryse.",
+          "Verser la mousse praliné dans le moule à bûche jusqu'à la moitié de la hauteur.",
+          "Disposer l'insert (biscuit, chantilly et praliné) congelé en l'enfonçant légèrement, lisser l'excédent de mousse, puis poser le croustillant congelé par-dessus en appuyant légèrement.",
+          "Placer l'ensemble au congélateur pour une nuit entière."
+        ],
+        "conseils_etape": "Ne pas incorporer la crème trop fermement pour garder la légèreté de la mousse."
+      },
+      {
+        "nom_etape": "Le glaçage miroir praliné",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 103,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 16,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 96,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 134,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait concentré non sucré",
+            "quantite": 166,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné vanille",
+            "quantite": 30,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans l'eau d'hydratation.",
+          "Dans une casserole, réaliser un sirop avec l'eau, le sucre et le glucose, et porter l'ensemble à 103°C.",
+          "Dans un pichet, réunir le praliné, le lait concentré non sucré, la gélatine hydratée, le chocolat blanc et le sirop chaud, puis mixer au mixeur plongeant.",
+          "Filmer au contact et laisser reposer minimum 3 heures à température ambiante.",
+          "Démouler la bûche congelée, la poser sur une grille au-dessus d'un bac de récupération, et verser le glaçage à une température de 28°C."
+        ],
+        "conseils_etape": "Réchauffer délicatement le glaçage au bain-marie s'il est descendu en dessous de 28°C avant de glacer."
+      }
+    ],
+    "astuces_recette": [
+      "Utiliser un praliné de qualité ou préparé maison pour optimiser les saveurs.",
+      "Respecter scrupuleusement les températures indiquées pour les différentes étapes de cuisson et de glaçage.",
+      "Travailler avec des éléments bien congelés pour faciliter le montage et le glaçage."
+    ],
+    "conseils_conservation": "Conserver la bûche au réfrigérateur après décongélation et la consommer dans les 48 heures. Laisser la bûche décongeler lentement au réfrigérateur avant la dégustation pour apprécier toutes les textures."
+  }
+}

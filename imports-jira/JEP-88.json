@@ -1,0 +1,244 @@
+{
+  "ticket": "JEP-88",
+  "recette": {
+    "titre": "Le cake marbré pistache de Nicola Paciello",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Cake marbré bicolore et bi-goût alliant un appareil nature au sucre muscovado et un appareil intense à la pistache et au beurre noisette, enrobé d'un glaçage vanille ligné de pistache et parsemé de brisures de pistaches.",
+    "rendement": "1 cake de 25 cm de long",
+    "ustensiles": [
+      "Bols et culs-de-poule",
+      "Fouet",
+      "Maryse",
+      "Tamis",
+      "Casseroles",
+      "Poches à douille",
+      "Moule à cake de 25 cm de long sur 9 cm de large",
+      "Couteau",
+      "Mixeur plongeant",
+      "Film étirable"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Le cake nature",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre pommade",
+            "quantite": 65,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre muscovado",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf entier",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 30,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans un récipient, fouetter le beurre pommade avec le sucre muscovado jusqu'à obtenir une pâte lisse.",
+          "Ajouter les œufs entiers et mélanger à nouveau pour homogénéiser l'appareil.",
+          "Incorporer la farine préalablement tamisée ainsi que la levure chimique, puis mélanger.",
+          "Terminer en ajoutant le lait entier et mélanger brièvement.",
+          "Mettre l'appareil dans une poche à douille et réserver."
+        ],
+        "conseils_etape": "Utiliser du sucre blanc à la place du sucre muscovado si vous souhaitez que les marbrures se voient mieux."
+      },
+      {
+        "nom_etape": "Le cake pistache et cuisson globale",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 50,
+        "temperature_cuisson_celsius": 155,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre (pour obtenir 30 g de beurre noisette)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf entier",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T45",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de pistache",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de pistache",
+            "quantite": 80,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réaliser le beurre noisette en faisant fondre 50 g de beurre à feu doux dans une casserole jusqu'à l'obtention d'une couleur et d'une odeur de noisette, puis le passer au tamis, en prélever 30 g et le laisser tiédir.",
+          "Dans un cul-de-poule, blanchir les œufs entiers avec le sucre semoule.",
+          "Ajouter la farine tamisée, le sel, la levure chimique et la poudre de pistache, puis mélanger.",
+          "Incorporer la pâte de pistache, la crème liquide entière et les 30 g de beurre noisette tiédi, puis mélanger pour lisser la préparation.",
+          "Mettre l'appareil à pistache dans une poche à douille.",
+          "Dans le moule à cake de 25 cm, alterner des couches de préparation nature et de préparation pistache.",
+          "Passer un couteau à l'intérieur de la pâte en faisant des mouvements pour créer le marbrage.",
+          "Enfourner à 155 °C pendant 50 minutes.",
+          "Retourner le cake et le démouler une fois qu'il est tiède."
+        ],
+        "conseils_etape": "Ne pas sauter l'étape du filtrage du beurre noisette pour éliminer toutes les impuretés."
+      },
+      {
+        "nom_etape": "Le glaçage vanille",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 10,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Gélatine en feuille",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide à 30%",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Vanille en poudre",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 190,
+            "unite": "g"
+          },
+          {
+            "nom": "Nappage neutre",
+            "quantite": 150,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la feuille de gélatine dans un bol d'eau bien froide pendant 10 minutes minimum.",
+          "Dans une casserole, chauffer la crème liquide et la poudre de vanille jusqu'à un léger frémissement.",
+          "Faire fondre le chocolat blanc au préalable.",
+          "Verser la crème chaude en deux à trois fois sur le chocolat blanc fondu en émulsionnant à la maryse ou au mixeur plongeant.",
+          "Incorporer la feuille de gélatine essorée, puis ajouter le nappage neutre.",
+          "Mixer le tout au mixeur plongeant en évitant d'incorporer trop de bulles d'air.",
+          "Filmer au contact et laisser descendre la température à 30 °C avant utilisation."
+        ],
+        "conseils_etape": "Mixer délicatement pour limiter la formation de bulles d'air qui font épaissir le glaçage."
+      },
+      {
+        "nom_etape": "Le glaçage pistache et finitions",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 10,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Gélatine en feuille",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide à 30%",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Nappage neutre",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de pistache",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Brisures de pistaches (en quantité suffisante)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Mettre la gélatine à hydrater dans de l'eau froide pendant 10 minutes.",
+          "Faire chauffer la crème liquide jusqu'à léger frémissement, puis la verser en deux à trois fois sur le chocolat blanc préalablement fondu en émulsionnant à la maryse.",
+          "Ajouter la gélatine essorée pour la faire fondre, puis incorporer le nappage neutre légèrement chauffé.",
+          "Terminer en ajoutant la pâte de pistache et émulsionner le tout à la maryse.",
+          "Glacer entièrement le cake avec le glaçage vanille bien tiède.",
+          "Déposer des lignes de glaçage pistache tous les 2 centimètres environ sur toute la longueur du cake.",
+          "Réaliser la technique du mille-feuille avec le dos d'un couteau : tracer deux traits dans un sens, puis le trait du milieu dans l'autre sens, sans trop appuyer.",
+          "Appliquer délicatement les morceaux de pistaches broyées sur les côtés du cake pour les faire adhérer."
+        ],
+        "conseils_etape": "Appliquez-vous méticuleusement sur les finitions latérales pour un rendu visuel net."
+      }
+    ],
+    "astuces_recette": [
+      "Multiplier toutes les doses par 1,2 pour obtenir un cake moins plat dans le moule indiqué.",
+      "Utiliser impérativement des balances précises pour les pesées des différents ingrédients."
+    ],
+    "conseils_conservation": "Conserver le cake à température ambiante ou au frais selon la météo, bien emballé pour préserver le moelleux des deux appareils et le croustillant des finitions."
+  }
+}

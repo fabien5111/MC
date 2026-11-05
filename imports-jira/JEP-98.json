@@ -1,0 +1,261 @@
+{
+  "ticket": "JEP-98",
+  "recette": {
+    "titre": "Choux au citron meringué et basilic",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Déclinaison moderne de la tarte au citron meringuée sous forme de gros chou surmonté d'un craquelin jaune croustillant, garni d'un crémeux citron infusé au basilic et renfermant en son cœur une meringue italienne dorée au chalumeau.",
+    "rendement": "4 gros choux (4 portions individuelles généreuses)",
+    "ustensiles": [
+      "Cul-de-poule et bols",
+      "Papier sulfurisé ou toile silicone de cuisson",
+      "Rouleau à pâtisserie",
+      "Emporte-pièces ronds (diamètres 3 cm et 5 cm)",
+      "Casseroles",
+      "Spatule maryse",
+      "Fouet",
+      "Tamis fin ou passoire fine",
+      "Thermomètre de cuisson",
+      "Mixeur plongeant",
+      "Robot pâtissier avec fouet",
+      "Poches à douille",
+      "Douille lisse 10 à 12 mm",
+      "Douille cannelée type « petit-four »",
+      "Couteau à dents",
+      "Chalumeau de cuisine",
+      "Râpe à zeste (type Microplane)"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Craquelin jaune",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Beurre doux pommade",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Colorant jaune liposoluble (une pointe)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Mélanger du bout des doigts dans un cul-de-poule la farine, le beurre pommade, la cassonade et le colorant jaune jusqu'à obtenir une pâte homogène.",
+          "Étaler la pâte entre deux feuilles de papier sulfurisé sur une épaisseur de 2 mm.",
+          "Retirer la feuille supérieure et pré-détailler des disques à l'aide d'un emporte-pièce de 5 cm de diamètre.",
+          "Placer la plaque au congélateur pendant 30 minutes.",
+          "Détacher proprement les cercles de craquelin et les conserver au congélateur jusqu'au pochage de la pâte à choux."
+        ],
+        "conseils_etape": "Le craquelin doit être parfaitement congelé au moment d'être déposé sur le chou afin d'assurer un développement régulier à la cuisson. À réaliser la veille ou quelques heures avant la cuisson de la pâte à choux."
+      },
+      {
+        "nom_etape": "Crémeux citron basilic",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": 84,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour hydratation)",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre en poudre",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Citron jaune (zestes)",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Jus de citron",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 112,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuilles de basilic frais",
+            "quantite": 5,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans l'eau froide au réfrigérateur pendant 10 minutes.",
+          "Mélanger au fouet dans une casserole les œufs, le sucre, le jus de citron et les zestes.",
+          "Cuire sur feu moyen en fouettant continuellement jusqu'à épaississement sans dépasser 84 °C.",
+          "Verser la crème chaude dans un récipient haut, ajouter la gélatine égouttée/gonflée et mixer au mixeur plongeant.",
+          "Ajouter le beurre doux en morceaux et mixer longuement pour émulsionner et obtenir une texture soyeuse.",
+          "Incorporer les feuilles de basilic finement ciselé.",
+          "Passer la préparation au tamis fin pour retirer les morceaux de basilic et les éventuels résidus d'œuf coagulé.",
+          "Filmer au contact et réserver au réfrigérateur au moins 4 heures ou toute une nuit."
+        ],
+        "conseils_etape": "Ne pas surchauffer la préparation au-delà de 84 °C afin d'éviter la coagulation excessive des œufs. Le passage au mixeur plongeant est indispensable pour stabiliser l'émulsion beurre/citron."
+      },
+      {
+        "nom_etape": "Pâte à choux et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Lait",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 7,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers battus",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace (pour le marquage)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Porter à légère ébullition dans une casserole le lait, l'eau, le miel, le sel et le beurre coupé en morceaux.",
+          "Hors du feu, verser la farine tamisée en une seule fois et mélanger vigoureusement à la maryse.",
+          "Remettre sur feu doux à moyen pendant environ une minute pour dessécher la panade, jusqu'à ce qu'un léger film accroche au fond de la casserole.",
+          "Transvaser la panade dans un bol et incorporer progressivement les œufs battus en 3 à 4 fois, en attendant que chaque apport soit totalement absorbé avant d'en ajouter.",
+          "Tremper un emporte-pièce de 3 cm humidifié dans du sucre glace pour marquer l'emplacement des choux sur une feuille de papier cuisson ou un tapis silicone.",
+          "Pocher les choux à l'aide d'une poche munie d'une douille lisse de 10 à 12 mm à l'intérieur des repères.",
+          "Poser un disque de craquelin congelé bien au centre de chaque chou.",
+          "Cuire à four chaud 15 minutes à 180 °C, puis baisser à 160 °C pendant 10 minutes sans ouvrir la porte du four."
+        ],
+        "conseils_etape": "N'ouvrez sous aucun prétexte la porte du four pendant les 20 premières minutes pour éviter que les choux ne retombent. La pâte doit former un ruban ou une vague souple au bout de la maryse."
+      },
+      {
+        "nom_etape": "Meringue italienne",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": 121,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre en poudre",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 80,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Placer les blancs d'œufs dans la cuve du robot et commencer à fouetter à vitesse moyenne pour les faire mousser.",
+          "Parallèlement, porter à ébullition l'eau et le sucre dans une casserole à feu vif jusqu'à atteindre 121 °C.",
+          "Retirer le sirop du feu, patienter quelques secondes pour laisser débuller.",
+          "Verser le sirop en filet continu le long de la paroi de la cuve sur les blancs mousseux tout en fouettant.",
+          "Augmenter la vitesse du robot et laisser tourner 5 à 10 minutes jusqu'à complet refroidissement et obtention d'une meringue brillante formant un bec d'oiseau ferme.",
+          "Transvaser dans une poche munie d'une douille lisse de 10 mm."
+        ],
+        "conseils_etape": "Ne versez pas le sirop bouillant directement sur les fils du fouet pour éviter les projections sur les parois de la cuve. À réaliser juste avant le montage."
+      },
+      {
+        "nom_etape": "Montage et finition",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 1,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Citron jaune (pour les zestes de finition)",
+            "quantite": 1,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Découper les choux refroidis aux deux tiers de leur hauteur à l'aide d'un couteau à dents.",
+          "Garnir le fond de chaque chou avec du crémeux citron lissé, dressé à la poche avec une douille petit-four.",
+          "Pocher une généreuse boule de meringue italienne au centre du crémeux.",
+          "Colorer délicatement la boule de meringue au chalumeau.",
+          "Pocher de nouveau du crémeux citron tout autour de la meringue pour apporter du volume.",
+          "Râper un voile de zeste de citron jaune frais sur le crémeux.",
+          "Évider le centre du chapeau du chou à l'aide de l'emporte-pièce de 3 cm, puis déposer la collerette restante sur le dessus et tasser très légèrement."
+        ],
+        "conseils_etape": "Le découpage du chapeau à l'emporte-pièce laisse apparaître le dôme central et apporte un visuel soigné. À réaliser juste avant le service."
+      }
+    ],
+    "astuces_recette": [
+      "Équilibre en matière grasse : le crémeux est riche en beurre (recette inspirée de Cyril Lignac). Si vous préférez un résultat moins beurré et plus acidulé, réduisez la part de beurre à 70-80 g ou optez pour un crémeux gélifié classique.",
+      "Organisation : préparez le craquelin et le crémeux la veille. Le jour J, vous n'aurez qu'à cuire les choux, monter la meringue et dresser.",
+      "Excédent de pâte : les proportions de pâte à choux donnent plus de 4 pièces. Les choux restants peuvent être pochés, cuits et congelés vides pour une utilisation ultérieure."
+    ],
+    "conseils_conservation": "À servir frais mais sorti du réfrigérateur 10 minutes avant consommation pour que le crémeux retrouve son onctuosité. Une fois montés, les choux doivent être consommés dans les 4 à 6 heures. Au-delà, l'humidité du crémeux ramollit le craquelin et la pâte à choux. Les coques cuites non garnies se conservent 24 heures en boîte hermétique sèche."
+  }
+}

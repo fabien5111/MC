@@ -1,0 +1,117 @@
+{
+  "ticket": "JEP-46",
+  "recette": {
+    "titre": "Barquettes noisette au gianduja (façon François Perret)",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un sablé breton moelleux en forme de barquette, creusé en son centre et généreusement garni d'une sauce onctueuse au gianduja et chocolat au lait.",
+    "rendement": "Une quinzaine de barquettes",
+    "ustensiles": [
+      "Moule en silicone forme barquette (ou moule à financier)",
+      "Cul-de-poule",
+      "Fouet",
+      "Tamis",
+      "Corne de pâtissier",
+      "2 poches à douille sans douille",
+      "Petite cuillère",
+      "Plaque de cuisson",
+      "Planche à découper"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Pâte à sablé breton",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre très pommade",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'oeuf",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amandes",
+            "quantite": 30,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Placer le beurre bien pommade dans le cul-de-poule et ajouter le sucre glace.",
+          "Fouetter vivement pour obtenir un mélange complètement homogène.",
+          "Ajouter le jaune d'oeuf et mélanger de la même manière pour obtenir une texture crémeuse.",
+          "Sur le plan de travail, tamiser la farine et la levure chimique.",
+          "Former un tas puis créer un puits au centre avec la corne ou les doigts.",
+          "Déposer la masse crémeuse au milieu du puits et la recouvrir de farine.",
+          "Utiliser la corne pour couper la pâte de haut en bas, en ramenant la farine au centre progressivement jusqu'à incorporation.",
+          "Ajouter la poudre d'amandes et continuer le même mouvement à la corne jusqu'à obtenir une pâte légèrement crémeuse (la texture collante est normale).",
+          "Placer la pâte dans une poche à douille en utilisant la corne pour chasser l'air vers la pointe.",
+          "Couper le bout de la poche sur environ 1,5 cm de diamètre.",
+          "Pocher un cordon de pâte sur la totalité de la surface de chaque empreinte du moule.",
+          "Enfourner pour 8 minutes à 170°C.",
+          "Sortir du four à mi-cuisson et utiliser le dos d'une cuillère pour creuser fortement le centre du biscuit afin de faire remonter les bords.",
+          "Remettre en cuisson pour 6 à 7 minutes à 170°C jusqu'à belle coloration.",
+          "Sortir le moule de la plaque immédiatement pour stopper la cuisson.",
+          "Laisser refroidir complètement, puis retourner le moule sur une planche à découper pour démouler."
+        ],
+        "conseils_etape": "Le beurre doit être sorti la veille au soir. N'hésitez pas à creuser profondément le biscuit à mi-cuisson. La levure fera regonfler le fond lors de la seconde phase de cuisson."
+      },
+      {
+        "nom_etape": "Sauce Gianduja",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Gianduja",
+            "quantite": 300,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat au lait.",
+          "Verser le chocolat fondu sur le gianduja et mélanger jusqu'à obtenir une préparation lisse.",
+          "Placer la préparation dans une poche à douille.",
+          "Garnir généreusement le creux des barquettes refroidies avec cette sauce, éventuellement en deux couches.",
+          "Secouer délicatement chaque barquette pour lisser le dessus de la sauce."
+        ],
+        "conseils_etape": "Ne garnissez jamais les barquettes lorsqu'elles sont encore chaudes, la sauce risquerait de fondre et de déborder."
+      }
+    ],
+    "astuces_recette": [
+      "Il est possible de réaliser un gianduja maison moins sucré en mixant 100g de noisettes torréfiées (25 minutes à 150°C), 80g de chocolat au lait fondu et 50g de sucre glace.",
+      "L'utilisation de la corne pour pousser les préparations dans les poches à douille est une technique efficace pour éviter les bulles d'air."
+    ],
+    "conseils_conservation": "A déguster au moment du goûter. Conservez les barquettes dans une boîte hermétique à température ambiante pour préserver le croustillant du sablé et le moelleux du centre, à l'abri de l'humidité et des fortes chaleurs."
+  }
+}

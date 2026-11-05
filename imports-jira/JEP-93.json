@@ -1,0 +1,247 @@
+{
+  "ticket": "JEP-93",
+  "recette": {
+    "titre": "Charlotte Vanille-Chocolat de Christophe Felder",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Dessert généreux et familial associant le croustillant moelleux d'un biscuit à la cuillère cacao, la douceur d'une crème bavaroise à la vanille, l'intensité d'une mousse au chocolat noir sur base de pâte à bombe et le croquant de copeaux de chocolat noir.",
+    "rendement": "Cercle de 18 à 20 cm de diamètre (8 personnes)",
+    "ustensiles": [
+      "Robot pâtissier muni du fouet",
+      "Maryse",
+      "Tamis",
+      "Poche à douille",
+      "Douille lisse de 16 mm",
+      "Plaques de cuisson",
+      "Papier cuisson",
+      "Couteau d'office",
+      "Thermomètre de cuisine",
+      "Casserole",
+      "Cul-de-poule",
+      "Fouet à main",
+      "Cercle à entremets (18-20 cm)",
+      "Film plastique alimentaire",
+      "Spatule coudée (palette)",
+      "Racloir ou triangle à chocolat"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Biscuit à la cuillère cacao",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 10,
+        "temps_cuisson_minutes": 12,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 6,
+            "unite": null
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 170,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 6,
+            "unite": null
+          },
+          {
+            "nom": "Farine T45",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace (quantité suffisante pour saupoudrer)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Monter les blancs au batteur en augmentant progressivement la vitesse et en incorporant le sucre semoule petit à petit jusqu'à consistance mousseuse (aspect mousse à raser).",
+          "Ajouter les jaunes d'œufs préalablement battus et mélanger délicatement à la maryse du centre vers l'extérieur.",
+          "Tamiser ensemble la farine et le cacao en poudre, puis les incorporer délicatement à la maryse jusqu'à disparition des poudres.",
+          "Pocher deux disques d'environ 16 cm de diamètre sur une plaque garnie de papier cuisson à l'aide d'une douille lisse de 16 mm.",
+          "Pocher des cartouchières de bâtonnets de 6 cm de hauteur pour former le tour de la charlotte.",
+          "Saupoudrer de sucre glace, laisser croûter 10 minutes à température ambiante, puis enfourner à 180°C pendant 12 minutes.",
+          "Débarrasser immédiatement les feuilles de cuisson hors des plaques chaudes pour stopper la cuisson."
+        ],
+        "conseils_etape": "Ne pas trop monter les blancs en neige pour éviter qu'ils ne grainent ou ne fassent retomber la pâte au mélange."
+      },
+      {
+        "nom_etape": "Crème bavaroise à la vanille",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 83,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 2.5,
+            "unite": "feuilles"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 3,
+            "unite": null
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 200,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réhydrater la gélatine dans un bol d'eau très froide pendant 10 minutes au réfrigérateur.",
+          "Porter le lait à ébullition avec la gousse de vanille fendue et grattée, couvrir et laisser infuser 10 minutes hors du feu.",
+          "Blanchir les jaunes d'œufs avec le sucre dans un cul-de-poule.",
+          "Retirer la gousse, verser le lait chaud sur les jaunes sucrés en fouettant, reverser dans la casserole et cuire à feu doux jusqu'à 83°C (cuisson à la nappe).",
+          "Hors du feu, incorporer la gélatine bien essorée, débarrasser en cul-de-poule et laisser tiédir.",
+          "Monter la crème liquide froide en crème fouettée souple.",
+          "Incorporer délicatement la crème montée à la crème anglaise tiédie en deux ou trois fois à la maryse, puis réserver 1 heure au frais pour faire légèrement prendre."
+        ],
+        "conseils_etape": "Ne pas dépasser 83°C lors de la cuisson de la crème anglaise pour ne pas faire coaguler les jaunes d'œufs."
+      },
+      {
+        "nom_etape": "Sirop d'imbibage et premier montage",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de vanille (1 pointe)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Porter à ébullition l'eau, le sucre et la poudre de vanille dans une casserole, puis retirer du feu.",
+          "Égaliser la base des bâtonnets de biscuit cuillère à une hauteur uniforme d'environ 6 cm à l'aide d'un couteau.",
+          "Imbiber légèrement un premier disque de biscuit cuillère au pinceau avec le sirop chaud.",
+          "Chemiser le fond d'un cercle à entremets de 18-20 cm avec du film étirable, déposer le disque imbibé au fond, puis dresser la couronne de biscuits cuillères verticalement sur le pourtour (face bombée vers l'extérieur).",
+          "Couler la bavaroise vanille sur le fond de biscuit, puis placer le montage au réfrigérateur pendant au moins 1 heure."
+        ],
+        "conseils_etape": "Imbiber avec un sirop chaud sur biscuit tiède ou froid pour faciliter la pénétration sans détremper le gâteau."
+      },
+      {
+        "nom_etape": "Mousse au chocolat noir (base pâte à bombe)",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 83,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf entier",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 3,
+            "unite": null
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Monter la crème liquide froide en crème fouettée souple et la réserver au frais.",
+          "Faire fondre le chocolat noir au bain-marie et maintenir sa température entre 45°C et 50°C.",
+          "Mélanger dans un cul-de-poule au bain-marie l'eau, l'œuf entier, les 3 jaunes d'œufs et le sucre, puis fouetter continuellement jusqu'à atteindre 83°C.",
+          "Transvaser immédiatement la préparation dans le bol du robot muni du fouet et battre à vitesse soutenue pendant 10 minutes jusqu'à complet refroidissement et obtention d'un ruban crémeux.",
+          "Incorporer un premier tiers de la crème montée dans le chocolat fondu (45-50°C), puis ajouter délicatement le reste de la crème à la maryse.",
+          "Ajouter la pâte à bombe tiède en une seule fois dans le mélange chocolat-crème et mélanger à la maryse avec précaution sans faire retomber la texture."
+        ],
+        "conseils_etape": "Veiller à ce que le chocolat soit bien entre 45°C et 50°C lors du mélange pour éviter le figeage instantané du beurre de cacao sous forme de grains."
+      },
+      {
+        "nom_etape": "Second montage et décor",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir (pour copeaux)",
+            "quantite": 200,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Imbiber le second disque de biscuit cuillère et le déposer sur la bavaroise prise.",
+          "Couler la mousse au chocolat jusqu'au ras des biscuits cuillères du contour.",
+          "Lisser la surface à l'aide d'une palette coudée et réserver au réfrigérateur pendant 1 heure minimum.",
+          "Faire fondre le chocolat noir restant, l'étaler en couche moyenne sur une feuille de papier cuisson et laisser figer.",
+          "Racler la surface à l'aide d'un couteau ou d'un triangle pour former des copeaux arrondis.",
+          "Retirer le film et le cercle à entremets, puis recouvrir harmonieusement le dessus de la charlotte avec les copeaux de chocolat."
+        ],
+        "conseils_etape": "Ne pas couler le chocolat des copeaux trop finement sur le papier cuisson, sinon les copeaux casseront en poussière au lieu de former des rouleaux."
+      }
+    ],
+    "astuces_recette": [
+      "L'utilisation d'une gélatine 200 blooms assure une tenue nette de la bavaroise sans excès d'élasticité.",
+      "Pour obtenir des proportions visuelles et gustatives plus équilibrées, vous pouvez augmenter légèrement la hauteur de bavaroise vanille par rapport à la mousse au chocolat noir.",
+      "Le filmage étanche sous le cercle évite tout écoulement de bavaroise avant sa prise complète."
+    ],
+    "conseils_conservation": "Servir bien frais dès la sortie du réfrigérateur pour conserver le croquant des copeaux et la tenue des crèmes. Conservation : 48 heures au réfrigérateur sous cloche à pâtisserie pour protéger les biscuits des odeurs et de l'humidité. Congélation déconseillée en raison du risque d'altération texturale de la crème bavaroise lors de la décongélation."
+  }
+}

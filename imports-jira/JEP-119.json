@@ -1,0 +1,213 @@
+{
+  "ticket": "JEP-119",
+  "recette": {
+    "titre": "Éclairs 100 % pistache de Nicolas Paciello",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une déclinaison gastronomique de l'éclair imaginée par le chef Nicolas Paciello. Le dessert associe le croquant d'une pâte à choux séchée, la puissance aromatique d'un praliné pur pistache peu sucré et l'onctuosité aérienne d'une ganache montée moulée en trompe-l'œil.",
+    "rendement": "4 éclairs (environ 12 cm de longueur) — 4 personnes",
+    "ustensiles": [
+      "Casserole",
+      "Maryse",
+      "Tapis silicone ou feuille de papier cuisson",
+      "Robot mixeur / hachoir (pour le praliné)",
+      "Mixeur plongeant avec bol haut",
+      "Cul-de-poule",
+      "Spatule coudée ou palette",
+      "Robot pâtissier muni d'un fouet (ou batteur électrique)",
+      "Poche à douille",
+      "Douille petits fours (pour le pochage des éclairs)",
+      "Douille unie 12 mm (optionnelle, si réalisation sans moule)",
+      "Moule silicone à empreintes gouttes / sphères (type Fashion Eclair Silikomart)",
+      "Couteau à génoise / couteau scie",
+      "Film étirable alimentaire",
+      "Cuillère à pomme parisienne et chalumeau (optionnel, pour alternative sans moule)"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Praliné pur pistache",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Sucre",
+            "quantite": 56,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Pistaches (non torréfiées)",
+            "quantite": 276,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de pépins de raisin (facultatif, quelques gouttes si nécessaire)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Verser le sucre dans une casserole sur feu moyen sans le mélanger à la maryse, en agitant simplement le récipient de temps en temps jusqu'à coloration légèrement ambrée.",
+          "Couler immédiatement le caramel sur un tapis silicone ou une feuille de papier sulfurisé et laisser refroidir totalement à température ambiante.",
+          "Casser le caramel durci en morceaux puis le déposer dans le bol du mixeur avec les pistaches crues entières.",
+          "Mixer par impulsions jusqu'à l'obtention d'une texture liquide et lisse (ajouter un filet d'huile neutre de pépins de raisin si la pâte peine à s'émulsionner).",
+          "Débarrasser dans un récipient, incorporer la fleur de sel à la maryse, mélanger puis réserver à température ambiante."
+        ],
+        "conseils_etape": "Ne pas torréfier les pistaches afin de conserver une teinte verte naturelle et vive sans dériver sur des notes brunes. Ne pas surchauffer le mixeur pour éviter que l'huile naturelle des fruits à coque ne rancisse sous l'effet de la chaleur mécanique. À réaliser la veille ou avant le montage."
+      },
+      {
+        "nom_etape": "Ganache montée à la pistache",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 420,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": 90,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 9,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 54,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 174,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné pistache (prélevé sur l'étape précédente)",
+            "quantite": 174,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30 % MG (à chauffer)",
+            "quantite": 174,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30 % MG (très froide)",
+            "quantite": 525,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réhydrater la gélatine dans les 54 g d'eau froide pendant 15 minutes au réfrigérateur.",
+          "Faire fondre doucement le chocolat blanc au bain-marie ou au micro-ondes.",
+          "Porter les 174 g de crème liquide à frémissement dans une casserole, puis verser en 2 ou 3 fois sur le chocolat blanc fondu en créant une émulsion au centre.",
+          "Ajouter la masse gélatine fondue dans la préparation chaude et homogénéiser.",
+          "Verser les 174 g de praliné pistache ainsi que les 525 g de crème liquide froide, puis mixer l'ensemble au mixeur plongeant dans un récipient haut sans incorporer d'air.",
+          "Débarrasser dans un plat large, filmer au contact et réserver au réfrigérateur au moins 4 heures.",
+          "Foisonner la ganache au fouet à vitesse moyenne jusqu'à obtenir une texture souple dite « au ruban » (bec tombant, non figé).",
+          "Garnir le moule silicone avec la ganache montée foisonnée, araser soigneusement à la spatule, puis bloquer au congélateur jusqu'à prise complète.",
+          "Conserver le restant de ganache montée foisonnée en poche à douille au réfrigérateur pour le fond de chou."
+        ],
+        "conseils_etape": "Ne pas monter la ganache trop ferme : un foisonnement excessif ferait trancher la crème et masquerait la sensation de légèreté en bouche. Veiller à bien araser les empreintes en silicone pour assurer une base parfaitement plane lors de l'assemblage sur l'éclair. Repos au frais de 4 heures minimum (idéalement 12 h), puis 3 heures minimum au congélateur."
+      },
+      {
+        "nom_etape": "Pâte à choux",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre en poudre",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 1.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers (battus en omelette)",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Chauffer à feu doux dans une casserole le lait, l'eau, le beurre découpé en parcelles, le sel et le sucre jusqu'à fonte complète du corps gras, puis porter à vive ébullition.",
+          "Hors du feu, incorporer la totalité de la farine en une seule fois et mélanger énergiquement à la maryse jusqu'à formation d'une panade homogène.",
+          "Remettre sur feu doux pendant 1 minute en remuant sans arrêt pour dessécher la panade jusqu'au dépôt d'un fin voile blanc au fond de la casserole.",
+          "Transvaser la panade dans un cul-de-poule et incorporer l'œuf battu en 3 ou 4 fractions successives, en attendant que chaque ajout soit totalement absorbé avant de verser le suivant, jusqu'à obtenir une consistance lisse formant une vague souple au bout de la spatule.",
+          "Placer l'appareil dans une poche munie d'une douille petits fours et dresser 4 éclairs réguliers de 12 cm de longueur sur une plaque recouverte de papier cuisson.",
+          "Cuire 15 minutes à 180 °C sans ouvrir la porte du four, puis abaisser la température à 160 °C pendant 10 minutes supplémentaires pour sécher les coques. Laisser refroidir sur grille."
+        ],
+        "conseils_etape": "Ne pas laisser bouillir l'eau et le lait trop longtemps avant l'ajout de la farine afin de ne pas fausser le ratio liquide/sec par évaporation. La pesée d'œuf est indicative : observer le repli de la pâte (crête de vague) pour juger de la saturation hydrique exacte."
+      },
+      {
+        "nom_etape": "Montage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 45,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Praliné pistache (reste de la préparation de la première étape)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Pistaches brutes entières ou concassées (quelques-unes, pour le décor)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Découper délicatement le haut des éclairs refroidis dans le sens de la longueur à l'aide d'un couteau scie.",
+          "Garnir le fond de chaque coque avec une couche régulière de ganache montée souple à l'aide d'une poche à douille.",
+          "Recouvrir généreusement de praliné pur pistache puis lisser la surface à l'aide d'une petite spatule coudée.",
+          "Démouler les bandes de ganache congelées et les déposer délicatement sur le praliné.",
+          "Remplir les petites cavités supérieures des sphères de ganache avec du praliné pur à l'aide d'un cornet ou d'une petite cuillère.",
+          "Disposer harmonieusement quelques éclats de pistaches sur le dessus pour finaliser le dressage.",
+          "Laisser décongeler 30 à 45 minutes au réfrigérateur ou à température ambiante avant dégustation."
+        ],
+        "conseils_etape": "Manipuler les bandes de ganache congelées avec rapidité pour éviter qu'elles ne ramollissent au contact des doigts lors de la dépose. Si le moule spécifique n'est pas disponible, pocher des boules de ganache à la douille unie 12 mm sur l'éclair, puis creuser le sommet avec une cuillère parisienne tiédie au chalumeau avant de couler le praliné. À réaliser environ 1 h avant le service."
+      }
+    ],
+    "astuces_recette": [
+      "Gestion des équilibres : ce dessert repose sur un praliné formulé avec un ratio sucre/fruit très bas (environ 17 % de sucre contre 50 % sur un praliné classique) afin de préserver la signature aromatique brute de la pistache et éviter toute saturation sucrée.",
+      "Régularité de pochage : pour calibrer des éclairs rigoureusement identiques, saupoudrer un emporte-pièce ou une règle de sucre glace pour marquer l'empreinte de 12 cm sur la feuille de cuisson avant le dressage.",
+      "Ajout de texture : vous pouvez disperser quelques pistaches torréfiées concassées à l'intérieur de l'éclair, sous le praliné, pour apporter un contraste franc avec l'onctuosité de la ganache."
+    ],
+    "conseils_conservation": "Déguster l'éclair frais mais non glacé. Laisser reposer le gâteau après assemblage afin que l'insert de ganache reprenne sa texture soyeuse tout en restant maintenu. Les choux cuits non garnis se conservent 24 heures en boîte hermétique ou peuvent être congelés cuits. Une fois assemblé, l'éclair se conserve au réfrigérateur entre 2 °C et 4 °C et doit être consommé dans les 24 heures pour éviter que l'humidité de la crème ne ramollisse le chou."
+  }
+}

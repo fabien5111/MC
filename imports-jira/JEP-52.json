@@ -1,0 +1,369 @@
+{
+  "ticket": "JEP-52",
+  "recette": {
+    "titre": "Bûche au café façon Cyril Lignac",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Entremets festif sans amertume inspiré du tiramisu. Il se compose d'un biscuit pain de Gênes moelleux, d'un insert crémeux caramel et mousse mascarpone, recouvert d'une mousse légère infusée au café. La finition se fait par un glaçage miroir ou un flocage velours.",
+    "rendement": "1 bûche de Noël (Pour 6 à 8 personnes)",
+    "ustensiles": [
+      "Robot pâtissier (ou batteur électrique)",
+      "Cul-de-poule",
+      "Maryse",
+      "Fouet",
+      "Moule à cake (pour la base)",
+      "Moule à bûche",
+      "Couteau d'office bien affûté",
+      "Mixeur plongeant",
+      "Casseroles",
+      "Thermomètre de cuisson",
+      "Poches à douille (douille lisse 16 mm et 20 mm)",
+      "Pichet",
+      "Grille de glaçage",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Biscuit Pain de Gênes",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Oeuf entier",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte d'amandes",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'oeuf",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Blanc d'oeuf",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 60,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Chauffer la pâte d'amandes 15 à 20 secondes au micro-ondes pour l'assouplir.",
+          "Battre dans la cuve du robot, à vitesse moyenne, la pâte d'amandes avec les oeufs entiers et les jaunes d'oeufs jusqu'à ce que le mélange monte.",
+          "Monter les blancs d'oeufs en neige dans un cul-de-poule, en incorporant le sucre progressivement jusqu'à obtenir une texture souple type \"mousse à raser\".",
+          "Verser le mélange à base d'amandes dans les blancs montés et amalgamer délicatement à la maryse par des mouvements de bas en haut.",
+          "Tamiser la farine sur l'appareil et l'incorporer avec le même mouvement délicat.",
+          "Verser la pâte sur 2 centimètres d'épaisseur dans un moule à cake préalablement graissé.",
+          "Cuire au four pendant 25 minutes.",
+          "Laisser refroidir, démouler sur une planche, puis parer le biscuit avec un couteau affûté pour obtenir une épaisseur de 2,5 cm et une taille inférieure de 5 mm par rapport aux bords de votre moule à bûche."
+        ],
+        "conseils_etape": "Utilisez un couteau de chef très bien aiguisé ou un couteau scie pour effectuer des coupes parfaitement nettes sur les bords du biscuit, cela garantit un montage propre."
+      },
+      {
+        "nom_etape": "Crémeux Caramel",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour l'hydratation)",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'oeuf",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (1)",
+            "quantite": 160,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (2)",
+            "quantite": 35,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine avec les 12g d'eau bien froide et placer au réfrigérateur pendant 10 minutes.",
+          "Mélanger au fouet la crème liquide (2) avec les jaunes d'oeufs jusqu'à obtention d'un liquide homogène.",
+          "Verser les 30g d'eau, le sucre semoule et le glucose dans une casserole et faire chauffer jusqu'à obtenir une belle couleur caramel ambré.",
+          "Chauffer la crème liquide (1) au micro-ondes jusqu'à ce qu'elle soit fumante.",
+          "Déglacer le caramel en versant la crème chaude petit à petit tout en mélangeant.",
+          "Ajouter ensuite le mélange crème/jaunes et mélanger jusqu'à ce que l'appareil soit homogène.",
+          "Transvaser le caramel chaud dans un pichet, y incorporer la gélatine hydratée, et mixer l'ensemble au mixeur plongeant.",
+          "Filmer au contact et réserver au réfrigérateur pendant au moins 4 heures."
+        ],
+        "conseils_etape": "Le passage au mixeur plongeant est indispensable pour lisser parfaitement le caramel et lui donner une finition brillante sans incorporer de bulles d'air."
+      },
+      {
+        "nom_etape": "Crème Mascarpone façon Tiramisu",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 118,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour l'hydratation)",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour le sirop)",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 85,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'oeuf",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Mascarpone",
+            "quantite": 85,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine avec les 10g d'eau froide pendant 10 minutes au réfrigérateur.",
+          "Dans une casserole, verser les 12g d'eau et le sucre, puis chauffer jusqu'à atteindre 118 degrés Celsius.",
+          "En parallèle, commencer à battre les jaunes d'oeufs. Une fois le sirop à température, le verser en filet sur les jaunes tout en fouettant pendant environ 10 minutes pour réaliser une pâte à bombe (le mélange doit épaissir).",
+          "Monter les 85g de crème liquide en chantilly.",
+          "Détendre le mascarpone à la maryse, puis y ajouter le mélange à base de jaunes d'oeufs.",
+          "Incorporer délicatement la crème montée avec la maryse.",
+          "Filmer et laisser figer au réfrigérateur au moins 4 heures."
+        ],
+        "conseils_etape": "Être à deux facilite cette étape pour gérer la cuisson du sirop d'un côté et le foisonnement de la crème de l'autre."
+      },
+      {
+        "nom_etape": "Montage de l'Insert",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [],
+        "instructions": [
+          "Placer la crème mascarpone dans une poche munie d'une douille de 16 mm et pocher deux beaux cordons sur toute la longueur du biscuit paré.",
+          "Placer le crémeux caramel dans une poche munie d'une douille lisse de 20 mm et pocher sur le biscuit à côté de la mascarpone.",
+          "Placer l'ensemble de cet insert au congélateur pendant 2 heures pour qu'il fige."
+        ],
+        "conseils_etape": "Veillez à ce que le pochage soit bien droit et contenu dans les marges du biscuit pour que l'insert s'intègre parfaitement au centre du moule final."
+      },
+      {
+        "nom_etape": "Mousse au Café et Montage final de la Bûche",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour l'hydratation)",
+            "quantite": 36,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (pour l'infusion)",
+            "quantite": 127,
+            "unite": "g"
+          },
+          {
+            "nom": "Grains de café",
+            "quantite": 8,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat Dulcey",
+            "quantite": 270,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de café",
+            "quantite": 9,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (à monter)",
+            "quantite": 315,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine avec son volume d'eau froide pendant 10 à 15 minutes.",
+          "Verser les 127g de crème liquide et les grains de café dans une casserole. Faire chauffer jusqu'à légère ébullition, couper le feu, couvrir hermétiquement avec un film alimentaire et laisser infuser 10 à 15 minutes.",
+          "Retirer le film. Si la crème a trop refroidi, la faire chauffer légèrement à nouveau.",
+          "Faire fondre le chocolat Dulcey.",
+          "Filtrer les grains de café et verser la crème chaude en deux ou trois fois sur le chocolat fondu tout en frictionnant pour créer l'émulsion.",
+          "Ajouter la pâte de café, puis la gélatine bien hydratée dans ce mélange encore chaud, et mélanger.",
+          "Monter les 315g de crème liquide restante jusqu'à obtenir une texture mousse à raser.",
+          "Ajouter une première partie de cette crème montée dans la ganache au café et fouetter énergiquement pour détendre l'appareil.",
+          "Incorporer le reste de la crème délicatement de bas en haut à l'aide de la maryse.",
+          "Couler cette mousse au café dans le moule à bûche de votre choix.",
+          "Enfoncer l'insert congelé au centre de la mousse, en gardant la face biscuit vers le haut (pour qu'elle soit en bas une fois la bûche démoulée).",
+          "Placer le moule complet au congélateur pendant une nuit."
+        ],
+        "conseils_etape": "Lors de la création de l'émulsion, la première moitié de crème chaude fera \"trancher\" le chocolat à cause de la saturation en matières grasses. C'est un phénomène normal ; l'ajout de la seconde moitié de crème lissera parfaitement la ganache."
+      },
+      {
+        "nom_etape": "Finition Option A : Le Flocage (Recommandé sur moules en silicone)",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 45,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat Dulcey",
+            "quantite": 130,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 170,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 300,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre les chocolats et le beurre de cacao.",
+          "Mélanger l'ensemble jusqu'à obtenir un liquide homogène.",
+          "Pulvériser le flocage au pistolet sur la bûche tout juste sortie du congélateur, lorsque le mélange est à 45 degrés Celsius."
+        ],
+        "conseils_etape": "Le flocage nécessite un démoulage absolument parfait sans aucun accroc, c'est pourquoi il est déconseillé si vous utilisez une gouttière à bûche rigide sans feuille rhodoïd."
+      },
+      {
+        "nom_etape": "Finition Option B : Le Glaçage Miroir (Plan B de sauvetage)",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 67,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat Dulcey",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait concentré non sucré",
+            "quantite": 83,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuilles de gélatine (ou gélatine poudre réhydratée)",
+            "quantite": 10,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans un grand volume d'eau froide (si en feuilles) ou avec 5 fois son poids en eau (si en poudre).",
+          "Dans une casserole, mélanger l'eau, le sucre semoule et le glucose. Porter le tout à belle ébullition.",
+          "Pendant ce temps, placer les chocolats préalablement fondus et le lait concentré non sucré dans un pichet.",
+          "Verser le sirop bouillant dans le pichet et mixer longuement au mixeur plongeant en gardant la tête immergée.",
+          "Ajouter la gélatine hydratée (et essorée si en feuilles) et mixer de nouveau.",
+          "Filmer au contact et laisser refroidir à température ambiante jusqu'à ce que le glaçage atteigne 28 degrés Celsius.",
+          "Démouler la bûche congelée, la placer sur une grille et couler le glaçage à 28 degrés uniformément."
+        ],
+        "conseils_etape": "Le glaçage miroir est la solution idéale pour recouvrir et masquer les imperfections créées lors d'un démoulage difficile, car son épaisseur lisse la surface."
+      }
+    ],
+    "astuces_recette": [
+      "Le choix du moule est primordial : un moule en silicone facilitera grandement le démoulage par rapport à un moule rigide.",
+      "En cas de difficultés à démouler avec un moule rigide, trempez très brièvement la base de la gouttière dans de l'eau quasi bouillante pour aider au décollement des parois.",
+      "La pâte de café est qualifiée de facultative, mais elle joue un grand rôle pour soutenir l'intensité aromatique et la couleur de la mousse."
+    ],
+    "conseils_conservation": "Il est indispensable de laisser la bûche décongeler au réfrigérateur pendant environ 4 à 6 heures après son glaçage. Conservez la bûche au réfrigérateur. Sortez l'entremets à température ambiante environ 15 minutes avant le service pour assouplir la mousse et optimiser le dégagement des arômes en bouche."
+  }
+}

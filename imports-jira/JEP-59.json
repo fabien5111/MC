@@ -1,0 +1,369 @@
+{
+  "ticket": "JEP-59",
+  "recette": {
+    "titre": "Bûche de Noël exotique coco et passion",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Bûche de Noël pour 6-8 personnes associant une mousse coco légère (crème diplomate), un insert fruité composé d'une compotée mangue-passion et d'un caramel passion, un biscuit madeleine à la noix de coco, et un croustillant praliné-passion. L'ensemble est recouvert d'un flocage velours blanc et décoré d'un glaçage miroir passion.",
+    "rendement": "1 bûche (6 à 8 personnes)",
+    "ustensiles": [
+      "Moule à bûche",
+      "Moule à cake",
+      "Casseroles",
+      "Spatules (maryses)",
+      "Fouets",
+      "Robot pâtissier",
+      "Mixeur plongeant",
+      "Couteau",
+      "Pistolet à peinture (pour le flocage)",
+      "Cuillère"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Insert exotique (compotée mangue-passion)",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 1,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Purée de passion",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de mangue",
+            "quantite": 167,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 11,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine NH",
+            "quantite": 8,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 11,
+            "unite": "g"
+          },
+          {
+            "nom": "Mangue",
+            "quantite": 1,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Éplucher la mangue et la couper en petits cubes.",
+          "Dans un récipient, mélanger la pectine NH avec le sucre semoule pour éviter les grumeaux.",
+          "Dans une casserole, verser la purée de mangue, la purée de passion et le glucose, puis mélanger.",
+          "Chauffer et, lorsque le mélange fume, ajouter la pectine en deux fois en mélangeant bien.",
+          "Porter à ébullition, ajouter les morceaux de mangue et faire bouillir pendant environ une minute.",
+          "Couler l'insert dans le moule et placer au congélateur pour 4 heures minimum."
+        ],
+        "conseils_etape": "Mélanger d'abord la pectine au sucre avant incorporation pour éviter la formation de grumeaux."
+      },
+      {
+        "nom_etape": "Caramel passion",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 1,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 67,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 27,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de passion",
+            "quantite": 33,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans une casserole, verser le sucre semoule et le faire caraméliser à feu moyen sans trop y toucher avec une spatule.",
+          "Lorsque le caramel a une belle couleur ambrée, le déglacer avec le beurre doux et mélanger avec une maryse.",
+          "Chauffer la crème liquide au micro-ondes et l'ajouter en plusieurs fois pour éviter les blocs de caramel.",
+          "Terminer en incorporant la purée de passion et faire cuire à ébullition pendant environ une minute.",
+          "Réserver le caramel dans un bol à température ambiante, filmé au contact, jusqu'à ce qu'il devienne tiède.",
+          "Verser le caramel sur environ un demi-centimètre d'épaisseur par-dessus l'insert de compotée durci, puis placer le tout au congélateur jusqu'à complet durcissement."
+        ],
+        "conseils_etape": "Chauffer la crème au préalable et l'incorporer en plusieurs fois pour lisser le caramel sans formation de blocs."
+      },
+      {
+        "nom_etape": "Biscuit madeleine coco",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Oeuf",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Coco râpée",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 8,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de coco",
+            "quantite": 77,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait de coco",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 2.5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans le bol du robot, battre les oeufs, le miel et le sucre semoule avec le fouet jusqu'à ce que le volume double et devienne mousseux.",
+          "Ajouter la levure chimique, la farine et la coco râpée.",
+          "Ajouter l'huile de coco puis terminer par le lait de coco en mélangeant.",
+          "Couler le biscuit dans un moule à cake sur 2 cm d'épaisseur.",
+          "Cuire pendant 25 minutes à 170°C, puis démouler une fois tiède."
+        ],
+        "conseils_etape": "Ne pas trop travailler la pâte après l'ajout de la farine pour garder un biscuit aérien."
+      },
+      {
+        "nom_etape": "Croustillant praliné-passion",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Feuilletine",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat Valrhona inspiration passion",
+            "quantite": 44,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat Valrhona inspiration passion.",
+          "Verser le chocolat fondu sur la feuilletine et mélanger délicatement à la maryse jusqu'à l'obtention d'un mélange homogène.",
+          "Une fois l'insert compotée/caramel bien congelé, déposer par-dessus le biscuit madeleine tiède.",
+          "Étaler le croustillant par-dessus le biscuit pour arriver à hauteur, en l'étalant le plus finement possible avec une cuillère.",
+          "Placer cet insert assemblé au congélateur pendant au moins une heure."
+        ],
+        "conseils_etape": "Etaler le croustillant de manière très fine pour faciliter la découpe de la bûche."
+      },
+      {
+        "nom_etape": "Mousse coco (crème diplomate)",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 840,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Lait de coco",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de coco",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Gélatine en poudre (ou 5g en feuilles)",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation (si gélatine en poudre)",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'oeuf",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Fécule de maïs",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 225,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Fendre la gousse de vanille en deux et gratter les graines. Hydrater la gélatine dans l'eau froide pendant 15 minutes au réfrigérateur.",
+          "Dans un cul-de-poule, blanchir vivement les jaunes d'oeufs avec le sucre semoule pendant une vingtaine de secondes, puis incorporer la fécule de maïs.",
+          "Mélanger les graines de vanille, le lait de coco et la purée de coco, puis faire chauffer le tout jusqu'à ce que ce soit fumant.",
+          "Verser la moitié du liquide chaud sur le mélange oeufs-sucre, fouetter vivement, puis reverser le tout dans la casserole.",
+          "Faire cuire sur feu moyen en fouettant continuellement jusqu'à l'ébullition et l'épaississement de la crème pâtissière.",
+          "Hors du feu, ajouter la gélatine hydratée et mixer au mixeur plongeant, puis incorporer le beurre bien froid.",
+          "Filmer la crème pâtissière au contact et la laisser reposer 2 heures au réfrigérateur.",
+          "Monter la crème liquide en crème fouettée légère.",
+          "Détendre la crème pâtissière refroidie en y incorporant la première moitié de la chantilly au fouet, puis incorporer délicatement la seconde moitié à la maryse pour former la mousse coco.",
+          "Garnir le fond et les bords du moule à bûche avec la mousse coco en éliminant les bulles d'air à l'aide d'une spatule.",
+          "Déposer l'insert (côté croustillant vers le haut) en l'appuyant légèrement, recouvrir du reste de mousse coco et lisser.",
+          "Placer la bûche au congélateur pour une nuit complète."
+        ],
+        "conseils_etape": "Assemblage la veille. Monter la crème fouettée à consistance de mousse à raser pour garder une texture aérienne."
+      },
+      {
+        "nom_etape": "Glaçage miroir passion",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Glucose",
+            "quantite": 94,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 94,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat Valrhona inspiration passion",
+            "quantite": 94,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait concentré non sucré",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre (ou en feuilles)",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation (si gélatine en poudre)",
+            "quantite": 36,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans de l'eau froide pendant 10 minutes minimum.",
+          "Dans une casserole, porter l'eau, le glucose et le sucre semoule à ébullition.",
+          "Verser le sirop chaud sur le lait concentré et le chocolat passion fondu, ajouter la gélatine hydratée et mixer au mixeur plongeant.",
+          "Réserver toute une nuit au réfrigérateur."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Flocage blanc et finition",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 45,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Coco râpée (un peu, pour le décor)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Mélanger le chocolat blanc et le beurre de cacao et faire fondre jusqu'à homogénéité. Réserver à température ambiante.",
+          "Démouler la bûche congelée.",
+          "Réchauffer le mélange de flocage à 45°C, le verser dans un pistolet à peinture et pulvériser uniformément à environ 20 cm de la bûche pour créer un effet velours blanc.",
+          "Réchauffer le glaçage miroir autour de 28°C (mixé si besoin), réaliser le décor en stries sur le dessus, puis parsemer de coco râpée."
+        ],
+        "conseils_etape": "Maintenir les températures de pulvérisation et de glaçage recommandées pour obtenir un aspect visuel net et professionnel."
+      }
+    ],
+    "astuces_recette": [
+      "Privilégier l'utilisation de purées de fruits professionnelles et de chocolats de couverture de qualité (comme Valrhona) pour garantir l'intensité aromatique des fruits exotiques.",
+      "Respecter scrupuleusement les temps de congélation entre chaque élément pour assurer la stabilité du montage."
+    ],
+    "conseils_conservation": "Sortir la bûche du congélateur et la placer au réfrigérateur au moins 4 à 6 heures avant la dégustation pour permettre une décongélation homogène à cœur. Conserver la bûche au réfrigérateur et la consommer dans les 24 à 48 heures suivant sa décongélation complète."
+  }
+}

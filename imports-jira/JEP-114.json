@@ -1,0 +1,118 @@
+{
+  "ticket": "JEP-114",
+  "recette": {
+    "titre": "Cupcakes d'Halloween dégoûtants",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Décoration thématique effrayante pour cupcakes, composée de faux sang dégoulinant au miel et de petits os croustillants en meringue française.",
+    "rendement": "Base pour 6 à 8 cupcakes individuels (décoration et fourrage)",
+    "ustensiles": [
+      "Robot pâtissier ou batteur électrique",
+      "Maryse",
+      "Poche à douille (ou sac de congélation)",
+      "Plaque de cuisson",
+      "Tapis silicone (ou papier sulfurisé)",
+      "Évide-pomme (ou vide-pomme)",
+      "Cuillère",
+      "Petit bol"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Os en meringue",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 90,
+        "temperature_cuisson_celsius": 90,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 60,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mettre les blancs d'œufs dans la cuve et commencer à battre à vitesse moyenne.",
+          "Dès que les blancs moussent, verser le premier tiers du sucre semoule et augmenter la vitesse.",
+          "Ajouter le deuxième tiers du sucre semoule en augmentant encore la vitesse du robot.",
+          "Incorporer le dernier tiers de sucre semoule à vitesse maximale jusqu'à la formation d'un bec d'oiseau bien ferme.",
+          "Ajouter l'ensemble du sucre glace en une seule fois et l'incorporer délicatement à la maryse.",
+          "Transvaser la meringue dans une poche à douille.",
+          "Pocher les os sur un tapis en silicone en traçant un trait central terminé par deux pointes en forme de cœur de chaque côté.",
+          "Enfourner à 90 °C pendant 1 h 30 pour dessécher les meringues."
+        ],
+        "conseils_etape": "Respecter la cuisson lente à basse température pour sécher les meringues sans coloration. À réaliser jusqu'à 24 à 48 heures avant le montage (à conserver au sec)."
+      },
+      {
+        "nom_etape": "Faux sang maison",
+        "page": null,
+        "temps_preparation_minutes": 3,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Miel liquide (à ajuster selon le nombre de cupcakes)",
+            "quantite": 1,
+            "unite": "c. à s."
+          },
+          {
+            "nom": "Colorant rouge hydrosoluble (quantité suffisante selon l'intensité voulue)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Déposer une belle cuillère de miel dans un récipient.",
+          "Ajouter une pointe de colorant rouge hydrosoluble.",
+          "Mélanger soigneusement jusqu'à obtention d'une texture homogène et d'une teinte rouge sang réaliste."
+        ],
+        "conseils_etape": "Utiliser impérativement un colorant hydrosoluble afin qu'il se dissolve correctement dans le miel. À réaliser le jour même, juste avant le montage."
+      },
+      {
+        "nom_etape": "Creusage, fourrage et montage",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Cupcakes cuits et refroidis (6 à 8)",
+            "quantite": 8,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Creuser le centre de chaque cupcake à l'aide de l'évide-pomme en conservant le chapeau retiré.",
+          "Verser une cuillère de sang au miel au fond de la cavité.",
+          "Glisser un morceau ou un petit os en meringue à l'intérieur du trou.",
+          "Ajouter une seconde dose de sang pour napper l'os interne.",
+          "Replacer le bouchon de génoise sur le dessus.",
+          "Napper le dessus du gâteau avec le reste de sang pour créer des coulures irrégulières sur les bords.",
+          "Fixer les os en meringue entiers sur le dessus grâce au pouvoir collant du miel.",
+          "Tacher légèrement les os visibles avec des touches de faux sang pour parfaire l'effet."
+        ],
+        "conseils_etape": "Laisser déborder volontairement le miel sur les parois pour un aspect sanglant et coulant. À réaliser 1 à 2 heures au maximum avant la dégustation."
+      }
+    ],
+    "astuces_recette": [
+      "Vous pouvez employer n'importe quelle base de muffin ou cupcake (vanille, chocolat ou épices).",
+      "Le miel sert à la fois d'élément visuel, de liant gustatif et de colle naturelle pour faire tenir les meringues sur le dôme du gâteau."
+    ],
+    "conseils_conservation": "Servir à température ambiante pour que le faux sang reste fluide et dégoulinant. Une fois garnis, consommer rapidement : l'humidité du miel et du gâteau fait ramollir la meringue au contact prolongé. Les os en meringue seuls se gardent plusieurs jours dans une boîte en métal hermétique à l'abri de l'humidité."
+  }
+}

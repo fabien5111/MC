@@ -1,0 +1,201 @@
+{
+  "ticket": "JEP-49",
+  "recette": {
+    "titre": "Brioche du Ritz (François Perret) façon Pain Perdu",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Recette de pâte à brioche filante pétrie à la main nécessitant un long repos, suivie de sa transformation en brioche perdue généreusement imbibée, caramélisée à la poêle et rôtie au four.",
+    "rendement": "1 brioche de 24x8 cm (composée de 6 boules de 80g), soit environ 4 à 6 personnes",
+    "ustensiles": [
+      "Corne de pâtissier",
+      "Cul de poule",
+      "Film alimentaire",
+      "Moule à cake 24cmx8cm",
+      "Pinceau",
+      "Casserole",
+      "Poêle",
+      "Maryse"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Réalisation de la pâte à brioche",
+        "page": null,
+        "temps_preparation_minutes": 40,
+        "temps_attente_minutes": 780,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Farine de gruau",
+            "quantite": 400,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre cassonade",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure fraîche",
+            "quantite": 14,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeuf (battus)",
+            "quantite": 230,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux mou",
+            "quantite": 280,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Disposer la farine en longueur sur le plan de travail et former deux puits distincts séparés par un mur de farine épais.",
+          "Placer le sel et le sucre cassonade dans le premier puits, et la levure fraîche émiettée dans le second (la levure ne doit pas toucher le sel ou le sucre).",
+          "Verser le lait sur la levure.",
+          "Répartir les oeufs battus de moitié dans chaque puits.",
+          "Mélanger le premier puits (sel/sucre) du bout des doigts, puis intégrer progressivement le second puits et la farine.",
+          "Utiliser une corne pour rassembler et homogénéiser la pâte sur le plan de travail.",
+          "Pétrir à la main avec la technique de l'arrachage : ramener la pâte vers soi puis l'étirer vers l'avant, jusqu'à obtenir une texture élastique.",
+          "Frapper la pâte contre le plan de travail, la rabattre sur elle-même et répéter le mouvement.",
+          "Incorporer progressivement les cubes de beurre pommade tout en continuant de taper la pâte (pétrissage d'environ 30 minutes au total).",
+          "Vérifier le réseau de gluten : étirer un petit bout de pâte entre les doigts pour former une membrane fine et translucide sans qu'elle ne se déchire.",
+          "Placer la pâte dans un cul de poule et laisser reposer 1 heure à température ambiante.",
+          "Fariner légèrement le plan de travail, y déposer la pâte et appuyer dessus pour la dégazer.",
+          "Rabattre les quatre côtés pour former un rectangle.",
+          "Placer la clé (les plis) en dessous, filmer la pâte au contact et réserver 12 heures au réfrigérateur (minimum 3 heures)."
+        ],
+        "conseils_etape": "Tous les ingrédients liquides doivent être froids. La pâte ne doit pas dépasser 24 degrés pendant le pétrissage. N'hésitez pas à faire des pauses de 5 minutes pendant le pétrissage pour détendre le gluten et reposer vos bras."
+      },
+      {
+        "nom_etape": "Façonnage et cuisson de la brioche",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": 45,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Jaune d'oeuf (pour la dorure)",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Eau (un filet, pour la dorure)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Laisser la pâte revenir quelques minutes à température ambiante.",
+          "Détailler 6 pâtons de 80g chacun.",
+          "Aplatir chaque pâton et ramener les quatre angles vers le centre.",
+          "Retourner le pâton sur le plan de travail très peu fariné et le bouler avec le creux de la main pour sceller la clé en dessous.",
+          "Beurrer le moule à cake.",
+          "Placer les 6 boules en quinconce dans le moule.",
+          "Laisser pousser pendant 3 heures à température ambiante jusqu'à ce que la pâte double de volume.",
+          "Mélanger le jaune d'oeuf avec un peu d'eau.",
+          "Dorer délicatement le dessus des brioches au pinceau.",
+          "Cuire au four à 150 degrés Celsius pendant 45 minutes.",
+          "Démouler la brioche lorsqu'elle est tiède et la détailler en tranches d'au moins 2 centimètres d'épaisseur."
+        ],
+        "conseils_etape": "Soyez très délicat lors de la dorure pour ne pas faire retomber la pâte. Évitez de dorer les côtés collés au moule, cela rendrait le démoulage difficile."
+      },
+      {
+        "nom_etape": "Appareil à pain perdu",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 93,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 266,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Jaunes d'oeufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre cassonade",
+            "quantite": 38,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser la crème liquide et le lait dans une casserole.",
+          "Fendre la gousse de vanille en deux, gratter les grains et ajouter le tout dans la casserole.",
+          "Porter le liquide à léger frémissement.",
+          "Éteindre le feu, couvrir la casserole et laisser infuser pendant 15 minutes.",
+          "Placer les jaunes d'oeufs et le sucre cassonade dans un cul de poule et mélanger.",
+          "Retirer la gousse de vanille, filtrer le liquide infusé et le verser sur le mélange jaunes/sucre.",
+          "Mélanger pour obtenir un appareil lisse."
+        ],
+        "conseils_etape": "Si vous utilisez une vanille très parfumée, une petite quantité suffit, mais n'hésitez pas à mettre une gousse entière de supermarché."
+      },
+      {
+        "nom_etape": "Caramélisation de la brioche perdue",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre salé (quantité selon convenance)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Sucre cassonade (quantité selon convenance)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 180 degrés Celsius.",
+          "Plonger généreusement les tranches de brioche dans l'appareil liquide pour bien les imbiber.",
+          "Faire fondre un morceau de beurre salé dans une poêle à feu moyen.",
+          "Ajouter la cassonade uniquement lorsque le beurre est totalement fondu.",
+          "Déposer les tranches de brioche imbibées dans la poêle et les laisser caraméliser de chaque côté.",
+          "Transférer les tranches de brioche caramélisées sur une plaque et terminer la cuisson au four pendant 3 minutes pour apporter du croustillant."
+        ],
+        "conseils_etape": "Le feu ne doit pas être trop fort pour ne pas brûler le caramel. Imbibez sans crainte, la brioche doit être très moelleuse à cœur."
+      }
+    ],
+    "astuces_recette": [
+      "Réaliser une pâte à brioche à la main est un effort physique conséquent. N'hésitez pas à vous relayer. Cette méthode manuelle permet d'apprendre la consistance exacte d'un réseau de gluten parfait.",
+      "Vous pouvez décliner le goût de l'appareil à pain perdu avec d'autres épices comme l'anis étoilé."
+    ],
+    "conseils_conservation": "La brioche perdue est optimale si vous utilisez une brioche rassise de quelques jours, car sa mie séchée absorbera beaucoup plus d'appareil sans se déliter. Dégustez la brioche perdue immédiatement à la sortie du four, accompagnée idéalement d'une boule de glace vanille, de pâte à tartiner ou de fruits frais."
+  }
+}

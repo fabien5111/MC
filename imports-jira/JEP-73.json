@@ -1,0 +1,197 @@
+{
+  "ticket": "JEP-73",
+  "recette": {
+    "titre": "Cake signature framboise et son coeur gourmand",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un cake 100% framboise moelleux avec un insert de framboises entières, garni d'un confit de framboise, enrobé d'un glaçage pectiné à la purée de fruits et décoré de framboises fraîches et de feuille d'or.",
+    "rendement": "1 cake (8 personnes)",
+    "ustensiles": [
+      "Bols et culs-de-poule",
+      "Fouet",
+      "Casseroles",
+      "Spatule maryse",
+      "Moule à cake avec tube central",
+      "Plat large",
+      "Film alimentaire",
+      "Poche à douille",
+      "Thermomètre de cuisine"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Le cake framboise",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 50,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de framboises",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Framboises fraîches (quantité selon préférence pour insertion)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Mélanger les jaunes d'œufs avec le sucre semoule et fouetter vivement jusqu'à ce que le mélange blanchisse.",
+          "Ajouter la purée de framboises et mélanger.",
+          "Mélanger la levure chimique à la farine, puis l'ajouter en pluie sur le mélange en fouettant (la couleur peut légèrement griser, ce qui est normal).",
+          "Incorporer le beurre fondu préalablement tiédi pour éviter de trancher l'appareil.",
+          "Mettre l'appareil à cake en poche.",
+          "Couler dans un moule préalablement bien beurré et fariné (en veillant à bien beurrer et fariner le tube central si le moule en est équipé), sans dépasser la limite indiquée.",
+          "Ajouter des framboises entières à l'intérieur.",
+          "Cuire au four pendant environ 50 minutes à 160°C (ajuster selon le four).",
+          "Retirer le tube central et démouler le cake lorsqu'il est tiède."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Le confit framboises",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 1,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Purée de framboises",
+            "quantite": 334,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre roux",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine NH",
+            "quantite": 5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger le sucre roux avec la pectine NH dans un bol pour éviter la formation de grumeaux.",
+          "Dans une casserole, mélanger le sirop de glucose avec la purée de framboises.",
+          "Faire chauffer et, lorsque le mélange commence à fumer, ajouter une première moitié du mélange sucre-pectine, puis la seconde moitié.",
+          "Laisser cuire à ébullition pendant environ une minute.",
+          "Verser le confit dans un plat large, filmer au contact pour éviter la formation d'une peau.",
+          "Laisser refroidir à température ambiante avant de placer au réfrigérateur pour bloquer la prise."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Le glaçage framboise et montage",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 75,
+        "temps_cuisson_minutes": 1,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Purée de framboise",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine NH",
+            "quantite": 8,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine",
+            "quantite": 8,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 48,
+            "unite": "g"
+          },
+          {
+            "nom": "Nappage neutre",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Framboises fraîches (pour le décor)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Feuille d'or",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans de l'eau bien froide pendant 15 minutes au réfrigérateur.",
+          "Mélanger le sucre et la pectine NH ensemble.",
+          "Dans une casserole, mélanger la purée de framboises, le nappage neutre et le glucose, puis faire chauffer.",
+          "Lorsque le mélange commence à fumer, ajouter le mélange sucre-pectine en deux fois en fouettant énergiquement pour éviter les grumeaux.",
+          "Laisser cuire une minute à ébullition, puis retirer du feu.",
+          "Attendre que la température du mélange redescende en dessous de 60°C avant d'incorporer la gélatine essorée.",
+          "Récupérer le confit de framboise bien pris, le fouetter pour le détendre et obtenir une texture souple, puis le mettre en poche.",
+          "Fourrer le cake par les extrémités avec le confit de framboise.",
+          "Placer le cake au congélateur pendant une heure.",
+          "Napper le cake congelé avec le glaçage pectiné ramené à une température de 30 à 35°C.",
+          "Décorer le dessus avec des demi-framboises superposées sur la longueur et quelques touches de feuille d'or."
+        ],
+        "conseils_etape": null
+      }
+    ],
+    "astuces_recette": [
+      "Veiller à ce que le beurre fondu soit tiédi avant incorporation pour ne pas trancher l'appareil à œufs et sucre.",
+      "Le respect des températures pour l'incorporation de la gélatine (en dessous de 60°C) garantit ses propriétés texturantes.",
+      "Le passage d'une heure au congélateur avant le glaçage est indispensable pour assurer une prise nette et rapide du glaçage."
+    ],
+    "conseils_conservation": "Conserver le cake au réfrigérateur et le sortir quelques minutes avant la dégustation pour apprécier pleinement le moelleux du cake et la souplesse du confit."
+  }
+}

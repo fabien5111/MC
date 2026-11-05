@@ -1,0 +1,290 @@
+{
+  "ticket": "JEP-53",
+  "recette": {
+    "titre": "Bûche Tout Chocolat de Cyril Lignac",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Bûche de Noël structurée autour du chocolat, comprenant un croustillant au gianduja et zestes d'orange, un biscuit moelleux cacaoté, un crémeux onctueux, une ganache montée légère et une finition en glaçage velours rouge.",
+    "rendement": "1 bûche (moule silicone sublime de Pavoni), pour environ 8 personnes",
+    "ustensiles": [
+      "Casseroles",
+      "Cul-de-poule",
+      "Fouet manuel",
+      "Maryse",
+      "Mixeur plongeant",
+      "Robot pâtissier muni de la feuille et du fouet",
+      "Plaques de cuisson",
+      "Plaque à génoise",
+      "Papier sulfurisé",
+      "Thermomètre de cuisson",
+      "Moule à bûche (modèle Sublime de Pavoni)",
+      "Patron de découpe (aux dimensions de la base du moule)",
+      "Palette (spatule plate)",
+      "Pistolet à peinture et tamis (ou bombe velours)"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "La ganache montée",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir",
+            "quantite": 240,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (à chauffer)",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine",
+            "quantite": 2,
+            "unite": "feuilles"
+          },
+          {
+            "nom": "Crème liquide 30% (froide)",
+            "quantite": 490,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans de l'eau bien froide pendant 10 minutes.",
+          "Chauffer les 200g de crème liquide avec le glucose jusqu'à frémissement.",
+          "Verser la crème chaude en deux fois sur le chocolat noir préalablement fondu.",
+          "Réaliser une émulsion en faisant de petits cercles au centre avec une maryse.",
+          "Ajouter la gélatine hydratée et essorée.",
+          "Ajouter les 490g de crème liquide froide.",
+          "Filmer au contact et placer au réfrigérateur pendant au moins 4 heures."
+        ],
+        "conseils_etape": "L'émulsion doit être lisse et brillante avant l'ajout de la crème froide pour garantir la bonne texture finale."
+      },
+      {
+        "nom_etape": "Le crémeux au chocolat",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": 84,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Lait",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'oeuf",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Couverture 66%",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Fouetter vivement les jaunes d'oeufs et le sucre dans un cul-de-poule pendant une vingtaine de secondes.",
+          "Dans une casserole, porter le lait et la crème liquide à léger frémissement.",
+          "Verser la moitié du liquide chaud sur le mélange jaunes/sucre et homogénéiser rapidement.",
+          "Reverser l'ensemble dans la casserole et cuire sur feu lent jusqu'à 83-84°C (cuisson à la nappe).",
+          "Verser cette crème en 2 ou 3 fois sur le chocolat couverture préalablement fondu.",
+          "Emulsionner à la maryse en petits cercles au centre.",
+          "Lisser éventuellement au mixeur plongeant.",
+          "Filmer au contact et réserver 3 heures minimum au réfrigérateur."
+        ],
+        "conseils_etape": "Pour vérifier la cuisson sans thermomètre, passez le doigt sur la spatule : la trace doit rester nette et la crème ne pas couler."
+      },
+      {
+        "nom_etape": "Le croustillant",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Zestes d'orange",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisettes",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Gianduja",
+            "quantite": 125,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Crémer le beurre dans le robot muni de la feuille.",
+          "Ajouter les zestes d'orange, le sucre, la poudre de noisettes, le cacao, la farine et la fleur de sel.",
+          "Mélanger légèrement au robot puis terminer à la main pour homogénéiser.",
+          "Etaler la pâte entre deux feuilles de papier sulfurisé sur 3 mm d'épaisseur.",
+          "Cuire 20 minutes à 160°C.",
+          "Sortir la plaque, laisser refroidir, puis émietter le sablé dans un cul-de-poule.",
+          "Ajouter le gianduja fondu et mélanger.",
+          "Etaler la préparation entre deux feuilles de papier sulfurisé sur 3 mm d'épaisseur.",
+          "Détailler avec le patron correspondant à la base de la bûche.",
+          "Placer 1 heure au congélateur."
+        ],
+        "conseils_etape": "Enlever immédiatement le sablé de la plaque chaude à la sortie du four pour stopper la cuisson."
+      },
+      {
+        "nom_etape": "Le biscuit chocolat",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": 210,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Jaunes d'oeufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (à diviser)",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'oeufs",
+            "quantite": 80,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger vivement les jaunes d'oeufs avec la moitié du sucre.",
+          "Ajouter le cacao tamisé et mélanger au fouet.",
+          "Commencer à monter les blancs d'oeufs en ajoutant un tiers du sucre restant.",
+          "Ajouter le reste du sucre progressivement pour obtenir une meringue montée souple (pas trop serrée).",
+          "Incorporer un premier tiers des blancs montés dans le mélange cacao/jaunes pour détendre la pâte.",
+          "Incorporer le reste délicatement à la maryse.",
+          "Couler sur une plaque à génoise graissée sur environ 1 cm d'épaisseur.",
+          "Cuire 8 minutes à 210°C, puis défourner immédiatement."
+        ],
+        "conseils_etape": "Ne montez pas les blancs trop fermement pour éviter que le biscuit ne soit cassant."
+      },
+      {
+        "nom_etape": "Le montage",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Monter la ganache au robot muni du fouet jusqu'à obtenir une texture de ruban souple.",
+          "Pocher de la ganache dans le fond et sur les parois du moule, puis lisser à la palette.",
+          "Placer au congélateur quelques instants pour figer légèrement.",
+          "Démouler le biscuit chocolat et le détailler avec le patron.",
+          "Ajouter une épaisse couche de crémeux au centre de la bûche en guise d'insert.",
+          "Remettre de la ganache montée sur les côtés.",
+          "Déposer le biscuit détaillé.",
+          "Recouvrir de ganache montée quasiment jusqu'à hauteur du moule.",
+          "Déposer le croustillant.",
+          "Lisser et réserver 1 nuit complète au congélateur."
+        ],
+        "conseils_etape": "Arrêtez de battre la ganache dès qu'elle se tient en ruban. Si elle forme un bec d'oiseau, elle sera trop dense et difficile à pocher sans bulles d'air."
+      },
+      {
+        "nom_etape": "Le glaçage velours",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 45,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir 70%",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Colorant rouge liposoluble",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Démouler la bûche et la replacer immédiatement au congélateur.",
+          "Faire fondre le beurre de cacao et le chocolat noir au bain-marie.",
+          "Retirer du feu quand 80% des pistoles sont fondues et laisser fondre le reste avec l'inertie thermique.",
+          "Ajouter une pointe de colorant rouge liposoluble et mixer au mixeur plongeant.",
+          "Passer la préparation au tamis et la verser dans le réservoir du pistolet à peinture.",
+          "Pulvériser à 30 cm de distance sur la bûche parfaitement congelée, lorsque le glaçage est à 45°C."
+        ],
+        "conseils_etape": "Le choc thermique entre la bûche glacée et le pulvérisateur à 45°C est indispensable pour créer l'effet velours."
+      }
+    ],
+    "astuces_recette": [
+      "Respectez scrupuleusement les temps de repos, particulièrement pour la ganache montée et le crémeux, car ils conditionnent la texture finale.",
+      "L'organisation est clé : préparez tous vos patrons de découpe en avance et assurez-vous de la place disponible dans le congélateur."
+    ],
+    "conseils_conservation": "Laissez décongeler la bûche lentement au réfrigérateur pendant au moins 4 à 6 heures après avoir appliqué le glaçage velours. Conservez au réfrigérateur et sortez la bûche 15 minutes avant le service pour optimiser les textures (crémeux onctueux et base croustillante)."
+  }
+}

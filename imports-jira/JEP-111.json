@@ -1,0 +1,319 @@
+{
+  "ticket": "JEP-111",
+  "recette": {
+    "titre": "Couronne chocopek (Le jardin chocolaté)",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un entremets en forme de couronne associant le fondant d'une bavaroise au chocolat au lait, la gourmandise d'un praliné coulant et le moelleux d'un biscuit Trocadéro à la noix de pécan, surmonté d'un glaçage miroir ultra-brillant au cacao, de streusel émietté façon terreau et de fleurs comestibles.",
+    "rendement": "1 entremets couronne (moule à savarin / couronne), environ 6 à 8 personnes",
+    "ustensiles": [
+      "Casseroles",
+      "Mixeur / robot-coupe",
+      "Mixeur plongeant",
+      "Fouet",
+      "Spatule maryse",
+      "Batteur électrique ou robot pâtissier",
+      "Thermomètre de cuisson",
+      "Plaque de cuisson",
+      "Tapis silicone ou papier sulfurisé",
+      "Deux cercles à entremets concentriques (adaptés au moule couronne)",
+      "Couteau d'office ou chalumeau de pâtisserie",
+      "Moule couronne en silicone",
+      "Spatule coudée / palette",
+      "Grille à glacer"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Biscuit Trocadéro pécan",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 37,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Noix de pécan entières",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 74,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noix de pécan",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Fécule (pomme de terre ou maïs)",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs (1)",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs (2)",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre en poudre",
+            "quantite": 40,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre les 90 g de beurre à feu doux pendant 5 à 10 minutes pour obtenir un beurre noisette, puis laisser tiédir à température ambiante.",
+          "Faire torréfier les 50 g de noix de pécan au four à 160°C pendant 15 minutes, puis laisser refroidir.",
+          "Mixer les noix de pécan refroidies avec les 74 g de sucre glace jusqu'à l'obtention d'une poudre fine.",
+          "Ajouter dans le mixeur les 60 g de poudre de noix de pécan, les 12 g de fécule, les 12 g de jaunes d'œufs et les 60 g de blancs d'œufs (1), puis mixer jusqu'à formation d'une pâte homogène.",
+          "Monter les 60 g de blancs d'œufs (2) en incorporant les 40 g de sucre en poudre petit à petit pour obtenir une texture souple type « mousse à raser ».",
+          "Incorporer un premier tiers des blancs montés vivement à la pâte précédente, puis ajouter le restant délicatement à la maryse en soulevant la masse de bas en haut.",
+          "Détendre le beurre noisette tiédi avec une petite partie de cette pâte, reverser le tout dans l'appareil principal et mélanger délicatement à la maryse.",
+          "Couler la pâte sur une épaisseur de 1,5 cm entre deux cercles concentriques (préalablement choisis pour correspondre à l'empreinte du moule couronne) et enfourner 20 à 22 minutes à 160°C, puis laisser refroidir."
+        ],
+        "conseils_etape": "Ne pas monter les blancs en neige trop fermes au risque de rendre l'incorporation difficile et de faire retomber l'appareil. Ajuster la taille des cercles de cuisson légèrement plus grands que le moule final, car le biscuit se rétracte à la cuisson."
+      },
+      {
+        "nom_etape": "Praliné pécan et montage de l'insert",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 35,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Noix de pécan",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre en poudre",
+            "quantite": 94,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel (1 pincée)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Faire torréfier les 140 g de noix de pécan au four à 150°C pendant 30 minutes, puis laisser refroidir complètement.",
+          "Cuire les 94 g de sucre à sec à feu doux à moyen jusqu'à l'obtention d'un caramel d'une belle teinte brune, puis le couler sur un tapis en silicone et laisser refroidir.",
+          "Mixer ensemble les noix de pécan et le caramel complètement froids jusqu'à l'obtention d'une pâte de praliné parfaitement lisse.",
+          "Ajouter la pincée de fleur de sel et mélanger à la maryse.",
+          "Parer et emporte-piécer le biscuit Trocadéro refroidi aux dimensions exactes de l'empreinte du moule couronne.",
+          "Couler entre 0,5 cm et 1 cm d'épaisseur de praliné directement sur le biscuit, puis bloquer l'ensemble au congélateur jusqu'à durcissement complet."
+        ],
+        "conseils_etape": "Veiller à ce que les noix et le caramel soient parfaitement froids avant le mixage pour éviter de surchauffer les matières grasses et préserver la fluidité du praliné."
+      },
+      {
+        "nom_etape": "Streusel cacao pécan",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (pommade)",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noix de pécan",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre non sucré",
+            "quantite": 15,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réunir le beurre pommade, la poudre de noix de pécan, la farine, le sucre et le cacao dans un récipient.",
+          "Sabler et amalgamer l'ensemble à la maryse ou à la main jusqu'à l'obtention d'une boule homogène.",
+          "Étaler grossièrement la pâte sur une plaque recouverte d'un tapis silicone ou de papier sulfurisé.",
+          "Enfourner à 160°C pendant 15 minutes, puis laisser refroidir complètement avant de concasser légèrement en miettes."
+        ],
+        "conseils_etape": "Ne pas trop travailler la pâte pour conserver une texture bien friable et croustillante après cuisson. Peut aussi être réalisé le matin du jour J."
+      },
+      {
+        "nom_etape": "Bavaroise chocolat au lait et montage de l'entremets",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": 84,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour l'hydratation)",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 33,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre en poudre",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 57,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière (30 ou 35 % MG)",
+            "quantite": 200,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater les 2 g de gélatine dans les 12 g d'eau froide pendant 10 minutes au réfrigérateur.",
+          "Fouetter vivement les 33 g de jaunes d'œufs avec les 30 g de sucre pendant une vingtaine de secondes pour blanchir le mélange.",
+          "Porter les 150 g de lait à frémissement, puis en verser un filet sur les jaunes blanchis tout en fouettant.",
+          "Reverser l'ensemble dans la casserole et cuire la crème anglaise à la nappe à 83-84°C en mélangeant continuellement.",
+          "Verser la crème anglaise chaude en trois fois sur les 57 g de chocolat au lait préalablement fondu en émulsionnant à la maryse par cercles concentriques.",
+          "Ajouter la gélatine hydratée dans le crémeux encore chaud, bien mélanger et laisser tiédir aux alentours de 35°C.",
+          "Monter les 200 g de crème liquide entière en chantilly ferme.",
+          "Incorporer délicatement la crème montée en deux ou trois fois à l'appareil chocolaté tiédi à l'aide d'une maryse.",
+          "Couler la bavaroise dans le moule couronne.",
+          "Démouler l'insert congelé (biscuit + praliné) et l'enfoncer délicatement dans la mousse, face praliné orientée vers le plan de travail (le biscuit affleurant sur le dessus du moule), puis lisser et placer au congélateur pour la nuit."
+        ],
+        "conseils_etape": "Surveiller impérativement la température de la base anglaise : une incorporation dans une chantilly trop chaude la ferait trancher, tandis qu'une base trop froide figerait la gélatine prématurément."
+      },
+      {
+        "nom_etape": "Glaçage miroir cacao",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 103,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour l'hydratation)",
+            "quantite": 72,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour le sirop)",
+            "quantite": 105,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre en poudre",
+            "quantite": 210,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre non sucré",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière",
+            "quantite": 195,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater les 12 g de gélatine dans les 72 g d'eau froide pendant au moins 10 minutes au réfrigérateur.",
+          "Porter à ébullition dans une casserole les 105 g d'eau, les 210 g de sucre et les 75 g de glucose jusqu'à 103°C.",
+          "Retirer du feu, verser immédiatement les 75 g de cacao en poudre et mélanger sommairement à la maryse.",
+          "Faire chauffer les 195 g de crème liquide, y dissoudre la gélatine hydratée, puis verser le tout sur le sirop au cacao.",
+          "Mixer au mixeur plongeant pendant environ une minute en maintenant le pied immergé pour chasser toutes les bulles d'air.",
+          "Filmer au contact et placer au réfrigérateur pendant une nuit."
+        ],
+        "conseils_etape": "Garder le pied du mixeur bien au fond du récipient sans créer de vortex afin d'obtenir un glaçage parfaitement lisse et sans micro-bulles. Chauffer légèrement le glucose au micro-ondes simplifie son pesage."
+      },
+      {
+        "nom_etape": "Finitions et décor",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 480,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 28,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Fleurs comestibles",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Réchauffer doucement le glaçage miroir au bain-marie ou au micro-ondes jusqu'à une température d'application d'environ 28°C.",
+          "Démouler l'entremets parfaitement congelé, ébavurer les éventuelles irrégularités à la base à l'aide d'un couteau et le disposer sur une grille surélevée.",
+          "Napper généreusement l'entremets avec le glaçage à 28°C en effectuant un mouvement circulaire régulier.",
+          "Éliminer les gouttes pendantes sous l'entremets à la spatule, puis transférer délicatement la couronne sur le plat de service.",
+          "Disposer le streusel cacao émietté sur le dessus de la couronne pour former un lit texturé simulant de la terre de jardin.",
+          "Déposer harmonieusement les fleurs comestibles sur le lit de streusel.",
+          "Laisser décongeler 8 heures au réfrigérateur (ou 3 heures à température ambiante) avant de servir."
+        ],
+        "conseils_etape": "L'entremets doit être sorti du congélateur à la toute dernière seconde avant le glaçage pour garantir la prise thermique immédiate du nappage."
+      }
+    ],
+    "astuces_recette": [
+      "Réaliser l'insert et le glaçage miroir impérativement à J-1 : le glaçage gagne en brillance et en texture après une nuit de repos (« maturation »).",
+      "Veiller à bien torréfier les fruits à coque : c'est l'élément clé qui confère toute l'intensité aromatique au biscuit et au praliné face à la douceur du chocolat au lait.",
+      "L'absence de croustillant compact sous l'entremets facilite grandement la découpe nette des parts de cette couronne."
+    ],
+    "conseils_conservation": "Laisser décongeler 8 heures au réfrigérateur (recommandé pour préserver la texture) ou 3 heures à température ambiante avant de servir. Se conserve au réfrigérateur entre 2°C et 4°C pendant 48 heures maximum après décongélation. Ne jamais recongeler un produit décongelé."
+  }
+}

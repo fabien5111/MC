@@ -1,0 +1,206 @@
+{
+  "ticket": "JEP-109",
+  "recette": {
+    "titre": "Cookies façon Cédric Grolet à la framboise",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=sIu97LgU4Lw",
+    "description": "Une réinterprétation estivale et fruitée du cookie signature de palace : une base moelleuse et légèrement sous-cuite teintée en rose framboise, surmontée de framboises compotées à la cuisson, d'un confit acidulé, d'un caramel onctueux à la framboise et de fruits frais.",
+    "rendement": "Une dizaine de cookies (environ 10 personnes)",
+    "ustensiles": [
+      "Cul-de-poule",
+      "Spatule ou maryse",
+      "Fouet",
+      "Casseroles (x2)",
+      "Plaque de cuisson",
+      "Tapis en silicone (type Silpat) ou papier cuisson",
+      "Emporte-pièce rond (diamètre adapté aux cookies pour le resserrage)",
+      "Deux récipients plats à fond large",
+      "Deux poches pâtissières",
+      "Balance de précision"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Pâte et cuisson des cookies",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 13,
+        "temperature_cuisson_celsius": 165,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (pommade)",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre muscovado",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 73,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 195,
+            "unite": "g"
+          },
+          {
+            "nom": "Bicarbonate de soude (ou levure chimique)",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Colorant rouge en gel (quantité suffisante)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Framboises fraîches (quelques-unes, pour la seconde cuisson)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Crémer le beurre pommade avec le sucre muscovado et le sucre semoule dans un cul-de-poule jusqu'à consistance homogène.",
+          "Incorporer le sel fin, la farine et le bicarbonate de soude, puis mélanger.",
+          "Ajouter l'œuf battu pour lier la préparation et travailler jusqu'à obtention d'une texture homogène.",
+          "Ajouter le colorant rouge en gel jusqu'à l'obtention d'une teinte framboise franche.",
+          "Filmer la pâte et la placer au réfrigérateur pendant 1 heure.",
+          "Façonner une dizaine de boules de pâte régulières, les disposer espacées sur un tapis de cuisson en silicone et les aplatir légèrement.",
+          "Enfourner pour une première cuisson de 8 minutes à 165°C.",
+          "Sortir la plaque, faire tourner un emporte-pièce rond autour de chaque cookie chaud pour reformer des disques nets.",
+          "Déposer quelques morceaux de framboises fraîches sur chaque disque.",
+          "Réenfourner pour 5 minutes de cuisson supplémentaire à 165°C, puis laisser refroidir complètement sur plaque."
+        ],
+        "conseils_etape": "Utiliser impérativement du colorant en gel concentré pour ne pas détremper la pâte et éviter la décoloration à la cuisson. Ne pas prolonger la cuisson : le cœur doit rester fondant."
+      },
+      {
+        "nom_etape": "Caramel de framboise",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide à 30 % MG",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de framboises",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 0.5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Porter à ébullition la crème liquide avec la purée de framboises dans une petite casserole, couper le feu et réserver au chaud.",
+          "Réaliser un caramel à sec dans une seconde casserole avec le sucre semoule jusqu'à une coloration blonde claire.",
+          "Incorporer le beurre en une fois hors du feu et mélanger vigoureusement.",
+          "Verser le mélange chaud crème/framboise en plusieurs fois tout en fouettant pour éviter les projections.",
+          "Remettre sur feu doux et maintenir une ébullition pendant 4 minutes pour épaissir la texture.",
+          "Ajouter la fleur de sel hors du feu.",
+          "Débarrasser dans un plat large pour accélérer le refroidissement, laisser revenir à température ambiante, puis placer au réfrigérateur jusqu'à gélification."
+        ],
+        "conseils_etape": "À réaliser au minimum 2 heures avant le dressage. Ne pas trop pousser la coloration du caramel ; une teinte claire préserve l'acidité et la couleur fruitée de la framboise."
+      },
+      {
+        "nom_etape": "Confit de framboise",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": 103,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Purée de framboises",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose liquide",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 11,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine NH",
+            "quantite": 2,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger intimement la cassonade et la pectine NH à sec dans un bol.",
+          "Faire chauffer la purée de framboises et le glucose dans une casserole à feu moyen jusqu'à ce que des vapeurs s'échappent (environ 40°C).",
+          "Verser le mélange sucre-pectine en pluie tout en fouettant vivement pour éviter la formation de grumeaux.",
+          "Porter à ébullition et maintenir un gros bouillon pendant 1 minute à 1 minute 30 sans cesser de remuer.",
+          "Débarrasser dans un récipient plat, filmer au contact et placer au réfrigérateur pendant 1 heure."
+        ],
+        "conseils_etape": "L'ébullition franche est indispensable pour activer le pouvoir gélifiant de la pectine NH."
+      },
+      {
+        "nom_etape": "Montage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Framboises fraîches (environ 20 à 30 pièces)",
+            "quantite": 25,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Détendre légèrement le confit et le caramel froids au fouet, puis les verser dans deux poches pâtissières sans douille (ou avec douille unie fine).",
+          "Pocher des points alternés de caramel framboise et de confit framboise sur toute la surface des cookies refroidis.",
+          "Disposer harmonieusement des framboises fraîches (entières ou coupées en deux) sur le dessus."
+        ],
+        "conseils_etape": "À réaliser 30 minutes à 1 heure avant la dégustation. Dresser sur des cookies totalement froids pour éviter que le caramel et le confit ne liquéfient sous l'effet de la chaleur résiduelle."
+      }
+    ],
+    "astuces_recette": [
+      "Remplacement des fruits : la purée de framboises peut être substituée par du cassis, de la mûre ou de la fraise en conservant les mêmes proportions de pectine et de sucre.",
+      "Équilibrage du sucre : le sel fin dans la pâte et la pointe de fleur de sel dans le caramel sont indispensables pour casser le profil très sucré apporté par le muscovado.",
+      "Format régulier : le resserrage circulaire à l'emporte-pièce dès la première sortie de four est le secret pour compenser l'étalement irrégulier des cookies."
+    ],
+    "conseils_conservation": "Servir à température ambiante pour profiter du cœur fondant et de l'onctuosité du caramel, idéalement dans les 2 à 3 heures suivant le dressage des fruits frais. Les bases de cookies cuites non garnies se conservent 48 heures dans une boîte métallique hermétique. Une fois garnis de fruits frais et de confits, les cookies se conservent 24 heures au réfrigérateur (les sortir 15 minutes avant consommation)."
+  }
+}

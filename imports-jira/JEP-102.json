@@ -1,0 +1,353 @@
+{
+  "ticket": "JEP-102",
+  "recette": {
+    "titre": "Le Citron en trompe-l'œil façon Cédric Grolet (déclinaison tartelette et fruit entier)",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Reproduction du dessert emblématique associant une ganache montée au yuzu, un insert acidulé et texturé (citrons pochés confits, suprêmes frais, citron caviar et menthe), le tout enrobé d'une fine coque craquante jaune pulvérisée pour imiter l'écorce, dressé au choix en fruit entier ou sur un fond de tartelette garni de crème d'amande. Accompagné d'un sorbet au thé Aquarosa.",
+    "rendement": "5 citrons entiers ou 5 à 6 tartelettes individuelles au citron (avec sorbet pour 5 à 6 personnes)",
+    "ustensiles": [
+      "Casseroles",
+      "Thermomètre de cuisson",
+      "Fouet",
+      "Maryse",
+      "Mixeur plongeant",
+      "Robot pâtissier avec feuille et fouet",
+      "Rouleau à pâtisserie",
+      "Papier sulfurisé",
+      "Cercles à tarte perforés de 7 cm de diamètre",
+      "Emporte-pièce ou cercle de 12 cm",
+      "Fourchette",
+      "Pinceau de cuisine",
+      "Couteau d'office",
+      "Moules demi-sphères de 3,5 cm",
+      "Moules en silicone forme citron",
+      "Spatule coudée",
+      "Pistolet à peinture (pour pulvérisation pâtissière)",
+      "Chinois fin ou passette",
+      "Sorbetière",
+      "Bombe de froid alimentaire (optionnelle)"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Sorbet thé Aquarosa",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": 100,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 400,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron vert",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Thé Aquarosa (Kusmi Tea)",
+            "quantite": 1,
+            "unite": "sachet"
+          }
+        ],
+        "instructions": [
+          "Verser l'eau et le miel liquide dans une casserole.",
+          "Porter le mélange à ébullition pendant environ 3 minutes pour dissoudre le miel et faire réduire légèrement le sirop.",
+          "Couper le feu, ajouter le sachet de thé Aquarosa et laisser infuser pendant 4 minutes.",
+          "Retirer le sachet de thé puis ajouter le jus de citron vert.",
+          "Mélanger, laisser tiédir puis verser dans la sorbetière pendant 1 heure jusqu'à prise en sorbet."
+        ],
+        "conseils_etape": "À réaliser la veille ou le matin du service. Ne dépassez pas le temps d'infusion pour éviter d'extraire de l'amertume du thé."
+      },
+      {
+        "nom_etape": "Ganache montée au yuzu (base)",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": 100,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour hydrater la gélatine)",
+            "quantite": 21,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière (à chauffer)",
+            "quantite": 265,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière froide",
+            "quantite": 265,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de yuzu",
+            "quantite": 120,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Diluer la gélatine en poudre dans l'eau bien froide et laisser gonfler pendant 10 minutes.",
+          "Faire fondre le chocolat blanc au bain-marie ou au micro-ondes.",
+          "Porter à ébullition les 265 g de crème liquide.",
+          "Hors du feu, incorporer la gélatine hydratée dans la crème chaude et bien mélanger.",
+          "Verser la crème chaude en deux fois sur le chocolat blanc fondu en créant une émulsion au centre à l'aide d'une maryse.",
+          "Ajouter la crème liquide froide en une fois et homogénéiser.",
+          "Verser le jus de yuzu (l'appareil va épaissir sous l'effet de l'acidité).",
+          "Filmer au contact et placer au réfrigérateur pendant au moins 4 heures."
+        ],
+        "conseils_etape": "Veillez à incorporer le jus de yuzu en dernier pour ne pas déstabiliser la montée en température de l'émulsion."
+      },
+      {
+        "nom_etape": "Citrons pochés confits",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 180,
+        "temperature_cuisson_celsius": 70,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Citrons non traités",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 225,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 225,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Couper les extrémités des citrons, puis détailler chaque citron en huit quartiers réguliers.",
+          "Retirer la pulpe centrale en laissant environ 3 mm d'épaisseur de chair sur l'écorce.",
+          "Plonger les écorces dans une casserole d'eau froide, porter à ébullition, puis égoutter ; répéter ce blanchiment trois fois de suite pour ôter l'amertume.",
+          "Dans une casserole, mélanger l'eau et le sucre semoule puis porter à ébullition.",
+          "Laisser redescendre le sirop à 70°C, y plonger les écorces blanchies et cuire pendant 3 heures à feu très doux sans dépasser 70°C.",
+          "Égoutter les écorces confites et les laisser refroidir."
+        ],
+        "conseils_etape": "Contrôlez précisément la température au thermomètre : une eau bouillante durcirait les écorces au lieu de les confire."
+      },
+      {
+        "nom_etape": "Insert acidulé au citron",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": 100,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron jaune",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Agar-agar",
+            "quantite": 2.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Citrons pochés (préparés à l'étape 3)",
+            "quantite": 85,
+            "unite": "g"
+          },
+          {
+            "nom": "Citron caviar",
+            "quantite": 27,
+            "unite": "g"
+          },
+          {
+            "nom": "Menthe fraîche",
+            "quantite": 7.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Segments de citron jaune frais",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger l'agar-agar et le sucre semoule dans un petit récipient.",
+          "Dans une casserole, porter à ébullition l'eau et les 90 g de jus de citron.",
+          "Ajouter le mélange sucre/agar-agar à ébullition et fouetter vigoureusement pendant 1 minute à 1 minute 30.",
+          "Couler le liquide gélifié dans un plat large, filmer au contact et placer 1 heure au réfrigérateur.",
+          "Détailler les citrons pochés confits en petits dés réguliers.",
+          "Peler un citron à vif pour retirer l'écorce et le ziste blanc, prélever les suprêmes et les couper en petits dés.",
+          "Mixer le gel citron froid au mixeur plongeant pour obtenir une texture lisse.",
+          "Incorporer au gel les dés de citrons pochés, les dés de citron frais, les grains de citron caviar et la menthe finement ciselée.",
+          "Couler la préparation dans des moules demi-sphères de 3,5 cm et bloquer au congélateur pendant au moins 2 heures."
+        ],
+        "conseils_etape": "Gardez l'excédent d'insert au frais s'il vous en reste ; il servira à garnir le fond des tartelettes."
+      },
+      {
+        "nom_etape": "Fonds de tartelettes et crème d'amande (variante tartelette)",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": 33,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Pâte sucrée maison (abaissée à 3 mm)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Beurre doux (à température ambiante / pommade)",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'œuf (dorure, mélangé à un trait de crème liquide)",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Crème liquide (un trait, pour la dorure)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Étaler la pâte sucrée sur 3 mm d'épaisseur entre deux feuilles de papier sulfurisé.",
+          "Détailler des disques de pâte de 12 cm de diamètre et foncer des cercles perforés de 7 cm de diamètre.",
+          "Araser les bords avec un couteau d'office de l'intérieur vers l'extérieur, piquer le fond à la fourchette et congeler 3 heures.",
+          "Cuire les fonds de tarte à blanc à 160°C pendant 20 minutes.",
+          "Préparer la crème d'amande : mélanger le beurre pommade, le sucre et la poudre d'amande à la feuille du robot, puis ajouter les œufs battus petit à petit sans trop monter l'appareil.",
+          "Décercler les fonds précuits, appliquer la dorure au pinceau à l'intérieur et à l'extérieur des bords, puis réenfourner 3 minutes à 160°C.",
+          "Pocher un serpentin de crème d'amande au fond de chaque tartelette et cuire à nouveau 10 minutes à 160°C. Laisser refroidir."
+        ],
+        "conseils_etape": "À réaliser la veille ou le matin du montage. N'incorporez pas trop d'air dans la crème d'amande pour éviter qu'elle ne gonfle trop à la cuisson et ne déborde."
+      },
+      {
+        "nom_etape": "Montage des citrons",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 780,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Monter la ganache au yuzu bien froide au robot muni du fouet jusqu'à consistance souple (« ruban »).",
+          "Remplir les empreintes du moule citron aux 3/4 avec la ganache montée.",
+          "Démouler les demi-sphères d'insert congelées et enfoncer un insert au centre de chaque empreinte.",
+          "Recouvrir d'une couche de ganache montée, lisser à la spatule et placer au congélateur pour la nuit.",
+          "Pour la version citron entier : assembler deux demi-citrons congelés en masquant la jonction avec un peu de ganache montée restante, lisser à la spatule ou au doigt ganté, puis replacer 1 heure au congélateur."
+        ],
+        "conseils_etape": "Ne montez pas trop la ganache au batteur ; si elle est trop ferme, elle grainera et sera difficile à lisser dans les moules."
+      },
+      {
+        "nom_etape": "Trempage, flocage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 30,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Colorant liposoluble jaune",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Nappage neutre",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Amandes torréfiées et concassées (finitions)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Feuilles fraîches de citronnier (finitions)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Faire fondre le beurre de cacao et le chocolat blanc, mixer au mixeur plongeant avec le colorant jaune liposoluble, et laisser tiédir entre 25°C et 30°C.",
+          "Piquer les demi-citrons ou citrons entiers bien congelés à l'aide d'une aiguille ou pique en bois, les plonger brièvement dans le bain de glaçage jaune et égoutter immédiatement.",
+          "Passer le restant d'enrobage au chinois fin, le verser dans le pistolet à peinture et pulvériser uniformément sur les citrons glacés pour créer la texture granuleuse.",
+          "Chauffer le nappage neutre, le passer au pistolet à peinture et pulvériser un léger voile sur les fruits pour créer l'effet perlé de la peau d'agrume.",
+          "Pour la version tartelette : garnir les fonds cuits d'une fine couche d'insert restant, déposer un demi-citron floqué au centre et border la tartelette d'amandes concassées torréfiées.",
+          "Chauffer la pointe d'un couteau, marquer légèrement la surface du citron pour y coller une feuille de citronnier (bloquer à la bombe de froid)."
+        ],
+        "conseils_etape": "À réaliser le jour même, au moins 4 heures avant le service. La pulvérisation doit être fine et les citrons parfaitement congelés pour que le contraste thermique fige instantanément les gouttelettes."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisez un thermomètre sonde précis : la température de confisage à 70°C et celle du bain d'enrobage (25-30°C) sont critiques pour le résultat final.",
+      "Si vous n'avez pas de pistolet à peinture, vous pouvez vous contenter du trempage au chocolat/beurre de cacao : l'effet trompe-l'œil sera plus lisse mais le goût et le croquant resteront identiques.",
+      "Travaillez les éléments d'enrobage dans une pièce tempérée ou fraîche pour éviter que les coques ne condensent trop vite."
+    ],
+    "conseils_conservation": "Laisser décongeler les gâteaux montés au moins 4 heures au réfrigérateur avant dégustation pour que la ganache et l'insert retrouvent leur texture idéale. Déguster bien frais, en alternant les bouchées de pâtisserie avec une cuillère de sorbet Aquarosa pour nettoyer le palais. Les fonds de tarte garnis et les citrons finis se conservent 24 à 48 heures maximum au réfrigérateur à 4°C. Ne pas recongeler un entremets décongelé."
+  }
+}

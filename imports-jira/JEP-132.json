@@ -1,0 +1,392 @@
+{
+  "ticket": "JEP-132",
+  "recette": {
+    "titre": "Entremets vanille & chocolat",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une revisite moderne du duo classique vanille-chocolat, articulée autour de la valorisation de produits bruts : gousses entières de vanille bleue caramélisées, grué de cacao torréfié-caramélisé, ganache montée infusée, crémeux noir fondant et biscuit Sacher texturé.",
+    "rendement": "1 entremets de 16 cm de diamètre (hauteur ~4,5 cm), soit 6 à 8 parts",
+    "ustensiles": [
+      "Casseroles",
+      "Poêle",
+      "Cul-de-poule",
+      "Fouet à main",
+      "Maryse",
+      "Spatule coudée",
+      "Mixeur plongeant",
+      "Robot pâtissier (avec fouet)",
+      "Robot-coupe / mixeur à lame",
+      "Thermomètre de cuisson",
+      "Plaque de cuisson",
+      "Tapis silicone ou papier cuisson",
+      "Cercle à entremets de 14 cm",
+      "Cercle de 16 cm (hauteur standard 4,5 cm)",
+      "Film étirable",
+      "Ruban rhodoïd",
+      "Feuilles guitare",
+      "Poche à douille avec douille unie de 12 mm",
+      "Tamis/passoire fine",
+      "Grille à glacer",
+      "Chalumeau de cuisine"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Grué et vanille caramélisés",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Grué de cacao",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 27,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousses de vanille bleue infusées et égouttées (issues de la ganache, voir étape suivante)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Sucre glace (pour enrober la vanille)",
+            "quantite": 1,
+            "unite": "c. à s."
+          }
+        ],
+        "instructions": [
+          "Mettre le grué de cacao et les 27 g de sucre glace dans une poêle sur feu moyen.",
+          "Caraméliser doucement en remuant sans arrêt jusqu'à fonte complète du sucre et enrobage brillant.",
+          "Débarrasser sur une feuille silicone et laisser refroidir complètement à température ambiante.",
+          "Récupérer les gousses de vanille bleue égouttées issues de l'infusion de la ganache, les tailler en dés réguliers de moins de 1 cm.",
+          "Poêler les morceaux de vanille avec un peu de sucre glace sur feu moyen jusqu'à caramélisation légère, puis réserver sur silicone."
+        ],
+        "conseils_etape": "Laisser refroidir le grué avant manipulation pour préserver son croquant. Si vous n'utilisez pas de vanille bleue (dont la gousse est intégralement comestible), n'incorporez pas la gousse taillée dans le crémeux. À réaliser à J-2 (ou le matin de J-1)."
+      },
+      {
+        "nom_etape": "Ganache montée vanille bleue et infusion de grué",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Crème liquide entière 30 % MG (à chauffer)",
+            "quantite": 337,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30 % MG (froide)",
+            "quantite": 337,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille bleue",
+            "quantite": 0.75,
+            "unite": null
+          },
+          {
+            "nom": "Gélatine",
+            "quantite": 3,
+            "unite": "feuille"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 175,
+            "unite": "g"
+          },
+          {
+            "nom": "Grué caramélisé (prélevé sur l'étape précédente)",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans un grand bol d'eau très froide pendant 10 minutes.",
+          "Chauffer les 337 g de crème liquide avec les 3/4 de gousse de vanille fendue et grattée ainsi qu'une fraction du grué caramélisé jusqu'à ébullition.",
+          "Couper le feu, couvrir la casserole et laisser infuser 10 minutes à couvert.",
+          "Fondre le chocolat blanc au bain-marie ou à basse température au micro-ondes.",
+          "Chinoiser la crème chaude infusée et la verser en trois fois sur le chocolat fondu en créant une émulsion au fouet ou à la maryse par cercles concentriques.",
+          "Incorporer la gélatine essorée, mélanger pour dissoudre complètement, puis ajouter les 337 g de crème liquide très froide en une seule fois.",
+          "Mixer au mixeur plongeant sans incorporer d'air, filmer au contact et placer au réfrigérateur pendant au moins 4 heures."
+        ],
+        "conseils_etape": "Chinoiser soigneusement pour retirer le grué et les fibres de gousse afin de garantir une texture parfaitement soyeuse au pochage. À réaliser à J-2 (ou le matin de J-1)."
+      },
+      {
+        "nom_etape": "Crémeux chocolat noir et vanille caramélisée",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 84,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Blanchir brièvement les jaunes d'œufs avec le sucre semoule dans un cul-de-poule.",
+          "Porter le lait à ébullition, verser sur les jaunes sucrés en fouettant, puis reverser dans la casserole.",
+          "Cuire à feu doux à la nappe ou au thermomètre jusqu'à 83-84°C en vannant à la spatule.",
+          "Verser la crème anglaise chaude en deux fois sur le chocolat noir partiellement fondu, émulsionner à la maryse (parfaire au mixeur plongeant si besoin).",
+          "Couler le crémeux dans un cercle de 14 cm chemisé de film étirable sur 1 cm de hauteur maximum.",
+          "Parsemer la surface avec les morceaux de vanille bleue caramélisés, tapoter pour égaliser, puis bloquer au congélateur pendant au moins 4 heures."
+        ],
+        "conseils_etape": "Veiller à ne pas dépasser 84°C pour éviter la coagulation des jaunes. Ajuster l'épaisseur à l'aide d'un cure-dent pour rester sous le centimètre. À réaliser à J-2 (ou le matin de J-1)."
+      },
+      {
+        "nom_etape": "Biscuit Sacher chocolat et grué",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": 200,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Pâte d'amande",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 41,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 37,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 68,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 99,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 41,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 33,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre non sucré",
+            "quantite": 33,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux fondu tiède",
+            "quantite": 33,
+            "unite": "g"
+          },
+          {
+            "nom": "Grué de cacao brut",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Mixer au robot-coupe la pâte d'amande avec le sucre glace, les œufs entiers, les jaunes, la farine tamisée, le cacao en poudre et le beurre fondu jusqu'à l'obtention d'une texture lisse et homogène.",
+          "Monter les blancs d'œufs au batteur en incorporant le sucre semoule progressivement dès qu'ils moussent, afin d'obtenir une meringue souple (bec d'oiseau souple, pas trop ferme).",
+          "Détendre le premier appareil avec un tiers de la meringue au fouet, puis incorporer le reste délicatement à la maryse par mouvements de bas en haut.",
+          "Étaler sur une plaque couverte de papier cuisson sur 1 cm d'épaisseur, parsemer de grué brut, puis enfourner 8 minutes à 200°C (chaleur tournante).",
+          "Débarrasser immédiatement hors de la plaque chaude pour stopper net la cuisson."
+        ],
+        "conseils_etape": "Ne pas trop serrer les blancs pour préserver la souplesse du biscuit et éviter qu'il ne sèche à la cuisson. À réaliser à J-1."
+      },
+      {
+        "nom_etape": "Croustillant praliné et grué caramélisé",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Grué caramélisé",
+            "quantite": 37,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuillantine (crêpes dentelles émiettées)",
+            "quantite": 37,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Fondre ensemble les chocolats noir et lait, puis y incorporer le praliné.",
+          "Ajouter la feuillantine, le grué caramélisé et la fleur de sel, puis mélanger intimement à la maryse.",
+          "Détailler un disque de 14 cm dans le biscuit Sacher refroidi.",
+          "Replacer le cercle de 14 cm autour du disque de biscuit et étaler uniformément le croustillant à la petite cuillère jusqu'aux bords.",
+          "Bloquer l'ensemble biscuit/croustillant au congélateur pendant 1 heure."
+        ],
+        "conseils_etape": "Étaler le croustillant le plus finement possible pour préserver un découpage net à la dégustation. À réaliser à J-1."
+      },
+      {
+        "nom_etape": "Montage de l'entremets et décor ganache",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Monter environ les 3/4 de la ganache liquide au batteur à vitesse moyenne jusqu'à consistance « au ruban » (crémeuse, non figée).",
+          "Placer la base biscuit-croustillant au fond d'un cercle de 16 cm chemisé d'un film tendu à la base et d'une bande de rhodoïd.",
+          "Pocher la ganache souple en comblant l'espace entre le biscuit et le cercle, remonter à la palette contre les parois pour chasser les bulles d'air, puis pocher une couche au centre.",
+          "Enfoncer l'insert crémeux congelé au centre, recouvrir du restant des 3/4 de ganache, lisser à ras avec la spatule coudée et bloquer au congélateur pour 1 nuit.",
+          "Monter le quart restant de ganache plus fermement (au bec d'oiseau), pocher des billes régulières à la douille de 12 mm sur un rhodoïd découpé au gabarit de 14 cm.",
+          "Poser une feuille guitare sur les billes, appuyer délicatement avec une plaque pour écraser les dômes jusqu'à ce qu'ils se soudent, puis bloquer au congélateur 1 heure."
+        ],
+        "conseils_etape": "Une ganache montée trop ferme lors du chemisage génère des bulles d'air et des défauts visuels après glaçage. Utilise la ganache montée (étape 2), l'insert crémeux congelé (étape 3) et la base biscuit/croustillant congelée (étape 5). À réaliser à J-1."
+      },
+      {
+        "nom_etape": "Glaçage miroir chocolat blanc",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 8,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation de la gélatine",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Sirop de glucose",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 67,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait concentré non sucré",
+            "quantite": 83,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans les 40 g d'eau froide pendant 20 minutes.",
+          "Porter à ébullition l'eau (67 g), le sucre et le glucose dans une casserole.",
+          "Verser le sirop bouillant sur le mélange chocolat blanc haché/fondu, lait concentré non sucré et gélatine hydratée.",
+          "Mixer au mixeur plongeant en maintenant le pied immergé sans bouger pour ne créer aucune bulle d'air.",
+          "Filmer au contact et laisser tiédir à température ambiante jusqu'à 28°C."
+        ],
+        "conseils_etape": "Passer systématiquement le glaçage au chinois fin avant de couler pour éliminer les microbulles résiduelles. À réaliser le jour J (matin)."
+      },
+      {
+        "nom_etape": "Finition et dressage",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 28,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Spray velours blanc",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Reste de grué caramélisé",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Décercler l'entremets congelé en chauffant brièvement l'extérieur au chalumeau, puis retirer le film et le rhodoïd.",
+          "Poser l'entremets sur un bol retourné placé au-dessus d'un plat de récupération.",
+          "Couler le glaçage miroir à 28°C en un mouvement continu, puis passer un coup net de spatule coudée pour évacuer l'excédent.",
+          "Sortir le disque de billes de ganache du congélateur et le pulvériser immédiatement au spray velours blanc à 20 cm de distance.",
+          "Transférer délicatement le disque floqué sur le haut de l'entremets glacé.",
+          "Déposer un liseré de grué caramélisé au pied du gâteau."
+        ],
+        "conseils_etape": "Pulvériser le spray velours sur un élément sortant tout juste du congélateur pour obtenir le perlé thermique caractéristique. À réaliser le jour J, 4 à 6 h avant la dégustation."
+      }
+    ],
+    "astuces_recette": [
+      "La texture de la ganache montée est déterminante : elle doit rester souple pour le montage dans le cercle et être montée plus ferme uniquement pour le disque de billes pochées.",
+      "L'absence de bulles dans le glaçage dépend de l'immersion continue du mixeur et de la température d'application (viser strictement 28°C pour un glaçage au chocolat blanc fluide mais couvrant).",
+      "L'organisation sur deux jours garantit un blocage thermique optimal des inserts et une manipulation nette lors du glaçage."
+    ],
+    "conseils_conservation": "Laisser décongeler au réfrigérateur pendant au moins 6 heures avant le service pour permettre au biscuit et au crémeux de retrouver leur texture idéale. Découper avec la lame d'un couteau préalablement chauffée sous l'eau chaude puis séchée entre chaque part pour des tranches bien nettes. Se conserve 48 heures maximum au réfrigérateur entre 2°C et 4°C sous cloche. Ne jamais recongeler un entremets décongelé."
+  }
+}

@@ -1,0 +1,374 @@
+{
+  "ticket": "JEP-133",
+  "recette": {
+    "titre": "Coconut (trompe-l'œil noix de coco façon Amaury Guichon)",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=kYv_8kHq5tE",
+    "description": "Entremets trompe-l'œil en forme de noix de coco ouverte, composé d'une mousse légère à la noix de coco, d'un baba imbibé d'un sirop passion-rhum-citron vert, d'une compotée exotique mangue-ananas et d'une coque texturée au chocolat au lait.",
+    "rendement": "1 entremets à partager de 16 à 18 cm de diamètre (environ 8 à 10 personnes)",
+    "ustensiles": [
+      "Robot pâtissier (crochet pétrin + fouet)",
+      "Mixeur plongeant",
+      "Cercle inox de 16 cm de diamètre",
+      "Moule entremets sphérique/ovale adapté (moule à deux parties)",
+      "Thermomètre de cuisson",
+      "Couteau à pain",
+      "Casserole",
+      "Tamis/passoire fine",
+      "Poches à douille",
+      "Film alimentaire",
+      "Piques à brochette en bois",
+      "Pinceau de pâtisserie",
+      "Brosse à poils durs propres",
+      "Poêle",
+      "Planche à découper"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Base de la crème montée coco",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 285,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre (200 Bloom)",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour hydrater la gélatine)",
+            "quantite": 18,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de noix de coco",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 48,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Crème liquide entière bien froide (pour la base chaude)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière bien froide (pour finir)",
+            "quantite": 290,
+            "unite": "g"
+          },
+          {
+            "nom": "Mascarpone",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser les 18 g d'eau sur les 3 g de gélatine en poudre et laisser gonfler 15 minutes.",
+          "Fendre et gratter la gousse de vanille.",
+          "Dans une casserole, mélanger la purée de coco, 50 g de crème liquide, le sucre semoule et la vanille grattée avec sa gousse.",
+          "Chauffer sur feu moyen jusqu'à ce que la préparation soit très fumante, puis couper le feu.",
+          "Couvrir la casserole de film alimentaire et laisser infuser hors du feu pendant 30 minutes.",
+          "Passer la préparation au tamis pour retirer les gousses de vanille et récupérer la pulpe chaude infusée.",
+          "Ajouter la gélatine hydratée dans la préparation chaude et mixer au mixeur plongeant.",
+          "Incorporer le mascarpone et mixer à nouveau pour bien détendre la masse.",
+          "Ajouter les 290 g restants de crème liquide bien froide, puis mixer jusqu'à obtention d'une texture parfaitement lisse et homogène.",
+          "Filmer au contact et placer au réfrigérateur pendant minimum 4 heures."
+        ],
+        "conseils_etape": "Veiller à utiliser une crème liquide entière bien froide pour stopper l'échauffement et stabiliser la prise au froid avant le foisonnement final. À réaliser à J-2 (avant-veille)."
+      },
+      {
+        "nom_etape": "Pâte à baba au citron vert",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 45,
+        "temps_cuisson_minutes": 40,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Lait",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure fraîche de boulanger",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine de gruau",
+            "quantite": 288,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 17,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel",
+            "quantite": 3.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 107,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre fondu froid",
+            "quantite": 41,
+            "unite": "g"
+          },
+          {
+            "nom": "Zeste de citron vert",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Tiédir le lait à 30 °C.",
+          "Dans la cuve du robot munie du pétrin, délayer la levure fraîche dans le lait tiédi.",
+          "Ajouter la farine de gruau, le sucre, le sel et les œufs entiers, puis commencer à pétrir jusqu'à obtention d'une pâte homogène.",
+          "Incorporer le beurre fondu refroidi petit à petit tout en poursuivant le pétrissage.",
+          "Ajouter le zeste de citron vert et pétrir vigoureusement jusqu'à ce que la pâte devienne bien élastique et se décolle des parois.",
+          "Déposer la pâte dans un cercle de 16 cm posé sur une plaque recouverte de papier cuisson, puis aplatir légèrement la surface avec les doigts humides.",
+          "Laisser pousser pendant environ 45 minutes à température ambiante jusqu'à ce que la pâte triple de volume.",
+          "Enfourner pour 40 minutes à 150 °C.",
+          "Retirer le cercle dès la sortie du four et laisser refroidir sur grille."
+        ],
+        "conseils_etape": "La farine de gruau est indispensable pour développer un réseau de gluten résistant capable de supporter une grande quantité de sirop sans se désagréger. À réaliser à J-2."
+      },
+      {
+        "nom_etape": "Sirop punch exotique et imbibition du baba",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 100,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre (200 Bloom)",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau froide (pour la gélatine)",
+            "quantite": 18,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 350,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 185,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de fruit de la passion",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousses de vanille",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Citron vert (zeste)",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Rhum brun",
+            "quantite": 70,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans 18 g d'eau froide pendant 10 minutes.",
+          "Fendre et gratter les 2 gousses de vanille.",
+          "Dans une casserole, mélanger l'eau, le sucre, la purée de passion et la vanille, puis porter à ébullition.",
+          "Dès l'ébullition, retirer du feu et transvaser dans un cul-de-poule.",
+          "Ajouter les zestes de citron vert râpés et le rhum brun.",
+          "Laisser redescendre la température du sirop à 75 °C, puis incorporer la gélatine hydratée en mélangeant au fouet.",
+          "Couper le baba refroidi à une hauteur nette de 2 cm à l'aide d'un couteau à pain.",
+          "Quand le sirop atteint environ 55 °C, déposer le disque de baba dans un plat large et verser la totalité du sirop par-dessus.",
+          "Laisser imbiber pendant 3 heures complètes à température ambiante en arrosant régulièrement.",
+          "Récupérer le baba imbibé qui a doublé de volume, le recouper nettement à l'aide du cercle de 16 cm pour égaliser les bords, puis réserver."
+        ],
+        "conseils_etape": "La gélatine présente dans le punch permet de figer légèrement le sirop à cœur une fois pris au froid, empêchant le liquide de détremper l'entremets lors de la décongélation. À réaliser à J-2."
+      },
+      {
+        "nom_etape": "Compotée exotique mangue-passion-ananas",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Pectine NH",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de mangue",
+            "quantite": 275,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de fruits de la passion",
+            "quantite": 116,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousses de vanille",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Mangue fraîche",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Ananas frais",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Liqueur Malibu",
+            "quantite": 35,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Peler et tailler la mangue fraîche et l'ananas frais en petits dés réguliers d'environ 1 cm.",
+          "Mélanger intimement à sec le sucre et la pectine NH dans un ramequin pour éviter la formation de grumeaux.",
+          "Fendre et gratter les 2 gousses de vanille.",
+          "Chauffer les purées de mangue et de passion avec la vanille jusqu'à 40 °C.",
+          "Verser le mélange sucre-pectine en pluie fine tout en fouettant.",
+          "Porter à ébullition et maintenir un gros bouillon pendant 1 à 2 minutes tout en mélangeant.",
+          "Retirer les gousses de vanille, puis verser les dés de fruits frais et le Malibu.",
+          "Laisser compoter à feu doux-moyen jusqu'à ce que les fruits soient fondants et moelleux sans être réduits en purée.",
+          "Débarrasser dans un plat large, filmer au contact et refroidir 1 heure au réfrigérateur.",
+          "Mettre la compotée froide en poche, la dresser sur le dessus du disque de baba imbibé (délimité dans le cercle de 16 cm) sur une hauteur uniforme d'environ 1 cm.",
+          "Bloquer l'ensemble (insert baba + compotée) au congélateur pendant au moins 2 heures."
+        ],
+        "conseils_etape": "Maintenir une ébullition franche d'au moins une minute pour activer correctement le pouvoir gélifiant de la pectine NH. À réaliser à J-2."
+      },
+      {
+        "nom_etape": "Montage de l'entremets",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Verser la crème coco reposée bien froide dans le bol du robot muni du fouet.",
+          "Monter la crème en augmentant progressivement la vitesse jusqu'à obtenir une texture souple dite « au ruban » (ne pas trop serrer la crème).",
+          "Démouler/décerceler l'insert congelé (baba + compotée).",
+          "Déposer une couche de mousse coco au fond du moule noix de coco.",
+          "Insérer le bloc congelé au centre en appuyant légèrement pour faire remonter la mousse le long des parois.",
+          "Refermer avec la partie supérieure du moule, puis pocher la mousse coco sur tout le pourtour et au centre en tapotant pour éviter toute bulle d'air.",
+          "Lisser soigneusement la surface à ras avec une spatule.",
+          "Placer au congélateur pendant toute une nuit."
+        ],
+        "conseils_etape": "Ne pas monter la crème trop ferme, sinon elle formera des poches d'air au fond du moule et son émulsion deviendra grumeleuse. Utilise la base crème coco réservée et le bloc insert congelé. À réaliser à J-1 (la veille)."
+      },
+      {
+        "nom_etape": "Enrobage, texturage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 35,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 45,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 420,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 375,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de pépins de raisin",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Nappage neutre",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Zeste de citron vert",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Feuilles d'ananas fraîches",
+            "quantite": 3,
+            "unite": null
+          },
+          {
+            "nom": "Feuille d'or comestible",
+            "quantite": 1,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Faire fondre séparément le chocolat au lait et le beurre de cacao à environ 45 °C.",
+          "Mélanger les deux à la maryse pour créer une émulsion, puis incorporer l'huile de pépins de raisin.",
+          "Passer le mélange au tamis et laisser descendre la température à 40 °C dans un récipient haut et étroit.",
+          "Démouler l'entremets congelé et araser les excès de mousse avec un couteau pour parfaire la forme.",
+          "Planter 2 à 3 piques à brochette dans la base de l'entremets congelé, puis le plonger entièrement dans le glaçage chocolat tempéré à 40 °C.",
+          "Retirer immédiatement l'entremets du bain, le déposer sur une planche à découper (plutôt que sur un bol) et retirer les piques.",
+          "Sans attendre que la coque durcisse complètement, frotter vivement la surface avec un pinceau sec pour créer des stries irrégulières, puis tapoter avec une brosse à poils durs pour reproduire la texture fibreuse d'une coque de noix de coco.",
+          "Faire chauffer le tranchant d'un cercle en inox de 16 cm dans une poêle chaude, puis le poser sur le sommet de l'entremets pour faire fondre la coque et délimiter l'ouverture centrale.",
+          "À l'aide d'une lame de couteau tiédie, retirer délicatement l'opercule de mousse superficielle pour révéler la compotée de fruits exotiques.",
+          "Appliquer au pinceau un peu de nappage neutre tiédi sur les fruits pour leur donner une belle brillance.",
+          "Râper un voile de zestes de citron vert sur la compotée.",
+          "Inciser légèrement la coque chocolat sur un côté avec la lame d'un couteau tiédi pour imiter une brisure naturelle de noix de coco.",
+          "Décorer avec les trois feuilles d'ananas fraîches et une touche de feuille d'or."
+        ],
+        "conseils_etape": "La rapidité d'exécution lors du brossage est critique : au contact de l'entremets congelé, le mélange chocolat-beurre de cacao fige en moins de 30 secondes. À réaliser le jour J (matin de la dégustation)."
+      }
+    ],
+    "astuces_recette": [
+      "Travailler avec des fruits bien mûrs pour la découpe fraîche afin d'équilibrer l'acidité naturelle des purées de mangue et de passion.",
+      "Lors du trempage, l'utilisation d'une planche à découper plane évite d'ébrécher la base de la coque fragile, problème fréquemment rencontré si l'entremets repose sur un bol.",
+      "Le cercle chauffé pour créer l'ouverture doit être propre et sec pour éviter toute condensation qui ferait blanchir ou glisser le chocolat."
+    ],
+    "conseils_conservation": "Placer l'entremets fini au réfrigérateur (4 °C) pendant au moins 4 à 6 heures avant le service pour permettre au cœur de décongeler tout en gardant une coque croquante. Sortir du réfrigérateur 10 minutes avant la découpe pour assouplir légèrement la coque au chocolat au lait. Découper avec un grand couteau dont la lame a été passée sous l'eau chaude et essuyée. Se conserve 48 heures maximum au réfrigérateur sous cloche. Ne pas recongeler après décongélation."
+  }
+}

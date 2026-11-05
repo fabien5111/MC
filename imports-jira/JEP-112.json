@@ -1,0 +1,153 @@
+{
+  "ticket": "JEP-112",
+  "recette": {
+    "titre": "Crème brûlée chocolat-vanille façon Christophe Michalak",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une réinterprétation sans cuisson au four de la crème brûlée, composée d'un crémeux au chocolat noir surmonté d'une crème prise à la vanille et fève tonka, le tout caramélisé au chalumeau.",
+    "rendement": "2 ramequins (2 personnes)",
+    "ustensiles": [
+      "2 ramequins",
+      "2 casseroles",
+      "Thermomètre de cuisson / sonde",
+      "Mixeur plongeant",
+      "Pichet ou récipient haut pour mixer",
+      "Micro-ondes ou bain-marie (pour pré-fondre le chocolat)",
+      "Râpe fine (pour la fève tonka)",
+      "Chalumeau de pâtisserie"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crémeux chocolat noir",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 83,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Crème liquide",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 9,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir",
+            "quantite": 45,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre préalablement le chocolat noir au bain-marie ou au micro-ondes à faible puissance.",
+          "Dans une casserole, mélanger l'eau, le sucre semoule, la crème liquide et les jaunes d'œufs.",
+          "Chauffer sur feu moyen en remuant constamment jusqu'à atteindre 83 °C (cuisson à la nappe d'une crème anglaise).",
+          "Verser la crème anglaise chaude en une seule fois sur le chocolat fondu.",
+          "Mixer immédiatement au mixeur plongeant jusqu'à obtenir une émulsion lisse et homogène.",
+          "Couler la préparation dans le fond des 2 ramequins sur environ 1,5 cm d'épaisseur.",
+          "Placer les ramequins au congélateur pendant 30 minutes pour bloquer le crémeux."
+        ],
+        "conseils_etape": "Respecter précisément les 83 °C pour pasteuriser et épaissir les jaunes sans les coaguler en omelette. Garder le pied du mixeur bien immergé au fond du récipient pour éviter d'incorporer des bulles d'air. À réaliser le jour même (ou la veille), au moins 2 h 30 avant la dégustation."
+      },
+      {
+        "nom_etape": "Crème vanille et tonka",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 84,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 84,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille (ou poudre de vanille)",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Fève tonka râpée",
+            "quantite": 0.5,
+            "unite": null
+          },
+          {
+            "nom": "Pectine NH",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 17,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 34,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger à sec la pectine NH avec les 17 g de cassonade afin d'éviter la formation de grumeaux.",
+          "Dans une casserole, verser la crème liquide, l'eau, les graines de la gousse de vanille (ou poudre de vanille), la demi-fève tonka râpée et le mélange cassonade-pectine.",
+          "Porter le mélange à ébullition complète sur feu moyen tout en fouettant, pour activer le pouvoir gélifiant de la pectine NH.",
+          "Verser le liquide bouillant dans un pichet, ajouter les 34 g de jaunes d'œufs.",
+          "Mixer immédiatement au mixeur plongeant pour obtenir une texture parfaitement homogène.",
+          "Sortir les ramequins du congélateur (le chocolat doit être bien figé).",
+          "Verser délicatement la crème vanille sur le crémeux chocolat jusqu'au bord.",
+          "Réserver les ramequins au réfrigérateur pendant au moins 2 heures pour la prise complète."
+        ],
+        "conseils_etape": "Le mélange sucre-pectine doit obligatoirement être bouilli pour que la pectine NH développe son pouvoir gélifiant. Vérifier que le crémeux chocolat est bien pris avant de couler la crème chaude pour éviter le mélange des deux couches."
+      },
+      {
+        "nom_etape": "Finition et caramélisation",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Cassonade (quantité suffisante pour le poudrage)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Saupoudrer une première couche très fine de cassonade sur toute la surface de la crème bien froide.",
+          "Brûler uniformément au chalumeau jusqu'à caramélisation complète.",
+          "Saupoudrer immédiatement une seconde couche de cassonade un peu plus généreuse.",
+          "Brûler de nouveau au chalumeau pour obtenir une coque épaisse, uniforme et bien craquante."
+        ],
+        "conseils_etape": "Effectuer des mouvements circulaires constants avec la flamme pour ne pas noircir le sucre. À réaliser juste avant de servir."
+      }
+    ],
+    "astuces_recette": [
+      "La double caramélisation (deux passages fins successifs de cassonade au lieu d'un seul épais) garantit une croûte croustillante sans chauffer l'intérieur de la crème.",
+      "L'utilisation de la pectine NH permet une prise gélifiée sans passer par une cuisson longue au bain-marie au four."
+    ],
+    "conseils_conservation": "Déguster immédiatement après le passage au chalumeau afin de profiter du contraste thermique entre le caramel chaud et croustillant et les crèmes bien fraîches et fondantes. Les crèmes non brûlées se conservent jusqu'à 48 heures au réfrigérateur sous film alimentaire. Ne jamais brûler à l'avance, l'humidité du réfrigérateur ramollissant le caramel."
+  }
+}

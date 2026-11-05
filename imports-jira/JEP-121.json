@@ -1,0 +1,254 @@
+{
+  "ticket": "JEP-121",
+  "recette": {
+    "titre": "Éclair sésame noir et framboise en cuisson guidée",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Éclair contemporain inspiré d'une création de la boulangerie-pâtisserie Utopie à Paris. Il associe une pâte à choux noire au charbon végétal cuite selon une technique guidée (plaquée entre deux toiles), garnie d'un crémeux intense au sésame noir, surmontée d'une chantilly au sésame noir et de framboises fraîches garnies d'un confit acidulé.",
+    "rendement": "Environ 10 éclairs individuels",
+    "ustensiles": [
+      "Casseroles",
+      "Culs-de-poule",
+      "Fouet",
+      "Maryse",
+      "Mixeur plongeant",
+      "Thermomètre de cuisson",
+      "Poches à douille",
+      "Douilles unies (diamètre 10 mm)",
+      "Film alimentaire étirable",
+      "Cercles perforés oblongs",
+      "Bandes de toile microperforée (type Silpain) et tapis Silpain",
+      "Plaque de cuisson perforée",
+      "Poids lourd plat réfractaire (pierre à pizza, plaque épaisse)"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crémeux au sésame noir",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 84,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide à 30 % MG",
+            "quantite": 162,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 137,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de sésame noir",
+            "quantite": 62,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réhydrater la gélatine dans un grand volume d'eau froide pendant au moins 10 minutes.",
+          "Blanchir vivement les jaunes d'œufs avec le sucre semoule dans un cul-de-poule.",
+          "Faire chauffer le lait et la crème dans une casserole jusqu'à frémissement.",
+          "Verser la moitié du liquide chaud sur le mélange jaunes-sucre en fouettant, puis reverser le tout dans la casserole.",
+          "Cuire à feu doux en formant des huit à la maryse jusqu'à atteindre 83–84 °C (cuisson à la nappe).",
+          "Verser la crème anglaise chaude en trois fois sur le chocolat blanc préalablement fondu et la gélatine essorée, en émulsionnant au centre à la maryse.",
+          "Verser sur la pâte de sésame noir dans un récipient haut et mixer au mixeur plongeant sans incorporer d'air.",
+          "Débarrasser dans un plat large, filmer au contact et réserver au réfrigérateur au moins 2 heures."
+        ],
+        "conseils_etape": "Maintenir le pied du mixeur bien immergé pour éviter d'incorporer des bulles d'air qui altéreraient le lissé et la brillance du crémeux. À réaliser la veille ou le matin pour l'après-midi (minimum 2 h avant le montage)."
+      },
+      {
+        "nom_etape": "Pâte à choux au charbon végétal (cuisson guidée)",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 35,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Lait",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre à température ambiante",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 2.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Charbon végétal actif en poudre",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Porter à ébullition dans une casserole le lait, l'eau, le beurre, le sel et le sucre jusqu'à fonte complète des corps gras.",
+          "Hors du feu, ajouter d'un coup la farine et le charbon végétal préalablement tamisés ensemble.",
+          "Mélanger vigoureusement à la spatule pour former une panade homogène, puis dessécher sur feu moyen pendant environ 1 minute.",
+          "Débarrasser dans un récipient et incorporer les œufs battus en 4 ou 5 fois, en attendant l'absorption complète entre chaque ajout jusqu'à obtenir le ruban / la crête.",
+          "Transférer dans une poche munie d'une douille unie de 10 mm.",
+          "Foncer les cercles oblongs avec des bandes de Silpain sur le pourtour, puis pocher la pâte à choux à l'intérieur en remplissant environ au tiers de la hauteur.",
+          "Recouvrir d'une toile Silpain puis poser un poids plat lourd (pierre à pizza) par-dessus.",
+          "Enfourner à 180 °C pendant 35 minutes sans ouvrir le four.",
+          "Retirer le poids et la plaque immédiatement à la sortie du four, laisser tiédir puis démouler délicatement."
+        ],
+        "conseils_etape": "Ne pas dépasser le tiers de la hauteur du cercle lors du pochage ; un excès de pâte s'échapperait sous le poids pendant l'expansion. À réaliser le jour même de la dégustation (ou quelques heures avant le garnissage)."
+      },
+      {
+        "nom_etape": "Confit de framboise",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Gélatine en feuille",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de framboises",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron jaune",
+            "quantite": 6,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire tremper la feuille de gélatine dans un bol d'eau froide pendant 15 à 20 minutes.",
+          "Chauffer la purée de framboises avec le sucre semoule à feu moyen jusqu'aux premiers bouillons.",
+          "Retirer du feu, incorporer le jus de citron et la gélatine bien essorée, puis fouetter pour dissoudre.",
+          "Débarrasser dans un récipient plat, filmer au contact et bloquer au frais 1 heure.",
+          "Avant utilisation, lisser légèrement au fouet et mettre en poche sans douille (couper une pointe fine)."
+        ],
+        "conseils_etape": "Le confit doit rester fluide au pochage tout en tenant dans les framboises ; le détendre brièvement à la spatule après gélification. À réaliser en même temps que le crémeux ou pendant la cuisson des choux."
+      },
+      {
+        "nom_etape": "Chantilly au sésame noir",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Mascarpone",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30–35 % MG bien froide",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de sésame noir",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 15,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Placer le cul-de-poule et les fouets au frais 15 minutes avant le montage.",
+          "Détendre le mascarpone avec la pâte de sésame noir et le sucre au fouet dans le cul-de-poule.",
+          "Verser la crème liquide bien froide tout en fouettant.",
+          "Monter l'ensemble au batteur ou au fouet jusqu'à obtention d'une texture ferme et pochable.",
+          "Mettre en poche munie d'une douille unie de 10 mm."
+        ],
+        "conseils_etape": "Ne pas surbattre pour éviter le tranchage de la crème ; stopper dès que la texture forme un bec d'oiseau net. À réaliser juste avant le montage final."
+      },
+      {
+        "nom_etape": "Garnissage, montage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Framboises fraîches entières",
+            "quantite": 150,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Percer délicatement 3 trous sous chaque coque d'éclair à l'aide d'une pointe de couteau d'office.",
+          "Garnir généreusement l'intérieur de chaque éclair avec le crémeux sésame noir à l'aide d'une poche jusqu'à ce que la coque se tende.",
+          "Retourner l'éclair et pocher 5 points réguliers de chantilly au sésame noir en quinconce sur le dessus.",
+          "Disposer les framboises fraîches debout entre les points de chantilly, ouverture orientée vers le haut.",
+          "Garnir le cœur de chaque framboise avec le confit de framboise à l'aide de la poche coupée très fin."
+        ],
+        "conseils_etape": "Remplir les framboises à ras bord avec le confit pour créer une pastille brillante et apporter le contraste acide nécessaire. À réaliser 1 à 2 heures avant le service."
+      }
+    ],
+    "astuces_recette": [
+      "La cuisson guidée nécessite un lest parfaitement plat et suffisamment lourd pour contraindre le développement de la pâte à choux aux dimensions du gabarit sans la déformer.",
+      "Si le matériel spécifique (cercles oblongs et bandes microperforées) n'est pas disponible, pocher les éclairs de manière classique sur toile Silpain à l'aide d'une douille cannelée PF16."
+    ],
+    "conseils_conservation": "Déguster dans les 6 à 8 heures suivant le montage pour préserver le croustillant de la pâte à choux face à l'humidité du crémeux et des fruits frais. Conserver impérativement entre 2 °C et 4 °C. La congélation du produit fini monté est proscrite en raison des framboises fraîches et de la chantilly."
+  }
+}
