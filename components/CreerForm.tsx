@@ -14,6 +14,8 @@
 // la volée d'un libellé inconnu au référentiel réservé aux administrateurs
 // (bouton « Ajouter au référentiel »).
 import { saisieIngredient } from '@/lib/saisie-ingredient';
+import { ChampSuggestion } from '@/components/ChampSuggestion';
+import { FlechesDeplacement } from '@/components/FlechesDeplacement';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -1697,8 +1699,8 @@ export function CreerForm({
                 <span className="material-symbols-outlined text-outline-variant select-none mt-2">drag_indicator</span>
                 <div className="flex-grow">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 items-start">
-                    <input
-                      list="dl-utensils"
+                    <ChampSuggestion
+                      options={allUtensilRefs}
                       data-name-utensil
                       value={u.name}
                       onChange={(e) => setUtensils((p) => p.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))}
@@ -1794,7 +1796,7 @@ export function CreerForm({
             >
               <div className="flex flex-wrap md:flex-nowrap items-center gap-4 border-b border-primary pb-4">
                 <span
-                  className="material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
+                  className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
                   title="Glisser pour déplacer l'étape"
                   draggable
                   onDragStart={(e) => {
@@ -1805,6 +1807,7 @@ export function CreerForm({
                 >
                   drag_indicator
                 </span>
+                <FlechesDeplacement index={si} count={steps.length} onMove={moveStep} label="l'étape" />
                 <span className="font-display-lg text-headline-lg text-primary">{String(si + 1).padStart(2, '0')}</span>
                 <button type="button" onClick={() => insertStepBefore(si)} title="Insérer une étape avant celle-ci" className="p-1 text-secondary hover:opacity-70 shrink-0 md:order-2">
                   <span className="material-symbols-outlined">add_row_above</span>
@@ -2027,8 +2030,8 @@ export function CreerForm({
                         <div key={g.key} className="border-l-2 border-outline-variant/50 pl-4 xl:border-l-0 xl:pl-0">
                         <div className="flex flex-wrap xl:flex-nowrap items-center xl:items-start gap-x-4 gap-y-1.5">
                           <div className="relative flex-[2] min-w-0">
-                            <input
-                              list="dl-ingredients"
+                            <ChampSuggestion
+                              options={allIngredientRefs}
                               value={g.name}
                               onChange={(e) => {
                                 const name = saisieIngredient(e.target);
@@ -2255,7 +2258,7 @@ export function CreerForm({
                             }}
                           >
                             <span
-                              className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
+                              className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
                               title="Glisser pour déplacer"
                               draggable
                               onDragStart={(e) => {
@@ -2266,6 +2269,7 @@ export function CreerForm({
                             >
                               drag_indicator
                             </span>
+                            <FlechesDeplacement index={idx} count={(st.subSteps ?? []).length} onMove={(from, to) => moveSubstep(si, from, to)} label="la sous-étape" />
                             <textarea
                               ref={autoGrow}
                               value={t}
@@ -2623,18 +2627,6 @@ export function CreerForm({
           <p className="text-sm text-center text-on-surface-variant">En publiant, vous acceptez les conditions de partage de la communauté Je Pâtisse.</p>
         </section>
       </div>
-
-      <datalist id="dl-ingredients">
-        {allIngredientRefs.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
-
-      <datalist id="dl-utensils">
-        {allUtensilRefs.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
 
       {/* Popup de choix des allergènes d'un ingrédient (max 3). Bascule chaque
           allergène de la table de référence ; les modifications sont live. */}

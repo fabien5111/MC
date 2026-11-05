@@ -1012,6 +1012,33 @@ d'`ilike('title', …)` : c'est ce qui rendait « eclair » introuvable.
 La recherche avancée (`mc_norm`) et l'autocomplétion des ingrédients
 (`suggest_ingredients`) l'étaient déjà.
 
+## Saisie sur tablette : suggestions et poignées (03/11/2026)
+
+Constaté sur iPad mini (Safari), OK sur téléphone : ni complétion des
+ingrédients / ustensiles, ni déplacement par la poignée.
+
+- **Plus de `<datalist>` natif nulle part.** iPadOS ne montre pas de barre de
+  suggestions au-dessus du clavier, et le filtre natif ignore les accents.
+  `components/ChampSuggestion.tsx` remplace `<input list>` à l'identique (mêmes
+  props, même `onChange` natif — un choix écrit la valeur par le setter natif
+  puis émet `input`, donc `saisieIngredient`, le pré-remplissage des allergènes
+  etc. s'appliquent comme à la frappe). Liste portée dans `<body>` en position
+  fixe (une zone repliable ne la rogne pas), sous le champ ou au-dessus selon la
+  place laissée par le clavier (`visualViewport`), cibles de 44 px. Filtrage pur
+  et testé : `filtrerSuggestions` (`lib/suggestions.ts`), mêmes règles que
+  `normSearch`. **Tout nouveau champ de nom d'ingrédient / ustensile l'utilise**,
+  jamais un `<datalist>`.
+- **Poignées de déplacement : souris = glisser-déposer natif, écran tactile =
+  flèches monter / descendre** (`components/FlechesDeplacement.tsx`). Un premier
+  essai de glissement au doigt par événements `pointer` (03/11/2026) a échoué sur
+  iPad : l'appui long est pris par Safari pour une sélection de texte et le geste
+  est annulé avant tout déplacement. Sur `pointer: coarse` la poignée est masquée
+  (`[@media(pointer:coarse)]:!hidden`) et deux boutons de 36 px prennent la
+  place ; à la souris rien ne change. Branché sur étapes et sous-étapes de
+  `/creer`, de la relecture et du mode projet, sous-étapes de la fournée,
+  composants du projet, planning. L'import par photos avait déjà ses boutons.
+  Toute nouvelle poignée `draggable` doit recevoir ses flèches.
+
 ## Temps d'attente en heures (JEP-20)
 
 **L'attente se saisit en minutes OU en heures**, la base garde des minutes

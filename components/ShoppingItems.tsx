@@ -8,8 +8,9 @@ import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { saisieIngredient } from '@/lib/saisie-ingredient';
+import { ChampSuggestion } from '@/components/ChampSuggestion';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -57,6 +58,7 @@ export function ShoppingItems({
   const help = useHelpBlocks('courses', helpBlocks, true);
   const dialog = useDialog();
   const { mutate } = useMutation();
+  const suggestions = useMemo(() => ingredientRefs.map((r) => r.name), [ingredientRefs]);
   // Ordre d'affichage : alphabétique, ou « non barrés d'abord » pour la
   // liste « À racheter ». Réappliqué à chaque changement de l'état local.
   const trier = useCallback(
@@ -412,7 +414,7 @@ export function ShoppingItems({
                     <span className="material-symbols-outlined text-[18px]">call_merge</span>
                   </button>
                 </div>
-                {editingId === i.id && <EditItemRow item={i} units={units} onApply={(n, q, u, c) => applyEdit(i.id, n, q, u, c)} onCancel={() => setEditingId(null)} />}
+                {editingId === i.id && <EditItemRow item={i} units={units} suggestions={suggestions} onApply={(n, q, u, c) => applyEdit(i.id, n, q, u, c)} onCancel={() => setEditingId(null)} />}
                 {mergingId === i.id && (
                   <MergeItemRow
                     target={i}
@@ -429,16 +431,10 @@ export function ShoppingItems({
         </ul>
       )}
 
-      <datalist id="dl-shopping-ingredients">
-        {ingredientRefs.map((r) => (
-          <option key={r.id} value={r.name} />
-        ))}
-      </datalist>
-
       {adding ? (
         <div className="mt-8 max-w-2xl">
           <HelpBlockSlot blockKey="courses.ajout" help={help} />
-          <AddItemRow units={units} uniteFacultative={aRacheter} onAdd={addItem} onCancel={() => setAdding(false)} />
+          <AddItemRow units={units} suggestions={suggestions} uniteFacultative={aRacheter} onAdd={addItem} onCancel={() => setAdding(false)} />
         </div>
       ) : (
         <div className="flex flex-wrap items-end gap-3 mt-8 pt-6 border-t border-outline-variant/50 max-w-2xl">
@@ -457,11 +453,13 @@ const LBL = 'font-label-md text-[10px] uppercase text-on-surface-variant';
 function EditItemRow({
   item,
   units,
+  suggestions,
   onApply,
   onCancel,
 }: {
   item: ShoppingItem;
   units: Unit[];
+  suggestions: readonly string[];
   onApply: (name: string, qty: string, unit: string, comment: string) => void;
   onCancel: () => void;
 }) {
@@ -472,7 +470,7 @@ function EditItemRow({
   return (
     <div className="py-3 border-b border-outline-variant/30">
       <div className="flex flex-wrap items-end gap-3">
-        <input value={name} onChange={(e) => setName(saisieIngredient(e.target))} placeholder="Ingrédient" list="dl-shopping-ingredients" className={FIELD} style={{ width: '13rem' }} autoFocus />
+        <ChampSuggestion options={suggestions} value={name} onChange={(e) => setName(saisieIngredient(e.target))} placeholder="Ingrédient" className={FIELD} style={{ width: '13rem' }} autoFocus />
         <input value={qty} onChange={(e) => setQty(e.target.value)} type="number" min={0} step="any" placeholder="Quantité" className={FIELD} style={{ width: '6rem' }} />
         <select value={unit} onChange={(e) => setUnit(e.target.value)} className={`${FIELD} bg-white`} style={{ width: '8rem' }}>
           <option value="">— Unité —</option>
@@ -578,11 +576,13 @@ function MergeItemRow({
 
 function AddItemRow({
   units,
+  suggestions,
   uniteFacultative = false,
   onAdd,
   onCancel,
 }: {
   units: Unit[];
+  suggestions: readonly string[];
   // Liste « À racheter » : l'unité n'y est pas exigée.
   uniteFacultative?: boolean;
   onAdd: (name: string, qty: string, unit: string, comment: string) => void;
@@ -599,7 +599,7 @@ function AddItemRow({
     <div className="flex flex-wrap items-end gap-3 mt-8 pt-6 border-t border-outline-variant/50 max-w-2xl">
       <label className="flex flex-col gap-1">
         <span className={LBL}>Ingrédient</span>
-        <input value={name} onChange={(e) => setName(saisieIngredient(e.target))} placeholder="ex : Beurre" list="dl-shopping-ingredients" className={FIELD} style={{ width: '13rem' }} autoFocus />
+        <ChampSuggestion options={suggestions} value={name} onChange={(e) => setName(saisieIngredient(e.target))} placeholder="ex : Beurre" className={FIELD} style={{ width: '13rem' }} autoFocus />
       </label>
       <label className="flex flex-col gap-1">
         <span className={LBL}>Quantité</span>

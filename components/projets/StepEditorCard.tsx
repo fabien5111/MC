@@ -8,6 +8,8 @@
 // `writeComponentContent` — jamais par l'enregistrement global de CreerForm,
 // qui effacerait les `component_id`.
 import { saisieIngredient } from '@/lib/saisie-ingredient';
+import { ChampSuggestion } from '@/components/ChampSuggestion';
+import { FlechesDeplacement } from '@/components/FlechesDeplacement';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImageSlot } from '@/components/ImageSlot';
@@ -52,7 +54,7 @@ export function StepEditorCard({
   index,
   count,
   units,
-  datalistId,
+  ingredientOptions,
   allergenNames,
   refAllergens,
   collapsed,
@@ -71,8 +73,8 @@ export function StepEditorCard({
   // plus d'une (comme dans l'éditeur).
   count: number;
   units: string[];
-  // Liste de suggestions d'ingrédients (datalist), absente si pas de référentiel.
-  datalistId?: string;
+  // Noms proposés à la saisie d'un ingrédient (référentiel), absents sans référentiel.
+  ingredientOptions?: readonly string[];
   // Allergènes du référentiel (menu + pastilles, comme dans l'éditeur) et
   // allergènes par ingrédient du référentiel (pré-remplissage au choix du nom).
   // Absents : champ texte libre.
@@ -116,7 +118,7 @@ export function StepEditorCard({
     >
       <div className="flex flex-wrap md:flex-nowrap items-center gap-4 border-b border-primary pb-4">
         <span
-          className="material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
+          className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-outline-variant select-none cursor-grab p-1 -m-1"
           title="Glisser pour déplacer l'étape"
           draggable
           onDragStart={(e) => {
@@ -128,6 +130,7 @@ export function StepEditorCard({
         >
           drag_indicator
         </span>
+        <FlechesDeplacement index={index} count={count} onMove={onReorder} label="l'étape" />
         <span className="font-display-lg text-headline-lg text-primary">{String(index + 1).padStart(2, '0')}</span>
         <button type="button" onClick={onInsertBefore} title="Insérer une étape avant celle-ci" className="p-1 text-secondary hover:opacity-70 shrink-0 md:order-2">
           <span className="material-symbols-outlined">add_row_above</span>
@@ -296,7 +299,8 @@ export function StepEditorCard({
               <div key={j} className="border-l-2 border-outline-variant/50 pl-4 min-[1232px]:border-l-0 min-[1232px]:pl-0">
                 <div className="flex flex-wrap min-[1232px]:flex-nowrap items-center min-[1232px]:items-start gap-x-4 gap-y-1.5">
                   <div className="relative flex-[2] min-w-0">
-                    <input
+                    <ChampSuggestion
+                      options={ingredientOptions ?? []}
                       value={g.name}
                       // Nom saisi ≠ ingrédient rattaché : le rattachement est refait
                       // à l'enregistrement. Un ingrédient du référentiel pré-remplit
@@ -314,8 +318,6 @@ export function StepEditorCard({
                           onIngredientChange(j, { name, ref_id: null });
                         }
                       }}
-                      list={datalistId}
-                      autoComplete="off"
                       placeholder="Ingrédient"
                       className="editorial-input text-on-surface w-full"
                       type="text"
@@ -521,7 +523,7 @@ export function StepEditorCard({
                 }}
               >
                 <span
-                  className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
+                  className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
                   title="Glisser pour déplacer"
                   draggable
                   onDragStart={(e) => {
@@ -532,6 +534,7 @@ export function StepEditorCard({
                 >
                   drag_indicator
                 </span>
+                <FlechesDeplacement index={k} count={(sous ?? []).length} onMove={(from, to) => { const l = [...(sous ?? [])]; const [deplace] = l.splice(from, 1); l.splice(to, 0, deplace); majSous(l); }} label="la sous-étape" />
                 <textarea
                   ref={autoGrow}
                   value={t}

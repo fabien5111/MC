@@ -5,6 +5,7 @@
 // de la page projet, qui y branche le statut de résolution et le bouton
 // d'ouverture (`extra`).
 import { useState, type ReactNode } from 'react';
+import { FlechesDeplacement } from '@/components/FlechesDeplacement';
 import { COMPONENT_ROLES, COMPONENT_SCALING_MODES } from '@/lib/projects';
 import type { ProjectComponent } from '@/lib/projects-data';
 import type { useProjectComponents } from '@/components/projets/useProjectComponents';
@@ -54,7 +55,7 @@ export function ProjectStructureList({
               >
                 <div className="flex flex-wrap items-center gap-3">
                   <span
-                    className="material-symbols-outlined shrink-0 cursor-grab text-outline-variant select-none active:cursor-grabbing"
+                    className="[@media(pointer:coarse)]:!hidden material-symbols-outlined shrink-0 cursor-grab text-outline-variant select-none active:cursor-grabbing"
                     title="Glisser pour réordonner"
                     draggable
                     onDragStart={(e) => {
@@ -65,6 +66,7 @@ export function ProjectStructureList({
                   >
                     drag_indicator
                   </span>
+                  <FlechesDeplacement index={i} count={ordered.length} onMove={(from, to) => void reorder(from, to)} label="cette préparation" />
                   <span className="font-label-md text-[12px] text-outline">{i + 1}</span>
                   <span className="min-w-0 flex-1 break-words font-body-md text-[15px] text-on-surface">{c.name}</span>
                   <span className="flex items-center gap-1">

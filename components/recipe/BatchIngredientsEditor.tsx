@@ -13,8 +13,9 @@
 // même ligne) : plus de session figée à proposer de supprimer après une
 // modification, contrairement à l'ancien modèle plan + session séparés.
 import { saisieIngredient } from '@/lib/saisie-ingredient';
+import { ChampSuggestion } from '@/components/ChampSuggestion';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
-import { Fragment, useId, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -74,7 +75,7 @@ export function BatchStepIngredients({
   const dialog = useDialog();
   const [editing, setEditing] = useState<EditKey>(null);
   const [adding, setAdding] = useState(false);
-  const datalistId = useId();
+  const ingredientOptions = useMemo(() => ingredientRefs.map((r) => r.name), [ingredientRefs]);
   // Groupe en cours de remplacement par une sous-recette (fenêtre ouverte) —
   // toutes les occurrences du même ingrédient (nom + unité), pas seulement
   // celle cliquée (JEP-254).
@@ -288,16 +289,6 @@ export function BatchStepIngredients({
   return (
     <div>
       <LoadingOverlay visible={busy} label="Modification en cours…" />
-      {/* Suggestions du nom : montées seulement quand un formulaire est ouvert —
-          chaque étape porte un éditeur, la liste du référentiel serait sinon
-          recopiée dans le DOM autant de fois qu'il y a d'étapes. */}
-      {(adding || editing != null) && ingredientRefs.length > 0 && (
-        <datalist id={datalistId}>
-          {ingredientRefs.map((r) => (
-            <option key={r.id} value={r.name} />
-          ))}
-        </datalist>
-      )}
       {expanding && (
         <IngredientExpandDialog
           batch={batch}
@@ -477,7 +468,7 @@ export function BatchStepIngredients({
                       <AddedIngredientForm
                         initial={row}
                         units={units}
-                        datalistId={datalistId}
+                        ingredientOptions={ingredientOptions}
                         allergenNames={allergenNames}
                         refAllergens={refAllergens}
                         submitLabel="OK"
@@ -496,7 +487,7 @@ export function BatchStepIngredients({
       {adding ? (
         <AddedIngredientForm
           units={units}
-          datalistId={datalistId}
+          ingredientOptions={ingredientOptions}
           allergenNames={allergenNames}
           refAllergens={refAllergens}
           submitLabel="Ajouter"
@@ -573,13 +564,13 @@ function autoGrow(el: HTMLTextAreaElement | null) {
 }
 
 // Saisie d'un ingrédient ajouté à la main (JEP-368) : nom proposé depuis le
-// référentiel (datalist), quantité, unité, commentaire et allergènes — les
+// référentiel (suggestions), quantité, unité, commentaire et allergènes — les
 // mêmes champs que l'éditeur de recette. Choisir un ingrédient du référentiel
 // pré-remplit ses allergènes, comme dans `/creer`.
 function AddedIngredientForm({
   initial,
   units,
-  datalistId,
+  ingredientOptions,
   allergenNames,
   refAllergens,
   submitLabel,
@@ -589,7 +580,7 @@ function AddedIngredientForm({
 }: {
   initial?: BatchIngredientRow;
   units: Unit[];
-  datalistId?: string;
+  ingredientOptions?: readonly string[];
   allergenNames: string[];
   refAllergens: Record<string, string>;
   submitLabel: string;
@@ -636,11 +627,10 @@ function AddedIngredientForm({
     <div className="flex flex-col gap-3 py-3">
       <div className="flex flex-wrap xl:flex-nowrap items-center xl:items-start gap-x-4 gap-y-1.5">
         <div className="relative flex-[2] min-w-0">
-          <input
+          <ChampSuggestion
+            options={ingredientOptions ?? []}
             value={name}
             onChange={(e) => onName(saisieIngredient(e.target))}
-            list={datalistId}
-            autoComplete="off"
             placeholder="Ingrédient"
             className="editorial-input text-on-surface w-full"
             type="text"

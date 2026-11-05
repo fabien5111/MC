@@ -6,6 +6,8 @@
 // en recette (recipes + steps + groups + ingredients + utensils). Mutations via
 // le client Supabase navigateur.
 import { saisieIngredient } from '@/lib/saisie-ingredient';
+import { ChampSuggestion } from '@/components/ChampSuggestion';
+import { FlechesDeplacement } from '@/components/FlechesDeplacement';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -1613,8 +1615,8 @@ export function RelectureEditor({
               return (
                 <div key={m.key} className="py-1.5 border-b border-outline-variant/20">
                   <div className="flex items-center gap-2">
-                    <input
-                      list="dl-utensils"
+                    <ChampSuggestion
+                      options={allUtensilRefs}
                       value={m.nom}
                       onChange={(e) => patchUtensil(mi, { nom: e.target.value })}
                       className={champErr(!!(m.nom.trim() && !known))}
@@ -1688,7 +1690,7 @@ export function RelectureEditor({
           >
             <div className="bg-surface-container-high px-6 py-3 flex items-center gap-3">
               <span
-                className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1"
+                className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1"
                 title="Glisser pour déplacer l'étape"
                 draggable
                 onDragStart={(e) => {
@@ -1699,6 +1701,7 @@ export function RelectureEditor({
               >
                 drag_indicator
               </span>
+              <FlechesDeplacement index={si} count={sps.length} onMove={moveSp} label="l'étape" />
               <span className="font-headline-md text-[18px] text-primary">{si + 1}.</span>
               <input
                 ref={(el) => {
@@ -1903,8 +1906,8 @@ export function RelectureEditor({
                       </div>
                       <div>
                         <div className="grid gap-2 items-center" style={{ gridTemplateColumns: '1fr 5.5rem 7rem 2rem' }}>
-                          <input
-                            list="dl-ingredients"
+                          <ChampSuggestion
+                            options={allIngredientRefs}
                             value={g.nom}
                             onChange={(e) => {
                               // Ingrédient choisi dans le référentiel → allergène pré-rempli
@@ -2058,7 +2061,7 @@ export function RelectureEditor({
                     }`}
                   >
                     <span
-                      className="material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
+                      className="[@media(pointer:coarse)]:!hidden material-symbols-outlined text-outline-variant select-none cursor-grab active:cursor-grabbing p-1 -m-1 mt-2 shrink-0"
                       title="Glisser pour déplacer la sous-étape"
                       draggable
                       onDragStart={(ev) => {
@@ -2069,6 +2072,7 @@ export function RelectureEditor({
                     >
                       drag_indicator
                     </span>
+                    <FlechesDeplacement index={ei} count={sp.etapes.length} onMove={(from, to) => moveEtape(si, from, to)} label="la sous-étape" />
                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 gap-y-1 items-start flex-1">
                       <div className="text-sm text-on-surface-variant lg:pt-2">
                         {e.imported ? e.imported : <span className="italic opacity-60">ajoutée</span>}
@@ -2287,17 +2291,6 @@ export function RelectureEditor({
           </div>
         )}
       </section>
-
-      <datalist id="dl-ingredients">
-        {allIngredientRefs.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
-      <datalist id="dl-utensils">
-        {allUtensilRefs.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
 
       {/* Confirmation d'enregistrement (3 s). Elle vivait dans la barre
           d'actions fixe, donc n'apparaissait déjà plus dès que le rail prenait
