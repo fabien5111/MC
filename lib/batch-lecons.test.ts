@@ -316,6 +316,8 @@ describe('quantité obtenue (écart de production)', () => {
   it('coefficient : fournée refaite à ×1,5, quantités actuelles déjà à ×1,5', () => {
     // 697,5 g réalisés à ×1,5, 100 g de trop → cible 597,5 g sur des lignes à 697,5 g.
     expect(coefficientEcart({ ecartProduit: 100, masseFournee: 697.5, facteur: 1.5 }, 697.5, 1.5)).toBe(0.857);
+    // Manquant (−30 g) sur une fournée ×1,5 : cible 480 g, lignes actuelles à 450 g.
+    expect(coefficientEcart({ ecartProduit: -30, masseFournee: 450, facteur: 1.5 }, 450, 1.5)).toBe(1.067);
   });
   it('arrondi des quantités ajustées', () => {
     expect(arrondiQuantite(42.17, 'g')).toBe(42);
