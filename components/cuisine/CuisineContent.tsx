@@ -131,6 +131,10 @@ export function CuisineContent({
   // qui rend le planning actionnable sans ouvrir chaque fournée une à une.
   const [planningView, setPlanningView] = useState<PlanningView>('jours');
   const [refaisant, setRefaisant] = useState<number | null>(null);
+  // Fenêtre « Refaire cette fournée » : fournée ciblée, date et commentaire saisis.
+  const [refaireCible, setRefaireCible] = useState<BatchListRow | null>(null);
+  const [refaireDate, setRefaireDate] = useState('');
+  const [refaireNotes, setRefaireNotes] = useState('');
 
   // La vue du planning reste tracée dans le hash : sans ça, un retour arrière
   // du navigateur depuis une fournée ne rétablit jamais la vue choisie.
@@ -221,15 +225,15 @@ export function CuisineContent({
   // base a disparu depuis, la fournée étant autonome (cf. CLAUDE.md).
   async function refaireBatch(plan: BatchListRow) {
     if (!writeGuard('Recréation d’une fournée')) return;
-    const dateStr = await dialog.prompt(
-      `Date de dégustation de la nouvelle fournée « ${plan.recipe_title || ''} » (AAAA-MM-JJ)`,
-      { required: true, placeholder: new Date().toISOString().slice(0, 10) },
-    );
-    if (!dateStr) return;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
-      dialog.alert('Date invalide — attendu au format AAAA-MM-JJ.');
-      return;
-    }
+    // Le commentaire de la fournée d'origine préremplit la fenêtre (modifiable).
+    const { data } = await createClient().from('batches').select('notes').eq('id', plan.id).maybeSingle();
+    setRefaireDate('');
+    setRefaireNotes(((data as { notes?: string | null } | null)?.notes) ?? '');
+    setRefaireCible(plan);
+  }
+
+  async function confirmerRefaire(plan: BatchListRow, dateStr: string, notesSaisies: string) {
+    setRefaireCible(null);
     setRefaisant(plan.id);
     const supabase = createClient();
     try {
@@ -243,11 +247,11 @@ export function CuisineContent({
           user_id: source.user_id,
           recipe_id: source.recipe_id,
           recipe_title: source.recipe_title,
-          planned_date: dateStr.trim(),
+          planned_date: dateStr,
           factor: source.factor,
           adjust_label: source.adjust_label,
           status: 'planifiee',
-          notes: source.notes,
+          notes: notesSaisies.trim() || null,
           source_plan_id: source.id,
           measure_type: source.measure_type,
           yield_qty: source.yield_qty,
@@ -375,6 +379,61 @@ export function CuisineContent({
 
   return (
     <>
+      {refaireCible && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => e.target === e.currentTarget && setRefaireCible(null)}
+        >
+          <div className="w-full max-w-md bg-white rounded-lg p-6 flex flex-col gap-4 shadow-xl max-h-[90vh] overflow-y-auto">
+            <h2 className="font-headline-sm text-primary">Refaire « {refaireCible.recipe_title || 'cette fournée'} »</h2>
+            <p className="text-sm text-on-surface-variant">
+              La fournée sera reprise à l’identique : ajustement, ingrédients, étapes et notes. Seul l’avancement repart à zéro (cases cochées, quantités réellement utilisées, commentaires du jour J).
+            </p>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="refaire-date" className="font-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
+                Date de dégustation
+              </label>
+              <input
+                id="refaire-date"
+                type="date"
+                min={new Date().toISOString().slice(0, 10)}
+                value={refaireDate}
+                onChange={(e) => setRefaireDate(e.target.value)}
+                className="border border-outline-variant rounded px-3 py-2 bg-white font-body-md text-on-surface focus:outline-none focus:border-primary"
+                style={{ width: '10rem', maxWidth: '100%' }}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="refaire-notes" className="font-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">
+                Commentaire
+              </label>
+              <textarea
+                id="refaire-notes"
+                value={refaireNotes}
+                onChange={(e) => setRefaireNotes(e.target.value)}
+                rows={3}
+                className="border border-outline-variant rounded px-3 py-2 bg-white font-body-md text-on-surface focus:outline-none focus:border-primary"
+                placeholder="Une note personnelle sur cette fournée…"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setRefaireCible(null)} className="px-4 py-2 border border-outline-variant rounded font-label-md text-on-surface-variant">
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={!refaireDate}
+                onClick={() => confirmerRefaire(refaireCible, refaireDate, refaireNotes)}
+                className="px-4 py-2 bg-primary text-on-primary rounded font-label-md disabled:opacity-50"
+              >
+                Refaire la fournée
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <LoadingOverlay
         visible={busy || refaisant !== null || showRefreshSpinner}
         label={refaisant !== null ? 'Recréation de la fournée…' : showRefreshSpinner ? 'Actualisation…' : 'Traitement en cours…'}

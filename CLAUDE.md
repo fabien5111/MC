@@ -1486,7 +1486,7 @@ directes :
   remis à zéro, tout le reste (ajustements, ingrédients ajoutés/retirés,
   étapes déplacées, remplacements par une sous-recette, notes) repris tel
   quel. Ça ne requête jamais la recette de base — la fournée copiée est déjà
-  autonome, et ça fonctionne même si cette recette a disparu depuis.
+  autonome, et ça fonctionne même si cette recette a disparu depuis. **Fenêtre dédiée** (05/11/2026, plus de `dialog.prompt`) : message « reprise à l'identique », vrai champ date (calendrier, `min` = aujourd'hui, bouton grisé sans date) et zone « Commentaire » comme dans « Lancer une fournée », préremplie avec les notes de la fournée d'origine et modifiable (écrite dans `batches.notes` de la nouvelle fournée).
 - **RLS à deux couches**, motif repris de `shopping_lists` : une policy
   `<table>_proprietaire` (`FOR ALL`, rôle `public`, basée sur `owns_plan()`)
   + trois policies `impersonation_ro_*` (`RESTRICTIVE`, rôle `authenticated`)
