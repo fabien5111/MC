@@ -21,13 +21,15 @@
     ],
     "etapes": [
       {
-        "nom_etape": "Génoise",
+        "nom_etape": "Biscuit génoise",
         "page": null,
         "temps_preparation_minutes": 25,
         "temps_attente_minutes": 30,
         "temps_cuisson_minutes": 11,
         "temperature_cuisson_celsius": 180,
         "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Filmée au contact : 2 jours au frais ; 2 mois au congélateur, à plat",
         "ingredients": [
           {
             "nom": "Œufs entiers",
@@ -55,7 +57,7 @@
           "Enfourner 10 à 12 minutes à 180 °C, jusqu'à ce que le biscuit soit doré et reprenne sa forme sous une légère pression du doigt.",
           "Retourner la génoise sur une grille dès la sortie du four, retirer le papier et la laisser refroidir sous un linge propre."
         ],
-        "conseils_etape": "Le ruban est le point critique : la pâte doit retomber du fouet en un ruban qui reste visible quelques secondes en surface. Incorporer la farine sans insister, pour garder tout l'air emprisonné."
+        "conseils_etape": "Le ruban est le point critique : la pâte doit retomber du fouet en un ruban qui reste visible quelques secondes en surface. Incorporer la farine sans insister, pour garder tout l'air emprisonné. Nature, la génoise est volontairement peu sucrée et un peu sèche : l'imbiber au montage d'un sirop (eau et sucre à poids égaux, parfumé à la vanille, au kirsch ou au café)."
       }
     ],
     "astuces_recette": [
@@ -67,9 +69,8 @@
       "Utilisation — Bûche en gouttière 30 x 8 cm, bande de fermeture (semelle) de 1 cm : ≈ 100 g de pâte, soit ×0,2 de la recette.",
       "Utilisation — Cadre carré 18 x 18 cm, fond de 1 cm : ≈ 135 g de pâte, soit ×0,27 de la recette.",
       "Utilisation — Cadre carré 24 x 24 cm (fraisier), fond de 1 cm : ≈ 240 g de pâte, soit ×0,48 de la recette ; une plaque 40 x 30 cm ne fournit qu'un seul fond de 24 x 24 cm, prévoir deux plaques pour un fraisier à deux couches.",
-      "Astuce — Nature, la génoise est volontairement peu sucrée et un peu sèche : l'imbiber au montage d'un sirop (eau et sucre à poids égaux, parfumé à la vanille, au kirsch ou au café).",
-      "Astuce — Pour une génoise plus moelleuse et qui se conserve mieux, ajouter 25 g de beurre fondu tiède en fin d'incorporation : le mélanger d'abord à une petite part de pâte, puis reverser le tout.",
-      "Astuce — Variante cacao : remplacer 25 g de farine par 25 g de cacao en poudre non sucré, tamisés ensemble."
+      "Variante — Plus moelleuse et de meilleure conservation : ajouter 25 g de beurre fondu tiède en fin d'incorporation, mélangé d'abord à une petite part de pâte, puis reverser le tout.",
+      "Variante — Cacao : remplacer 25 g de farine par 25 g de cacao en poudre non sucré, tamisés ensemble."
     ],
     "conseils_conservation": "Filmée au contact : 2 jours au réfrigérateur ; 2 mois au congélateur, à plat, filmée puis glissée dans un sac. Décongeler 1 heure à température ambiante ou une nuit au réfrigérateur, sans retirer le film. Idéale le lendemain de sa cuisson : plus ferme, elle se découpe et s'imbibe mieux."
   }

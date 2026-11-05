@@ -14,13 +14,15 @@
     ],
     "etapes": [
       {
-        "nom_etape": "Meringue italienne et crème au beurre",
+        "nom_etape": "Crème au beurre à la meringue italienne",
         "page": null,
         "temps_preparation_minutes": 40,
         "temps_attente_minutes": 60,
         "temps_cuisson_minutes": null,
         "temperature_cuisson_celsius": null,
         "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "3 jours au frais, filmée au contact ; 2 mois au congélateur. Ramener à 18-20 °C et refouetter avant emploi",
         "ingredients": [
           {
             "nom": "Blancs d'œufs",

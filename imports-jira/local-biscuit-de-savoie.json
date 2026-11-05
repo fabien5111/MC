@@ -19,13 +19,15 @@
     ],
     "etapes": [
       {
-        "nom_etape": "Biscuit",
+        "nom_etape": "Biscuit de Savoie",
         "page": null,
         "temps_preparation_minutes": 20,
         "temps_attente_minutes": 30,
         "temps_cuisson_minutes": 12,
         "temperature_cuisson_celsius": 180,
         "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Filmé : 24 h à température ambiante ou 2 jours au frais ; 1 mois au congélateur, à plat",
         "ingredients": [
           {
             "nom": "Jaunes d'œufs",
