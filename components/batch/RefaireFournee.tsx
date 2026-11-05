@@ -174,7 +174,8 @@ export function useRefaireFournee({ overlay = true }: { overlay?: boolean } = {}
         if (error) throw error;
       }
 
-      router.push(`/fournee/${batchId}`);
+      // Une fournée refaite se planifie : on arrive en mode Préparer.
+      router.push(`/fournee/${batchId}?mode=preparer`);
     } catch (e) {
       const brut = (e as Error).message;
       const educatif = await translateQuotaError(brut);
