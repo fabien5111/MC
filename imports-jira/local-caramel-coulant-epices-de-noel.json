@@ -1,0 +1,109 @@
+{
+  "ticket": "local-caramel-coulant-epices-de-noel",
+  "recette": {
+    "titre": "Caramel coulant épices de Noël",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Caramel à sec décuit à la crème infusée aux épices de Noël, légèrement gélifié pour rester coulant sans s'échapper à la découpe. Utilisé en insert ou en garniture d'un entremets, d'une bûche ou de tartelettes.",
+    "rendement": "1 cadre 20 x 20 cm, 8 mm d'épaisseur — environ 330 g de caramel utilisable (410.5 g d'ingrédients, perte ≈ 20 %)",
+    "ustensiles": [
+      "Casserole à fond épais",
+      "Fouet",
+      "Passoire fine",
+      "Thermomètre",
+      "Mixeur plongeant",
+      "Bol",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Caramel coulant épices de Noël",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Cannelle en bâton",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Badiane",
+            "quantite": 1.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Clou de girofle",
+            "quantite": 0.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Muscade",
+            "quantite": 0.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 40,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Porter la crème et les épices à frémissement, couvrir et laisser infuser 15 minutes, puis filtrer sans presser et remettre à chauffer.",
+          "Hydrater la gélatine en poudre dans l'eau, puis réserver au frais.",
+          "Verser le sucre en trois fois dans une casserole à fond épais et cuire à sec jusqu'à un caramel ambré foncé.",
+          "Décuire hors du feu en versant la crème chaude filtrée en trois fois, en fouettant, avec prudence (projections).",
+          "Remettre sur feu moyen et cuire à 105 °C au thermomètre en remuant, puis ajouter la fleur de sel.",
+          "Incorporer la gélatine hydratée hors du feu, verser dans un bol et laisser refroidir à 50 °C.",
+          "Ajouter le beurre coupé en morceaux et mixer au mixeur plongeant sans incorporer d'air.",
+          "Filmer au contact et réserver au frais au moins 4 heures avant utilisation."
+        ],
+        "conseils_etape": "Le caramel doit être bien coloré pour contrebalancer le sucre et les épices, mais jamais fumant. Versez la crème bien chaude pour éviter les projections et la cristallisation. Le beurre s'incorpore à 50 °C : plus chaud, il tranche ; plus froid, le caramel fige avant d'être lisse.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 5 jours au frais, filmé au contact"
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert Ø 16 cm, 1 cm de hauteur, pour entremets Ø 20 cm : ≈ 200 g de caramel, soit ×0,61 de la recette.",
+      "Utilisation — Insert Ø 20 cm, 1 cm de hauteur, pour entremets Ø 24 cm : ≈ 315 g de caramel, soit ×0,95 de la recette.",
+      "Utilisation — Insert Ø 12 cm, 1 cm de hauteur, pour entremets Ø 16 cm : ≈ 115 g de caramel, soit ×0,35 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, insert Ø 5 cm de 1 cm : ≈ 20 g par pièce (×0,06), soit environ 16 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert de 18 x 3 cm, 1 cm de hauteur : ≈ 55 g de caramel, soit ×0,17 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert de 28 x 3,5 cm, 1 cm de hauteur : ≈ 100 g de caramel, soit ×0,30 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 8 mm d'épaisseur : ≈ 260 g de caramel, soit ×0,79 de la recette.",
+      "Utilisation — Tartelettes Ø 7 cm de diamètre intérieur, 8 mm de garniture : ≈ 30 g par pièce (×0,09), soit environ 10 pièces avec la recette entière.",
+      "Variante — Version à la pectine NH : remplacer la gélatine par 2.5 g de pectine NH mélangée à 10 g de sucre, ajoutée à la crème tiède avant de la porter à ébullition.",
+      "Variante — Version plus ferme, qui se tient mieux à la découpe : porter la gélatine en poudre à 3.5 g (et son eau à 21 g).",
+      "Variante — Autre parfum : remplacer les épices par une gousse de vanille ou des zestes d'orange infusés dans la crème."
+    ],
+    "conseils_conservation": "5 jours au réfrigérateur, filmé au contact. Congélation possible 2 mois, décongélation 12 heures au réfrigérateur puis mixage rapide. À insérer dans un montage figé ou à utiliser en garniture le jour même."
+  }
+}
