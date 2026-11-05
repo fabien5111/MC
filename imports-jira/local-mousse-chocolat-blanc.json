@@ -1,0 +1,88 @@
+{
+  "ticket": "local-mousse-chocolat-blanc",
+  "recette": {
+    "titre": "Mousse chocolat blanc",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse onctueuse et légère sur base de ganache collée à la gélatine, au goût lacté de chocolat blanc relevé d'une pointe de sel pour en tempérer la douceur. Elle tient parfaitement au démoulage et sert d'enveloppe ou de couche principale d'un entremets.",
+    "rendement": "1 cercle Ø 20 cm, 3 cm de hauteur — environ 590 g de mousse utilisable (656.5 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Batteur électrique",
+      "Mixeur plongeant",
+      "Maryse",
+      "Fouet",
+      "Thermomètre",
+      "Cercle Ø 20 cm",
+      "Rhodoïd",
+      "Plaque",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Mousse chocolat blanc",
+        "page": null,
+        "temps_preparation_minutes": 35,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Une fois prise, se garde 2 mois au congélateur dans son cercle, filmée au contact.",
+        "ingredients": [
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (ganache)",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 0.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 200,
+            "unite": "g",
+            "commentaire": "33 à 35 % de beurre de cacao, le moins sucré possible"
+          },
+          {
+            "nom": "Crème liquide 30% (montée)",
+            "quantite": 300,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater les feuilles de gélatine 10 minutes dans un grand volume d'eau très froide.",
+          "Monter la crème bien froide au batteur jusqu'à une texture mousseuse et souple, qui forme un bec retombant, puis la réserver au réfrigérateur.",
+          "Porter la crème de la ganache à ébullition dans la casserole, puis y dissoudre hors du feu la gélatine essorée et la fleur de sel.",
+          "Verser la crème chaude en trois fois sur le chocolat blanc haché dans le cul-de-poule, en émulsionnant à la maryse, puis mixer au mixeur plongeant jusqu'à une ganache lisse et brillante.",
+          "Laisser tiédir la ganache jusqu'à 28-30 °C, contrôlée au thermomètre.",
+          "Détendre la ganache avec un tiers de la crème montée au fouet, puis incorporer le reste délicatement à la maryse.",
+          "Couler aussitôt dans le cercle chemisé de rhodoïd, posé sur une plaque recouverte de film alimentaire, lisser et faire prendre au congélateur au moins 4 heures avant de démouler."
+        ],
+        "conseils_etape": "La ganache doit être à 28-30 °C au moment du mélange : plus chaude, elle fait retomber la crème ; plus froide, la gélatine commence à prendre et donne des grains. Une crème montée seulement mousseuse, et non ferme, garde la mousse légère et facile à lisser. La fleur de sel et un chocolat blanc riche en beurre de cacao limitent la sensation sucrée."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 20 cm, 3 cm de hauteur : ≈ 590 g de mousse, soit ×1,00 de la recette.",
+      "Utilisation — Entremets rond Ø 16 cm, 3 cm de hauteur : ≈ 380 g de mousse, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 3 cm de hauteur : ≈ 850 g de mousse, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 4 cm de hauteur : ≈ 95 g de mousse par pièce (×0,16), soit 6 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, remplie sans insert : ≈ 240 g de mousse, soit ×0,41 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, en enveloppe autour d'un insert occupant un tiers du volume : ≈ 315 g de mousse, soit ×0,53 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 3 cm de hauteur : ≈ 610 g de mousse, soit ×1,03 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, 2 cm de hauteur : ≈ 720 g de mousse, soit ×1,22 de la recette.",
+      "Variante — Passion : remplacer 50 g de la crème de la ganache par 50 g de purée de passion, ajoutée hors du feu ; l'acidité équilibre la douceur du chocolat blanc.",
+      "Variante — Chocolat blanc caramélisé : utiliser un chocolat blanc caramélisé (blond) à poids égal, plus biscuité et moins sucré en bouche.",
+      "Variante — Vanille : infuser une gousse de vanille fendue et grattée 15 minutes dans la crème de la ganache, puis la porter de nouveau à ébullition."
+    ],
+    "conseils_conservation": "48 heures au réfrigérateur une fois prise, filmée au contact ; 2 mois au congélateur, filmée. Démouler encore congelée, glacer ou décorer, puis décongeler 6 à 8 heures au réfrigérateur. À couler le jour du montage, dès que la ganache est à température."
+  }
+}
