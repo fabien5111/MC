@@ -1,0 +1,87 @@
+{
+  "ticket": "local-mousse-chocolat-noir-70",
+  "recette": {
+    "titre": "Mousse chocolat noir 70 %",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse dense et soyeuse au chocolat noir 70 %, montée sur une ganache tiède allégée de crème fouettée mi-ferme, au goût de cacao intense et peu sucré. Pensée pour les entremets montés à l'envers et surgelés, elle se démoule nettement et reste fondante après décongélation.",
+    "rendement": "1 entremets cercle Ø 20 cm, 3,5 cm de mousse — environ 650 g de mousse",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Bol",
+      "Maryse",
+      "Fouet",
+      "Mixeur plongeant",
+      "Thermomètre de cuisson",
+      "Batteur électrique",
+      "Micro-ondes",
+      "Cercle Ø 20 cm",
+      "Plaque à pâtisserie",
+      "Rhodoïd"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Mousse",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir 70 %",
+            "quantite": 180,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (ganache)",
+            "quantite": 135,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (montée)",
+            "quantite": 320,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans l'eau d'hydratation froide, dans un bol, pendant 10 minutes.",
+          "Faire fondre le chocolat dans un cul-de-poule au bain-marie ou au micro-ondes, jusqu'à 45-50 °C.",
+          "Porter la crème (ganache) à frémissement dans une casserole, puis hors du feu y dissoudre la gélatine hydratée.",
+          "Verser la crème chaude en trois fois sur le chocolat en émulsionnant au centre à la maryse, puis mixer au mixeur plongeant sans incorporer d'air jusqu'à une ganache lisse et brillante.",
+          "Laisser tiédir la ganache jusqu'à 35-40 °C, en contrôlant au thermomètre.",
+          "Monter la crème (montée) bien froide au batteur électrique jusqu'à une texture mi-ferme : elle forme des plis souples et tient sur le fouet sans être ferme.",
+          "Incorporer un tiers de la crème montée à la ganache au fouet pour la détendre, puis le reste délicatement à la maryse, jusqu'à une mousse homogène et souple.",
+          "Couler aussitôt dans le cercle chemisé de rhodoïd, posé sur une plaque recouverte de rhodoïd, lisser et surgeler une nuit."
+        ],
+        "conseils_etape": "La température de la ganache au moment du mélange est décisive : au-dessus de 40 °C, la crème montée retombe et la mousse devient liquide ; en dessous de 35 °C, le beurre de cacao fige et forme des grains. Ne pas monter la crème ferme, sinon la mousse sera granuleuse."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, 3,5 cm de mousse : ≈ 415 g de mousse, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, 3,5 cm de mousse : ≈ 650 g de mousse, soit ×1 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 3,5 cm de mousse : ≈ 935 g de mousse, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 3,5 cm de mousse : ≈ 80 g par pièce, soit 8 pièces avec la recette entière (×0,12 par pièce).",
+      "Utilisation — Bûche en gouttière 20 x 7 cm (profil demi-circulaire, 3,5 cm de haut), mousse en enveloppe autour d'un insert et d'un fond biscuit (≈ 2/3 du volume) : ≈ 150 g de mousse, soit ×0,23 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm (profil demi-circulaire, 4 cm de haut), mousse en enveloppe autour d'un insert et d'un fond biscuit (≈ 2/3 du volume) : ≈ 295 g de mousse, soit ×0,45 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 3 cm de mousse : ≈ 575 g de mousse, soit ×0,88 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, 3 cm de mousse : ≈ 1020 g de mousse, soit ×1,57 de la recette.",
+      "Astuce — Taux de chocolat : avec un chocolat noir 70 %, le chocolat représente environ 28 % de la mousse (180 g sur 650 g), soit environ 126 g de matière sèche de cacao.",
+      "Astuce — Autre pourcentage de chocolat : garder la même quantité de cacao (masse de chocolat × pourcentage ≈ 126 g). Avec un 64 %, prendre ≈ 195 g de chocolat et 120 g de crème (ganache) ; avec un 55 %, ≈ 230 g de chocolat et 85 g de crème (ganache) ; avec un 80 %, ≈ 160 g de chocolat et 155 g de crème (ganache). La masse de la ganache reste ainsi constante et la crème montée ne change pas.",
+      "Astuce — Pour un entremets glacé au miroir, glacer la mousse encore surgelée, à cœur, juste après démoulage."
+    ],
+    "conseils_conservation": "48 heures au réfrigérateur une fois l'entremets décongelé. Jusqu'à 2 mois au congélateur, entremets démoulé et filmé au contact une fois bien pris. Décongeler 6 à 8 heures au réfrigérateur, jamais à température ambiante. Préparer la mousse au moment du montage et la couler immédiatement, car elle commence à prendre en quelques minutes."
+  }
+}
