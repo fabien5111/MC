@@ -140,7 +140,7 @@ export function PlanningDayView({
   // Propose de terminer la fournée dès que toutes SES étapes sont cochées
   // (toutes fournées confondues sur cet écran, pas seulement celles du jour
   // affiché) puis, si un avis est encore possible sur la recette d'origine,
-  // de laisser une note et un commentaire — mêmes actions et messages que
+  // de laisser une note et un avis — mêmes actions et messages que
   // `BatchView.proposeFinish` (mode Pâtisser d'une fournée).
   async function proposeFinish(batchRow: BatchListRow) {
     // Posé avant même la confirmation : la question apparaît sur le même
@@ -173,7 +173,7 @@ export function PlanningDayView({
     await demanderBilan(batchRow.id);
     await demanderRefaisable(batchRow.id);
     if (!batchRow.recipe_id || (await essaiProjetEnCours(batchRow.recipe_id)) || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
-    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un commentaire sur cette recette ?', { okLabel: 'Oui', cancelLabel: 'Non' });
+    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un avis sur cette recette ?', { okLabel: 'Oui', cancelLabel: 'Non' });
     if (wantsReview) {
       setNavigating(true);
       router.push(`/fournee/${batchRow.id}?mode=preparer#sec-avis`);
