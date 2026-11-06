@@ -797,6 +797,7 @@ export function ProjectV2({
       plusRecenteId={remarques?.plusRecenteId ?? null}
       anciennes={remarques?.anciennes ?? []}
       toutesEpinglees={remarques?.toutesEpinglees ?? false}
+      recetteModifieeDepuis={remarques?.recetteModifieeDepuis ?? null}
       courantes={steps.map((st) => ({ id: st.id, source_step_id: st.id, title: st.title, order_index: st.order_index ?? 0, sousEtapes: st.sous_etapes ?? [] }))}
       ingredientsCourants={steps.flatMap((st) =>
         (groupByOrder.get(st.order_index ?? -1)?.ingredients ?? []).map((it) => ({ id: it.id, batch_step_id: st.id, name: it.name, unit: it.unit })),

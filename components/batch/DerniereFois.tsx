@@ -42,6 +42,7 @@ import {
 
 type Valeur = {
   reference: FourneeReference | null;
+  recetteModifieeDepuis: string | null;
   remarques: Remarque[];
   lecons: Lecons;
   auteur: boolean;
@@ -80,6 +81,7 @@ export function LeconsProvider({
   plusRecenteId = null,
   anciennes = [],
   toutesEpinglees = false,
+  recetteModifieeDepuis = null,
   courantes,
   ingredientsCourants = [],
   userId,
@@ -96,6 +98,9 @@ export function LeconsProvider({
   // épinglage par défaut de toutes leurs remarques (cf. `getRemarques`).
   anciennes?: FourneeReference[];
   toutesEpinglees?: boolean;
+  // Recette modifiée par son auteur depuis la fournée de référence (sa date) :
+  // avertissement affiché à un non-auteur.
+  recetteModifieeDepuis?: string | null;
   courantes: EtapeCourante[];
   ingredientsCourants?: IngredientCourant[];
   userId: string;
@@ -180,8 +185,8 @@ export function LeconsProvider({
   );
 
   const valeur = useMemo<Valeur>(
-    () => ({ reference, remarques, lecons, auteur, gestion, epinglee, basculer }),
-    [reference, remarques, lecons, auteur, gestion, epinglee, basculer],
+    () => ({ reference, recetteModifieeDepuis, remarques, lecons, auteur, gestion, epinglee, basculer }),
+    [reference, recetteModifieeDepuis, remarques, lecons, auteur, gestion, epinglee, basculer],
   );
   return <LeconsContext.Provider value={valeur}>{children}</LeconsContext.Provider>;
 }
@@ -338,6 +343,12 @@ export function RetoursAuteur({
           Remarques de votre dernière fournée et celles que vous avez gardées. Décochez
           l&apos;épingle pour retirer la remarque ; épinglée, elle est rappelée d&apos;une fournée à l&apos;autre.
         </p>
+        {!v.auteur && v.recetteModifieeDepuis && (
+          <p className="text-xs not-italic text-on-surface border-l-2 border-amber-500 bg-amber-50 px-3 py-2">
+            L&apos;auteur a modifié la recette depuis votre fournée du {dateCourte(v.recetteModifieeDepuis)} : vos remarques
+            peuvent ne plus correspondre aux quantités actuelles. Ajustez-les à la main si besoin.
+          </p>
+        )}
         {lecons.generales.length > 0 && (
           <div className="flex flex-col gap-1">
             <p className="font-bold text-on-surface">Commentaire global</p>
@@ -506,13 +517,28 @@ export type AjustementEcart = {
   estimerMasse?: EstimateurMasse;
 };
 
+// Un seul coefficient par étape : l'écart le plus récent de l'étape (les
+// remarques d'une étape sont rangées de la plus récente à la plus ancienne).
+// Les écarts plus anciens restent affichés, sans bouton.
+function estEcartLePlusRecent(lecons: Lecons, r: Remarque): boolean {
+  const groupes = [...Object.values(lecons.parEtape), ...lecons.autres];
+  const groupe = groupes.find((g) => g.remarques.some((x) => x.cle === r.cle));
+  if (!groupe) return true;
+  const premier = groupe.remarques.find((x) => x.nature === 'etape' && x.ecartProduit);
+  return !premier || premier.cle === r.cle;
+}
+
 function PropositionEcart({ r, ajustement }: { r: Remarque; ajustement: AjustementEcart }) {
   // Un seul coefficient proposé par étape : celui de la fournée de référence (la
   // plus récente, ou la fournée d'origine d'un « Refaire »). Les écarts plus
   // anciens restent affichés, sans bouton — ils proposeraient des coefficients
   // contradictoires.
   const v = useLecons();
-  if (v?.reference && r.batchId !== v.reference.id) return null;
+  // Recette d'un autre : les retours sont des pense-bêtes, les quantités se
+  // corrigent à la main (arbitrage du 06/11/2026). Seul l'auteur, qui corrige
+  // sa recette, se voit proposer un coefficient.
+  if (v && !v.auteur) return null;
+  if (v && !estEcartLePlusRecent(v.lecons, r)) return null;
   // Masse de l'écart et masse actuelle comptées de la même façon : par le
   // référentiel quand l'écran le connaît (un lait en ml entre dans la masse),
   // sinon par les seules lignes pesables.

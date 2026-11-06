@@ -540,6 +540,7 @@ export function BatchView({
       plusRecenteId={remarques?.plusRecenteId ?? null}
       anciennes={remarques?.anciennes ?? []}
       toutesEpinglees={remarques?.toutesEpinglees ?? false}
+      recetteModifieeDepuis={remarques?.recetteModifieeDepuis ?? null}
       courantes={batch.batch_steps.map((st) => ({
         id: st.id,
         source_step_id: st.source_step_id,

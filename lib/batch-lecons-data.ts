@@ -161,6 +161,10 @@ export type DonneesRemarques = {
   // les remarques des fournées lues sont épinglées par défaut. Faux pour une
   // fournée refaite : règle d'origine (référence + plus récente).
   toutesEpinglees: boolean;
+  // Recette modifiée par son auteur après la création de la fournée de
+  // référence (`recipes.updated_at` postérieur) : date de cette fournée, pour
+  // l'avertissement d'un non-auteur. `null` sinon, ou lecture impossible.
+  recetteModifieeDepuis: string | null;
   // Fournée terminée la plus récente du membre sur cette recette (la courante
   // exclue de rien) : ses remarques sont épinglées par défaut.
   plusRecenteId: number | null;
@@ -190,7 +194,21 @@ export async function getRemarques(opts: {
   } catch (e) {
     console.error('getRemarques (rafraîchir):', e);
   }
-  return { reference, anciennes, toutesEpinglees: !refaite, plusRecenteId, decisions, choixDisponibles: decisionsBrutes != null };
+  let recetteModifieeDepuis: string | null = null;
+  if (reference && opts.recipeId) {
+    try {
+      const [{ data: rec }, { data: fournee }] = await Promise.all([
+        supabase.from('recipes').select('updated_at').eq('id', opts.recipeId).maybeSingle(),
+        supabase.from('batches').select('created_at').eq('id', reference.id).maybeSingle(),
+      ]);
+      const modifiee = (rec as { updated_at: string | null } | null)?.updated_at;
+      const creee = (fournee as { created_at: string | null } | null)?.created_at;
+      if (modifiee && creee && modifiee > creee) recetteModifieeDepuis = reference.date ?? creee;
+    } catch (e) {
+      console.error('getRemarques (recette modifiée):', e);
+    }
+  }
+  return { reference, anciennes, toutesEpinglees: !refaite, recetteModifieeDepuis, plusRecenteId, decisions, choixDisponibles: decisionsBrutes != null };
 }
 
 // Remarques de CHAQUE fournée d'une recette (essais d'un projet), par id de

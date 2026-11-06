@@ -1271,6 +1271,7 @@ export function CreerForm({
       plusRecenteId={remarques?.plusRecenteId ?? null}
       anciennes={remarques?.anciennes ?? []}
       toutesEpinglees={remarques?.toutesEpinglees ?? false}
+      recetteModifieeDepuis={remarques?.recetteModifieeDepuis ?? null}
       courantes={courantesRetours}
       ingredientsCourants={ingredientsRetours}
       userId={userId}
