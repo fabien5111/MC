@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   BILAN_MAX,
+  phraseDejaValidee,
   apparier,
   arrondiQuantite,
   cleRemarque,
@@ -380,5 +381,22 @@ describe('apparier (fenêtre d’édition)', () => {
   it('vide', () => {
     expect(apparier([], ['a'])).toEqual([]);
     expect(apparier(['a'], [])).toEqual([null]);
+  });
+});
+
+describe('phraseDejaValidee', () => {
+  it('aucune fournée validée : aucune phrase', () => {
+    expect(phraseDejaValidee([])).toBe('');
+  });
+  it('une fournée : sa date est citée', () => {
+    expect(phraseDejaValidee([{ date_fin: '2026-11-03T10:00:00Z', planned_date: null }])).toContain('La fournée du 03/11 est déjà validée');
+  });
+  it('plusieurs : le nombre et la plus récente', () => {
+    const t = phraseDejaValidee([
+      { date_fin: null, planned_date: '2026-10-01' },
+      { date_fin: '2026-11-03T10:00:00Z', planned_date: null },
+    ]);
+    expect(t).toContain('2 fournées sont déjà validées');
+    expect(t).toContain('03/11');
   });
 });

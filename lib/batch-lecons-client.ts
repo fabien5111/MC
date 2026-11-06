@@ -9,7 +9,7 @@ import { useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useDialog } from '@/components/Dialog';
 import { trackEvent } from '@/lib/analytics';
-import { BILAN_MAX, ligneDecision, normaliserBilan, type Remarque, type StatutRemarque } from '@/lib/batch-lecons';
+import { BILAN_MAX, ligneDecision, normaliserBilan, phraseDejaValidee, type Remarque, type StatutRemarque } from '@/lib/batch-lecons';
 
 const QUESTION = 'Un commentaire sur cette fournée ?\n\nFacultatif — bilan de la fournée, ce que vous changeriez la prochaine fois… Il s’affichera au lancement de votre prochaine fournée de cette recette et reste modifiable depuis le résumé.';
 
@@ -34,14 +34,38 @@ export async function enregistrerRefaisable(batchId: number, valeur: boolean): P
   return error ? error.message : null;
 }
 
+// Autres fournées de la même recette déjà validées (colonne `refaisable`).
+// Best-effort : lecture en échec ou colonne absente (migration pas jouée) →
+// aucune, la question reste celle d'origine.
+async function autresFourneesValidees(batchId: number): Promise<{ date_fin: string | null; planned_date: string | null }[]> {
+  try {
+    const supabase = createClient();
+    const { data: courante } = await supabase.from('batches').select('recipe_id').eq('id', batchId).maybeSingle();
+    const recipeId = (courante as { recipe_id: string | null } | null)?.recipe_id;
+    if (!recipeId) return [];
+    const { data, error } = await supabase
+      .from('batches')
+      .select('date_fin, planned_date, refaisable' as never)
+      .eq('recipe_id', recipeId)
+      .neq('id', batchId)
+      .eq('refaisable' as never, true as never);
+    if (error) return [];
+    return (data as unknown as { date_fin: string | null; planned_date: string | null }[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
 // Question de clôture : « Tout s'est bien passé ? » Renvoie `true` si le
 // membre a marqué la fournée refaisable (écrit), `undefined` sinon.
 export function useDemanderRefaisable() {
   const dialog = useDialog();
   return useCallback(
     async (batchId: number): Promise<boolean | undefined> => {
+      const deja = phraseDejaValidee(await autresFourneesValidees(batchId));
       const oui = await dialog.confirm(
-        'Tout s’est bien passé ?\n\nValidez cette fournée : vous la retrouverez avec un bouton « Refaire » sur la fiche de la recette, et vous choisirez les retours à garder pour les prochaines fournées.',
+        'Tout s’est bien passé ?\n\nValidez cette fournée : vous la retrouverez avec un bouton « Refaire » sur la fiche de la recette, et vous choisirez les retours à garder pour les prochaines fournées.' +
+          (deja ? '\n\n' + deja : ''),
         { okLabel: 'Oui, valider la fournée', cancelLabel: 'Non' },
       );
       if (!oui) return undefined;

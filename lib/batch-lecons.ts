@@ -549,6 +549,26 @@ export function coefFournee(r: Pick<Remarque, 'facteur'>): string {
   return r.facteur && r.facteur > 0 ? ` (coef ×${fmtNum(r.facteur)})` : '';
 }
 
+// Phrase ajoutée à la question « Tout s'est bien passé ? » quand d'autres
+// fournées de la même recette sont DÉJÀ validées : le membre sait ainsi s'il
+// veut valider celle-ci aussi. `rows` : fournées validées autres que la courante.
+// Vide : aucune phrase.
+export function phraseDejaValidee(rows: { date_fin: string | null; planned_date: string | null }[]): string {
+  if (!rows.length) return '';
+  const dates = rows
+    .map((r) => r.date_fin ?? r.planned_date ?? '')
+    .sort((a, b) => b.localeCompare(a));
+  const recente = dateCourte(dates[0] || null);
+  if (rows.length === 1) {
+    return recente
+      ? `La fournée du ${recente} est déjà validée pour cette recette. Validez aussi celle-ci pour en garder les retours.`
+      : 'Une autre fournée est déjà validée pour cette recette. Validez aussi celle-ci pour en garder les retours.';
+  }
+  return recente
+    ? `${rows.length} fournées sont déjà validées pour cette recette (la plus récente : ${recente}). Validez aussi celle-ci pour en garder les retours.`
+    : `${rows.length} fournées sont déjà validées pour cette recette. Validez aussi celle-ci pour en garder les retours.`;
+}
+
 // « 12/09 » — date courte.
 export function dateCourte(iso: string | null): string | null {
   if (!iso) return null;
