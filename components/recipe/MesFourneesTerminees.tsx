@@ -2,7 +2,7 @@
 
 // « Mes fournées terminées » de la fiche recette : historique personnel avec,
 // sur chaque fournée, le bouton « Refaire » (reprise à l'identique, cf.
-// `useRefaireFournee`) et la pastille « À refaire en l'état » quand le membre
+// `useRefaireFournee`) et la pastille « Fournée validée » quand le membre
 // a marqué la fournée comme réussie. Déplié d'office dès qu'une fournée est
 // marquée : c'est la porte d'entrée de « Refaire » depuis la recette.
 import Link from 'next/link';
@@ -24,7 +24,7 @@ export function MesFourneesTerminees({ batches, recipeTitle }: { batches: Comple
             MES FOURNÉES TERMINÉES ({batches.length})
             {nbRefaisables > 0 && (
               <span className="ml-3 normal-case font-normal text-green-700">
-                · {nbRefaisables} à refaire en l’état
+                · {nbRefaisables} validée{nbRefaisables > 1 ? 's' : ''}
               </span>
             )}
           </span>
@@ -42,7 +42,7 @@ export function MesFourneesTerminees({ batches, recipeTitle }: { batches: Comple
                   {b.refaisable && (
                     <span className="inline-flex items-center gap-1 text-green-700">
                       <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                      À refaire en l’état
+                      Fournée validée
                     </span>
                   )}
                   {b.user_note && <span className="italic">{b.user_note}</span>}

@@ -555,7 +555,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
           {user && <RetoursAuteur recipeId={recipe.id} etapes={steps.map((st) => ({ id: st.id, title: st.title }))} />}
 
           {/* Mes fournées terminées — historique personnel, replié par défaut
-              (déplié si une fournée est « à refaire en l'état »), avec le
+              (déplié si une fournée est « fournée validée »), avec le
               bouton « Refaire ». Absent de l'impression. */}
           <MesFourneesTerminees batches={completedBatches} recipeTitle={recipe.title} />
 

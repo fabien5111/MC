@@ -64,8 +64,10 @@ const LeconsContext = createContext<Valeur | null>(null);
 type Portee = { silence: boolean; couper: () => void };
 const PorteeContext = createContext<Portee | null>(null);
 
-export function PorteeEdition({ children }: { children: React.ReactNode }) {
-  const [silence, setSilence] = useState(false);
+export function PorteeEdition({ children, silencieux = false }: { children: React.ReactNode; silencieux?: boolean }) {
+  // `silencieux` : écran dont le but même est de désépingler (« Fournée
+  // validée ») — aucune confirmation à chaque clic.
+  const [silence, setSilence] = useState(silencieux);
   const valeur = useMemo(() => ({ silence, couper: () => setSilence(true) }), [silence]);
   return <PorteeContext.Provider value={valeur}>{children}</PorteeContext.Provider>;
 }

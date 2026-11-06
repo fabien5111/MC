@@ -22,7 +22,7 @@ export async function enregistrerBilan(batchId: number, valeur: string | null): 
   return null;
 }
 
-// « À refaire en l'état » (`batches.refaisable`, colonne posée par `psql`) :
+// « Fournée validée » (`batches.refaisable`, colonne posée par `psql`) :
 // le membre dit que tout s'est bien passé. Écrit à part ; renvoie le message
 // d'erreur, `null` si tout va bien. Colonne absente (migration pas jouée) :
 // `colonneAbsente` — l'appelant n'affiche alors ni case ni alerte.
@@ -41,8 +41,8 @@ export function useDemanderRefaisable() {
   return useCallback(
     async (batchId: number): Promise<boolean | undefined> => {
       const oui = await dialog.confirm(
-        'Tout s’est bien passé ?\n\nMarquez cette fournée « à refaire en l’état » : vous la retrouverez avec un bouton « Refaire » sur la fiche de la recette.',
-        { okLabel: 'Oui, à refaire en l’état', cancelLabel: 'Non' },
+        'Tout s’est bien passé ?\n\nValidez cette fournée : vous la retrouverez avec un bouton « Refaire » sur la fiche de la recette, et vous choisirez les retours à garder pour les prochaines fournées.',
+        { okLabel: 'Oui, valider la fournée', cancelLabel: 'Non' },
       );
       if (!oui) return undefined;
       const erreur = await enregistrerRefaisable(batchId, true);

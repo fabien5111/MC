@@ -53,6 +53,7 @@ import type { AllergenRef } from '@/lib/recipes';
 import { trackEvent } from '@/lib/analytics';
 import { ARacheterButton } from '@/components/batch/ARacheterButton';
 import { type AjustementEcart, ChoixRemarque, DerniereFoisEtape, LeconsProvider, RetoursEcartEtape, RetoursAuteur, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
+import { ValidationFournee } from '@/components/batch/ValidationFournee';
 import { arrondiQuantite, cleRemarque, libelleEcartProduit, normaliserEcartProduit, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import { colonneRefaisableAbsente, enregistrerRefaisable, useDemanderBilan, useDemanderRefaisable } from '@/lib/batch-lecons-client';
@@ -274,6 +275,8 @@ export function BatchView({
   useEffect(() => setBatch(initialBatch), [initialBatch]);
   const demanderBilan = useDemanderBilan();
   const demanderRefaisable = useDemanderRefaisable();
+  // Écran « Fournée validée » ouvert par la clôture (la promesse rend la main à `finishBatch`).
+  const [validation, setValidation] = useState<{ fermer: () => void } | null>(null);
   const [mode, setMode] = useState<'preparer' | 'patisser'>(() => initialMode ?? defaultMode(initialBatch));
   const [busy, setBusy] = useState(false);
   // Distinct de `busy` : `router.refresh()` ne rend pas de promesse
@@ -378,7 +381,11 @@ export function BatchView({
     // modifiable ensuite depuis le résumé.
     const bilan = await demanderBilan(batch.id, batch.commentaire_global);
     if (bilan !== undefined) setBatch((b) => ({ ...b, commentaire_global: bilan }));
-    if (!(batch as { refaisable?: boolean }).refaisable && (await demanderRefaisable(batch.id))) setBatch((b) => ({ ...b, refaisable: true }) as BatchFull);
+    if (!(batch as { refaisable?: boolean }).refaisable && (await demanderRefaisable(batch.id))) {
+      setBatch((b) => ({ ...b, refaisable: true }) as BatchFull);
+      // Fournée validée : tri des retours à garder pour les « Refaire » suivants.
+      await new Promise<void>((resolve) => setValidation({ fermer: resolve }));
+    }
     router.refresh();
     return true;
   }
@@ -553,6 +560,15 @@ export function BatchView({
       recipeId={batch.recipe_id}
       auteur={!!baseRecipe?.authorId && baseRecipe.authorId === batch.user_id}
     >
+      {validation && (
+        <ValidationFournee
+          propres={remarquesDeFournee(versReference(batch))}
+          onClose={() => {
+            validation.fermer();
+            setValidation(null);
+          }}
+        />
+      )}
       <div id="sec-haut" className="recipe-print-content scroll-mt-28 max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
@@ -2545,14 +2561,19 @@ function SummaryPanel({
       if (error) dialogResume.alert('Sauvegarde impossible : ' + error.message);
     }, 800);
   }
-  // « À refaire en l'état » : colonne `refaisable` posée à la main. Absente
+  // « Fournée validée » : colonne `refaisable` posée à la main. Absente
   // (migration pas jouée) : la case n'est pas proposée.
   const [refaisableAbsent, setRefaisableAbsent] = useState(false);
   const refaisable = !!(batch as { refaisable?: boolean }).refaisable;
+  // Écran « Fournée validée », ouvert quand on coche la case.
+  const [validationOuverte, setValidationOuverte] = useState(false);
   async function onRefaisable(valeur: boolean) {
     setBatch((prev) => ({ ...prev, refaisable: valeur }) as BatchFull);
     const erreur = await enregistrerRefaisable(batch.id, valeur);
-    if (!erreur) return;
+    if (!erreur) {
+      if (valeur) setValidationOuverte(true);
+      return;
+    }
     setBatch((prev) => ({ ...prev, refaisable: !valeur }) as BatchFull);
     if (colonneRefaisableAbsente(erreur)) setRefaisableAbsent(true);
     else dialogResume.alert('Sauvegarde impossible : ' + erreur);
@@ -2596,6 +2617,7 @@ function SummaryPanel({
   return (
     <div id="sec-resume" className="scroll-mt-28 mt-6 border border-outline-variant rounded-xl bg-surface-container-lowest p-6 flex flex-col gap-5">
       <h2 className="font-headline-md text-headline-md text-primary">Résumé de la fournée</h2>
+      {validationOuverte && <ValidationFournee propres={remarquesDeFournee(versReference(batch))} onClose={() => setValidationOuverte(false)} />}
       {!refaisableAbsent && (
         <label className="flex items-start gap-2 text-sm cursor-pointer">
           <input
@@ -2606,7 +2628,7 @@ function SummaryPanel({
             className="mt-0.5 w-5 h-5 rounded border-outline accent-primary"
           />
           <span>
-            <span className="font-bold text-primary">Tout s’est bien passé : à refaire en l’état.</span>{' '}
+            <span className="font-bold text-primary">Fournée validée : tout s’est bien passé.</span>{' '}
             <span className="text-on-surface-variant">Un bouton « Refaire » sera proposé sur cette fournée, dans la fiche de la recette.</span>
           </span>
         </label>

@@ -33,7 +33,7 @@ export type BatchListRow = {
   // séparée à joindre — l'état vit directement sur la fournée.
   date_debut: string | null;
   date_fin: string | null;
-  // « À refaire en l'état » : posé par `getBatches` pour les fournées terminées.
+  // « Fournée validée » : posé par `getBatches` pour les fournées terminées.
   refaisable?: boolean;
   // Jours nécessaires : calculé depuis la fournée matérialisée (batch_steps),
   // pas depuis la recette de base qui a pu évoluer depuis. Le reste des
@@ -272,7 +272,7 @@ export type CompletedBatchRow = {
   date_fin: string | null;
   factor: number;
   user_note: string | null;
-  // « À refaire en l'état » (colonne posée à la main, lue à part).
+  // « Fournée validée » (colonne posée à la main, lue à part).
   refaisable?: boolean;
 };
 

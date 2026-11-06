@@ -28,6 +28,7 @@ const REFERENCE_SELECT = `
 
 type Brut = {
   id: number;
+  source_plan_id?: number | null;
   date_fin: string | null;
   planned_date: string | null;
   commentaire_global: string | null;
@@ -56,7 +57,7 @@ export const FOURNEES_LUES_MAX = 10;
 
 // Fournées lues :
 //   • « Refaire » : la fournée source (`source_plan_id`) si elle est lisible,
-//     seule — rien d'autre ne change pour une fournée refaite ;
+//     puis ses ancêtres de la chaîne « Refaire » (`anciennes`) ;
 //   • sinon les FOURNEES_LUES_MAX fournées `terminee` les plus récentes du
 //     membre sur la même recette, hors la fournée courante : la première est la
 //     référence, les autres `anciennes`.
@@ -67,7 +68,24 @@ async function lireFournees(
   if (opts.sourcePlanId != null) {
     const { data, error } = await supabase.from('batches').select(REFERENCE_SELECT).eq('id', opts.sourcePlanId).maybeSingle();
     if (error) console.error('getRemarques (source):', error.message);
-    if (data) return { reference: versReference(data as unknown as Brut), anciennes: [], refaite: true };
+    if (data) {
+      // Chaîne « Refaire » : la fournée source n'a parfois aucun retour propre
+      // (refaite elle-même, puis terminée sans commentaire) — on remonte ses
+      // ancêtres pour que les retours épinglés ne se perdent pas au 2ᵉ « Refaire ».
+      const premiere = data as unknown as Brut;
+      const anciennes: FourneeReference[] = [];
+      const vus = new Set<number>([premiere.id, ...(opts.excludeId != null ? [opts.excludeId] : [])]);
+      let suivant = premiere.source_plan_id ?? null;
+      while (suivant != null && !vus.has(suivant) && anciennes.length < FOURNEES_LUES_MAX - 1) {
+        vus.add(suivant);
+        const { data: parent, error: errParent } = await supabase.from('batches').select(REFERENCE_SELECT).eq('id', suivant).maybeSingle();
+        if (errParent) console.error('getRemarques (ancêtre):', errParent.message);
+        if (!parent) break; // supprimée ou illisible : la chaîne s'arrête là
+        anciennes.push(versReference(parent as unknown as Brut));
+        suivant = (parent as unknown as Brut).source_plan_id ?? null;
+      }
+      return { reference: versReference(premiere), anciennes, refaite: true };
+    }
   }
   if (!opts.recipeId) return { reference: null, anciennes: [], refaite: false };
   let q = supabase.from('batches').select(REFERENCE_SELECT).eq('user_id', opts.userId).eq('recipe_id', opts.recipeId).eq('status', 'terminee');
@@ -157,9 +175,9 @@ export type DonneesRemarques = {
   reference: FourneeReference | null;
   // Fournée repartant de la recette : les autres fournées terminées lues.
   anciennes: FourneeReference[];
-  // Fournée repartant de la recette (et fiche, éditeur, mode projet) : toutes
-  // les remarques des fournées lues sont épinglées par défaut. Faux pour une
-  // fournée refaite : règle d'origine (référence + plus récente).
+  // Toutes les remarques des fournées lues (fournée repartant de la recette,
+  // fiche, éditeur, mode projet, chaîne « Refaire ») sont épinglées par défaut :
+  // c'est à la validation de la fournée qu'on trie ce qu'on garde.
   toutesEpinglees: boolean;
   // Recette modifiée par son auteur après la création de la fournée de
   // référence (`recipes.updated_at` postérieur) : date de cette fournée, pour
@@ -182,7 +200,7 @@ export async function getRemarques(opts: {
   sourcePlanId?: number | null;
 }): Promise<DonneesRemarques> {
   const supabase = await createClient();
-  const [{ reference, anciennes, refaite }, decisionsBrutes, plusRecenteId] = await Promise.all([
+  const [{ reference, anciennes }, decisionsBrutes, plusRecenteId] = await Promise.all([
     lireFournees(supabase, opts),
     opts.recipeId ? lireDecisions(supabase, opts.userId, opts.recipeId) : Promise.resolve(null),
     opts.recipeId ? lirePlusRecente(supabase, opts.userId, opts.recipeId) : Promise.resolve(null),
@@ -208,7 +226,7 @@ export async function getRemarques(opts: {
       console.error('getRemarques (recette modifiée):', e);
     }
   }
-  return { reference, anciennes, toutesEpinglees: !refaite, recetteModifieeDepuis, plusRecenteId, decisions, choixDisponibles: decisionsBrutes != null };
+  return { reference, anciennes, toutesEpinglees: true, recetteModifieeDepuis, plusRecenteId, decisions, choixDisponibles: decisionsBrutes != null };
 }
 
 // Remarques de CHAQUE fournée d'une recette (essais d'un projet), par id de

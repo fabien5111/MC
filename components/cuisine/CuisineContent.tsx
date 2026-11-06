@@ -397,7 +397,7 @@ export function CuisineContent({
                         {p.refaisable && (
                           <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-label-md text-green-700">
                             <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                            À refaire en l’état
+                            Fournée validée
                           </p>
                         )}
                       </div>
