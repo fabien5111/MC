@@ -335,7 +335,7 @@ export function RetoursAuteur({
       </summary>
       <div className="p-4 bg-white flex flex-col gap-4 text-sm">
         <p className="text-xs text-on-surface-variant">
-          Remarques de votre dernière fournée et celles que vous avez gardées. Une fois l&apos;étape corrigée, décochez
+          Remarques de votre dernière fournée et celles que vous avez gardées. Décochez
           l&apos;épingle pour retirer la remarque ; épinglée, elle est rappelée d&apos;une fournée à l&apos;autre.
         </p>
         {lecons.generales.length > 0 && (
