@@ -15,6 +15,7 @@ export function ProjectV2Block({
   titre,
   apercu,
   state,
+  replie,
   children,
 }: {
   id: string;
@@ -23,11 +24,29 @@ export function ProjectV2Block({
   // Ce que contiendra le bloc, affiché tant qu'il est verrouillé.
   apercu: string;
   state: ProjectV2BlockState;
+  // Bloc repliable : `undefined` = jamais replié (cas général) ; sinon état
+  // INITIAL du volet. L'appelant le fixe une fois (ref) : la valeur de `open`
+  // ne doit pas changer d'un rendu à l'autre, sans quoi React refermerait un
+  // volet que le membre vient d'ouvrir.
+  replie?: boolean;
   children?: ReactNode;
 }) {
   const cadre = atelier
     ? 'border border-dashed border-secondary/40 bg-surface-container-lowest'
     : 'border border-outline-variant bg-surface-container-low';
+  const corps = state.unlocked ? (
+    children
+  ) : (
+    <div className="space-y-1">
+      <p className="text-sm text-on-surface-variant">{apercu}</p>
+      <p className="flex items-center gap-1.5 text-sm italic text-outline">
+        <span className="material-symbols-outlined text-[16px]" aria-hidden>
+          lock
+        </span>
+        {state.lockedReason}
+      </p>
+    </div>
+  );
   return (
     <section
       id={id}
@@ -42,19 +61,19 @@ export function ProjectV2Block({
           Atelier projet
         </p>
       )}
-      <h2 className="mb-4 font-headline-md text-[22px] text-primary">{titre}</h2>
-      {state.unlocked ? (
-        children
+      {replie === undefined || !state.unlocked ? (
+        <>
+          <h2 className="mb-4 font-headline-md text-[22px] text-primary">{titre}</h2>
+          {corps}
+        </>
       ) : (
-        <div className="space-y-1">
-          <p className="text-sm text-on-surface-variant">{apercu}</p>
-          <p className="flex items-center gap-1.5 text-sm italic text-outline">
-            <span className="material-symbols-outlined text-[16px]" aria-hidden>
-              lock
-            </span>
-            {state.lockedReason}
-          </p>
-        </div>
+        <details open={!replie} className="group">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+            <h2 className="font-headline-md text-[22px] text-primary">{titre}</h2>
+            <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+          </summary>
+          <div className="mt-4">{corps}</div>
+        </details>
       )}
     </section>
   );

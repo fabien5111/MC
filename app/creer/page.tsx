@@ -3,12 +3,13 @@ import { redirect } from 'next/navigation';
 import { requireUser, isAdmin } from '@/lib/auth';
 import { isProjectDraft } from '@/lib/projects';
 import { requireWritableSession, getImpersonationContext } from '@/lib/impersonation';
-import { getRecipeFull, getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
+import { getRecipeFull, getIngredientConversions, getIngredientDensities, getIngredientRefsList } from '@/lib/recipes';
 import { getIngredientRefNames, getIngredientRefAllergens, getAllergenRefs, getUtensilRefNames } from '@/lib/imports';
 import { getUnits } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
 import { getTags, getDifficulties } from '@/lib/taxonomy';
 import { getVisibleHelpBlocks } from '@/lib/help';
+import { getRemarques } from '@/lib/batch-lecons-data';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
@@ -40,6 +41,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
     editRecipe,
     conversions,
     ingredientRefIds,
+    ingredientDensities,
     helpBlocks,
   ] = await Promise.all([
     getTags(),
@@ -54,6 +56,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
     id ? getRecipeFull(id, 'edition') : Promise.resolve(null),
     getIngredientConversions(),
     getIngredientRefsList(),
+    getIngredientDensities(),
     getVisibleHelpBlocks('creer', user.id),
   ]);
 
@@ -81,6 +84,11 @@ export default async function CreerPage({ searchParams }: SearchParams) {
   // Volontairement isolé d'`isAdmin` (bouton « Ajouter au référentiel »,
   // publication directe, création de tag) : ces écritures restent réservées
   // à l'admin complet dans SA PROPRE session, conformément à CLAUDE.md.
+  // Retours de mes fournées (JEP-381) : l'auteur seul, sur une recette
+  // enregistrée. Best-effort : un échec de lecture ne coûte que ces retours.
+  const remarques =
+    owned && owned.author_id === user.id ? await getRemarques({ userId: user.id, recipeId: owned.id }).catch(() => null) : null;
+
   const highlightUnknownRefs = admin || (await getImpersonationContext()) !== null;
 
   return (
@@ -89,7 +97,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
       <div className="creer-page">
       {/* `pb-24` : réserve du bouton flottant du sommaire (52 px + marges) —
           la barre d'actions fixe qui imposait `pb-40` a disparu. */}
-      <main className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-24 md:pb-32">
+      <main id="sec-haut" className="scroll-mt-28 max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-24 md:pb-32">
         <CreerForm
           tags={tags}
           units={units}
@@ -105,8 +113,11 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           editingOtherAuthor={editingOtherAuthor}
           conversions={conversions}
           ingredientRefIds={ingredientRefIds}
+          ingredientDensities={ingredientDensities}
           initialStep={owned ? initialStep : null}
           helpBlocks={helpBlocks}
+          remarques={remarques}
+          userId={user.id}
         />
       </main>
       </div>

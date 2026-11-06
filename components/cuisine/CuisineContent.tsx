@@ -37,6 +37,7 @@ import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, TERMINEES_PAGE_SIZE, type BatchFul
 import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/profile';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
+import { useRefaireFournee } from '@/components/batch/RefaireFournee';
 import { LockedAction } from '@/components/LockedAction';
 import { findMergeTarget } from '@/lib/shopping-merge';
 import { NOM_A_RACHETER, rangerListes } from '@/lib/a-racheter';
@@ -130,7 +131,6 @@ export function CuisineContent({
   // La vue par jour est la vue par défaut (décision produit) : c'est elle
   // qui rend le planning actionnable sans ouvrir chaque fournée une à une.
   const [planningView, setPlanningView] = useState<PlanningView>('jours');
-  const [refaisant, setRefaisant] = useState<number | null>(null);
 
   // La vue du planning reste tracée dans le hash : sans ça, un retour arrière
   // du navigateur depuis une fournée ne rétablit jamais la vue choisie.
@@ -214,167 +214,12 @@ export function CuisineContent({
     else setPlanningList((prev) => prev.filter((p) => p.id !== plan.id));
   }
 
-  // Duplique la fournée (jamais la recette) à une nouvelle date : toutes les
-  // adaptations faites (ajustement, ingrédients ajoutés/retirés, étapes
-  // déplacées, remplacements par une sous-recette, notes) sont reprises —
-  // seul l'état d'avancement repart à zéro. Fonctionne même si la recette de
-  // base a disparu depuis, la fournée étant autonome (cf. CLAUDE.md).
-  async function refaireBatch(plan: BatchListRow) {
-    if (!writeGuard('Recréation d’une fournée')) return;
-    const dateStr = await dialog.prompt(
-      `Date de dégustation de la nouvelle fournée « ${plan.recipe_title || ''} » (AAAA-MM-JJ)`,
-      { required: true, placeholder: new Date().toISOString().slice(0, 10) },
-    );
-    if (!dateStr) return;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
-      dialog.alert('Date invalide — attendu au format AAAA-MM-JJ.');
-      return;
-    }
-    setRefaisant(plan.id);
-    const supabase = createClient();
-    try {
-      const { data, error } = await supabase.from('batches').select(BATCH_FULL_SELECT).eq('id', plan.id).maybeSingle();
-      if (error || !data) throw error || new Error('Fournée introuvable');
-      const source = data as unknown as BatchFull;
-
-      const { data: newBatch, error: insErr } = await supabase
-        .from('batches')
-        .insert({
-          user_id: source.user_id,
-          recipe_id: source.recipe_id,
-          recipe_title: source.recipe_title,
-          planned_date: dateStr.trim(),
-          factor: source.factor,
-          adjust_label: source.adjust_label,
-          status: 'planifiee',
-          notes: source.notes,
-          source_plan_id: source.id,
-          measure_type: source.measure_type,
-          yield_qty: source.yield_qty,
-          yield_unit: source.yield_unit,
-          yield_desc: source.yield_desc,
-          yield_notes: source.yield_notes,
-          recipe_description: source.recipe_description,
-          recipe_tips: source.recipe_tips,
-          recipe_serving_advice: source.recipe_serving_advice,
-          recipe_source: source.recipe_source,
-          recipe_source_url: source.recipe_source_url,
-          recipe_video_url: source.recipe_video_url,
-          difficulty_name: source.difficulty_name,
-          difficulty_level: source.difficulty_level,
-          mold_type_name: source.mold_type_name,
-          mold_forme: source.mold_forme,
-          mold_dims: source.mold_dims,
-          tags_text: source.tags_text,
-        })
-        .select('id')
-        .single();
-      if (insErr || !newBatch) throw insErr || new Error('Fournée non créée');
-      const batchId = newBatch.id;
-      // Détail de l'ajustement par IA (cf. lib/batch-ai.ts) : colonne posée à
-      // la main, absente des types générés — recopiée à part, échec ignoré.
-      const adjustAi = (source as { adjust_ai?: unknown }).adjust_ai;
-      if (adjustAi != null) {
-        await supabase
-          .from('batches')
-          .update({ adjust_ai: adjustAi } as never)
-          .eq('id', batchId);
-      }
-
-      const sortedSteps = [...source.batch_steps].sort((a, b) => a.order_index - b.order_index);
-      const { data: stepRows, error: stepErr } = await supabase
-        .from('batch_steps')
-        .insert(
-          sortedSteps.map((s) => ({
-            batch_id: batchId,
-            order_index: s.order_index,
-            day_offset: s.day_offset,
-            base_day_offset: s.base_day_offset,
-            title: s.title,
-            description: s.description,
-            tips: s.tips,
-            video_url: s.video_url,
-            prep_time: s.prep_time,
-            cook_time: s.cook_time,
-            wait_time: s.wait_time,
-            cook_temp: s.cook_temp,
-            scaling_mode: s.scaling_mode,
-            source_recipe_id: s.source_recipe_id,
-            source_step_id: s.source_step_id,
-            source_ingredient_id: s.source_ingredient_id,
-            user_note: s.user_note,
-          })),
-        )
-        .select('id')
-        .order('order_index', { ascending: true });
-      if (stepErr || !stepRows) throw stepErr || new Error('Étapes non créées');
-      const idByOldStep = new Map(sortedSteps.map((s, i) => [s.id, stepRows[i].id]));
-
-      const substepsToInsert = sortedSteps.flatMap((s) =>
-        s.batch_substeps.map((su) => ({
-          batch_step_id: idByOldStep.get(s.id)!,
-          order_index: su.order_index,
-          texte: su.texte,
-          added: su.added,
-          excluded_when_done: su.excluded_when_done,
-        })),
-      );
-      if (substepsToInsert.length) {
-        const { error } = await supabase.from('batch_substeps').insert(substepsToInsert);
-        if (error) throw error;
-      }
-
-      const ingredientsToInsert = source.batch_ingredients.map((it) => ({
-        batch_id: batchId,
-        batch_step_id: it.batch_step_id != null ? (idByOldStep.get(it.batch_step_id) ?? null) : null,
-        order_index: it.order_index,
-        ref_id: it.ref_id,
-        name: it.name,
-        base_quantity: it.base_quantity,
-        quantity: it.quantity,
-        quantity_text: it.quantity_text,
-        unit: it.unit,
-        comment: it.comment,
-        url: it.url,
-        allergen: it.allergen,
-        added: it.added,
-        removed: it.removed,
-        excluded_when_done: it.excluded_when_done,
-        expanded_into_recipe_id: it.expanded_into_recipe_id,
-        scaling_mode: it.scaling_mode,
-        source_ingredient_id: it.source_ingredient_id,
-        source_recipe_id: it.source_recipe_id,
-      }));
-      if (ingredientsToInsert.length) {
-        const { error } = await supabase.from('batch_ingredients').insert(ingredientsToInsert);
-        if (error) throw error;
-      }
-
-      if (source.batch_utensils.length) {
-        const { error } = await supabase.from('batch_utensils').insert(
-          source.batch_utensils.map((u) => ({
-            batch_id: batchId,
-            order_index: u.order_index,
-            name: u.name,
-            comment: u.comment,
-            url: u.url,
-            source_recipe_id: u.source_recipe_id,
-          })),
-        );
-        if (error) throw error;
-      }
-
-      router.push(`/fournee/${batchId}`);
-    } catch (e) {
-      const brut = (e as Error).message;
-      const educatif = await translateQuotaError(brut);
-      dialog.alert(educatif ?? 'Erreur lors de la recréation de la fournée : ' + brut);
-      setRefaisant(null);
-    }
-  }
+  // « Refaire cette fournée » : fenêtre et duplication partagées avec la fiche recette.
+  const { refaire: refaireBatch, refaisant, element: refaireElement } = useRefaireFournee({ overlay: false });
 
   return (
     <>
+      {refaireElement}
       <LoadingOverlay
         visible={busy || refaisant !== null || showRefreshSpinner}
         label={refaisant !== null ? 'Recréation de la fournée…' : showRefreshSpinner ? 'Actualisation…' : 'Traitement en cours…'}
@@ -549,6 +394,12 @@ export function CuisineContent({
                         <p className="font-body-md text-[12px] text-on-surface-variant">
                           {[p.planned_date ? 'Prévu pour ' + formatDate(p.planned_date) : '', timeTxt].filter(Boolean).join(' · ')}
                         </p>
+                        {p.refaisable && (
+                          <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-label-md text-green-700">
+                            <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                            Fournée validée
+                          </p>
+                        )}
                       </div>
                     </Link>
                     <span className={`shrink-0 font-label-md text-[11px] px-2.5 py-1 rounded-full text-white ${BATCH_STATUS_LBL[p.status]?.cls || 'bg-secondary'}`}>

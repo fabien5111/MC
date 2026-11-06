@@ -59,20 +59,25 @@ import {
   pointsRestants,
   projectTodo,
   type TodoItem,
+  scaledQuantityText,
 } from '@/lib/projects';
-import { resequenceProjectSteps, validateProject } from '@/lib/projects-write';
+import { resequenceProjectSteps, scaleAllLines, validateProject } from '@/lib/projects-write';
 import { INTENT_MAX, type ProposedStructure } from '@/lib/ai/project-structure';
 import { PlanningTimeline } from '@/components/recipe/PlanningTimeline';
 import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
-import { ProjectTodo } from '@/components/projets/v2/ProjectTodo';
+import { ProjectTodo, allerA } from '@/components/projets/v2/ProjectTodo';
 import { VerifCase } from '@/components/projets/v2/VerifCase';
 import { mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
-import { ingredientConversionText } from '@/lib/ingredient-conversions';
+import { estimateWeightGrams, ingredientConversionText } from '@/lib/ingredient-conversions';
 import { RecipeStep } from '@/components/recipe/RecipeStep';
+import { LeconsProvider, NombreRetours, PorteeEdition, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape, type AjustementEcart } from '@/components/batch/DerniereFois';
+import { libelleEcartProduit } from '@/lib/batch-lecons';
+import type { DonneesRemarques } from '@/lib/batch-lecons-data';
+import type { Remarque } from '@/lib/batch-lecons';
 import type { ProjectComponent, ProjectFull, ProjectTrial } from '@/lib/projects-data';
 import type { ConversionRef, IngredientRefOption, UnitRef } from '@/lib/ingredient-conversions';
 import type { RecipeFull, RecipeStepView } from '@/lib/recipes';
@@ -122,9 +127,13 @@ export function ProjectV2({
   units,
   unitRefs,
   conversions,
+  ingredientDensities = [],
   ingredientRefs,
   referenceAllergenes,
   trials,
+  remarques = null,
+  remarquesEssais,
+  userId,
   peutGenererIA,
   quotaProjetIA,
   quotaAjustementIA = null,
@@ -143,9 +152,15 @@ export function ProjectV2({
   units: string[];
   unitRefs: UnitRef[];
   conversions: ConversionRef[];
+  // Masse volumique par nom d'ingrédient (repli de `estimateWeightGrams`).
+  ingredientDensities?: { name: string; density_g_per_ml: number }[];
   ingredientRefs: IngredientRefOption[];
   referenceAllergenes?: { names: string[]; byIngredient: Record<string, string> };
   trials: ProjectTrial[];
+  // Retours de mes fournées d'essai (JEP-381), lus par la page ; `null` = aucun.
+  remarques?: DonneesRemarques | null;
+  userId: string;
+  remarquesEssais?: Record<number, Remarque[]>;
   peutGenererIA: boolean;
   quotaProjetIA: { allowed: boolean; limit?: number; usage?: number } | null;
   // Quota `ajustement_ia_mensuel`, affichage seulement (« Ajuster avec l'IA »).
@@ -170,6 +185,8 @@ export function ProjectV2({
   const { registry: sectionRegistry, dirtyLabels, saveAll } = useSectionRegistry();
   const anyDirty = dirtyLabels.length > 0;
   const [leaving, setLeaving] = useState(false);
+  // Coefficient proposé par la quantité obtenue d'une fournée d'essai, par
+  // préparation : prérempli dans son volet « Ajustement des quantités ».
   const states = projectV2BlockStates({ ...project, intent: project.intent });
 
   const composants = useProjectComponents(project, mutate, dialog);
@@ -539,6 +556,26 @@ export function ProjectV2({
   const verifDe = (componentId: number, type: 'etapes' | 'quantites') =>
     todo.find((i) => i.verif?.componentId === componentId && i.verif.type === type);
 
+  // Volets repliés au chargement (jamais recalculés ensuite, comme
+  // `ouvertAuChargement` : un état qui bougerait sous le doigt ferait refermer
+  // ce que le membre vient d'ouvrir). « Reste à faire » : replié une fois tout
+  // fait (seule la jauge reste). « Votre intention » : replié dès qu'elle est
+  // écrite. « Structure » : repliée quand toutes les recettes sont choisies.
+  const repliesInitiaux = useRef<{ todo: boolean; intention: boolean; structure: boolean; ingredients: boolean; organisation: boolean } | null>(null);
+  if (repliesInitiaux.current == null) {
+    const recettes = todo.filter((i) => i.id === 'preparations' || i.id.startsWith('recette-'));
+    repliesInitiaux.current = {
+      todo: todo.length > 0 && todo.every((i) => i.etat === 'fait'),
+      intention: !!project.intent?.trim(),
+      structure: recettes.length > 1 && recettes.every((i) => i.etat === 'fait'),
+      // Consultation : la liste totale des ingrédients et le bloc ustensiles /
+      // difficulté / temps sont repliés par défaut.
+      ingredients: true,
+      organisation: true,
+    };
+  }
+  const replies = repliesInitiaux.current;
+
   // Ouverture des volets « quantités » et « étapes » d'une préparation : fixée
   // UNE fois, au premier rendu (chargement ou réouverture de la page) — ouverte
   // tant que le contenu n'est pas vérifié, repliée s'il l'est. Jamais recalculée
@@ -595,6 +632,61 @@ export function ProjectV2({
     );
   }
 
+  // Quantité obtenue en essai (« 50 g en trop ») → coefficient de la
+  // préparation. Un seul coefficient par préparation : le geste n'a de sens
+  // que si l'étape porte TOUS ses ingrédients (sinon l'écart d'une étape ne
+  // dit rien des autres) ; à défaut, le coefficient est seulement indiqué.
+  function ajustementEcart(comp: ProjectComponent, s: RecipeStepView): AjustementEcart {
+    const ings = groupByOrder.get(s.order_index ?? -1)?.ingredients ?? [];
+    const autres = steps.filter((x) => componentOf(x) === comp.id && x.id !== s.id && (groupByOrder.get(x.order_index ?? -1)?.ingredients ?? []).length > 0);
+    return {
+      lignes: ings.map((it) => ({ quantity: it.quantity, unit: it.unit })),
+      // Masse par le référentiel : l'écart porte sur le total de l'étape.
+      lignesMasse: ings.map((it) => {
+        const q = it.quantity == null ? NaN : parseFloat(String(it.quantity).replace(',', '.'));
+        return { name: it.name, quantity: isFinite(q) ? q : null, unit: it.unit, ref_id: it.ref_id ?? null };
+      }),
+      estimerMasse: (ls) => {
+        const e = estimateWeightGrams(ls, conversions, unitRefs, ingredientDensities);
+        return { grammes: e.grams, nonConvertis: e.unconverted.map((u) => u.name) };
+      },
+      libelle: 'Modifier les quantités avec ce coefficient',
+      indisponible: autres.length
+        ? 'D’autres étapes de cette préparation ont des ingrédients : ajustez-la dans « Ajustement des quantités ».'
+        : null,
+      onAjuster: async (coef, r) => {
+        const factor = Math.round((comp.scaleFactor ?? 1) * coef * 10000) / 10000;
+        const ok = await dialog.confirm(
+          `Multiplier par ×${String(Math.round(coef * 1000) / 1000).replace('.', ',')} toutes les quantités de « ${comp.name} » (${libelleEcartProduit(r.ecartProduit) ?? 'écart constaté'} en essai) ?\n\nLe coefficient de la préparation passe à ×${String(Math.round(factor * 100) / 100).replace('.', ',')}.`,
+          { okLabel: 'Modifier les quantités', cancelLabel: 'Annuler' },
+        );
+        if (!ok) return;
+        await mutate(
+          async () => {
+            const supabase = createClient();
+            try {
+              await scaleAllLines(supabase, comp.lines, coef, comp.scaleFactor ?? 1, scaledQuantityText);
+            } catch (e) {
+              return { error: { message: (e as Error).message } };
+            }
+            const res = await supabase
+              .from('recipe_project_components')
+              .update({
+                scale_factor: factor,
+                scale_reason: `Fournée d’essai : ${libelleEcartProduit(r.ecartProduit) ?? 'écart'} sur « ${s.title || 'cette étape'} » → ×${String(Math.round(coef * 1000) / 1000).replace('.', ',')} sur toutes les quantités.`,
+                manually_adjusted: false,
+              } as never)
+              .eq('id', comp.id);
+            if (res.error) return res;
+            await supabase.from('recipe_project_components').update({ scale_format_key: cleFormat } as never).eq('id', comp.id);
+            return res;
+          },
+          { errorLabel: 'Ajustement des quantités' },
+        );
+      },
+    };
+  }
+
   // Même présentation que la fiche recette (`RecipeStep`, partagé). `dernier`
   // : pas de filet sous la dernière étape d'un groupe.
   function etape(s: RecipeStepView, i: number, dernier: boolean) {
@@ -603,8 +695,8 @@ export function ProjectV2({
     // l'assemblage, qui n'appartient à aucune préparation.
     const comp = ordered.find((c) => c.id === componentOf(s));
     return (
+      <div key={s.id} id={`etape-${s.id}`} className="scroll-mt-28">
       <RecipeStep
-        key={s.id}
         step={s}
         action={
           comp ? (
@@ -620,6 +712,9 @@ export function ProjectV2({
             </button>
           ) : undefined
         }
+        retoursEtape={<RetoursEtape stepId={s.id} ajustement={comp ? ajustementEcart(comp, s) : undefined} />}
+        retoursIngredient={(it) => <RetoursIngredient stepId={s.id} ingredientId={it.id} />}
+        retoursSousEtape={(t) => <RetoursSousEtape stepId={s.id} texte={t} />}
         index={i}
         anchorId={stepAnchorId(i)}
         ingredients={groupByOrder.get(s.order_index ?? -1)?.ingredients ?? []}
@@ -634,6 +729,7 @@ export function ProjectV2({
         }}
         last={dernier}
       />
+      </div>
     );
   }
 
@@ -645,6 +741,17 @@ export function ProjectV2({
       titre={BLOCS[key].titre}
       apercu={BLOCS[key].apercu}
       state={states[key]}
+      replie={
+        key === 'intention'
+          ? replies.intention
+          : key === 'structure'
+            ? replies.structure
+            : key === 'ingredients'
+              ? replies.ingredients
+              : key === 'organisation'
+                ? replies.organisation
+                : undefined
+      }
     >
       {children}
     </ProjectV2Block>
@@ -695,13 +802,49 @@ export function ProjectV2({
   const sansRecette = <p className="text-sm text-on-surface-variant">La recette du projet n’a pas pu être lue.</p>;
 
   return (
+    <LeconsProvider
+      reference={remarques?.reference ?? null}
+      decisions={remarques?.decisions ?? []}
+      choixDisponibles={!!remarques?.choixDisponibles}
+      plusRecenteId={remarques?.plusRecenteId ?? null}
+      anciennes={remarques?.anciennes ?? []}
+      toutesEpinglees={remarques?.toutesEpinglees ?? false}
+      recetteModifieeDepuis={remarques?.recetteModifieeDepuis ?? null}
+      courantes={steps.map((st) => ({ id: st.id, source_step_id: st.id, title: st.title, order_index: st.order_index ?? 0, sousEtapes: st.sous_etapes ?? [] }))}
+      ingredientsCourants={steps.flatMap((st) =>
+        (groupByOrder.get(st.order_index ?? -1)?.ingredients ?? []).map((it) => ({ id: it.id, batch_step_id: st.id, name: it.name, unit: it.unit })),
+      )}
+      userId={userId}
+      recipeId={project.id}
+      auteur
+    >
     <>
       <LoadingOverlay
         visible={busy || thinking || consultBusy || leaving}
         label={thinking ? 'Composition du projet…' : undefined}
       />
 
-      <RecipeToc sections={tocSections} steps={tocSteps} actions={tocActions} mobile="drawer" mobileInset="nav" />
+      <RecipeToc
+        sections={tocSections}
+        steps={tocSteps}
+        actions={tocActions}
+        mobile="drawer"
+        mobileInset="nav"
+        // Les étapes d'une préparation vivent dans un volet « Étapes » qui peut
+        // être replié (étapes relues) : sans le rouvrir AVANT de défiler, la
+        // cible n'a pas de position et le défilement se cale sur ce qui suit.
+        onNavigateToStep={(i) => {
+          for (let d = document.getElementById(stepAnchorId(i))?.closest('details') ?? null; d; d = d.parentElement?.closest('details') ?? null) {
+            d.open = true;
+          }
+        }}
+        // Un bloc replié (intention, structure, ingrédients, ustensiles et temps)
+        // se rouvre avant le défilement, sinon le clic ne montre que son titre.
+        onNavigateToSection={(id) => {
+          const el = document.getElementById(id);
+          el?.querySelector<HTMLDetailsElement>(':scope > details')?.setAttribute('open', '');
+        }}
+      />
 
       <header className="mb-8">
         <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
@@ -710,7 +853,7 @@ export function ProjectV2({
         <h1 className="mb-3 font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[34px]">
           {project.title === 'Nouveau projet' ? 'Nouveau projet' : project.title}
         </h1>
-        <div className="mb-3 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="bg-secondary px-3 py-1 font-label-md text-[10px] uppercase tracking-widest text-white">Brouillon</span>
           {anyDirty ? (
             <span className="border border-error px-3 py-1 font-label-md text-[10px] uppercase tracking-widest text-error">
@@ -720,18 +863,10 @@ export function ProjectV2({
             <span className="font-label-md text-[12px] text-green-700">Tout est enregistré</span>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <span className="flex items-center gap-2 text-[12px] text-on-surface-variant">
-            <span className="inline-block h-3 w-3 rounded border border-outline-variant bg-surface-container-low" />
-            Recette
-            <span className="ml-3 inline-block h-3 w-3 rounded border border-dashed border-secondary/40 bg-surface-container-lowest" />
-            Atelier projet
-          </span>
-        </div>
       </header>
 
       <HelpBlockSlot blockKey="projet.reste_a_faire" help={help} />
-      <ProjectTodo id="reste-a-faire" items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
+      <ProjectTodo id="reste-a-faire" ouvert={!replies.todo} items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
 
       <div className="space-y-6">
         {bloc(
@@ -896,6 +1031,7 @@ export function ProjectV2({
           recipe ? (
             <div className="space-y-8">
               <DessertVise project={project} formatLabel={formatLabel} />
+              <RetoursAuteur recipeId={project.id} etapes={steps.map((st) => ({ id: st.id, title: st.title }))} compact ancrePrefixe="etape-" />
               {ordered.map((c, ci) => {
                 const own = steps.filter((s) => componentOf(s) === c.id);
                 return (
@@ -939,6 +1075,7 @@ export function ProjectV2({
                         <div className="border-t border-outline-variant/40 px-4 py-4">
                           <QuantitiesStep project={project} targetForme={formeCible} formatLabel={formatLabel}
                             componentId={c.id}
+                            etapeIds={own.map((st) => st.id)}
                             quotaAjustementIA={quotaAjustementIA}
                             pied={<VerifCase item={verifDe(c.id, 'quantites')} onToggle={(it) => void basculerVerif(it)} busy={busy} />}
                           />
@@ -954,6 +1091,14 @@ export function ProjectV2({
                           <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
                             Étapes · {own.length}
                             {verifDe(c.id, 'etapes')?.etat === 'fait' && <span className="text-green-700"> · relues</span>}
+                            <NombreRetours
+                              stepIds={own.map((st) => st.id)}
+                              lignes={own.map((st) => ({
+                                id: st.id,
+                                sousEtapes: st.sous_etapes ?? [],
+                                ingredientIds: (groupByOrder.get(st.order_index ?? -1)?.ingredients ?? []).map((it) => it.id),
+                              }))}
+                            />
                           </span>
                           <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                         </summary>
@@ -1051,7 +1196,7 @@ export function ProjectV2({
         {/* Second exemplaire du « Reste à faire », juste avant la validation :
             mêmes `todo`, même écriture, donc synchronisé avec celui du haut.
             Sans `id` : l'ancre `reste-a-faire` (sommaire) reste sur le premier. */}
-        <ProjectTodo items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
+        <ProjectTodo ouvert={!replies.todo} items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
 
         {bloc(
           'validation',
@@ -1079,6 +1224,7 @@ export function ProjectV2({
                 trials={trials}
                 unresolved={ordered.filter((c) => !c.resolved).map((c) => c.name)}
                 pointsRestants={pointsRestants(todo)}
+                retoursEssais={remarquesEssais}
               />
             )}
             <div className="border-t border-outline-variant pt-5">
@@ -1095,6 +1241,9 @@ export function ProjectV2({
       </div>
 
       {resolving && (
+        // Une portée par préparation ouverte (`key`) : la case « ne plus
+        // afficher ce message » ne survit pas au passage à une autre.
+        <PorteeEdition key={resolving.id}>
         <ComponentResolver
           projectId={project.id}
           projectTitle={project.title}
@@ -1125,7 +1274,9 @@ export function ProjectV2({
             setResolvingInit(null);
           }}
         />
+        </PorteeEdition>
       )}
     </>
+    </LeconsProvider>
   );
 }

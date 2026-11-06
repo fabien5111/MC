@@ -13,12 +13,15 @@ import { IngredientTotalList } from '@/components/IngredientTotalList';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { getRemarques, getRemarquesEssais } from '@/lib/batch-lecons-data';
+import { LeconsProvider, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import { getVisibleHelpBlocksForPages } from '@/lib/help';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements, checkQuota } from '@/lib/entitlements-data';
 import { getActiveAds } from '@/lib/ads';
 import { getUnits, getShoppingListNames, getRecipeCompletedBatches } from '@/lib/profile';
-import { fmtNum, batchFactor } from '@/lib/recipe-plan';
+import { fmtNum } from '@/lib/recipe-plan';
+import { MesFourneesTerminees } from '@/components/recipe/MesFourneesTerminees';
 import { getMoldTypes } from '@/lib/admin';
 import { getRecipeDefaultPhoto } from '@/lib/site';
 import { getApprovedComments } from '@/lib/reviews-data';
@@ -156,7 +159,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // dépendent pas les unes des autres — regroupées en un seul `Promise.all`
   // plutôt qu'enchaînées en `await` successifs, qui coûtaient un aller-retour
   // en série par lecture sur la page la plus consultée du site.
-  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials, entitlements, helpPages] = await Promise.all([
+  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials, entitlements, helpPages, remarques, remarquesEssais] = await Promise.all([
     // Réservé au propriétaire : un visiteur n'a pas à savoir avec qui la
     // recette est partagée (lib/shares.ts — à tenir synchrone avec la policy
     // RLS `recipes_partagees`).
@@ -181,6 +184,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
     // d'extraction (page `recette`), en une seule lecture de masquages.
     // Membres connectés seulement.
     getVisibleHelpBlocksForPages(['fournee', 'recette'], user?.id ?? null),
+    // « La dernière fois » (JEP-381) : dernière fournée terminée du membre sur
+    // cette recette et ses choix « garder / écarter » — encadré du panneau
+    // « Lancer une fournée » et, pour l'auteur, « Retours de mes fournées ».
+    user ? getRemarques({ userId: user.id, recipeId: recipe.id }) : Promise.resolve(null),
+    // Retours de chaque essai d'un projet validé (lecture seule, bloc des essais).
+    isProject && isOwner ? getRemarquesEssais(recipe.id) : Promise.resolve(undefined),
   ]);
   const peutAjusterIA = canAccess(entitlements, 'ajustement_ia_mensuel');
   // Extraire des étapes en recette (JEP-258, plan Pro) : les masses
@@ -312,6 +321,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // la liste, sous peine de lien mort (pas de scroll-spy possible non plus).
   const tocSections: TocSections = {
     before: [
+      { id: 'sec-haut', label: 'Haut de la recette', icon: 'vertical_align_top', level: 1 },
       { id: 'sec-technique', label: 'Bloc technique', icon: 'straighten', level: 1 },
       ...(recipe.description ? [{ id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 as const }] : []),
       ...(steps.length > 0 ? [{ id: 'sec-planning', label: 'Planning de préparation', icon: 'calendar_month', level: 1 as const }] : []),
@@ -354,7 +364,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
       </div>
 
       <div className="recette-page">
-      <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <main id="sec-haut" className="scroll-mt-28 max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <PlanProvider autoOpen={planifier === '1'}>
         <RecetteToc
           recipeId={recipe.id}
@@ -513,47 +523,41 @@ export default async function RecettePage({ params, searchParams }: Params) {
           {/* Créer une fournée — le panneau s'ouvre au clic sur le bouton du
               rail. Une fournée créée quitte cette fiche pour vivre sur son
               propre écran (/fournee/[id]) — voir CLAUDE.md « Fournées ». */}
+          <LeconsProvider
+            reference={remarques?.reference ?? null}
+            decisions={remarques?.decisions ?? []}
+            choixDisponibles={!!remarques?.choixDisponibles}
+            plusRecenteId={remarques?.plusRecenteId ?? null}
+            anciennes={remarques?.anciennes ?? []}
+            toutesEpinglees={remarques?.toutesEpinglees ?? false}
+            recetteModifieeDepuis={remarques?.recetteModifieeDepuis ?? null}
+            courantes={steps.map((st) => ({ id: st.id, source_step_id: st.id, title: st.title, order_index: st.order_index ?? 0, sousEtapes: st.sous_etapes ?? [] }))}
+            userId={user?.id ?? ''}
+            recipeId={recipe.id}
+            auteur={isOwner}
+          >
           <div className="no-print">
-          <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} peutAjusterIA={peutAjusterIA} quotaIA={quotaIA} helpBlocks={helpPages.fournee ?? []} />
+          <BatchWidget recipe={recipe} moldTypes={moldTypes} ingredients={merged} peutAjusterIA={peutAjusterIA} quotaIA={quotaIA} helpBlocks={helpPages.fournee ?? []} derniereFois={!!user} />
           {isProject && isOwner && (
             // Historique des essais (spec §7.5 : reste consultable après
             // validation) — `canLaunch={false}` : lancer une fournée passe
             // déjà par le geste normal ci-dessus (BatchWidget), pas par une
             // seconde porte d'entrée.
             <div className="no-print mt-6">
-              <ProjectTrials recipe={recipe} trials={projectTrials} unresolved={[]} canLaunch={false} />
+              <ProjectTrials recipe={recipe} trials={projectTrials} unresolved={[]} canLaunch={false} retoursEssais={remarquesEssais} />
             </div>
           )}
           </div>
 
-          {/* Mes fournées terminées — historique personnel, replié par
-              défaut. Absent de l'impression : sans intérêt sur la fiche
-              papier de la recette. */}
-          {completedBatches.length > 0 && (
-            <details className="no-print group border border-outline-variant mb-12">
-              <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-                <span className="font-label-md text-label-md text-primary">
-                  MES FOURNÉES TERMINÉES ({completedBatches.length})
-                </span>
-                <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
-              </summary>
-              <div className="p-4 bg-white">
-                <ul className="divide-y divide-outline-variant/30">
-                  {completedBatches.map((b) => (
-                    <li key={b.id} className="py-3 flex items-center justify-between gap-4 flex-wrap">
-                      <Link href={`/fournee/${b.id}?mode=preparer`} className="font-body-md text-body-md text-primary underline underline-offset-2 hover:text-secondary">
-                        {formatDate(b.date_fin ?? b.planned_date)}
-                      </Link>
-                      <span className="flex items-center gap-3 text-on-surface-variant font-label-md text-label-md flex-wrap">
-                        <span className="bg-surface-variant px-2 py-1">× {fmtNum(batchFactor(b))}</span>
-                        {b.user_note && <span className="italic">{b.user_note}</span>}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </details>
-          )}
+          {/* Retours de mes fournées (JEP-381) : tout membre connecté voit les siens
+              (lus par membre) ; le lien « Modifier cette étape » reste réservé à
+              l'auteur (`auteur` du LeconsProvider). */}
+          {user && <RetoursAuteur recipeId={recipe.id} etapes={steps.map((st) => ({ id: st.id, title: st.title }))} />}
+
+          {/* Mes fournées terminées — historique personnel, replié par défaut
+              (déplié si une fournée est « fournée validée »), avec le
+              bouton « Refaire ». Absent de l'impression. */}
+          <MesFourneesTerminees batches={completedBatches} recipeTitle={recipe.title} />
 
           {/* Hero */}
           {recipe.hero_image_url && (
@@ -835,6 +839,13 @@ export default async function RecettePage({ params, searchParams }: Params) {
                     ingredients={grp?.ingredients || []}
                     qty={(it) => <Qty quantity={it.quantity} unit={it.unit} refId={it.ref_id} />}
                     last={i === steps.length - 1}
+                    // Retours de mes fournées (JEP-381) sous la ligne qu'ils concernent,
+                    // comme en fournée et dans /creer (tout membre connecté : le
+                    // fournisseur ne porte rien pour un visiteur). Pas de bouton
+                    // d'ajustement ici : il modifie le formulaire de /creer.
+                    retoursEtape={<RetoursEtape stepId={s.id} />}
+                    retoursIngredient={(it) => <RetoursIngredient stepId={s.id} ingredientId={it.id} />}
+                    retoursSousEtape={(t) => <RetoursSousEtape stepId={s.id} texte={t} />}
                   />
                 );
               })}
@@ -871,6 +882,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
           )}
 
           <RecipeComments comments={comments} />
+          </LeconsProvider>
         </div>
         </PlanProvider>
 

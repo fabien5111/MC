@@ -18,6 +18,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
+import { useLecons } from '@/components/batch/DerniereFois';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { moldMetrics } from '@/lib/recipe-view';
 import { scalingCoef } from '@/lib/recipe-plan';
@@ -44,6 +45,7 @@ const champ =
   'rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-body-md text-[14px] outline-none focus:border-primary';
 
 const fr = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
+
 
 // Masse totale des lignes exprimées en g ou kg — la « quantité produite »
 // lisible d'une préparation (JEP-254, point 13). Les autres unités (pièce,
@@ -140,7 +142,9 @@ export function QuantitiesStep({
   hideTitle = false,
   componentId,
   pied,
+  etapeIds,
   quotaAjustementIA = null,
+  suggestion = null,
 }: {
   project: ProjectFull;
   targetForme: string | null;
@@ -154,16 +158,35 @@ export function QuantitiesStep({
   // v2 : contenu posé tout en bas de la préparation (case « Quantités
   // vérifiées »), sous la note sur les quantités modifiées à la main.
   pied?: ReactNode;
+  // v2 : étapes de la préparation. Sert à retirer la justification « Fournée
+  // d’essai : … » quand plus aucun retour épinglé avec un écart ne la porte.
+  etapeIds?: number[];
   // État du quota `ajustement_ia_mensuel` (`mc_check_quota`, affichage seulement,
   // lu par la page) : sert à montrer les crédits restants et à griser « Ajuster
   // avec l'IA » une fois le quota atteint. `null` = pas de droit, ou lecture
   // absente : rien n'est affiché. La vraie garde reste `mc_consume` côté route.
   quotaAjustementIA?: { allowed: boolean; limit?: number; usage?: number } | null;
+  // v2 : coefficient proposé depuis l'extérieur (quantité obtenue d'une
+  // fournée d'essai, « 50 g en trop ») pour la préparation `componentId`.
+  // Prérempli comme une saisie à la main (perte à 0 % : l'écart mesuré
+  // l'inclut déjà), jamais appliqué tout seul. `n` change à chaque demande.
+  suggestion?: { factor: number; reason: string; n: number } | null;
   // Format visé, en clair (« Cercle Ø 20 × 4 cm ») : sert à décrire la cible
   // à l'IA quand la géométrie ne suffit pas.
   formatLabel: string;
 }) {
   const dialog = useDialog();
+  const lecons = useLecons();
+  // La justification posée par « Modifier les quantités avec ce coefficient »
+  // (retour de fournée) n'a plus d'objet une fois le retour désépinglé.
+  const raisonVisible = (raison: string | null | undefined) => {
+    if (!raison || !raison.startsWith('Fournée d’essai :')) return raison;
+    if (!lecons?.gestion || !etapeIds) return raison;
+    const porteur = etapeIds.some((id) =>
+      (lecons.lecons.parEtape[id]?.remarques ?? []).some((r) => r.ecartProduit && lecons.epinglee(r)),
+    );
+    return porteur ? raison : null;
+  };
   const { mutate, busy } = useMutation();
   const [travail, setTravail] = useState(false);
   // Ajustements par IA réussis depuis le dernier rendu serveur : la page ne
@@ -198,6 +221,16 @@ export function QuantitiesStep({
     const v = parseFloat((pertes[id] ?? '10').replace(',', '.'));
     return isFinite(v) && v >= 0 ? v : 0;
   };
+
+  useEffect(() => {
+    if (!suggestion || componentId == null) return;
+    const prop: ScaleProposal = { factor: suggestion.factor, moldCoefs: null, reason: suggestion.reason };
+    setSaisie((p) => ({ ...p, [componentId]: fr(suggestion.factor) }));
+    setBasesSansPerte((p) => ({ ...p, [componentId]: prop }));
+    setPropositions((p) => ({ ...p, [componentId]: prop }));
+    setPertes((p) => ({ ...p, [componentId]: '0' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestion?.n]);
 
   const cible = targetFormat(project, targetForme);
   // Empreinte du format enregistré, posée à chaque ajustement appliqué.
@@ -589,9 +622,9 @@ export function QuantitiesStep({
                 {/* Justification consultable en une phrase (§6.4) : la
                     proposition du moment, sinon celle qui a été appliquée.
                     Juste au-dessus du coefficient qu'elle explique. */}
-                {(prop?.reason || c.scaleReason) && (
+                {(prop?.reason || raisonVisible(c.scaleReason)) && (
                   <p className="mb-3 rounded-lg bg-surface-container-low px-3 py-2 text-[12.5px] text-on-surface-variant">
-                    {prop?.reason || c.scaleReason}
+                    {prop?.reason || raisonVisible(c.scaleReason)}
                   </p>
                 )}
 
@@ -696,9 +729,6 @@ export function QuantitiesStep({
                     })}
                   </ul>
                 )}
-                <p className="mt-2 text-[11.5px] text-outline">
-                  Une quantité modifiée à la main n’est plus recalculée par un changement de coefficient.
-                </p>
                 {pied}
               </>
             )}

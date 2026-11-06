@@ -7,9 +7,10 @@ import { canAccess } from '@/lib/entitlements';
 import { checkQuota, getCurrentPlan, getEntitlements } from '@/lib/entitlements-data';
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
-import { getIngredientConversions, getRecipeFull } from '@/lib/recipes';
+import { getIngredientConversions, getIngredientDensities, getRecipeFull } from '@/lib/recipes';
 import { getAllergenRefs, getDifficulties, getIngredientRefAllergens, getIngredientRefsList, getTags, getUtensilRefNames } from '@/lib/data/reference';
 import { createClient } from '@/lib/supabase/server';
+import { getRemarques, getRemarquesEssais } from '@/lib/batch-lecons-data';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -64,7 +65,7 @@ export default async function ProjetPage({ params }: Params) {
   }
 
   const supabase = await createClient();
-  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, tags, difficulties, utensilNames, ids, allergenRefs, refAllergens, helpBlocks] =
+  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, tags, difficulties, utensilNames, ids, allergenRefs, refAllergens, helpBlocks, ingredientDensities] =
     await Promise.all([
       getMoldTypes(),
       getUnits(),
@@ -83,6 +84,7 @@ export default async function ProjetPage({ params }: Params) {
       getAllergenRefs(),
       getIngredientRefAllergens(),
       getVisibleHelpBlocks('projet', user.id),
+      getIngredientDensities(),
     ]);
   const peutGenererIA = canAccess(droits, 'mode_projet_ia_mensuel');
   const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, 'mode_projet_ia_mensuel') : null;
@@ -91,6 +93,12 @@ export default async function ProjetPage({ params }: Params) {
   const quotaAjustementIA = canAccess(droits, 'ajustement_ia_mensuel')
     ? await checkQuota(user.id, 'ajustement_ia_mensuel')
     : null;
+  // Retours de mes fournées d'essai (JEP-381) : un essai est une fournée du
+  // projet. Best-effort : un échec ne coûte que ces retours.
+  const [remarques, remarquesEssais] = await Promise.all([
+    getRemarques({ userId: user.id, recipeId: id }).catch(() => null),
+    getRemarquesEssais(id),
+  ]);
   const ligne = (ids.data ?? null) as { difficulty_id: number | null } | null;
 
   return (
@@ -104,9 +112,13 @@ export default async function ProjetPage({ params }: Params) {
           units={units.map((u) => u.name)}
           unitRefs={units.map((u) => ({ id: u.id, name: u.name }))}
           conversions={conversions}
+          ingredientDensities={ingredientDensities}
           ingredientRefs={ingredientRefs}
           referenceAllergenes={{ names: allergenRefs.map((a) => a.name), byIngredient: refAllergens }}
           trials={trials}
+          remarques={remarques}
+          userId={user.id}
+          remarquesEssais={remarquesEssais}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
           quotaAjustementIA={quotaAjustementIA}

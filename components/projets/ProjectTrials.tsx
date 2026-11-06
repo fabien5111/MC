@@ -20,24 +20,23 @@ import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { insertMaterializedBatch, recipeContentColumns } from '@/lib/batch-write';
-import { promoteTrialQuantities } from '@/lib/projects-write';
-import { scaledQuantityText } from '@/lib/projects';
 import { formatDate } from '@/lib/format';
 import { connexionHref } from '@/lib/nav';
 import type { ProjectTrial } from '@/lib/projects-data';
 import type { RecipeFull } from '@/lib/recipes';
+import { RetoursEssai } from '@/components/batch/DerniereFois';
+import type { Remarque } from '@/lib/batch-lecons';
 import { translateQuotaError } from '@/lib/quota-message-client';
+import { normSearch } from '@/lib/text-search';
 
 // Appréciation globale, volontairement à trois valeurs (spec §7.2) : de quoi
 // retrouver d'un coup d'œil l'essai qui a marché, pas une échelle de notation.
 const VERDICTS: { value: string; label: string; cls: string }[] = [
   { value: 'to_review', label: 'À revoir', cls: 'bg-error/90' },
-  { value: 'ok', label: 'Correct', cls: 'bg-secondary/90' },
-  { value: 'validated', label: 'Validé', cls: 'bg-green-700' },
+  { value: 'ok', label: 'Correcte', cls: 'bg-secondary/90' },
+  { value: 'validated', label: 'Validée', cls: 'bg-green-700' },
 ];
 
-const btnGhost =
-  'rounded-pill border border-outline-variant px-4 py-2 font-label-md text-[12.5px] font-semibold text-primary transition-colors hover:bg-surface-container disabled:opacity-40';
 const btnPrimary =
   'rounded-pill bg-primary px-5 py-2.5 font-label-md text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95 disabled:opacity-40';
 const champ =
@@ -51,6 +50,7 @@ export function ProjectTrials({
   unresolved,
   canLaunch = true,
   pointsRestants,
+  retoursEssais,
 }: {
   // Recette du projet, telle que le moteur de fournée la lit. C'est la même
   // lecture que sur une fiche recette : aucun chemin particulier au projet.
@@ -69,6 +69,9 @@ export function ProjectTrials({
   // CHAQUE lancement d'un essai (jamais mémorisés : un oubli ne doit pas passer
   // inaperçu au deuxième essai). Absent (v1, fiche recette) : rien n'est demandé.
   pointsRestants?: string[];
+  // Retours de chaque essai (par id de fournée). Fourni : le bloc complet des
+  // retours remplace le champ de note. Absent : champ de note d'origine.
+  retoursEssais?: Record<number, Remarque[]>;
 }) {
   const router = useRouter();
   const dialog = useDialog();
@@ -180,35 +183,6 @@ export function ProjectTrials({
     );
   }
 
-  async function promouvoir(t: ProjectTrial) {
-    const mesurees = t.lines.filter((l) => l.realQuantity != null).length;
-    if (!mesurees) {
-      dialog.alert('Cet essai ne porte aucune quantité réellement utilisée : rien à reprendre.');
-      return;
-    }
-    const ok = await dialog.confirm(
-      `Reprendre les ${mesurees} quantité${mesurees > 1 ? 's' : ''} mesurée${mesurees > 1 ? 's' : ''} de cet essai comme quantités de référence du projet ?\nL’essai reste conservé dans l’historique.`,
-    );
-    if (!ok) return;
-
-    let appliquees = 0;
-    await mutate(
-      async () => {
-        const supabase = createClient();
-        try {
-          appliquees = await promoteTrialQuantities(supabase, recipe.id, t.lines, scaledQuantityText);
-        } catch (e) {
-          return { error: { message: (e as Error).message } };
-        }
-        return { error: null };
-      },
-      { errorLabel: 'Reprise des quantités' },
-    );
-    if (appliquees === 0) {
-      dialog.alert('Aucune quantité n’a pu être rattachée : les étapes du projet ont peut-être changé depuis cet essai.');
-    }
-  }
-
   function toggleCompare(id: number) {
     setCompare((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id].slice(-2)));
   }
@@ -235,6 +209,30 @@ export function ProjectTrials({
           }))
           .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
       : [];
+
+  // Retours des deux essais : commentaire global, puis une ligne par étape
+  // (commentaire + quantité en trop / manquante). Ni sous-étapes ni
+  // ingrédients : leurs commentaires restent dans le bloc de chaque essai.
+  const retoursComparés = (() => {
+    if (compares.length !== 2 || !retoursEssais) return [];
+    const parEssai = compares.map((t) => (retoursEssais[t.id] ?? []).filter((r) => r.nature === 'global' || r.nature === 'etape'));
+    const texte = (r: Remarque | undefined) => (r ? [r.texte, r.ecart].filter(Boolean).join(' — ') : '');
+    const lignes: { cle: string; titre: string; ordre: number; valeurs: string[] }[] = [];
+    const globaux = parEssai.map((rs) => texte(rs.find((r) => r.nature === 'global')));
+    if (globaux.some(Boolean)) lignes.push({ cle: 'global', titre: 'Commentaire global', ordre: -2, valeurs: globaux });
+    const titres = new Map<string, { titre: string; ordre: number }>();
+    for (const rs of parEssai)
+      for (const r of rs)
+        if (r.nature === 'etape') {
+          const cle = normSearch(r.etapeTitre ?? '');
+          if (!titres.has(cle)) titres.set(cle, { titre: r.etapeTitre ?? 'Étape', ordre: r.ordre });
+        }
+    for (const [cle, info] of titres) {
+      const valeurs = parEssai.map((rs) => texte(rs.find((r) => r.nature === 'etape' && normSearch(r.etapeTitre ?? '') === cle)));
+      if (valeurs.some(Boolean)) lignes.push({ cle, ...info, valeurs });
+    }
+    return lignes.sort((a, b) => a.ordre - b.ordre);
+  })();
 
   return (
     <div className="rounded-xl border border-outline-variant p-4">
@@ -266,12 +264,16 @@ export function ProjectTrials({
               <li key={t.id} className="rounded-xl border border-outline-variant p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-3">
                   <a href={`/fournee/${t.id}`} className="font-body-md text-[15px] font-semibold text-primary">
-                    Essai du {t.plannedDate ? formatDate(t.plannedDate) : formatDate(t.createdAt)}
+                    Fournée d’essai du {t.plannedDate ? formatDate(t.plannedDate) : formatDate(t.createdAt)}
                   </a>
                   <span className="text-[12px] text-on-surface-variant">
                     {t.status === 'terminee' ? 'Terminée' : t.status === 'abandonnee' ? 'Abandonnée' : 'En cours'}
                     {mesurees ? ` · ${mesurees} quantité${mesurees > 1 ? 's' : ''} mesurée${mesurees > 1 ? 's' : ''}` : ''}
                   </span>
+                  <label className="flex items-center gap-2 text-[12.5px] text-on-surface-variant">
+                    <input type="checkbox" checked={compare.includes(t.id)} onChange={() => toggleCompare(t.id)} />
+                    Comparer
+                  </label>
                   <span className="ml-auto flex flex-wrap items-center gap-1">
                     {VERDICTS.map((v) => (
                       <button
@@ -290,28 +292,27 @@ export function ProjectTrials({
                   </span>
                 </div>
 
-                <textarea
-                  // `key` porte la note : le champ n'écrit qu'à la sortie, il
-                  // faut le remonter quand la valeur serveur change.
-                  key={`${t.id}-${t.note ?? ''}`}
-                  defaultValue={t.note ?? ''}
-                  onBlur={(e) => {
-                    if ((e.target.value || '') !== (t.note ?? '')) void setNote(t, e.target.value);
-                  }}
-                  rows={2}
-                  placeholder="Ce que vous avez observé — texture, cuisson, équilibre…"
-                  className={`${champ} mb-2 w-full`}
-                />
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <button type="button" onClick={() => void promouvoir(t)} className={btnGhost}>
-                    Reprendre ces quantités
-                  </button>
-                  <label className="flex items-center gap-2 text-[12.5px] text-on-surface-variant">
-                    <input type="checkbox" checked={compare.includes(t.id)} onChange={() => toggleCompare(t.id)} />
-                    Comparer
-                  </label>
-                </div>
+                {retoursEssais ? (
+                  <>
+                    <RetoursEssai remarques={retoursEssais[t.id] ?? []} />
+                    {(retoursEssais[t.id] ?? []).length === 0 && (
+                      <p className="text-[12.5px] text-on-surface-variant">Aucun commentaire sur cet essai.</p>
+                    )}
+                  </>
+                ) : (
+                  <textarea
+                    // `key` porte la note : le champ n'écrit qu'à la sortie, il
+                    // faut le remonter quand la valeur serveur change.
+                    key={`${t.id}-${t.note ?? ''}`}
+                    defaultValue={t.note ?? ''}
+                    onBlur={(e) => {
+                      if ((e.target.value || '') !== (t.note ?? '')) void setNote(t, e.target.value);
+                    }}
+                    rows={2}
+                    placeholder="Ce que vous avez observé — texture, cuisson, équilibre…"
+                    className={`${champ} mb-2 w-full`}
+                  />
+                )}
               </li>
             );
           })}
@@ -351,6 +352,35 @@ export function ProjectTrials({
             Quantité réellement utilisée quand elle a été notée, sinon quantité prévue. Les lignes qui diffèrent sont
             surlignées.
           </p>
+        </div>
+      )}
+
+      {retoursComparés.length > 0 && (
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[420px] text-[13px]">
+            <thead>
+              <tr className="text-left text-on-surface-variant">
+                <th className="py-1 font-label-md text-[11.5px] uppercase tracking-widest">Retours</th>
+                {compares.map((t) => (
+                  <th key={t.id} className="py-1 font-label-md text-[11.5px] uppercase tracking-widest">
+                    {t.plannedDate ? formatDate(t.plannedDate) : formatDate(t.createdAt)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {retoursComparés.map((l) => (
+                <tr key={l.cle} className="align-top border-t border-outline-variant/40">
+                  <td className="py-1.5 pr-3 font-semibold text-on-surface">{l.titre}</td>
+                  {l.valeurs.map((v, i) => (
+                    <td key={i} className="py-1.5 pr-3 italic text-primary">
+                      {v || <span className="not-italic text-outline">—</span>}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

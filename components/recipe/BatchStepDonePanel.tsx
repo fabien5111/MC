@@ -19,6 +19,7 @@
 // proposer de supprimer après un déplacement de jour ou l'ajout d'une
 // sous-étape.
 import { NomIngredient } from '@/components/IngredientNomsProvider';
+import { RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -68,8 +69,10 @@ export function BatchStepDonePanel({
   canSubsteps = true,
   readOnly = false,
   ingredientsEditor,
+  retoursEcart,
   aideRealise,
   aideNote,
+  derniereFois,
 }: {
   step: StepFlags;
   ingredients: IngRow[];
@@ -112,10 +115,15 @@ export function BatchStepDonePanel({
   // de l'étape » : les deux montraient les mêmes lignes. Sans lui (fournée
   // close, lecture seule), la liste simple d'origine.
   ingredientsEditor?: ReactNode;
+  // Retours d'une fournée précédente qui portent une quantité obtenue : au-dessus des quantités.
+  retoursEcart?: ReactNode;
   // Blocs d'aide (JEP-373), montés par la page sur la 1ʳᵉ étape seulement :
   // avant la case « réalisée » et avant « Ma note ».
   aideRealise?: ReactNode;
   aideNote?: ReactNode;
+  // « La dernière fois » (JEP-381) : constats de la fournée précédente, posés
+  // juste sous la date et les badges de l'étape, visibles étape repliée.
+  derniereFois?: ReactNode;
 }) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
@@ -368,7 +376,8 @@ export function BatchStepDonePanel({
   // la réalisation. S'imprime. Placée avant les ingrédients : c'est la
   // première chose à relire en abordant l'étape (matériel à sortir,
   // adaptation…), pas une note de fin de liste.
-  const noteBlock = (
+  // Fournée close sans note : rien à lire ni à ajouter, le bloc est omis.
+  const noteBlock = readOnly && !step.user_note ? null : (
     <div className="border-l-4 border-green-700 bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
@@ -436,6 +445,7 @@ export function BatchStepDonePanel({
           <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
         </summary>
         <div className="p-4 bg-white">
+          {retoursEcart}
           {ingredientsEditor ?? (
             <>
               {/* Nom en `minmax(0,1fr)` pour qu'il se replie : une grille tout en
@@ -486,6 +496,9 @@ export function BatchStepDonePanel({
                         <NomIngredient nom={it.name} quantite={it.quantity ?? it.quantity_text} unite={it.unit} refId={it.ref_id} />
                         {it.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {it.comment}</span>}
                       </span>
+                      <div style={{ gridColumn: '1/-1' }} className="empty:hidden">
+                        <RetoursIngredient stepId={step.id} ingredientId={it.id} />
+                      </div>
                       {replaced && (
                         <span className="font-body-md text-[12px] text-green-700" style={{ gridColumn: '1/-1' }}>
                           Fabriqué à partir de{' '}
@@ -533,8 +546,9 @@ export function BatchStepDonePanel({
                     moveSubstep(dragSubstep, idx);
                     setDragSubstep(null);
                   }}
-                  className={`flex gap-1.5 items-start${dragSubstep === idx ? ' opacity-50' : ''}`}
+                  className={`flex flex-col${dragSubstep === idx ? ' opacity-50' : ''}`}
                 >
+                  <div className="flex gap-1.5 items-start">
                   {readOnly ? (
                     <span className="no-print shrink-0 w-[18px]" />
                   ) : (
@@ -586,6 +600,9 @@ export function BatchStepDonePanel({
                       <span className="material-symbols-outlined text-[18px]">delete</span>
                     </button>
                   )}
+                  </div>
+                  {/* JEP-381 : le retour de fournée sous la sous-étape qu'il concerne. */}
+                  <RetoursSousEtape stepId={step.id} texte={su.texte} />
                 </li>
               );
             })}
@@ -688,6 +705,7 @@ export function BatchStepDonePanel({
           {dayControl}
           {meta}
         </div>
+        {derniereFois}
       </div>
       {/* Reste visible même étape repliée (`collapsible`) : contrairement aux
           ingrédients/sous-étapes (qui n'ont plus d'utilité une fois l'étape

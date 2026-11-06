@@ -41,6 +41,7 @@ import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { libelleAjustement, lireAjustementIA, lireAjustementIngredient, type AjustementIA } from '@/lib/batch-ai';
+import { RetoursAuteur } from '@/components/batch/DerniereFois';
 
 const num = (v: string | number | null | undefined): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -73,7 +74,11 @@ export function BatchWidget({
   peutAjusterIA = false,
   quotaIA = null,
   helpBlocks,
+  derniereFois = false,
 }: {
+  // « La dernière fois » (JEP-381) : encadré en tête du panneau, lu dans le
+  // `LeconsProvider` posé par la fiche. Jamais en modification d'un ajustement.
+  derniereFois?: boolean;
   recipe: RecipeFull;
   moldTypes: { id: number; name: string; forme: string | null }[];
   ingredients: MergedIngredient[];
@@ -325,9 +330,9 @@ export function BatchWidget({
         moldCoefs = { surface: coefSurf != null ? round(coefSurf) : round(nRatio), volume: coefVol != null ? round(coefVol) : round(nRatio) };
         factor = moldCoefs.volume;
       }
-      const dimTxt = Object.entries(tgtDims).map(([k, v]) => (k === 'diametre' ? 'Ø ' : '') + v).join(' × ');
+      const dimTxt = Object.entries(tgtDims).map(([k, v]) => (k === 'diametre' ? 'Ø ' : '') + v + ' cm').join(' × ');
       const tname = targetType === '' ? 'Moule de la recette' : moldTypes.find((t) => String(t.id) === targetType)?.name || 'Moule';
-      label = `Moule : ${tgtCount > 1 ? tgtCount + ' × ' : ''}${tname}${dimTxt ? ' — ' + dimTxt + ' cm' : ''}`;
+      label = `Moule : ${tgtCount > 1 ? tgtCount + ' × ' : ''}${tname}${dimTxt ? ' — ' + dimTxt : ''}`;
     } else if (recipe.measure_type === 'dimensions') {
       const c = num(aiCoef);
       if (dimensionsParIA && aiPrompt.trim() && !(c && c > 0)) {
@@ -575,6 +580,19 @@ export function BatchWidget({
         {editMode && existingBatch ? "Modifier l'ajustement de la fournée" : 'Lancer une fournée'}
       </h3>
       {!(editMode && existingBatch) && <HelpBlockSlot blockKey="fournee.lancer" help={help} />}
+      {/* JEP-381 : le même bloc « Retours de mes fournées » que sur la fiche,
+          juste sous le bloc d'aide, en tête du panneau. */}
+      {derniereFois && !(editMode && existingBatch) && (
+        <div className="mb-6 empty:hidden">
+          <RetoursAuteur
+            recipeId={recipe.id}
+            etapes={[...(recipe.recipe_steps || [])]
+              .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+              .map((st) => ({ id: st.id, title: st.title }))}
+            compact
+          />
+        </div>
+      )}
       {etapesCochees > 0 && (
         <p className="mb-6 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 font-body-md text-sm text-on-surface">
           <span className="material-symbols-outlined text-[18px] text-amber-700">warning</span>

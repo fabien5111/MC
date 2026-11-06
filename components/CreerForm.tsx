@@ -14,7 +14,11 @@
 // la volée d'un libellé inconnu au référentiel réservé aux administrateurs
 // (bouton « Ajouter au référentiel »).
 import { saisieIngredient } from '@/lib/saisie-ingredient';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LeconsProvider, PorteeEdition, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
+import type { DonneesRemarques } from '@/lib/batch-lecons-data';
+import { arrondiQuantite, libelleEcartProduit, nombre, type DecisionRemarque, type Remarque } from '@/lib/batch-lecons';
+import { fmtNum } from '@/lib/recipe-plan';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -38,7 +42,7 @@ import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
 import { ADVANCE_NOTE_MAX, noteAvance } from '@/lib/recipe-view';
 import type { VisibleHelpBlock } from '@/lib/help';
-import { resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { estimateWeightGrams, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { buildIngredientsRecap } from '@/lib/ingredients-recap';
 import { IngredientsRecapList } from '@/components/IngredientsRecapList';
 import { formatDate, formatTime } from '@/lib/format';
@@ -59,6 +63,9 @@ const MAX_ALLERGENS = 3;
 type IngLine = { key: string; name: string; qty: string; unit: string; comment: string; allergen: string[] };
 type StepState = {
   key: string;
+  // Id de l'étape en base à l'ouverture (JEP-381) : sert à apparier les retours
+  // de fournées ; absent pour une étape ajoutée dans l'éditeur.
+  srcId?: number;
   title: string;
   dayOffset: string;
   // JEP-19 : l'étape peut être faite en amont (possibilité, pas le jour prévu).
@@ -81,6 +88,9 @@ type StepState = {
   collapsed: boolean;
 };
 
+// Référence stable : le fournisseur se resynchronise sur l'identité du tableau.
+const AUCUNE_DECISION_RETOURS: DecisionRemarque[] = [];
+
 type StepPhoto = { url: string; original_url: string; ai_retouched: boolean };
 
 const FORME_DIMS: Record<string, { key: string; label: string }[]> = {
@@ -92,8 +102,8 @@ const FORME_DIMS: Record<string, { key: string; label: string }[]> = {
 
 function composeMoldDesc(forme: string | null | undefined, dims: Record<string, number>): string | null {
   const keys = (FORME_DIMS[forme || ''] || []).map((d) => d.key);
-  const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k]);
-  return parts.length ? parts.join(' × ') + ' cm' : null;
+  const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k] + ' cm');
+  return parts.length ? parts.join(' × ') : null;
 }
 
 // Éclatement d'un texte de description en sous-étapes : on découpe sur les
@@ -167,6 +177,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       .map((p) => ({ url: p.url, original_url: p.original_url || p.url, ai_retouched: p.ai_retouched ?? false }));
     return {
       key: key(),
+      srcId: s.id,
       title: s.title || '',
       dayOffset: s.day_offset ? String(s.day_offset) : '',
       prepAhead: s.can_prepare_ahead === true,
@@ -204,8 +215,11 @@ export function CreerForm({
   editingOtherAuthor,
   conversions,
   ingredientRefIds,
+  ingredientDensities = [],
   initialStep,
   helpBlocks,
+  remarques = null,
+  userId = '',
 }: {
   tags: Tag[];
   units: Unit[];
@@ -229,6 +243,9 @@ export function CreerForm({
   editingOtherAuthor?: boolean;
   conversions: ConversionRef[];
   ingredientRefIds: IngredientRefOption[];
+  // Masse volumique par nom d'ingrédient (repli de `estimateWeightGrams`) :
+  // sert à peser un lait en ml dans le coefficient d'une « Quantité obtenue ».
+  ingredientDensities?: { name: string; density_g_per_ml: number }[];
   // Étape (1-indexée) sur laquelle se repositionner à l'ouverture, transmise
   // depuis la fiche recette (cf. components/recipe/RecetteToc.tsx) : on
   // rouvre l'éditeur là où la recette était consultée, plutôt qu'en haut.
@@ -238,6 +255,10 @@ export function CreerForm({
   // lib/help.ts. Tableau vide la plupart du temps (aucun bloc défini, ou
   // tout masqué), le composant ne rend alors rien.
   helpBlocks?: VisibleHelpBlock[];
+  // Retours de mes fournées (JEP-381), lus par la page pour l'auteur d'une
+  // recette déjà enregistrée ; `null` : rien à afficher.
+  remarques?: DonneesRemarques | null;
+  userId?: string;
 }) {
   useAutoGrowOnResize();
   const router = useRouter();
@@ -1201,8 +1222,70 @@ export function CreerForm({
   else if (editRecipe?.status === 'rejected') statusBadge = { label: 'Publication refusée', cls: 'bg-error text-white' };
   else if (editRecipe?.status === 'published') statusBadge = { label: 'Publiée', cls: 'bg-green-700 text-white' };
 
+  // Retours de mes fournées : les étapes et ingrédients de l'éditeur vus comme
+  // des « étapes courantes » (id = rang + 1 ; ingrédient = (rang + 1) × 1000 +
+  // rang dans l'étape), appariés par `source_step_id` puis par titre.
+  const idEtapeRetours = (si: number) => si + 1;
+  // Quantité obtenue en fournée (« 50 g en trop ») : le coefficient calculé
+  // par `RetoursEtape` est appliqué aux quantités chiffrées de l'étape, dans
+  // le formulaire seulement — rien n'est écrit avant « Enregistrer ». Les
+  // quantités non chiffrées (« 1 pincée ») restent telles quelles.
+  const ajusterEtape = async (si: number, coef: number, r: Remarque) => {
+    const st = steps[si];
+    if (!st) return;
+    const chiffrees = st.ings.filter((g) => nombre(g.qty) != null).length;
+    if (!chiffrees) return;
+    const ok = await dialog.confirm(
+      `Fournée : ${libelleEcartProduit(r.ecartProduit) ?? 'écart'}.\n\nMultiplier les ${chiffrees} quantité${chiffrees > 1 ? 's' : ''} de cette étape par ${fmtNum(coef)} ? La modification n’est enregistrée qu’avec la recette.`,
+      { okLabel: 'Ajuster', cancelLabel: 'Annuler' },
+    );
+    if (!ok) return;
+    setSteps((s) =>
+      s.map((x, k) =>
+        k !== si
+          ? x
+          : {
+              ...x,
+              ings: x.ings.map((g) => {
+                const q = nombre(g.qty);
+                return q == null ? g : { ...g, qty: fmtNum(arrondiQuantite(q * coef, g.unit)) };
+              }),
+            },
+      ),
+    );
+  };
+  const idIngredientRetours = (si: number, ii: number) => (si + 1) * 1000 + ii;
+  const signatureRetours = steps.map((st) => `${st.srcId ?? ''}|${st.title}|${st.ings.map((g) => `${g.name}/${g.unit}`).join(',')}`).join('§');
+  const { courantesRetours, ingredientsRetours } = useMemo(
+    () => ({
+      courantesRetours: steps.map((st, si) => ({ id: idEtapeRetours(si), source_step_id: st.srcId ?? null, title: st.title, order_index: si })),
+      ingredientsRetours: steps.flatMap((st, si) =>
+        st.ings.map((g, ii) => ({ id: idIngredientRetours(si, ii), batch_step_id: idEtapeRetours(si), name: g.name, unit: g.unit })),
+      ),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [signatureRetours],
+  );
+
   return (
-    <>
+    <LeconsProvider
+      reference={remarques?.reference ?? null}
+      decisions={remarques?.decisions ?? AUCUNE_DECISION_RETOURS}
+      choixDisponibles={!!remarques?.choixDisponibles}
+      plusRecenteId={remarques?.plusRecenteId ?? null}
+      anciennes={remarques?.anciennes ?? []}
+      toutesEpinglees={remarques?.toutesEpinglees ?? false}
+      recetteModifieeDepuis={remarques?.recetteModifieeDepuis ?? null}
+      courantes={courantesRetours}
+      ingredientsCourants={ingredientsRetours}
+      userId={userId}
+      recipeId={editRecipe?.id ?? null}
+      auteur
+    >
+      {/* Portée de l'édition : la case « ne plus afficher ce message » du
+          désépinglage vaut tant que cette page reste ouverte ; `key` : une
+          autre recette ouverte sans quitter la page la rétablit. */}
+      <PorteeEdition key={editRecipe?.id ?? 'nouvelle'}>
       {/* `mobile="drawer"` : sous 700 px le rail disparaît, et le bouton
           flottant reprend le sommaire *et* ces actions — c'est ce qui a
           remplacé la barre d'actions fixe de bas d'écran, qui n'offrait aucune
@@ -1312,6 +1395,18 @@ export function CreerForm({
             </span>{' '}
             {editRecipe.moderation_note}
           </p>
+        </div>
+      )}
+
+      {/* Retours de mes fournées (JEP-381) : lecture seule, recette déjà enregistrée. */}
+      {editRecipe && (
+        <div className="mb-8">
+          <RetoursAuteur
+            recipeId={editRecipe.id}
+            etapes={courantesRetours.map((c) => ({ id: c.id, title: c.title }))}
+            compact
+            ancrePrefixe="sec-etape-"
+          />
         </div>
       )}
 
@@ -1839,6 +1934,26 @@ export function CreerForm({
 
               {!st.collapsed && (
                 <div className="space-y-8 mt-8">
+                  <RetoursEtape
+                    stepId={idEtapeRetours(si)}
+                    ajustement={{
+                      lignes: st.ings.map((g) => ({ quantity: g.qty, unit: g.unit })),
+                      libelle: 'Ajuster les ingrédients de cette étape',
+                      // Masse par le référentiel, comme en fournée : l'écart porte
+                      // sur le total de l'étape, lait en ml compris.
+                      lignesMasse: st.ings
+                        .filter((g) => g.name.trim())
+                        .map((g) => {
+                          const q = parseFloat(String(g.qty).replace(',', '.'));
+                          return { name: g.name, quantity: isFinite(q) ? q : null, unit: g.unit || null, ref_id: resolveIngredientRefId(g.name, ingredientRefIds) };
+                        }),
+                      estimerMasse: (ls) => {
+                        const e = estimateWeightGrams(ls, conversions, units, ingredientDensities);
+                        return { grammes: e.grams, nonConvertis: e.unconverted.map((u) => u.name) };
+                      },
+                      onAjuster: (coef, r) => void ajusterEtape(si, coef, r),
+                    }}
+                  />
                   {si === 0 && <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} />}
                   <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
                     <label className="font-label-md text-label-md text-outline uppercase">Ajustement des quantités de cette étape</label>
@@ -2190,6 +2305,7 @@ export function CreerForm({
                             Ajouter «&nbsp;{g.name.trim()}&nbsp;» au référentiel
                           </button>
                         )}
+                        <RetoursIngredient stepId={idEtapeRetours(si)} ingredientId={idIngredientRetours(si, ii)} />
                         </div>
                       ))}
                     </div>
@@ -2239,8 +2355,8 @@ export function CreerForm({
                       // ajout à la volée et retour possible au texte libre.
                       <div className="space-y-3">
                         {st.subSteps.map((t, idx) => (
+                          <Fragment key={idx}>
                           <div
-                            key={idx}
                             className={`flex items-start gap-2 ${dragSub?.si === si && dragSub.idx === idx ? 'opacity-50' : ''}`}
                             onDragOver={(e) => {
                               if (!dragSub || dragSub.si !== si) return;
@@ -2299,6 +2415,8 @@ export function CreerForm({
                               <span className="material-symbols-outlined text-[18px]">delete</span>
                             </button>
                           </div>
+                          <RetoursSousEtape stepId={idEtapeRetours(si)} texte={t} />
+                          </Fragment>
                         ))}
                         <div className="flex flex-wrap items-center gap-6">
                           <button
@@ -2704,6 +2822,7 @@ export function CreerForm({
       {/* Enregistrement en cours (écriture puis navigation ou bascule en mode
           édition) : overlay « Le Fouet » plein écran, cf. CLAUDE.md. */}
       <LoadingOverlay visible={busy || leaving} label={leaving ? 'Retour au profil…' : 'Enregistrement de la recette…'} />
-    </>
+      </PorteeEdition>
+    </LeconsProvider>
   );
 }

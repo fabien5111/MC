@@ -50,6 +50,7 @@ export type TocSections = { before: TocItem[]; after: TocItem[] };
 // suffit à y amener.
 export const CREER_SECTIONS: TocSections = {
   before: [
+    { id: 'sec-haut', label: 'Haut de la recette', icon: 'vertical_align_top', level: 1 },
     { id: 'sec-description', label: 'Description', icon: 'edit_note', level: 1 },
     { id: 'sec-taille', label: 'Taille / Portions', icon: 'straighten', level: 1 },
     { id: 'sec-ustensiles', label: 'Ustensiles', icon: 'blender', level: 1 },
@@ -113,6 +114,9 @@ type Props = {
   // Appelé avec l'index de l'étape visée avant le défilement, pour la déplier
   // si elle est repliée.
   onNavigateToStep?: (index: number) => void;
+  // Idem pour une entrée de section (hors étape) : permet de rouvrir un bloc
+  // replié avant le défilement.
+  onNavigateToSection?: (id: string) => void;
   // Ancre de l'entrée d'étape numéro `index`. Par défaut `stepAnchorId` (fiche,
   // éditeur) ; la fournée n'a pas ces ancres — ses blocs portent `etape-<id>`
   // (Préparer) ou `sec-jalon-<n>` (Pâtisser) — et nomme les siennes.
@@ -136,6 +140,7 @@ export function RecipeToc({
   sections,
   steps,
   onNavigateToStep,
+  onNavigateToSection,
   anchorFor = stepAnchorId,
   actions,
   mobile = 'none',
@@ -162,8 +167,9 @@ export function RecipeToc({
     (id: string) => {
       const item = items.find((it) => it.id === id);
       if (item?.stepIndex !== undefined) onNavigateToStep?.(item.stepIndex);
+      else onNavigateToSection?.(id);
     },
-    [items, onNavigateToStep],
+    [items, onNavigateToStep, onNavigateToSection],
   );
 
   const { activeId, pinned, typing, togglePin, navigate, refresh } = useToc(ids, onBeforeNavigate);

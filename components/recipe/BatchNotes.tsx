@@ -67,6 +67,9 @@ export function BatchNotes({
     setEditing(true);
   }
 
+  // Fournée close (rien à ajouter) et aucune note : le bloc ne dit rien d'utile.
+  if (readOnly && !notes) return null;
+
   return (
     <div className="mb-12 border-l-4 border-green-700 bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
       <LoadingOverlay visible={busy} label="Enregistrement…" />

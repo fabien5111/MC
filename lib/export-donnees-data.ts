@@ -242,6 +242,9 @@ export async function exporterDonneesMembre(
     );
     fourneesCompletes = imbriquer(fourneesCompletes, parOrdre(nettoyer(fUstensiles, 'batch_utensils')), 'batch_id', 'ustensiles');
 
+    // Remarques gardées ou écartées (JEP-381).
+    const remarquesGardees = await lire(db, 'remarques_gardees', { colonne: 'user_id', valeur: membreId });
+
     // ── Avis, idées, favoris ─────────────────────────────────
     const [avis, idees, votes, favoris] = await Promise.all([
       lire(db, 'comments', { colonne: 'user_id', valeur: membreId }),
@@ -353,6 +356,7 @@ export async function exporterDonneesMembre(
       projets: projetsComplets,
       listes_de_recettes: imbriquer(nettoyer(listesRecettes, 'recipe_lists'), nettoyer(contenuListes, 'recipe_list_items'), 'list_id', 'recettes'),
       fournees: fourneesCompletes,
+      remarques_de_fournees: nettoyer(remarquesGardees, 'remarques_gardees'),
       avis: nettoyer(avis, 'comments'),
       idees: {
         proposees: nettoyer(idees, 'ideas'),

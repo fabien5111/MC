@@ -33,6 +33,8 @@ export type BatchListRow = {
   // séparée à joindre — l'état vit directement sur la fournée.
   date_debut: string | null;
   date_fin: string | null;
+  // « Fournée validée » : posé par `getBatches` pour les fournées terminées.
+  refaisable?: boolean;
   // Jours nécessaires : calculé depuis la fournée matérialisée (batch_steps),
   // pas depuis la recette de base qui a pu évoluer depuis. Le reste des
   // colonnes (titre, ordre, durées) sert à la vue par jour transverse à
@@ -126,7 +128,12 @@ export async function getBatches(
   if (scope === 'terminees') query = query.range(offset, offset + TERMINEES_PAGE_SIZE - 1);
   const { data, error } = await query;
   if (error) console.error('getBatches:', error.message);
-  return (data as unknown as BatchListRow[]) ?? [];
+  const rows = (data as unknown as BatchListRow[]) ?? [];
+  if (scope === 'terminees') {
+    const ref = await idsRefaisables(rows.map((r) => r.id));
+    for (const r of rows) r.refaisable = ref.has(r.id);
+  }
+  return rows;
 }
 
 // Fournées dont la cuisson est en cours (mode Pâtisser ouvert, pas encore
@@ -265,7 +272,19 @@ export type CompletedBatchRow = {
   date_fin: string | null;
   factor: number;
   user_note: string | null;
+  // « Fournée validée » (colonne posée à la main, lue à part).
+  refaisable?: boolean;
 };
+
+// Ids marqués « refaisable » parmi `ids` — lecture à part, colonne posée par
+// `psql` : absente (migration pas jouée), l'échec est ignoré et rien n'est marqué.
+export async function idsRefaisables(ids: number[]): Promise<Set<number>> {
+  if (!ids.length) return new Set();
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('batches').select('id, refaisable' as never).in('id', ids).eq('refaisable' as never, true as never);
+  if (error) return new Set();
+  return new Set(((data as unknown as { id: number }[]) ?? []).map((r) => r.id));
+}
 
 export async function getRecipeCompletedBatches(userId: string, recipeId: string): Promise<CompletedBatchRow[]> {
   const supabase = await createClient();
@@ -277,6 +296,8 @@ export async function getRecipeCompletedBatches(userId: string, recipeId: string
     .eq('status', 'terminee');
   if (error) console.error('getRecipeCompletedBatches:', error.message);
   const rows = (data as unknown as CompletedBatchRow[]) ?? [];
+  const ref = await idsRefaisables(rows.map((r) => r.id));
+  for (const r of rows) r.refaisable = ref.has(r.id);
   return rows.sort((a, b) => (b.date_fin ?? b.planned_date ?? '').localeCompare(a.date_fin ?? a.planned_date ?? ''));
 }
 

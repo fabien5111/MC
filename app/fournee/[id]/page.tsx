@@ -11,6 +11,7 @@ import { getIngredientRefAllergens } from '@/lib/imports';
 import { getMyRecipeReview, recetteEstProjetEnCours } from '@/lib/reviews-data';
 import { getVisibleHelpBlocks } from '@/lib/help';
 import { createClient } from '@/lib/supabase/server';
+import { getRemarques } from '@/lib/batch-lecons-data';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
@@ -83,7 +84,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
   const batch = Number.isFinite(batchId) ? await getBatch(batchId) : null;
   if (!batch) notFound();
 
-  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements, essaiProjet, ingredientRefs, refAllergens, moldTypes, helpBlocks] =
+  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements, essaiProjet, ingredientRefs, refAllergens, moldTypes, helpBlocks, remarques] =
     await Promise.all([
       getUnits(),
       getIngredientConversions(),
@@ -99,6 +100,10 @@ export default async function FourneePage({ params, searchParams }: Params) {
       getMoldTypes(),
       // Aide (JEP-373) : aucune sur une fournée close ou en lecture seule.
       batch.status === 'planifiee' && lecture !== '1' ? getVisibleHelpBlocks('fournee', user.id) : Promise.resolve([]),
+      // « La dernière fois » (JEP-381) : fournée source (« Refaire »), sinon
+      // dernière fournée terminée du membre sur la même recette.
+      // et choix « garder / écarter » du membre sur cette recette.
+      getRemarques({ userId: batch.user_id!, recipeId: batch.recipe_id, excludeId: batch.id, sourcePlanId: batch.source_plan_id }),
     ]);
   // Droits d'abonnement (§4 « Lancer une fournée ») : calculés une fois ici,
   // jamais recalculés plus bas dans l'arbre de composants.
@@ -154,6 +159,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
           droits={droits}
           ajustement={{ moldTypes, peutAjusterIA, quotaIA }}
           helpBlocks={helpBlocks}
+          remarques={remarques}
         />
       </main>
       <div className="no-print">

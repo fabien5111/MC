@@ -64,6 +64,9 @@ export function StepEditorCard({
   onDelete,
   onInsertBefore,
   onReorder,
+  retoursEtape,
+  retoursIngredient,
+  retoursSousEtape,
 }: {
   step: ComponentStepDraft;
   index: number;
@@ -87,6 +90,11 @@ export function StepEditorCard({
   onDelete: () => void;
   onInsertBefore: () => void;
   onReorder: (from: number, to: number) => void;
+  // Retours des fournées d'essai (JEP-381), en lecture seule : sous le titre,
+  // sous chaque ingrédient et sous chaque sous-étape. Absents : rien.
+  retoursEtape?: React.ReactNode;
+  retoursIngredient?: (g: Ingredient, j: number) => React.ReactNode;
+  retoursSousEtape?: (texte: string, k: number) => React.ReactNode;
 }) {
   const photos = step.photos ?? [];
   const sous = step.sous_etapes;
@@ -152,6 +160,7 @@ export function StepEditorCard({
 
       {!collapsed && (
         <div className="space-y-8 mt-8">
+          {retoursEtape}
           <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
             <label className="font-label-md text-label-md text-outline uppercase">Ajustement des quantités de cette étape</label>
             <select
@@ -449,6 +458,7 @@ export function StepEditorCard({
                     <span className="material-symbols-outlined text-[18px]">delete</span>
                   </button>
                 </div>
+                {retoursIngredient?.(g, j)}
               </div>
             );
           })}
@@ -501,8 +511,8 @@ export function StepEditorCard({
         ) : (
           <div className="space-y-3">
             {(sous ?? []).map((t, k) => (
+              <div key={k}>
               <div
-                key={k}
                 className="flex items-start gap-2"
                 onDragOver={(e) => {
                   if (!e.dataTransfer.types.includes(`text/projet-sous-${index}`)) return;
@@ -568,6 +578,8 @@ export function StepEditorCard({
                 >
                   <span className="material-symbols-outlined text-[18px]">delete</span>
                 </button>
+              </div>
+              {retoursSousEtape?.(t, k)}
               </div>
             ))}
             <div className="flex flex-wrap items-center gap-6">

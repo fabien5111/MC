@@ -6,14 +6,19 @@
 // relues, quantités vérifiées) sont des cases, valables tant que le contenu
 // vérifié n'a pas changé (cf. `projectTodo`, `lib/projects.ts`). Rendu pur :
 // l'écriture est faite par le parent.
+import { useEffect, useRef, useState } from 'react';
 import type { TodoItem } from '@/lib/projects';
 
 // Défile jusqu'à l'ancre ; un volet replié qui la porte (« Ajustement des
 // quantités ») est ouvert d'abord, sinon on arriverait sur un simple titre.
-function allerA(ancre: string) {
+export function allerA(ancre: string) {
   const el = document.getElementById(ancre);
   if (!el) return;
   if (el instanceof HTMLDetailsElement) el.open = true;
+  // Un bloc ou une préparation repliés (volet parent) : on les rouvre, sinon on
+  // défilerait vers un élément caché.
+  el.querySelector(':scope > details')?.setAttribute('open', '');
+  for (let d = el.closest('details'); d; d = d.parentElement?.closest('details') ?? null) d.open = true;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -28,8 +33,12 @@ export function ProjectTodo({
   onToggle,
   busy,
   id,
+  ouvert = true,
 }: {
   id?: string;
+  // État initial du volet (fixé par l'appelant au chargement). Il se replie
+  // aussi tout seul au moment où le dernier point passe à « fait ».
+  ouvert?: boolean;
   items: TodoItem[];
   onToggle: (it: TodoItem) => void;
   busy: boolean;
@@ -37,6 +46,17 @@ export function ProjectTodo({
   const faits = items.filter((i) => i.etat === 'fait').length;
   const total = items.length;
   const pct = total ? Math.round((faits / total) * 100) : 0;
+  const toutFait = total > 0 && faits === total;
+  // Volet piloté : replié dès que le dernier point est coché (transition
+  // « pas tout fait » → « tout fait », jamais à chaque rendu : le membre garde
+  // la main s'il le rouvre). `onToggle` garde l'état aligné sur ses clics et sur
+  // `allerA`, qui ouvre le volet directement dans le DOM.
+  const [open, setOpen] = useState(ouvert);
+  const etaitFait = useRef(toutFait);
+  useEffect(() => {
+    if (toutFait && !etaitFait.current) setOpen(false);
+    etaitFait.current = toutFait;
+  }, [toutFait]);
   const prochain = items.find((i) => i.etat !== 'fait');
   const groupes: { nom: string; items: TodoItem[] }[] = [];
   for (const it of items) {
@@ -46,8 +66,8 @@ export function ProjectTodo({
   }
 
   return (
-    <details id={id} open className="mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest p-4">
-      <summary className="flex cursor-pointer flex-wrap items-center gap-3">
+    <details id={id} open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className="mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest p-4 group">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 [&::-webkit-details-marker]:hidden">
         <span className="font-label-md text-[13px] uppercase tracking-widest text-secondary">Reste à faire</span>
         <span className="font-label-md text-[12px] text-on-surface-variant">
           {faits} / {total}
@@ -55,6 +75,9 @@ export function ProjectTodo({
         </span>
         <span className="h-2 min-w-[8rem] flex-1 overflow-hidden rounded-full bg-surface-container-high" aria-hidden="true">
           <span className="block h-full rounded-full bg-green-700 transition-all" style={{ width: `${pct}%` }} />
+        </span>
+        <span className="material-symbols-outlined transition-transform group-open:rotate-180" aria-hidden="true">
+          expand_more
         </span>
       </summary>
 

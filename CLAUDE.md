@@ -1221,8 +1221,8 @@ directes :
     confirmation explicite sur une fournée `terminee`, absente pour un
     abandon.
   **Le verrou doit s'énoncer là où il se fait sentir** : un bandeau en tête
-  des deux modes dit pourquoi tout est grisé et porte le bouton de reprise.
-  Le lien de l'en-tête ne suffit pas — il sort du champ dès qu'on a déroulé
+  des deux modes dit pourquoi tout est grisé et porte **seul** le bouton de reprise (l'ancien lien de l'en-tête, en double, a été retiré le 05/11/2026).
+  Le lien de l'en-tête ne suffisait pas — il sort du champ dès qu'on a déroulé
   la page, et une case grisée sans explication ni porte de sortie se lit
   comme une panne, pas comme un état.
   **Lever `?lecture=1` passe par `router.replace`, jamais par `refresh`** :
@@ -1244,6 +1244,15 @@ directes :
   retirées y sont donc visibles, barrées, avec leur picto « rétablir » — le
   déroulé les masquait, le geste n'aurait plus eu de porte. Mode Pâtisser
   inchangé ; colonnes et gestes `no-print`.
+  **Case « Afficher le total des ingrédients »** (06/11/2026) sous l'ajout d'un
+  ingrédient : une ligne « Total de l'étape » (masse ajustée / d'origine, sur les
+  mêmes colonnes) par `totalEtape` (`lib/total-etape.ts`, pur et testé), avec
+  `estimateWeightGrams` — lait en ml pesé par sa masse volumique
+  (`ingredientDensities`, passé par `BatchView`). Lignes retirées ou remplacées
+  par une recette écartées ; une ligne sans conversion est **nommée** (« Hors
+  total… »), jamais passée sous silence. Un seul réglage pour toutes les étapes,
+  mémorisé dans le navigateur (`useTotalEtape`, `localStorage`, rien en base).
+  Mode Préparer seulement.
 - **Un ingrédient ajouté à la main se saisit comme dans `/creer`** (JEP-368,
   `AddedIngredientForm` de `BatchIngredientsEditor`) : nom proposé depuis le
   référentiel (datalist), quantité, unité, commentaire et allergènes (3 au plus,
@@ -1298,6 +1307,7 @@ directes :
   « Ma note » — la note personnelle, justement celle qu'on écrit pour ajuster
   la recette, y était donc structurellement invisible. Les deux sont
   désormais rendues, sous deux libellés distincts.
+- **Le constat du jour J (« Ce qui s'est passé sur cette étape » + « Quantité obtenue ») reste visible étape repliée** (mode Pâtisser, `StepCookCard`) : hors du volet, comme la note personnelle — on le saisit et on le relit étape par étape, y compris sur une étape terminée.
 - **Une note personnelle n'est jamais repliée avec l'étape.** Une étape
   entièrement traitée se replie (`collapsible`, cf. `stepFullyDone`), mais son
   bloc « Ma note » reste hors du volet : c'est le seul contenu de l'étape qui
@@ -1332,6 +1342,8 @@ directes :
   non un `<label>`, qui renverrait vers la case à cocher tout clic sur le
   titre, et un `stopPropagation` sur la case — sans lui, cocher une étape la
   replierait au passage.
+- **Le titre de la fournée renvoie à la recette d'origine** (`/recette/<id>`, `BatchView`), seulement si la recette existe encore et reste lisible (`baseRecipe` non nul) : supprimée ou devenue illisible, le titre reste un simple texte, jamais un lien mort. Un projet en cours y est redirigé vers sa page projet par la fiche elle-même.
+- **Cocher une étape depuis son en-tête la replie** (mode Pâtisser, `StepCookCard`) : elle est terminée. Seul ce geste replie — l'auto-coche déclenchée par le dernier ingrédient ou la dernière sous-étape ne referme rien sous le doigt ; la case se décoche sans rouvrir.
 - **Le sommaire de la fournée vise SES ancres, pas celles de la fiche.**
   `RecipeToc` vise par défaut `sec-etape-N` (`stepAnchorId`), qui n'existent que
   sur la fiche recette et dans les éditeurs : dans la fournée, les entrées
@@ -1483,13 +1495,122 @@ directes :
   remis à zéro, tout le reste (ajustements, ingrédients ajoutés/retirés,
   étapes déplacées, remplacements par une sous-recette, notes) repris tel
   quel. Ça ne requête jamais la recette de base — la fournée copiée est déjà
-  autonome, et ça fonctionne même si cette recette a disparu depuis.
+  autonome, et ça fonctionne même si cette recette a disparu depuis. **Fenêtre dédiée** (05/11/2026, plus de `dialog.prompt`) : message « reprise à l'identique », vrai champ date (calendrier, **préremplie avec la date du jour du navigateur** — `aujourdhuiLocal`, jamais `toISOString`, qui donne la date UTC —, `min` = aujourd'hui, bouton grisé sans date) et zone « Commentaire » comme dans « Lancer une fournée », préremplie avec les notes de la fournée d'origine et modifiable (écrite dans `batches.notes` de la nouvelle fournée).
+  **Portes d'entrée et marque « Fournée validée »** (05/11/2026, libellé du 06/11/2026 ; ex- « à refaire en l'état ») : la fenêtre et la duplication vivent dans `useRefaireFournee` (`components/batch/RefaireFournee.tsx`), partagé par En cuisine (`CuisineContent`) et la fiche recette (`MesFourneesTerminees` : bouton « Refaire » sur chaque fournée terminée, bloc déplié d'office si l'une est marquée). **`batches.refaisable`** (booléen, défaut `false`, colonne posée par `psql`, nœud 216075) : case « Fournée validée : tout s'est bien passé » dans le résumé d'une fournée close (`SummaryPanel`, modifiable comme le commentaire global) et question à la clôture (`useDemanderRefaisable`, `BatchView` ET `PlanningDayView`). Pastille verte « Fournée validée » dans la fiche recette et dans « Fournées terminées » (En cuisine). **Lue à part** (`idsRefaisables`, `lib/profile.ts`) : colonne absente (migration pas jouée) → rien n'est marqué, la case est masquée, rien ne casse. « Refaire » ne recopie pas la marque. **La question de clôture dit si d'autres fournées de la recette sont déjà validées** (`autresFourneesValidees`, `phraseDejaValidee`, 06/11/2026 : « La fournée du 03/11 est déjà validée… ») pour que le membre sache s'il veut valider celle-ci aussi ; lecture best-effort, colonne absente ou échec = question d'origine, sans la phrase. **Valider ouvre l'écran de tri des retours** (06/11/2026, `components/batch/ValidationFournee.tsx`) : à la question de clôture (`BatchView.finishBatch`) comme à la case du résumé (`SummaryPanel`), une fenêtre liste les retours de CETTE fournée puis ceux hérités des précédentes, chacun avec son épingle (`ChoixRemarque`, sans confirmation à chaque clic — `PorteeEdition silencieux`). Ce qui reste épinglé est rappelé dans les « Refaire » suivants ; rien de nouveau n'est stocké (`remarques_gardees`). Absent de la clôture de `PlanningDayView` (pas de `LeconsProvider` : tout reste épinglé par défaut, le tri se refait depuis le résumé). La fournée créée s'ouvre en **mode Préparer** (`?mode=preparer`), quelle que soit la porte d'entrée.
 - **RLS à deux couches**, motif repris de `shopping_lists` : une policy
   `<table>_proprietaire` (`FOR ALL`, rôle `public`, basée sur `owns_plan()`)
   + trois policies `impersonation_ro_*` (`RESTRICTIVE`, rôle `authenticated`)
   qui bloquent toute écriture en session « en tant que » lecture seule, quel
   que soit le propriétaire. `owns_execution()` ne sert plus qu'aux policies
   des tables `*_legacy`.
+
+## « La dernière fois » : leçons des fournées précédentes (JEP-381)
+
+Remet sous les yeux, au moment où ça sert, ce que le membre a constaté lors de
+ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
+`lib/batch-lecons.ts` (testée) ; lecture : `lib/batch-lecons-data.ts`
+(`getRemarques`) ; écriture : `lib/batch-lecons-client.ts` ; affichage :
+`components/batch/DerniereFois.tsx`.
+
+- **Une remarque** = un constat identifiable (`nature` + id de la ligne qui la
+  porte) : commentaire d'étape, de sous-étape, d'ingrédient (et écart « 180 g
+  utilisés au lieu de 200 g »), commentaire global. **Rien n'est copié
+  dans la fournée suivante : tout est LU.**
+- **Fournée de référence** (sous la session, RLS) : la fournée source
+  (`source_plan_id`, « Refaire ») si elle est lisible, sinon la plus récente
+  fournée `terminee` du membre sur la même recette, hors la fournée courante.
+- **Fournée repartant de la recette : toutes les fournées terminées** (arbitrage du 05/11/2026). Hors « Refaire », `getRemarques` lit les `FOURNEES_LUES_MAX` (10) fournées `terminee` les plus récentes de la recette (abandonnées exclues) : la plus récente est la référence, les autres `anciennes` ; leurs remarques s'affichent toutes, **épinglées par défaut** (`toutesEpinglees`, `LeconsProvider`), sauf celles qu'on a désépinglées. Vaut pour la fournée, la fiche recette, `/creer` et le mode projet. **Le bouton d'ajustement d'une « Quantité obtenue » n'est proposé qu'à l'AUTEUR de la recette** (arbitrage du 06/11/2026 : il corrige sa recette d'après ses retours), et **seulement sur l'écart le plus récent de l'étape** (`estEcartLePlusRecent`, `PropositionEcart`) : les écarts plus anciens restent affichés, sans bouton, sinon une étape proposerait des coefficients contradictoires. **Recette d'un autre : retours = pense-bêtes**, écart affiché sans bouton, quantités à corriger à la main dans la fournée ; si l'auteur a modifié la recette depuis la fournée de référence (`recipes.updated_at` > `batches.created_at`, `recetteModifieeDepuis`, `getRemarques`), un avertissement le dit en tête du bloc « Retours de mes fournées ». Plan Pro, à venir (lot 2) : enregistrer une fournée comme recette privée non publiable, dont le membre devient l'auteur. **Une fournée refaite (« Refaire ») lit la chaîne** (06/11/2026) : la fournée d'origine est la référence, et ses ancêtres via `source_plan_id` (jusqu'à `FOURNEES_LUES_MAX`, arrêt à la première fournée supprimée ou illisible) sont ses `anciennes`, toutes épinglées par défaut (`toutesEpinglees`) — avant, la chaîne s'arrêtait à la fournée source : refaite puis terminée sans commentaire, elle ne rappelait plus rien au 2ᵉ « Refaire ». C'est à la validation de la fournée qu'on désépingle ce qui ne sert plus.
+- **Règle d'affichage unique** (`remarquesAffichees`, arbitrage du 31/10/2026) :
+  les remarques de la fournée de référence **en entier par défaut**, SAUF celles
+  que le membre a **écartées**, PLUS celles qu'il a **gardées** dans des
+  fournées plus anciennes. Même règle pour l'auteur et les autres ; seul le
+  libellé de l'infobulle change (pour l'auteur : « décochez quand c'est corrigé
+  dans votre recette »).
+- **Un seul picto, l'épingle** (`ChoixRemarque`, arbitrage du 01/11/2026), posé
+  **devant** « Mon commentaire : » (et devant les autres libellés du résumé).
+  Elle dit « cette remarque réapparaîtra-t-elle ? » : **épinglée d'office** pour
+  les remarques de la fournée de référence et de la plus récente fournée
+  terminée (`plusRecenteId`), **non épinglée** pour les plus anciennes. Un clic
+  bascule l'état effectif (`epinglee` / `basculer`, `LeconsProvider`) ; la
+  ligne de `remarques_gardees` n'est écrite que si le choix s'écarte du défaut
+  (`gardee` = épinglée contre le défaut, `ecartee` = décochée contre le défaut),
+  supprimée sinon — la table et la règle d'affichage ne changent pas.
+  **Désépingler demande confirmation** (« ne s'affichera plus lors de vos prochaines
+  fournées ») et la remarque **reste affichée, picto éteint, jusqu'au prochain
+  rechargement** (`decisionsOuverture` : la liste est celle de l'ouverture de la page,
+  plus les remarques épinglées depuis) ; la réépingler est possible d'ici là.
+  **Dans un écran d'édition** (`/creer`, fenêtre « Modifier cette préparation » du mode
+  projet), la confirmation porte une case « Ne plus afficher ce message pour les
+  modifications en cours » (`dialog.confirm`, option `caseACocher`, retenue seulement si
+  la confirmation est acceptée) : `PorteeEdition` (`DerniereFois.tsx`, état React, rien
+  de stocké) coupe alors la question tant que l'écran reste monté. Rouvrir l'écran la
+  rétablit — `key` = la préparation ouverte (`ProjectV2`) ou la recette éditée
+  (`CreerForm`). Ailleurs (fiche, fournée, page projet), la question reste systématique.
+- **Table `remarques_gardees`** (une ligne par choix, `unique (user_id, nature,
+  ligne_id)`, statut `gardee` / `ecartee`), et non une colonne sur les tables
+  `batch_*` : une fournée se supprime d'un geste, en cascade, et ce que le
+  membre a demandé de garder ne doit pas partir avec elle. `batch_id` en `on
+  delete set null` ; la ligne porte une **copie** du texte (`texte`, `libelle`,
+  `ecart`, titre d'étape), qui ne sert que si la fournée d'origine a disparu —
+  sinon le texte vivant est relu (`rafraichir`), un commentaire corrigé s'y
+  reflète, et un commentaire effacé fait disparaître la remarque. Écriture par
+  le navigateur sous RLS (propriétaire seul, + `impersonation_ro_*` et
+  `blocked_user_*`), optimiste dans `LeconsProvider` (aucune resynchronisation
+  serveur). **Table absente** (migration pas jouée) : remarques affichées comme
+  avant, pictos masqués (`choixDisponibles`). Absente des types générés : accès
+  non typé. **RGPD** : dans `TABLES_A_VIDER` et dans l'export (rubrique
+  `remarques_de_fournees`).
+- **Appariement aux étapes courantes** (`leconsPrecedentes`) — les id d'étape
+  changent à chaque enregistrement de `/creer` : par fournée d'origine, même
+  `source_step_id`, sinon même titre normalisé (`normSearch`, dans l'ordre du
+  déroulé), sinon bloc « Autres remarques ». Une remarque n'est jamais perdue en
+  silence. Ingrédients : `ingredientKey` + unité. Remarques de plusieurs
+  fournées sous une même étape : la plus récente d'abord, la date rappelée pour
+  les anciennes.
+- **Où** (`LeconsProvider` + contexte) : en tête du panneau « Lancer une
+  fournée », sous « Aides et conseils », **le même bloc « Retours de mes
+  fournées » que sur la fiche** (`RetoursAuteur`, `BatchWidget`, prop
+  `derniereFois`, jamais en modification d'un ajustement ; le lien « Modifier
+  cette étape » n'y est offert qu'à l'auteur) ; en tête de la fournée, dans les deux modes, **le même bloc « Retours de mes
+  fournées »** (`RetoursAuteur`, `ancrePrefixe`, avec un lien « Aller à l'étape » vers
+  l'ancre `#etape-<id>` de la page au lieu de « Modifier cette étape » : les étapes
+  d'une fournée ne sont pas celles de la recette) ; **sous la date de chaque étape** (intitulé « Retours de mes fournées »), en
+  Préparer (`BatchStepDonePanel`, prop `derniereFois`) et en Pâtisser (sous
+  l'en-tête de la carte, visible étape repliée) ; **pour tout membre connecté**, bloc
+  « Retours de mes fournées » sur la fiche recette (`RetoursAuteur`, étape par
+  étape ; les retours sont lus par membre, chacun voit les siens ; le lien « Modifier cette étape » vers `/creer` reste réservé à l'auteur) ; **dans l'éditeur
+  `/creer`** d'une recette déjà enregistrée, pour son auteur : le même bloc en tête
+  (`ancrePrefixe="sec-etape-"` : lien « Aller à l'étape »), et les remarques **sous la
+  ligne qu'elles concernent** — sous le titre de l'étape (`RetoursEtape`), sous chaque sous-étape (`RetoursSousEtape`, appariée
+  par son texte normalisé dans l'étape retrouvée, `remarquesDeSousEtape`) et sous
+  chaque ingrédient (`RetoursIngredient`) avec le coefficient de la fournée et la
+  quantité à coefficient 1 (« ×1,5 : 180 g utilisés (120 g à coefficient 1) »,
+  `libelleCoefficient`, `FourneeReference.facteur` = `batches.factor`). Lecture
+  seule, épingles comprises ; `StepState.srcId` (id d'étape en base à l'ouverture)
+  sert de `source_step_id`, les étapes ajoutées dans l'éditeur ne s'apparient que
+  par titre. Une sous-étape retouchée depuis ne s'apparie plus : sa remarque reste
+  dans le bloc. L'épingle est aussi dans le **résumé** d'une fournée close (`SummaryPanel`,
+  `ChoixRemarque`) : on y trie à chaud ce que la fournée suivante affichera, et
+  on y rétablit une remarque écartée. `no-print` partout.
+- **En fournée, les retours se posent sous la ligne qu'ils concernent** (Préparer et Pâtisser, tout membre, auteur ou non) : `RetoursSousEtape` sous chaque sous-étape, `RetoursIngredient` sous chaque ingrédient (`BatchStepDonePanel`, `BatchIngredientsEditor`, `StepCookCard`), comme dans `/creer` ; le bloc sous la date de l'étape (`DerniereFoisEtape`) ne garde que le commentaire de l'étape. Une remarque qui ne s'apparie à aucune ligne affichée reste dans le bloc de tête (`RetoursAuteur`).
+- **Fiche recette : les retours sous la ligne qu'ils concernent** (04/11/2026) : `RecipeStep` reçoit `retoursEtape` (`RetoursEtape`), `retoursSousEtape` et `retoursIngredient`, comme en fournée, dans `/creer` et en mode projet — pour tout membre connecté (retours lus par membre). Le `LeconsProvider` enveloppe donc tout le contenu de la fiche (et plus seulement le panneau de fournée), sans quoi les étapes, rendues plus bas, ne le voyaient pas. Pas de bouton d'ajustement sur la fiche (il modifie le formulaire de `/creer`). Le bloc de tête « Retours de mes fournées » liste toujours tout (comme côté projet) : une remarque apparaît donc aussi sous sa ligne.
+- **Sommaire de la fiche recette : entrée « Haut de la recette »** (`sec-haut`, posée sur le `<main>` de `app/recette/[id]/page.tsx`), comme « Haut de la fournée » dans `BatchView` ; même entrée dans l'éditeur `/creer` (`CREER_SECTIONS`, ancre posée sur le `<main>` de `app/creer/page.tsx`).
+- **Mode projet : les retours des fournées d'essai** (`/projets/[id]`, `ProjectV2`). Un essai étant une fournée du projet (`batches.recipe_id` = le projet), `getRemarques` s'applique tel quel : la page le lit (best-effort) et `ProjectV2` monte un `LeconsProvider` (`auteur`). Bloc « Retours de mes fournées » en tête du bloc « Étapes » (`RetoursAuteur`, lien « Aller à l'étape » vers `#etape-<id>`), puis retours sous l'étape, la sous-étape et l'ingrédient qu'ils concernent — `RecipeStep` gagne trois emplacements facultatifs (`retoursEtape`, `retoursIngredient`, `retoursSousEtape`), vides sur la fiche recette. Appariement par `source_step_id` puis par titre : une préparation re-résolue recrée ses étapes, la remarque retombe alors dans le bloc de tête. Un essai se lance à ×1 : aucun libellé de coefficient.
+- **Fenêtre « Modifier cette préparation » : les retours sous la ligne qu'ils concernent** (`ComponentResolver` → `StepEditorCardAvecRetours`, `StepEditorCard` props `retoursEtape` / `retoursIngredient` / `retoursSousEtape`), pour corriger en les ayant sous les yeux : commentaire et quantité obtenue sous le titre de l'étape, retours de sous-étape (texte normalisé) et d'ingrédient (`RetoursIngredientNom` : `ingredientKey` + unité — les lignes du brouillon n'ont pas d'id). L'étape est retrouvée par `ComponentStepDraft.etape_id` (posé par `readComponentDraft`, **jamais écrit**), sinon par son titre (`useEtapeRetours`). **Rattachés au texte d'ORIGINE, pas au texte courant** (`apparier`, `lib/batch-lecons.ts`, testé) : la carte garde ce que l'étape contenait à son ouverture et rattache chaque ligne courante à son original (lignes identiques d'abord, puis le reste dans l'ordre) — sinon le retour disparaissait à la première lettre tapée, au moment même où on corrige la ligne ; `key` de la carte = id d'étape enregistrée. Une ligne ajoutée dans la fenêtre n'a pas de retour. Lecture seule, épingle comprise ; **pas de bouton d'ajustement ici** (une quantité retouchée dans la fenêtre sort la ligne du recalcul : l'écart passe par « Préparer l'ajustement de la préparation »). Rien hors de la page projet (pas de `LeconsProvider`).
+- **Bloc « Essais » : le bloc complet des retours de l'essai remplace le champ de note** (`ProjectTrials`, prop `retoursEssais`, `RetoursEssai` dans `DerniereFois.tsx`, lecture `getRemarquesEssais`, `lib/batch-lecons-data.ts`). Le bloc de chaque essai est **replié par défaut**. **Comparer** : sous le tableau des quantités, un second tableau « Retours » met côte à côte le commentaire global et, par étape (appariée par titre), le commentaire d’étape suivi de la quantité en trop / manquante ; jamais les commentaires de sous-étapes ni d’ingrédients (`retoursComparés`, `ProjectTrials`). Chaque essai montre, en lecture seule, ce que sa fournée a constaté — commentaire global, étapes, sous-étapes, ingrédients — sans épingle ni date (tout vient du même essai) ; la note n'y est plus éditable : on ouvre la fournée par le titre de l'essai (pas de lien en double sous le bloc) — une fournée close est verrouillée, seule « Reprendre cette fournée » la rouvre. La case « Comparer » se pose à côté du titre. Sans la prop (appelant antérieur), le champ de note d'origine reste. Fournis par la page projet et par la fiche d'un projet validé (propriétaire).
+- **Nombre de retours dans l'en-tête de chaque volet « Étapes »** du mode projet (`NombreRetours`, `DerniereFois.tsx`) : « Étapes · 1 · relues · 2 retours de fournée », en bordeaux, somme des remarques appariées aux étapes de la préparation (`lecons.parEtape`) ; absent à zéro, et les remarques non appariées à une étape (bloc de tête) n'y sont pas comptées. **Seules les remarques épinglées comptent** (une remarque désépinglée reste affichée, picto éteint, jusqu'au rechargement). **Un retour de sous-étape ou d'ingrédient dont la ligne a été retouchée ou supprimée depuis la fournée n'est plus compté** (prop `lignes`) : il ne se pose sous aucune ligne ; le bloc « Retours de mes fournées » de tête, lui, le liste toujours (côté projet). **Mais une ligne SUPPRIMÉE n'est plus rappelée nulle part** (`leconsPrecedentes`, 03/11/2026 ; fournée, fiche recette et page projet) : quand l'étape courante fournit le texte de ses sous-étapes (`EtapeCourante.sousEtapes`, fournée) le retour d'une sous-étape absente est écarté, et un retour d'ingrédient dont le nom ne figure plus dans l'étape l'est aussi (une unité changée le garde) (dès que les ingrédients courants sont fournis). Le compte du volet « Étapes » n'a donc plus que le reste à écarter côté projet.
+- **Coefficient de la fournée à côté de la date** : « fournée du 31/10 (coef ×1,5) » (`coefFournee`, `lib/batch-lecons.ts` ; `Remarque.facteur` est posé sur toutes les natures par `remarquesDeFournee`). Absent d'une remarque gardée relue depuis `remarques_gardees` seule (la table ne porte pas le coefficient) : la date s'affiche alors sans parenthèses.
+- **Ajuster depuis Préparer, sur une fournée en cours seulement** (04/11/2026) : la date et le coefficient sont rappelés sur **toute** remarque (`RemarqueLigne`), fournée de référence comprise, et la remarque d'étape qui porte un écart de « Quantité obtenue » offre « Ajuster les ingrédients de cette étape (×N) » (`DerniereFoisEtape`, prop `ajustement` ; `ajustementDeEtape`, `PreparerView`). Il multiplie, après confirmation, les quantités des lignes de la **fournée** (`batch_ingredients.quantity`, `arrondiQuantite`) — jamais la recette d'origine, donc valable pour une recette dont on n'est pas l'auteur. Lignes retirées, remplacées par une recette ou ajoutées à la main écartées ; un coefficient déjà retouché à la main sur les autres est remplacé (la confirmation le dit). Absent sur une fournée close (`readOnly`) et en mode Pâtisser. **Placement** : en Préparer, le retour qui porte une « Quantité obtenue » n'est pas sous la date mais **tout en haut du bloc « Ingrédients de l'étape »**, au-dessus des quantités (`RetoursEcartEtape`, prop `retoursEcart` de `BatchStepDonePanel`) ; sous la date ne restent que les commentaires sans écart (`DerniereFoisEtape`, `sansEcart`). Quand l'éditeur d'ingrédients est monté, le bloc se pose **sous le bloc « Aides et conseils »**, juste au-dessus du tableau (05/11/2026) ; fournée close, il reste en tête du bloc. Mode Pâtisser inchangé.
+- **Habillage des retours (01/11/2026)** : texte en bordeaux (`text-primary`), italique conservé, graisse normale, libellés « Retours de mes fournées : » en gras (« Mon commentaire » en normal ; le commentaire global n'a pas de préfixe à côté de l'épingle, il est sous le titre en gras « Commentaire global » du bloc de tête et de chaque essai), liseré gauche bordeaux atténué (`border-primary/50`) ; liseré gauche bordeaux atténué. Un seul fichier : `DerniereFois.tsx`.
+- **Quantité obtenue d'une étape** (`batch_steps.ecart_produit_g`, grammes signés : > 0 en trop, < 0 manquante) : champ « Quantité obtenue » sous « Mon commentaire » en mode Pâtisser (`EcartProduitChamp`, `BatchView` ; un nombre + « en trop / manquants », écrit à la sortie du champ, verrouillé sur une fournée close comme le commentaire). C'est un nombre et non une phrase pour que l'ajustement puisse s'en servir. La remarque d'étape le porte (`ecartProduit`, `ecart` = « 50 g en trop », masse réalisée `masseFournee` = quantités réelles, sinon prévues, hors lignes retirées), affiché partout où passent les retours et dans le résumé. **Coefficient** (`coefficientEcart`, `lib/batch-lecons.ts`, pur et testé) : masse visée = (masse de la fournée − écart) / coefficient de la fournée, comparée à la masse ACTUELLE des ingrédients de l'étape — juste même si les quantités ont été retouchées depuis (le bouton annonce alors « tiennent déjà compte de cet écart »). **Masse en fournée = par le référentiel** (05/11/2026) : l'écart porte sur le TOTAL de l'étape ; compter les seules lignes en g laissait un lait en ml hors de la masse (180 g au lieu de 555 g) et donnait ×2,11 au lieu de ×1,36, appliqué ensuite à toutes les lignes. La remarque transmet donc ses lignes (`Remarque.lignesMasse`, `ref_id` compris) et l'écran les convertit avec `estimateWeightGrams` (conversions propres à l'ingrédient, masse volumique, jamais « 1 ml = 1 g ») par `AjustementEcart.estimerMasse` — des DEUX côtés, de la même façon. **Une ligne sans conversion ni masse volumique** (`nonConvertis`) retire le bouton : le coefficient est seulement indiqué, avec les noms à renseigner dans le référentiel. **/creer et mode projet : même estimateur** (06/11/2026) — les pages passent `getIngredientDensities()` (`ingredientDensities`) à `CreerForm` et `ProjectV2`, qui fournissent `lignesMasse` (`ref_id` résolu par `resolveIngredientRefId` dans `/creer`, celui de la ligne en mode projet) et `estimerMasse`. Sans cela, la masse de la fournée ne comptait que les lignes en g (180 g) face à une recette dont le lait en ml était lui aussi ignoré (120 g) : ×0,44 au lieu d'environ ×0,82. Le repli sur les seules lignes en g (`masseGrammes`) ne subsiste que si un écran ne fournit pas d'estimateur. **Recette** (`/creer`, `RetoursEtape` prop `ajustement`) : « Ajuster les ingrédients de cette étape (×0,84) » multiplie, après confirmation, les quantités chiffrées de l'étape dans le formulaire (`arrondiQuantite` : au gramme dès 20 g) — rien n'est écrit avant « Enregistrer ». ****Fournée déjà à un coefficient** (05/11/2026) : `coefficientEcart` reçoit `facteurCourant` (`AjustementEcart.facteurCourant`, `batch.factor` en Préparer) et multiplie la cible par lui — sans quoi, dans une fournée refaite à ×1,5, la cible ramenée à ×1 était comparée à une masse à ×1,5 (697,5 g, 100 g en trop → ×0,57 au lieu de ×0,857). Défaut 1 : `/creer` et mode projet inchangés. **Position de la page conservée** après « Ajuster les ingrédients de cette étape » (`scrollAvantAjuster`, restaurée à la fin de la resynchronisation). **Mode projet** (03/11/2026, simplifié) : « Modifier les quantités avec ce coefficient (×0,89) » demande confirmation puis **multiplie TOUTES les quantités chiffrées de la préparation** par ce coefficient, lignes retouchées à la main comprises (`scaleAllLines`, `lib/projects-write.ts`) : le coefficient a été calculé sur les quantités ACTUELLES, il s'applique donc à elles. Une ligne sans quantité d'origine en reçoit une (actuelle ÷ facteur d'avant) et suit désormais les ajustements globaux ; le facteur de la préparation devient facteur × coefficient. Plus de préremplissage du volet « Ajustement des quantités » (la prop `suggestion` de `QuantitiesStep` n'est plus alimentée). Seulement si l'étape porte tous les ingrédients de la préparation (un seul coefficient par préparation), sinon le coefficient est seulement indiqué. Colonne posée par `psql` (nœud 216075), lue par `select('*')` : avant la migration, le champ n'est pas proposé. Une remarque gardée d'une fournée plus ancienne n'affiche que le libellé (pas de bouton). « Refaire » ne recopie pas l'écart. La justification « Fournée d’essai : … » écrite dans `scale_reason` n’est plus affichée dès que plus aucun retour épinglé avec un écart ne subsiste pour les étapes de la préparation (`raisonVisible`, `QuantitiesStep`, prop `etapeIds`) ; la colonne n’est pas réécrite.
+- **Conseils & astuces d’une étape dépliés par défaut en mode Préparer** (`BatchView`), comme sur la fiche recette (`RecipeStep`).
+- **Le « Commentaire global » du résumé est modifiable sur une fournée close** : le résumé n'existe que sur une fournée close (donc verrouillée), et le champ était `disabled` par `readOnly` — le bilan ne pouvait être écrit nulle part. `SummaryPanel` porte désormais son propre enregistrement différé (800 ms) et ne se bloque que sous impersonation lecture seule, (le champ porte lui-même son enregistrement).
+- **Résumé de la fournée** (`SummaryPanel`) : affiché en Pâtisser ET en
+  Préparer (au-dessus de la photo) sur une fournée close. Plus de durée,
+  d'étapes réalisées ni de jalons ; commentaires d'étape sur deux lignes
+  (titre, « Mon commentaire : … ») ; ceux des sous-étapes dans un volet déplié par défaut.
+  Sur une fournée close, les blocs « Ma note » vides sont omis.
+- **Bilan de la fournée à la clôture** (arbitrage du 04/11/2026, remplace « À retenir pour la prochaine fois ») : question facultative après « Terminer » (`BatchView.finishBatch` ET `PlanningDayView`, `useDemanderBilan`, `lib/batch-lecons-client.ts`), **écrite dans `batches.commentaire_global`** — le même champ que le « Commentaire global » du résumé, qui reste modifiable ensuite. Préremplie si un commentaire existe déjà (fournée reprise). Événement GA `saisir_bilan`. L'ancienne colonne `batches.lecon` reste en base, **ni lue ni écrite** (plus de nature de remarque `lecon`, plus de ligne « À retenir » dans le résumé, le tableau « Comparer » des essais ni l'export des retours) ; les épingles `lecon` déjà posées dans `remarques_gardees` sont orphelines, sans effet. « Refaire » ne recopie pas le bilan.
 
 ## Avis sur une recette (note + commentaire)
 
@@ -1621,6 +1742,7 @@ essais et la validation arrivent par lots successifs.
 - **`lib/projects.ts` (pur) / `lib/projects-data.ts` (base, server-only)** :
   même séparation que `ideas.ts` / `ideas-data.ts`, sans quoi le formulaire
   client tirerait `next/headers` et casserait le build.
+- **Dimensions d'un moule : l'unité suit chaque dimension** (04/11/2026) : « 6 × Ø 8 cm × 2 cm », jamais « Ø 8 × 2 cm ». Même règle aux quatre générateurs de `recipes.yield_desc` (`composeMoldDesc` de `CreerForm` et `RelectureEditor`, `formatYieldDesc` et `dimsTexte` de `lib/projects.ts`) et à l'étiquette « Moule : … » de `BatchWidget`. Le texte étant **enregistré**, les recettes existantes gardent l'ancien format jusqu'au prochain enregistrement ou au rattrapage SQL (pgweb, `yield_desc` seulement).
 - **Le format vit sur `recipes`, jamais dans une table satellite** :
   `measure_type`, `mold_type_id`, `mold_dims`, `servings`, `yield_*`. Tout
   format en moule (rond, cadre, bûche = `demi-cylindre`, empreintes) se
@@ -1806,13 +1928,7 @@ essais et la validation arrivent par lots successifs.
   d'une recette ordinaire (`lib/batch-write.ts`, extrait de `BatchWidget` pour
   être partagé), avec un facteur de **1** : les quantités du projet sont déjà
   celles du format visé, un second coefficient les fausserait.
-- **Promouvoir les quantités d'un essai** (§7.4) apparie les lignes par
-  `batch_steps.source_step_id` → étape du projet → son groupe d'ingrédients
-  (par `order_index`) → le nom à l'intérieur du groupe. S'appuyer sur le seul
-  nom confondrait deux « Sucre » appartenant à deux composants différents. La
-  quantité mesurée devient aussi la nouvelle `base_quantity` : ce qui a
-  réellement fonctionné devient la référence, et un futur changement de format
-  repart de là.
+- **Pas de « Reprendre ces quantités »** (retiré le 01/11/2026) : le bouton qui recopiait les quantités réellement utilisées d'un essai dans le projet (appariement par `batch_steps.source_step_id` → groupe d'ingrédients → nom, et `base_quantity` réécrite) a été ôté de `ProjectTrials`, et sa fonction `promoteTrialQuantities` supprimée : les quantités du projet se corrigent à la main avant de relancer une fournée. Il reste, par essai, le verdict, les retours et « Comparer » (tableau des quantités réelles de deux essais).
 - **Validation** (§8) : `projectValidationBlockers()` (`lib/projects.ts`)
   liste ce qui bloque — format non renseigné, composant non résolu — recalculé
   côté client à l'affichage ET reposé côté serveur avant l'écriture (un projet
@@ -1841,8 +1957,7 @@ essais et la validation arrivent par lots successifs.
   sur la fiche recette (propriétaire uniquement), avec `canLaunch={false}` —
   lancer une fournée y passe déjà par le geste normal de la fiche
   (`BatchWidget`) ; en proposer un second aurait fait deux portes d'entrée
-  pour le même geste. Seuls l'historique, la comparaison et la promotion des
-  quantités restent affichés.
+  pour le même geste. Seuls l'historique et la comparaison restent affichés.
 - **`duplicate_recipe` recopie les composants** et la correspondance ancien →
   nouveau composant sur les étapes : un duplicata est une vraie variante du
   projet. Sans ça, dupliquer puis publier effaçait les crédits.
@@ -1884,6 +1999,8 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   **Le panneau est monté deux fois** : en haut de page (porteur de l'ancre `reste-a-faire`, cible du sommaire) et juste avant « Essais et validation » (sans `id`, pas de second lien au sommaire). Mêmes `todo`, même `basculerVerif` : un seul calcul, donc synchronisés d'office ; seul l'état ouvert / replié est propre à chaque exemplaire.
   **Volets « quantités » et « étapes » : ouverts tant que non vérifiés, repliés s'ils le sont — fixé au chargement seulement** (`ouvertAuChargement`, `ProjectV2`) : l'état « vérifié » est lu une fois au premier rendu (chargement ou réouverture de la page) puis gardé dans un `useRef`. Cocher la case ne replie donc rien sous le doigt, et comme la valeur de `open` ne change plus d'un rendu à l'autre, React ne referme pas un volet ouvert ou fermé à la main. Les étapes de chaque préparation sont dans un `<details>` porteur de l'ancre `prep-<id>-etapes` (le lien du « Reste à faire » l'ouvre, `allerA`) ; sans étape, l'ancre reste sur le bloc de la préparation. Sans les colonnes de vérification : étapes ouvertes, quantités repliées.
   **Les cases se posent aussi au bas du contenu qu'elles valident** (`components/projets/v2/VerifCase.tsx`) : « Quantités vérifiées » sous la note du volet « Ajustement des quantités » (`QuantitiesStep`, prop `pied`), « Étapes relues » sous les étapes de la préparation — même point, même empreinte que dans le panneau : cocher ici ou là revient au même. Dans le panneau, « quantités » vient avant « étapes ». Le sommaire de gauche porte une entrée « Reste à faire (n/total) » en tête (ancre `reste-a-faire`). **Chaque point mène à l'ancre de SA préparation** (`prep-<id>-recette` dans « Structure », `prep-<id>-etapes` et `prep-<id>-quantites` dans « Étapes ») — jamais à l'ancre du bloc, qui ramenait toujours à la première préparation ; un volet replié qui porte l'ancre (« Ajustement des quantités ») est ouvert au clic.
+- **Le sommaire ouvre le volet « Étapes » avant de défiler** (`onNavigateToStep` de `RecipeToc`, branché dans `ProjectV2`) : les étapes d'une préparation vivent dans un `<details>` qui se replie dès qu'elles sont relues ; sans le rouvrir d'abord, la cible n'avait aucune position et le défilement se calait sur la préparation suivante. Le volet reste ouvert ensuite.
+- **Volets repliés au chargement quand le travail est fait** (`repliesInitiaux`, `ProjectV2`, mêmes règles que `ouvertAuChargement` : calculé UNE fois au premier rendu, gardé dans un `useRef`, jamais recalculé — la valeur de `open` ne bouge plus, donc rien ne se referme sous le doigt) : **« Reste à faire »** (les deux exemplaires) se replie sur sa seule ligne de jauge quand tous les points sont faits ; **« Votre intention »** quand elle est écrite ; **« Structure »** quand le projet a des préparations et que toutes ont leur recette choisie. Un bloc repliable (`ProjectV2Block`, prop `replie`, seulement s'il est ouvert au sens `unlocked`) garde son titre en en-tête de `<details>` ; `allerA` (« Reste à faire ») rouvre le bloc ou la préparation qui porte l'ancre. **« Reste à faire » se replie aussi en direct** : au moment où le dernier point passe à « fait » (transition détectée dans `ProjectTodo`, volet piloté par `open` + `onToggle`), jamais à chaque rendu — le membre qui le rouvre garde la main. Intention et Structure ne se replient qu'au chargement. **« Liste complète des ingrédients » et « Ustensiles, difficulté et temps » sont toujours repliés au chargement** (consultation : on les ouvre à la demande ; l'éditeur d'ustensiles reste monté, donc le registre d'enregistrement fonctionne replié). **Le sommaire de gauche rouvre un bloc replié avant de défiler** (`onNavigateToSection` de `RecipeToc`, appelé pour toute entrée qui n'est pas une étape) ; sans lui, un clic sur « Ingrédients » ne montrait que le titre.
 - **Temps : la somme des étapes affichée, la correction à la main reste possible** (`OrganisationEditor`, `stepTimeSums`, `lib/recipe-view.ts`). Une ligne « Somme des temps des étapes » (préparation, cuisson, repos, total) en lecture seule, comme dans `/creer` ; les champs saisis portent cette somme en placeholder. **Vide = suit les étapes, saisi = la valeur prime** — jamais de pré-remplissage, qui figerait le total au premier enregistrement. Une valeur différente de la somme porte « corrigé à la main · revenir à N min » (un clic vide le champ). Même règle que `effectiveTimes` sur la fiche.
 - **Lancer un essai avec des points ouverts : avertir, ne jamais bloquer** (`ProjectTrials`, prop `pointsRestants`, `pointsRestants(todo)` dans `lib/projects.ts`). À CHAQUE lancement d'une fournée d'essai, s'il reste des points du « Reste à faire » (constatés ou à cocher), une confirmation les liste (6 au plus, puis « et N autre(s) ») avant de lancer — « Lancer quand même » / annuler. Pas de bouton grisé : l'essai sert précisément à vérifier ce qui n'est pas validé. La confirmation n'est **jamais mémorisée** pour la session (un oubli ne doit pas passer au deuxième essai). Elle remplace, sans la doubler, l'ancienne alerte « composants non résolus » (ces préparations figurent déjà parmi les points, leur conséquence est ajoutée au texte) ; la fiche recette passe sans `pointsRestants` et garde l'alerte d'origine. Ne concerne ni la fournée d'une recette validée (`BatchWidget`), ni « Valider le projet ». **La fenêtre est large et le focus d'ouverture est sur « Annuler »** : options facultatives de `useDialog().confirm` (`largeur: 'large'` → `max-w-xl` au lieu de `max-w-sm`, `focus: 'annuler'` → Entrée annule). Par défaut rien ne change pour les autres confirmations du site (étroites, focus sur la confirmation) ; ne les activer que pour une action qu'un Entrée distrait ne doit pas lancer, ou un message à lignes longues.
 - **« Retirer la recette »** (`retirerRecette`, `useProjectComponents`) : à côté de « Modifier cette préparation » (blocs Structure et Étapes), confirme puis `resetComponent` (`lib/projects-write.ts`) — contenu effacé, source oubliée, préparation « À résoudre » ; même geste que « Réinitialiser » de la fenêtre de résolution.
@@ -3190,6 +3307,7 @@ Historique de la migration depuis Vercel + Supabase :
   l'étiquette sur la PR courante plutôt que la poser d'emblée — c'est un
   geste délibéré (construction sur une vraie machine avec de vrais secrets),
   pas une étape automatique du push.
+  **Après un push qui a essuyé une erreur 500 de GitHub** (« remote rejected… Internal Server Error », puis réussi au réessai), vérifier que le run « Déploiement — aperçu d'une PR » existe bien pour le SHA poussé (liste des runs de la branche) : le 04/11/2026, pendant l'incident GitHub (Actions, Pull Requests, Git ; dès 09:49 UTC), l'événement `synchronize` n'a pas été émis et rien ne s'est lancé — et GitHub ne le rejoue pas après la clôture de l'incident. Remède : un petit commit réel, ou retirer puis reposer l'étiquette `preview` ; jamais un commit vide.
 - **Ne jamais ajouter de nœud à la couche applicative de `jepatisse-app`.** La
   plateforme régénère `upstream common` à partir de la **couche entière** : un
   nœud ajouté s'y retrouve rangé, et l'équilibreur envoie des visiteurs dessus.

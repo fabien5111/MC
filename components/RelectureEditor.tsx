@@ -132,11 +132,11 @@ function rendementTxt(r: any): string {
 }
 
 // Description compacte d'un moule à partir de sa forme et de ses dimensions
-// (mêmes clés que `MOLD_FORME_DIMS`), ex. « Ø 20 × 4.5 cm ».
+// (mêmes clés que `MOLD_FORME_DIMS`), ex. « Ø 20 cm × 4.5 cm ».
 function composeMoldDesc(forme: string | null | undefined, dims: Record<string, number>): string | null {
   const keys = MOLD_FORME_DIMS[forme || ''] || [];
-  const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k]);
-  return parts.length ? parts.join(' × ') + ' cm' : null;
+  const parts = keys.filter((k) => dims[k] != null).map((k) => (k === 'diametre' ? 'Ø ' : '') + dims[k] + ' cm');
+  return parts.length ? parts.join(' × ') : null;
 }
 
 // Normalise une liste d'ustensiles (ancien format « chaîne simple » ou
