@@ -42,7 +42,7 @@ import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
 import { ADVANCE_NOTE_MAX, noteAvance } from '@/lib/recipe-view';
 import type { VisibleHelpBlock } from '@/lib/help';
-import { resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { estimateWeightGrams, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { buildIngredientsRecap } from '@/lib/ingredients-recap';
 import { IngredientsRecapList } from '@/components/IngredientsRecapList';
 import { formatDate, formatTime } from '@/lib/format';
@@ -215,6 +215,7 @@ export function CreerForm({
   editingOtherAuthor,
   conversions,
   ingredientRefIds,
+  ingredientDensities = [],
   initialStep,
   helpBlocks,
   remarques = null,
@@ -242,6 +243,9 @@ export function CreerForm({
   editingOtherAuthor?: boolean;
   conversions: ConversionRef[];
   ingredientRefIds: IngredientRefOption[];
+  // Masse volumique par nom d'ingrédient (repli de `estimateWeightGrams`) :
+  // sert à peser un lait en ml dans le coefficient d'une « Quantité obtenue ».
+  ingredientDensities?: { name: string; density_g_per_ml: number }[];
   // Étape (1-indexée) sur laquelle se repositionner à l'ouverture, transmise
   // depuis la fiche recette (cf. components/recipe/RecetteToc.tsx) : on
   // rouvre l'éditeur là où la recette était consultée, plutôt qu'en haut.
@@ -1935,6 +1939,18 @@ export function CreerForm({
                     ajustement={{
                       lignes: st.ings.map((g) => ({ quantity: g.qty, unit: g.unit })),
                       libelle: 'Ajuster les ingrédients de cette étape',
+                      // Masse par le référentiel, comme en fournée : l'écart porte
+                      // sur le total de l'étape, lait en ml compris.
+                      lignesMasse: st.ings
+                        .filter((g) => g.name.trim())
+                        .map((g) => {
+                          const q = parseFloat(String(g.qty).replace(',', '.'));
+                          return { name: g.name, quantity: isFinite(q) ? q : null, unit: g.unit || null, ref_id: resolveIngredientRefId(g.name, ingredientRefIds) };
+                        }),
+                      estimerMasse: (ls) => {
+                        const e = estimateWeightGrams(ls, conversions, units, ingredientDensities);
+                        return { grammes: e.grams, nonConvertis: e.unconverted.map((u) => u.name) };
+                      },
                       onAjuster: (coef, r) => void ajusterEtape(si, coef, r),
                     }}
                   />

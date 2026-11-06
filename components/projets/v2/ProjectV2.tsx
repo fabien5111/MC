@@ -72,7 +72,7 @@ import { VerifCase } from '@/components/projets/v2/VerifCase';
 import { mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
-import { ingredientConversionText } from '@/lib/ingredient-conversions';
+import { estimateWeightGrams, ingredientConversionText } from '@/lib/ingredient-conversions';
 import { RecipeStep } from '@/components/recipe/RecipeStep';
 import { LeconsProvider, NombreRetours, PorteeEdition, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape, type AjustementEcart } from '@/components/batch/DerniereFois';
 import { libelleEcartProduit } from '@/lib/batch-lecons';
@@ -127,6 +127,7 @@ export function ProjectV2({
   units,
   unitRefs,
   conversions,
+  ingredientDensities = [],
   ingredientRefs,
   referenceAllergenes,
   trials,
@@ -151,6 +152,8 @@ export function ProjectV2({
   units: string[];
   unitRefs: UnitRef[];
   conversions: ConversionRef[];
+  // Masse volumique par nom d'ingrédient (repli de `estimateWeightGrams`).
+  ingredientDensities?: { name: string; density_g_per_ml: number }[];
   ingredientRefs: IngredientRefOption[];
   referenceAllergenes?: { names: string[]; byIngredient: Record<string, string> };
   trials: ProjectTrial[];
@@ -638,6 +641,15 @@ export function ProjectV2({
     const autres = steps.filter((x) => componentOf(x) === comp.id && x.id !== s.id && (groupByOrder.get(x.order_index ?? -1)?.ingredients ?? []).length > 0);
     return {
       lignes: ings.map((it) => ({ quantity: it.quantity, unit: it.unit })),
+      // Masse par le référentiel : l'écart porte sur le total de l'étape.
+      lignesMasse: ings.map((it) => {
+        const q = it.quantity == null ? NaN : parseFloat(String(it.quantity).replace(',', '.'));
+        return { name: it.name, quantity: isFinite(q) ? q : null, unit: it.unit, ref_id: it.ref_id ?? null };
+      }),
+      estimerMasse: (ls) => {
+        const e = estimateWeightGrams(ls, conversions, unitRefs, ingredientDensities);
+        return { grammes: e.grams, nonConvertis: e.unconverted.map((u) => u.name) };
+      },
       libelle: 'Modifier les quantités avec ce coefficient',
       indisponible: autres.length
         ? 'D’autres étapes de cette préparation ont des ingrédients : ajustez-la dans « Ajustement des quantités ».'

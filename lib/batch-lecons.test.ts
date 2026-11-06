@@ -350,6 +350,13 @@ describe('quantité obtenue (écart de production)', () => {
     // Manquant (−30 g) sur une fournée ×1,5 : cible 480 g, lignes actuelles à 450 g.
     expect(coefficientEcart({ ecartProduit: -30, masseFournee: 450, facteur: 1.5 }, 450, 1.5)).toBe(1.067);
   });
+  it('coefficient : dans /creer, le lait en ml compte aussi (≈ ×0,82 et non ×0,44)', () => {
+    // Fournée ×1,5 : 375 ml de lait (≈ 386 g) + 90 g + 90 g = 566 g, 100 g en trop.
+    // Recette à ×1 : 250 ml (≈ 257,5 g) + 60 g + 60 g = 377,5 g.
+    expect(coefficientEcart({ ecartProduit: 100, masseFournee: 566, facteur: 1.5 }, 377.5)).toBe(0.823);
+    // Les seules lignes en g (180 g / 120 g) donnaient un coefficient absurde.
+    expect(coefficientEcart({ ecartProduit: 100, masseFournee: 180, facteur: 1.5 }, 120)).toBe(0.444);
+  });
   it('arrondi des quantités ajustées', () => {
     expect(arrondiQuantite(42.17, 'g')).toBe(42);
     expect(arrondiQuantite(4.26, 'g')).toBe(4.3);

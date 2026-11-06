@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { requireUser, isAdmin } from '@/lib/auth';
 import { isProjectDraft } from '@/lib/projects';
 import { requireWritableSession, getImpersonationContext } from '@/lib/impersonation';
-import { getRecipeFull, getIngredientConversions, getIngredientRefsList } from '@/lib/recipes';
+import { getRecipeFull, getIngredientConversions, getIngredientDensities, getIngredientRefsList } from '@/lib/recipes';
 import { getIngredientRefNames, getIngredientRefAllergens, getAllergenRefs, getUtensilRefNames } from '@/lib/imports';
 import { getUnits } from '@/lib/profile';
 import { getMoldTypes } from '@/lib/admin';
@@ -41,6 +41,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
     editRecipe,
     conversions,
     ingredientRefIds,
+    ingredientDensities,
     helpBlocks,
   ] = await Promise.all([
     getTags(),
@@ -55,6 +56,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
     id ? getRecipeFull(id, 'edition') : Promise.resolve(null),
     getIngredientConversions(),
     getIngredientRefsList(),
+    getIngredientDensities(),
     getVisibleHelpBlocks('creer', user.id),
   ]);
 
@@ -111,6 +113,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           editingOtherAuthor={editingOtherAuthor}
           conversions={conversions}
           ingredientRefIds={ingredientRefIds}
+          ingredientDensities={ingredientDensities}
           initialStep={owned ? initialStep : null}
           helpBlocks={helpBlocks}
           remarques={remarques}

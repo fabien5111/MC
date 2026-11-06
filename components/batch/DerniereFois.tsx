@@ -511,8 +511,9 @@ export type AjustementEcart = {
   // Coefficient déjà appliqué aux lignes actuelles (fournée) ; défaut 1.
   facteurCourant?: number;
   // Masse par le référentiel (conversions, masses volumiques — volumes
-  // compris) : lignes actuelles de l'étape et estimateur. Absents (`/creer`,
-  // mode projet) : seules les lignes en g / kg / mg comptent.
+  // compris) : lignes actuelles de l'étape et estimateur, fournis par la
+  // fournée, `/creer` et le mode projet. Absents : seules les lignes en
+  // g / kg / mg comptent.
   lignesMasse?: LigneMasse[];
   estimerMasse?: EstimateurMasse;
 };

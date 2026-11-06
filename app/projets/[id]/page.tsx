@@ -7,7 +7,7 @@ import { canAccess } from '@/lib/entitlements';
 import { checkQuota, getCurrentPlan, getEntitlements } from '@/lib/entitlements-data';
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
-import { getIngredientConversions, getRecipeFull } from '@/lib/recipes';
+import { getIngredientConversions, getIngredientDensities, getRecipeFull } from '@/lib/recipes';
 import { getAllergenRefs, getDifficulties, getIngredientRefAllergens, getIngredientRefsList, getTags, getUtensilRefNames } from '@/lib/data/reference';
 import { createClient } from '@/lib/supabase/server';
 import { getRemarques, getRemarquesEssais } from '@/lib/batch-lecons-data';
@@ -65,7 +65,7 @@ export default async function ProjetPage({ params }: Params) {
   }
 
   const supabase = await createClient();
-  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, tags, difficulties, utensilNames, ids, allergenRefs, refAllergens, helpBlocks] =
+  const [moldTypes, units, conversions, recipe, trials, ingredientRefs, tags, difficulties, utensilNames, ids, allergenRefs, refAllergens, helpBlocks, ingredientDensities] =
     await Promise.all([
       getMoldTypes(),
       getUnits(),
@@ -84,6 +84,7 @@ export default async function ProjetPage({ params }: Params) {
       getAllergenRefs(),
       getIngredientRefAllergens(),
       getVisibleHelpBlocks('projet', user.id),
+      getIngredientDensities(),
     ]);
   const peutGenererIA = canAccess(droits, 'mode_projet_ia_mensuel');
   const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, 'mode_projet_ia_mensuel') : null;
@@ -111,6 +112,7 @@ export default async function ProjetPage({ params }: Params) {
           units={units.map((u) => u.name)}
           unitRefs={units.map((u) => ({ id: u.id, name: u.name }))}
           conversions={conversions}
+          ingredientDensities={ingredientDensities}
           ingredientRefs={ingredientRefs}
           referenceAllergenes={{ names: allergenRefs.map((a) => a.name), byIngredient: refAllergens }}
           trials={trials}
