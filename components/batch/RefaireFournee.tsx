@@ -12,6 +12,14 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { BATCH_FULL_SELECT, type BatchFull } from '@/lib/recipe-plan';
 import { translateQuotaError } from '@/lib/quota-message-client';
 
+// Date du jour du navigateur (AAAA-MM-JJ) : `toISOString` donnerait la date UTC,
+// donc la veille entre minuit et 1 h / 2 h en Suisse.
+function aujourdhuiLocal(): string {
+  const d = new Date();
+  const deux = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${deux(d.getMonth() + 1)}-${deux(d.getDate())}`;
+}
+
 export type CibleRefaire = { id: number; recipe_title: string | null };
 
 export function useRefaireFournee({ overlay = true }: { overlay?: boolean } = {}) {
@@ -33,7 +41,7 @@ export function useRefaireFournee({ overlay = true }: { overlay?: boolean } = {}
     if (!writeGuard('Recréation d’une fournée')) return;
     // Le commentaire de la fournée d'origine préremplit la fenêtre (modifiable).
     const { data } = await createClient().from('batches').select('notes').eq('id', plan.id).maybeSingle();
-    setRefaireDate('');
+    setRefaireDate(aujourdhuiLocal());
     setRefaireNotes(((data as { notes?: string | null } | null)?.notes) ?? '');
     setRefaireCible(plan);
   }
@@ -205,7 +213,7 @@ export function useRefaireFournee({ overlay = true }: { overlay?: boolean } = {}
               <input
                 id="refaire-date"
                 type="date"
-                min={new Date().toISOString().slice(0, 10)}
+                min={aujourdhuiLocal()}
                 value={refaireDate}
                 onChange={(e) => setRefaireDate(e.target.value)}
                 className="border border-outline-variant rounded px-3 py-2 bg-white font-body-md text-on-surface focus:outline-none focus:border-primary"
