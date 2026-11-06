@@ -35,6 +35,8 @@ import { ingredientConversionText, resolveIngredientRefId, type ConversionRef, t
 import { fixOeufLigature } from '@/lib/text';
 import { IngredientExpandDialog } from '@/components/recipe/IngredientExpandDialog';
 import { LockedAction } from '@/components/LockedAction';
+import { formatMasse, totalEtape } from '@/lib/total-etape';
+import { useTotalEtape } from '@/lib/use-total-etape';
 
 type EditKey = number | null; // id de la ligne en cours de modification
 type StepRow = BatchFull['batch_steps'][number];
@@ -51,6 +53,7 @@ export function BatchStepIngredients({
   units,
   unitTips,
   conversions,
+  ingredientDensities = [],
   ingredientRefs = [],
   refAllergens = {},
   allergenNames = [],
@@ -61,6 +64,9 @@ export function BatchStepIngredients({
   units: Unit[];
   unitTips: Record<string, string>;
   conversions: ConversionRef[];
+  // Masse volumique par nom d'ingrédient (repli de `estimateWeightGrams`) : le
+  // total de l'étape pèse un lait en ml par elle.
+  ingredientDensities?: { name: string; density_g_per_ml: number }[];
   // Référentiel des ingrédients (suggestions du nom + rattachement `ref_id`),
   // allergènes par ingrédient (nom en minuscules → « a, b ») et libellés des
   // allergènes — pour la saisie d'un ingrédient ajouté à la main (JEP-368).
@@ -75,6 +81,7 @@ export function BatchStepIngredients({
   const dialog = useDialog();
   const [editing, setEditing] = useState<EditKey>(null);
   const [adding, setAdding] = useState(false);
+  const [totalVoulu, setTotalVoulu] = useTotalEtape();
   const datalistId = useId();
   // Groupe en cours de remplacement par une sous-recette (fenêtre ouverte) —
   // toutes les occurrences du même ingrédient (nom + unité), pas seulement
@@ -493,6 +500,7 @@ export function BatchStepIngredients({
               </Fragment>
             );
           })}
+          {totalVoulu && <LigneTotal rows={rows} conversions={conversions} units={units} densities={ingredientDensities} rowClass={ROW_CLASS} metaClass={META_CLASS} />}
         </ul>
       )}
       {adding ? (
@@ -511,7 +519,53 @@ export function BatchStepIngredients({
           <span className="material-symbols-outlined text-[16px]">add_circle</span> Ajouter un ingrédient
         </button>
       )}
+      {rows.length > 0 && (
+        <label className="no-print mt-3 flex items-center gap-2 text-sm cursor-pointer w-fit">
+          <input type="checkbox" checked={totalVoulu} onChange={(e) => setTotalVoulu(e.target.checked)} className="w-4 h-4 rounded border-outline accent-primary" />
+          <span>Afficher le total des ingrédients</span>
+        </label>
+      )}
     </div>
+  );
+}
+
+// Ligne « Total de l'étape » : masse des ingrédients ajustés / d'origine, sur les
+// mêmes colonnes que les lignes. Une ligne sans conversion en masse en est
+// exclue ET nommée : un total qui l'omettrait sans le dire serait trompeur.
+function LigneTotal({
+  rows,
+  conversions,
+  units,
+  densities,
+  rowClass,
+  metaClass,
+}: {
+  rows: BatchIngredientRow[];
+  conversions: ConversionRef[];
+  units: Unit[];
+  densities: { name: string; density_g_per_ml: number }[];
+  rowClass: string;
+  metaClass: string;
+}) {
+  const t = totalEtape(rows, conversions, units, densities);
+  const cellule = 'font-body-md text-body-md font-bold text-center whitespace-nowrap';
+  return (
+    <>
+      <li className={`${rowClass} border-t border-outline-variant`}>
+        <span className="font-body-md text-body-md font-bold">Total de l&apos;étape</span>
+        <span className={metaClass}>
+          <span />
+          <span className={`${cellule} text-primary`}>≈ {formatMasse(t.ajuste)}</span>
+          <span className={cellule}>≈ {formatMasse(t.origine)}</span>
+          <span />
+        </span>
+      </li>
+      {t.horsTotal.length > 0 && (
+        <li className="pb-2 text-[12px] text-on-surface-variant" style={{ gridColumn: '1/-1' }}>
+          Hors total (aucune conversion en poids connue) : {t.horsTotal.join(', ')}.
+        </li>
+      )}
+    </>
   );
 }
 

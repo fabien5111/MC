@@ -1595,6 +1595,7 @@ function PreparerView({
                         units={units}
                         unitTips={unitTips}
                         conversions={conversions}
+                        ingredientDensities={ingredientDensities}
                         ingredientRefs={ingredientRefs}
                         refAllergens={refAllergens}
                         allergenNames={allergenRefs.map((a) => a.name)}

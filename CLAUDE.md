@@ -1244,6 +1244,15 @@ directes :
   retirées y sont donc visibles, barrées, avec leur picto « rétablir » — le
   déroulé les masquait, le geste n'aurait plus eu de porte. Mode Pâtisser
   inchangé ; colonnes et gestes `no-print`.
+  **Case « Afficher le total des ingrédients »** (06/11/2026) sous l'ajout d'un
+  ingrédient : une ligne « Total de l'étape » (masse ajustée / d'origine, sur les
+  mêmes colonnes) par `totalEtape` (`lib/total-etape.ts`, pur et testé), avec
+  `estimateWeightGrams` — lait en ml pesé par sa masse volumique
+  (`ingredientDensities`, passé par `BatchView`). Lignes retirées ou remplacées
+  par une recette écartées ; une ligne sans conversion est **nommée** (« Hors
+  total… »), jamais passée sous silence. Un seul réglage pour toutes les étapes,
+  mémorisé dans le navigateur (`useTotalEtape`, `localStorage`, rien en base).
+  Mode Préparer seulement.
 - **Un ingrédient ajouté à la main se saisit comme dans `/creer`** (JEP-368,
   `AddedIngredientForm` de `BatchIngredientsEditor`) : nom proposé depuis le
   référentiel (datalist), quantité, unité, commentaire et allergènes (3 au plus,
