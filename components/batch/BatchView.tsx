@@ -1735,11 +1735,9 @@ function PatisserView({
     }
     const ok = await finishBatch();
     if (!ok || !reviewEligible) return;
-    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un avis sur cette recette ?', { okLabel: 'Oui', cancelLabel: 'Non' });
+    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un avis sur cette recette ?\n\nVous pourrez aussi le faire plus tard depuis cette fournée.', { okLabel: 'Oui', cancelLabel: 'Non' });
     if (wantsReview) {
       setTimeout(() => document.getElementById('sec-avis')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-    } else {
-      dialog.alert('Pas de souci, vous pourrez laisser votre avis plus tard depuis cette fournée.');
     }
   }
 

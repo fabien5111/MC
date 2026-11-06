@@ -173,12 +173,10 @@ export function PlanningDayView({
     await demanderBilan(batchRow.id);
     await demanderRefaisable(batchRow.id);
     if (!batchRow.recipe_id || (await essaiProjetEnCours(batchRow.recipe_id)) || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
-    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un avis sur cette recette ?', { okLabel: 'Oui', cancelLabel: 'Non' });
+    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un avis sur cette recette ?\n\nVous pourrez aussi le faire plus tard depuis cette fournée.', { okLabel: 'Oui', cancelLabel: 'Non' });
     if (wantsReview) {
       setNavigating(true);
       router.push(`/fournee/${batchRow.id}?mode=preparer#sec-avis`);
-    } else {
-      dialog.alert('Pas de souci, vous pourrez laisser votre avis plus tard depuis cette fournée.');
     }
   }
 
