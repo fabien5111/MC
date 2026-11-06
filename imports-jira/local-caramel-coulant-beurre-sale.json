@@ -1,0 +1,80 @@
+{
+  "ticket": "local-caramel-coulant-beurre-sale",
+  "recette": {
+    "titre": "Caramel coulant beurre salé",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Caramel tendre et coulant, légèrement gélifié, au goût franc de beurre salé. Il sert d'insert ou de garniture et reste moelleux à la découpe sans couler.",
+    "rendement": "1 cadre 20 x 20 cm, 1 cm de hauteur — environ 430 g de caramel utilisable (488 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Casserole à fond épais",
+      "Petite casserole",
+      "Fouet",
+      "Thermomètre sonde",
+      "Mixeur plongeant",
+      "Film alimentaire",
+      "Bol"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Caramel coulant beurre salé",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 5 jours au frais, filmé au contact.",
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 4,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans un bol d'eau très froide pendant 10 minutes.",
+          "Chauffer la crème avec la fleur de sel dans la petite casserole jusqu'au frémissement, puis la garder au chaud.",
+          "Cuire le sucre à sec dans la casserole à fond épais, en trois fois, jusqu'à un caramel ambré à 180 °C.",
+          "Décuire hors du feu en versant la crème chaude en trois fois, en mélangeant au fouet.",
+          "Recuire à feu moyen jusqu'à 104 °C à la sonde, en remuant.",
+          "Hors du feu, incorporer la gélatine essorée puis le beurre en morceaux.",
+          "Mixer au mixeur plongeant sans incorporer d'air, jusqu'à un caramel lisse et brillant."
+        ],
+        "conseils_etape": "Ne pas dépasser 104 °C à la recuisson, sinon le caramel devient trop ferme et perd son côté coulant. Verser la crème bien chaude et en plusieurs fois pour limiter les projections. Mixer sans lever le mixeur pour ne pas émulsionner d'air, qui rendrait le caramel mousseux."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, insert Ø 12 cm sur 1 cm : ≈ 120 g de caramel, soit ×0,28 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, insert Ø 16 cm sur 1 cm : ≈ 215 g de caramel, soit ×0,50 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, insert Ø 20 cm sur 1 cm : ≈ 340 g de caramel, soit ×0,79 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, insert Ø 5 cm sur 1 cm : ≈ 20 g par pièce, soit environ 20 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert de 16 x 4 cm sur 1 cm : ≈ 70 g de caramel, soit ×0,16 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 1 cm : ≈ 350 g de caramel, soit ×0,81 de la recette.",
+      "Utilisation — Tartelettes Ø 8 cm, garniture Ø 7 cm sur 0,8 cm : ≈ 35 g par pièce, soit environ 13 pièces avec la recette entière.",
+      "Variante — Pectine NH à la place de la gélatine : mélanger 3 g de pectine NH à 15 g de sucre supplémentaires, les verser dans la crème tiède, porter à ébullition 1 minute avant la décuisson ; dosage à valider par un essai."
+    ],
+    "conseils_conservation": "Se conserve 5 jours au réfrigérateur, filmé au contact. Se congèle jusqu'à 2 mois en insert ; décongeler au réfrigérateur. Idéal en insert pris au froid ou congelé dans un entremets."
+  }
+}
