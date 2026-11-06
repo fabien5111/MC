@@ -1,0 +1,80 @@
+{
+  "ticket": "local-mousse-chocolat-ruby",
+  "recette": {
+    "titre": "Mousse chocolat ruby",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse légère et soyeuse au chocolat ruby, à la couleur rose délicate et aux notes naturelles de baies rouges. Elle apporte l'onctuosité aérienne d'un entremets et s'associe naturellement aux fruits rouges.",
+    "rendement": "1 entremets Ø 20 cm, 4 cm de hauteur — environ 750 g de mousse utilisable (836 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Casserole",
+      "Thermomètre de cuisine",
+      "Cul-de-poule",
+      "Four à micro-ondes",
+      "Mixeur plongeant",
+      "Film alimentaire",
+      "Robot pâtissier",
+      "Fouet",
+      "Maryse",
+      "Cercle à entremets Ø 20 cm"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Mousse chocolat ruby",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 2 jours au frais une fois prise dans le moule, ou 1 mois congelée.",
+        "ingredients": [
+          {
+            "nom": "Chocolat ruby",
+            "quantite": 280,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (ganache)",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (montée)",
+            "quantite": 410,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine 10 minutes dans de l'eau très froide, puis l'essorer.",
+          "Hacher finement le chocolat ruby, le placer dans un cul-de-poule et le faire fondre à 35 °C au maximum au four à micro-ondes, par à-coups de 15 secondes.",
+          "Chauffer la crème de la ganache à 60 °C au maximum, sans ébullition, puis y dissoudre la gélatine essorée.",
+          "Verser la crème en trois fois sur le chocolat et émulsionner au mixeur plongeant, sans incorporer d'air, jusqu'à une ganache lisse et brillante à 35-40 °C.",
+          "Filmer au contact et laisser redescendre la ganache à 30-32 °C.",
+          "Monter la crème bien froide au robot en chantilly souple, jusqu'à un bec d'oiseau mou.",
+          "Incorporer un tiers de la crème montée à la ganache au fouet, puis le reste à la maryse, en soulevant la masse jusqu'à une couleur rose uniforme.",
+          "Couler aussitôt dans le moule et réserver au froid jusqu'à la prise."
+        ],
+        "conseils_etape": "Le ruby vire au beige-gris s'il est surchauffé : crème à 60 °C maximum, ganache jamais au-dessus de 40 °C, pas de bain-marie bouillant. Mixer sans air pour conserver une couleur uniforme. Incorporer la crème montée à 30-32 °C : plus froide, la ganache fige en grains ; plus chaude, la mousse s'affaisse."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, 4 cm de hauteur : ≈ 480 g de mousse, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, 4 cm de hauteur : ≈ 750 g de mousse, soit ×1 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 4 cm de hauteur : ≈ 1080 g de mousse, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 4 cm de hauteur : ≈ 90 g par pièce, soit 8 pièces avec la recette entière.",
+      "Utilisation — Individuels en cercles Ø 8 cm, 4 cm de hauteur : ≈ 120 g par pièce, soit 6 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, mousse en enveloppe autour d'un insert : ≈ 230 g si elle est moulée seule, soit ×0,31 de la recette (moins avec un insert).",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, mousse en enveloppe autour d'un insert : ≈ 450 g si elle est moulée seule, soit ×0,60 de la recette (moins avec un insert).",
+      "Utilisation — Cadre carré 18 x 18 cm, 3 cm de hauteur : ≈ 580 g de mousse, soit ×0,77 de la recette.",
+      "Variante — Ruby framboise : incorporer 50 g de purée de framboise à 25 °C à la ganache refroidie, en retirant 50 g de crème montée ; l'acidité avive le rose."
+    ],
+    "conseils_conservation": "Mousse prise dans son moule : 2 jours au réfrigérateur, filmée. Congélation possible 1 mois ; décongeler 6 à 8 heures au réfrigérateur. À couler dans les 15 minutes qui suivent la préparation. Éviter la lumière directe, qui ternit le rose."
+  }
+}
