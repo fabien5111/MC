@@ -347,8 +347,10 @@ export function RetoursAuteur({
         </p>
         {!v.auteur && v.recetteModifieeDepuis && (
           <p className="text-xs not-italic text-on-surface border-l-2 border-amber-500 bg-amber-50 px-3 py-2">
-            L&apos;auteur a modifié la recette depuis votre fournée du {dateCourte(v.recetteModifieeDepuis)} : vos remarques
-            peuvent ne plus correspondre aux quantités actuelles. Ajustez-les à la main si besoin.
+            L&apos;auteur a modifié la recette depuis votre fournée du {dateCourte(v.recetteModifieeDepuis)}. Lancer une
+            fournée depuis la recette : vous suivez la nouvelle version, vos remarques peuvent ne plus correspondre.
+            Refaire la fournée du {dateCourte(v.recetteModifieeDepuis)} : vous gardez l&apos;ancienne version, vos
+            remarques restent valables.
           </p>
         )}
         {lecons.generales.length > 0 && (

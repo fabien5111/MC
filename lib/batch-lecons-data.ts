@@ -181,7 +181,8 @@ export type DonneesRemarques = {
   toutesEpinglees: boolean;
   // Recette modifiée par son auteur après la création de la fournée de
   // référence (`recipes.updated_at` postérieur) : date de cette fournée, pour
-  // l'avertissement d'un non-auteur. `null` sinon, ou lecture impossible.
+  // l'avertissement d'un non-auteur. `null` sinon, ou lecture impossible, ou
+  // fournée refaite (elle reprend la version de sa fournée d'origine).
   recetteModifieeDepuis: string | null;
   // Fournée terminée la plus récente du membre sur cette recette (la courante
   // exclue de rien) : ses remarques sont épinglées par défaut.
@@ -200,7 +201,7 @@ export async function getRemarques(opts: {
   sourcePlanId?: number | null;
 }): Promise<DonneesRemarques> {
   const supabase = await createClient();
-  const [{ reference, anciennes }, decisionsBrutes, plusRecenteId] = await Promise.all([
+  const [{ reference, anciennes, refaite }, decisionsBrutes, plusRecenteId] = await Promise.all([
     lireFournees(supabase, opts),
     opts.recipeId ? lireDecisions(supabase, opts.userId, opts.recipeId) : Promise.resolve(null),
     opts.recipeId ? lirePlusRecente(supabase, opts.userId, opts.recipeId) : Promise.resolve(null),
@@ -213,7 +214,9 @@ export async function getRemarques(opts: {
     console.error('getRemarques (rafraîchir):', e);
   }
   let recetteModifieeDepuis: string | null = null;
-  if (reference && opts.recipeId) {
+  // Fournée refaite (« Refaire ») : elle reprend la version de la fournée
+  // d'origine, pas la recette actuelle — l'avertissement n'a pas lieu d'être.
+  if (reference && opts.recipeId && !refaite) {
     try {
       const [{ data: rec }, { data: fournee }] = await Promise.all([
         supabase.from('recipes').select('updated_at').eq('id', opts.recipeId).maybeSingle(),
