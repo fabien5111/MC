@@ -771,7 +771,7 @@ export function BatchView({
         )}
 
         {/* Photos de réalisation (JEP-382), fournée en cours : sous le déroulé,
-            dans les deux modes. Fournée close : en tête du résumé. */}
+            dans les deux modes. Fournée close : en bas du résumé. */}
         {batch.status === 'planifiee' && (
           <div className="mt-8">
             <PhotosFourneeBloc etapes={etapesPourPhotos(batch)} />
@@ -2644,9 +2644,6 @@ function SummaryPanel({
   return (
     <div id="sec-resume" className="scroll-mt-28 mt-6 border border-outline-variant rounded-xl bg-surface-container-lowest p-6 flex flex-col gap-5">
       <h2 className="font-headline-md text-headline-md text-primary">Résumé de la fournée</h2>
-      {/* Photos de réalisation (JEP-382), mises en avant : l'ajout reste permis
-          sur une fournée close (il ne réécrit pas l'historique). */}
-      <PhotosFourneeBloc etapes={etapesPourPhotos(batch)} misEnAvant />
       {validationOuverte && <ValidationFournee propres={remarquesDeFournee(versReference(batch))} onClose={() => setValidationOuverte(false)} />}
       {!refaisableAbsent && (
         <label className="flex items-start gap-2 text-sm cursor-pointer">
@@ -2741,6 +2738,9 @@ function SummaryPanel({
           className="w-full border border-outline-variant rounded px-3 py-2 font-body-md text-sm bg-surface-container-low focus:ring-1 focus:ring-primary"
         />
       </div>
+      {/* Photos de réalisation (JEP-382), en bas du résumé : l'ajout reste permis
+          sur une fournée close (il ne réécrit pas l'historique). */}
+      <PhotosFourneeBloc etapes={etapesPourPhotos(batch)} misEnAvant />
     </div>
   );
 }

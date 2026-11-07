@@ -1648,7 +1648,7 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
 - **Ajout** : un seul bouton « Ajouter des photos » (plusieurs fichiers ; sur
   téléphone, le sélecteur du système propose appareil photo ou photothèque) dans le
   bloc « Photos de cette fournée » (sous le déroulé
-  d'une fournée en cours ; en tête du résumé, mis en avant, sur une fournée close),
+  d'une fournée en cours ; en bas du résumé, mis en avant, sur une fournée close),
   bouton « Photo » sur chaque étape (Préparer, et Pâtisser hors du volet replié).
   **Permis sur une fournée close** (indépendant de `readOnly` / `?lecture=1`, comme
   l'avis) ; seule l'impersonation lecture seule bloque. Légende et étape modifiables

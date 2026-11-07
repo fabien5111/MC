@@ -326,7 +326,7 @@ export function PhotosFourneeBloc({
   return (
     <section
       id="sec-photos-fournee"
-      className={`no-print scroll-mt-28 mb-6 rounded-xl border p-5 ${
+      className={`no-print scroll-mt-28 ${misEnAvant ? '' : 'mb-6'} rounded-xl border p-5 ${
         misEnAvant ? 'border-primary/40 bg-primary/5' : 'border-outline-variant bg-surface-container-low'
       }`}
     >
