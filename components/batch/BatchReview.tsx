@@ -244,6 +244,13 @@ function ReviewForm({
           {submitLabel}
         </button>
         </span>
+        {/* Écrans tactiles seulement (pointer: coarse) : sans survol, l'infobulle
+            ci-dessus n'y apparaît jamais. Même règle que « Prendre une photo ». */}
+        {rating === 0 && !busy && (
+          <p className="hidden [@media(pointer:coarse)]:block mt-2 text-[12px] text-on-surface-variant">
+            Indiquez votre note (de 1 à 5 étoiles) pour envoyer votre avis.
+          </p>
+        )}
       </div>
       <p className="text-[12px] text-on-surface-variant italic">
         Votre avis sera relu par la modération avant d’apparaître sur la recette.
