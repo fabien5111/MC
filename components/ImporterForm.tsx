@@ -77,7 +77,7 @@ export function ImporterForm({
   helpBlocks?: VisibleHelpBlock[];
 } = {}) {
   const router = useRouter();
-  const help = useHelpBlocks('importer', helpBlocks, true);
+  const help = useHelpBlocks(helpBlocks);
   const dialog = useDialog();
   const [onglet, setOnglet] = useState<Onglet>('texte');
   const [texte, setTexte] = useState('');
@@ -398,8 +398,6 @@ export function ImporterForm({
     <>
       <LoadingOverlay visible={busy} label={etape} showLabel />
 
-      <HelpBlockSlot blockKey="importer.intro" help={help} />
-
       <div className="flex border-b border-outline-variant mb-8 overflow-x-auto">
         <button type="button" onClick={() => setOnglet('texte')} className={ongletCls(onglet === 'texte')}>
           Texte collé
@@ -410,6 +408,7 @@ export function ImporterForm({
         <button type="button" onClick={() => setOnglet('photo')} className={ongletCls(onglet === 'photo')}>
           Photo
         </button>
+        <HelpBlockSlot blockKey="importer.intro" help={help} className="ml-auto self-center pl-3 pb-1" />
       </div>
 
       {onglet === 'texte' ? (
@@ -519,9 +518,9 @@ export function ImporterForm({
         </div>
       ) : (
         <div className="mb-4">
-          <HelpBlockSlot blockKey="importer.photos" help={help} />
-          <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
+          <span className="flex items-center justify-between gap-2 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
             Photos de la recette
+            <HelpBlockSlot blockKey="importer.photos" help={help} />
           </span>
 
           <PhotoOrderList

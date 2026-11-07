@@ -54,7 +54,7 @@ export function ShoppingItems({
   helpBlocks?: VisibleHelpBlock[];
 }) {
   const router = useRouter();
-  const help = useHelpBlocks('courses', helpBlocks, true);
+  const help = useHelpBlocks(helpBlocks);
   const dialog = useDialog();
   const { mutate } = useMutation();
   // Ordre d'affichage : alphabétique, ou « non barrés d'abord » pour la
@@ -337,6 +337,7 @@ export function ShoppingItems({
         <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary flex items-center gap-3">
           <span className="material-symbols-outlined text-[32px]">shopping_bag</span>
           <span>{listName}</span>
+          <HelpBlockSlot blockKey="courses.fusion" help={help} />
         </h1>
         <div className="flex items-center gap-4">
           <span className="font-label-md text-label-md text-on-surface-variant">
@@ -364,10 +365,6 @@ export function ShoppingItems({
             </label>
           )}
         </div>
-      </div>
-
-      <div className="max-w-2xl">
-        <HelpBlockSlot blockKey="courses.fusion" help={help} />
       </div>
 
       {total === 0 ? (
@@ -437,7 +434,10 @@ export function ShoppingItems({
 
       {adding ? (
         <div className="mt-8 max-w-2xl">
-          <HelpBlockSlot blockKey="courses.ajout" help={help} />
+          <div className="mb-2 flex items-center gap-2 font-label-md text-label-md text-on-surface-variant">
+            Ajouter un article
+            <HelpBlockSlot blockKey="courses.ajout" help={help} />
+          </div>
           <AddItemRow units={units} uniteFacultative={aRacheter} onAdd={addItem} onCancel={() => setAdding(false)} />
         </div>
       ) : (

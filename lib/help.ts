@@ -1,64 +1,52 @@
 // Aide contextuelle — accès données (server-only, `next/headers` via
 // lib/supabase/server). Les blocs (clé, page, emplacement) sont déclarés
 // dans lib/help-blocks.ts (module pur) ; ce fichier ne fait que les
-// hydrater avec leur contenu (`help_blocks`) et, côté membre, avec ses
-// masquages (`help_dismissals`).
+// hydrater avec leur contenu (`help_blocks`).
+//
+// Plus aucun masquage par le membre (JEP-391) : l'aide n'est plus qu'un picto
+// « ? » qui ouvre une fenêtre, elle ne prend plus de place à masquer. La table
+// `help_dismissals` reste en base, ni lue ni écrite.
 import { createClient } from '@/lib/supabase/server';
 import { getHelpBlocksReference } from '@/lib/data/reference';
 import { helpBlocksForPage, type HelpPageSlug } from '@/lib/help-blocks';
 
 export type VisibleHelpBlock = {
   key: string;
+  // Titre de la fenêtre (le même que sur la page Aide).
+  title: string;
   text: string | null;
   videoUrl: string | null;
-  showText: boolean;
-  showVideo: boolean;
 };
 
-// Blocs de plusieurs pages d'aide prêts à afficher à l'utilisateur courant, en
-// UNE lecture de masquages : une page serveur qui héberge des emplacements de
-// deux pages d'aide (la fiche recette : « fournee » et « recette ») ne paie
-// qu'une requête. Contenu renseigné, et ni le bloc, ni la vidéo, ni la page
-// entière masqués.
-// `userId` null (visiteur non connecté) → aucun bloc et aucune lecture : l'aide
-// est réservée aux membres (JEP-373). Le contenu vient du cache des
-// référentiels ; seuls les masquages du membre sont lus par requête.
+// Blocs de plusieurs pages d'aide prêts à afficher : ceux dont le contenu est
+// renseigné (texte ou vidéo).
+// `userId` null (visiteur non connecté) → aucun bloc : l'aide contextuelle est
+// réservée aux membres (JEP-373). Le contenu vient du cache des référentiels :
+// aucune requête par rendu.
 export async function getVisibleHelpBlocksForPages(
   pages: HelpPageSlug[],
   userId: string | null,
 ): Promise<Record<string, VisibleHelpBlock[]>> {
   const vide = Object.fromEntries(pages.map((p) => [p, [] as VisibleHelpBlock[]]));
   if (!userId) return vide;
-  const defs = pages.flatMap((p) => helpBlocksForPage(p));
-  if (defs.length === 0) return vide;
-  const cibles = [...defs.map((d) => d.key), ...pages];
+  if (pages.every((p) => helpBlocksForPage(p).length === 0)) return vide;
 
-  const [contentRows, dismissalsRes] = await Promise.all([
-    getHelpBlocksReference(),
-    (await createClient()).from('help_dismissals').select('kind, target').eq('user_id', userId).in('target', cibles),
-  ]);
-  if (dismissalsRes.error) console.error('getVisibleHelpBlocks:', dismissalsRes.error.message);
-  const dismissals = dismissalsRes.data ?? [];
+  const contentRows = await getHelpBlocksReference();
   const contentByKey = Object.fromEntries(contentRows.map((c) => [c.key, c]));
 
   return Object.fromEntries(
     pages.map((page) => {
-      // Masquage de toute l'aide de la page : rien à afficher.
-      if (dismissals.some((d) => d.kind === 'page' && d.target === page)) return [page, []];
       const blocs = helpBlocksForPage(page)
         .map((def) => {
           const content = contentByKey[def.key];
-          const blockDismissed = dismissals.some((d) => d.kind === 'block' && d.target === def.key);
-          const videoDismissed = dismissals.some((d) => d.kind === 'video' && d.target === def.key);
           return {
             key: def.key,
-            text: content?.text ?? null,
-            videoUrl: content?.video_url ?? null,
-            showText: !blockDismissed && !!content?.text,
-            showVideo: !blockDismissed && !videoDismissed && !!content?.video_url,
+            title: def.title,
+            text: content?.text?.trim() || null,
+            videoUrl: content?.video_url || null,
           };
         })
-        .filter((b) => b.showText || b.showVideo);
+        .filter((b) => b.text || b.videoUrl);
       return [page, blocs];
     }),
   );
@@ -69,19 +57,8 @@ export async function getVisibleHelpBlocks(page: HelpPageSlug, userId: string | 
   return (await getVisibleHelpBlocksForPages([page], userId))[page] ?? [];
 }
 
-// Masquages d'aide du membre (page, blocs, vidéos), pour le statut affiché sur
-// la page Aide. Lecture sous la session (RLS : ses propres lignes).
-export async function getMesMasquagesAide(userId: string): Promise<{ kind: string; target: string }[]> {
-  const { data, error } = await (await createClient()).from('help_dismissals').select('kind, target').eq('user_id', userId);
-  if (error) {
-    console.error('getMesMasquagesAide:', error.message);
-    return [];
-  }
-  return data ?? [];
-}
-
-// Contenu brut d'une page, sans filtrage par masquage — consommé par l'admin,
-// qui doit voir/éditer un bloc même vide ou masqué par les membres.
+// Contenu brut d'une page — consommé par l'admin, qui doit voir/éditer un bloc
+// même vide.
 export async function getHelpBlocksContent(
   page: HelpPageSlug,
 ): Promise<Record<string, { text: string | null; videoUrl: string | null }>> {

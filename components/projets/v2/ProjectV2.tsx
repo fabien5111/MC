@@ -177,7 +177,7 @@ export function ProjectV2({
 }) {
   useAutoGrowOnResize();
   const router = useRouter();
-  const help = useHelpBlocks('projet', helpBlocks, true);
+  const help = useHelpBlocks(helpBlocks);
   const dialog = useDialog();
   const { mutate, busy, refresh } = useMutation();
   // Sections modifiées et non enregistrées (cf. sections.ts) : alimente les
@@ -733,7 +733,7 @@ export function ProjectV2({
     );
   }
 
-  const bloc = (key: BlockKey, children: ReactNode) => (
+  const bloc = (key: BlockKey, children: ReactNode, aide?: ReactNode) => (
     <ProjectV2Block
       key={key}
       id={`bloc-${key}`}
@@ -741,6 +741,7 @@ export function ProjectV2({
       titre={BLOCS[key].titre}
       apercu={BLOCS[key].apercu}
       state={states[key]}
+      aide={aide}
       replie={
         key === 'intention'
           ? replies.intention
@@ -865,14 +866,12 @@ export function ProjectV2({
         </div>
       </header>
 
-      <HelpBlockSlot blockKey="projet.reste_a_faire" help={help} />
-      <ProjectTodo id="reste-a-faire" ouvert={!replies.todo} items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
+      <ProjectTodo id="reste-a-faire" aide={<HelpBlockSlot blockKey="projet.reste_a_faire" help={help} />} ouvert={!replies.todo} items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
 
       <div className="space-y-6">
         {bloc(
           'intention',
           <div className="space-y-3">
-            <HelpBlockSlot blockKey="projet.intention" help={help} />
             <textarea
               ref={autoGrow}
               value={intent}
@@ -912,6 +911,7 @@ export function ProjectV2({
               </p>
             )}
           </div>,
+          <HelpBlockSlot blockKey="projet.intention" help={help} />,
         )}
 
         {bloc(
@@ -921,7 +921,6 @@ export function ProjectV2({
               Du bas vers le haut de l’assemblage. Le rôle et l’ajustement (volume ou surface) décident du calcul des
               quantités.
             </p>
-            <HelpBlockSlot blockKey="projet.structure" help={help} />
             <ProjectStructureList
               components={composants}
               extra={(c) => (
@@ -960,6 +959,7 @@ export function ProjectV2({
               )}
             />
           </div>,
+          <HelpBlockSlot blockKey="projet.structure" help={help} />,
         )}
 
         {bloc(
@@ -1060,9 +1060,6 @@ export function ProjectV2({
                         coefficient par préparation, comme en base), replié
                         par défaut : les étapes dessous montrent déjà les
                         quantités ajustées. */}
-                    {c.resolved && c.id === ordered.find((o) => o.resolved)?.id && (
-                      <HelpBlockSlot blockKey="projet.ajustement" help={help} />
-                    )}
                     {c.resolved && (
                       <details id={`prep-${c.id}-quantites`} open={ouvertAuChargement(c, 'quantites')} className="group mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
@@ -1070,6 +1067,9 @@ export function ProjectV2({
                             Ajustement des quantités · ×{String(Math.round((c.scaleFactor ?? 1) * 100) / 100).replace('.', ',')}
                             {quantitiesStale(c, cleFormat) && <span className="text-error"> · à recalculer (format modifié)</span>}
                           </span>
+                          {c.id === ordered.find((o) => o.resolved)?.id && (
+                            <span className="mr-auto">{<HelpBlockSlot blockKey="projet.ajustement" help={help} />}</span>
+                          )}
                           <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                         </summary>
                         <div className="border-t border-outline-variant/40 px-4 py-4">
@@ -1201,7 +1201,6 @@ export function ProjectV2({
         {bloc(
           'validation',
           <div className="space-y-5 text-sm">
-            <HelpBlockSlot blockKey="projet.essais_validation" help={help} />
             {blockers.length ? (
               <ul className="list-disc space-y-1 pl-5 text-secondary">
                 {blockers.map((b) => (
@@ -1237,6 +1236,7 @@ export function ProjectV2({
               </p>
             </div>
           </div>,
+          <HelpBlockSlot blockKey="projet.essais_validation" help={help} />,
         )}
       </div>
 

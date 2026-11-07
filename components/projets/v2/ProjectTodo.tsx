@@ -7,6 +7,7 @@
 // vérifié n'a pas changé (cf. `projectTodo`, `lib/projects.ts`). Rendu pur :
 // l'écriture est faite par le parent.
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { TodoItem } from '@/lib/projects';
 
 // Défile jusqu'à l'ancre ; un volet replié qui la porte (« Ajustement des
@@ -34,8 +35,11 @@ export function ProjectTodo({
   busy,
   id,
   ouvert = true,
+  aide,
 }: {
   id?: string;
+  // Picto d'aide (JEP-391), à côté du titre.
+  aide?: ReactNode;
   // État initial du volet (fixé par l'appelant au chargement). Il se replie
   // aussi tout seul au moment où le dernier point passe à « fait ».
   ouvert?: boolean;
@@ -69,6 +73,7 @@ export function ProjectTodo({
     <details id={id} open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className="mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest p-4 group">
       <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 [&::-webkit-details-marker]:hidden">
         <span className="font-label-md text-[13px] uppercase tracking-widest text-secondary">Reste à faire</span>
+        {aide}
         <span className="font-label-md text-[12px] text-on-surface-variant">
           {faits} / {total}
           {faits === total && total > 0 ? ' · tout est fait' : ''}

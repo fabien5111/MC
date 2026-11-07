@@ -100,7 +100,7 @@ export function BatchWidget({
   quotaIA?: { allowed: boolean; limit?: number; usage?: number } | null;
 }) {
   const router = useRouter();
-  const help = useHelpBlocks('fournee', helpBlocks ?? [], true);
+  const help = useHelpBlocks(helpBlocks ?? []);
   const dialog = useDialog();
   const writeGuard = useWriteGuard();
   const { open, editMode, close } = usePlanCtx();
@@ -578,10 +578,10 @@ export function BatchWidget({
       <h3 className="font-headline-md text-headline-md text-primary mb-6 flex items-center gap-3">
         <span className="material-symbols-outlined">calendar_month</span>
         {editMode && existingBatch ? "Modifier l'ajustement de la fournée" : 'Lancer une fournée'}
+        {!(editMode && existingBatch) && <HelpBlockSlot blockKey="fournee.lancer" help={help} className="ml-auto" />}
       </h3>
-      {!(editMode && existingBatch) && <HelpBlockSlot blockKey="fournee.lancer" help={help} />}
       {/* JEP-381 : le même bloc « Retours de mes fournées » que sur la fiche,
-          juste sous le bloc d'aide, en tête du panneau. */}
+          en tête du panneau, sous le titre (et son picto d'aide). */}
       {derniereFois && !(editMode && existingBatch) && (
         <div className="mb-6 empty:hidden">
           <RetoursAuteur

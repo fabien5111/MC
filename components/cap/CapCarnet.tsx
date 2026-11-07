@@ -25,7 +25,7 @@ type Props = {
   retour: { href: string; label: string };
   /** Carnet de plusieurs recettes : sommaire et « une recette par page ». */
   carnet?: boolean;
-  /** Bloc d'aide (JEP-373), monté par la page serveur sous le titre. */
+  /** Bloc d'aide (JEP-373), monté par la page serveur à côté du titre. */
   aide?: ReactNode;
 };
 
@@ -57,8 +57,10 @@ export function CapCarnet({ fiches, titreEcran, retour, carnet = false, aide }: 
           </span>
           {retour.label}
         </Link>
-        <h1 className="font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[32px]">{titreEcran}</h1>
-        {aide}
+        <div className="flex items-center gap-3">
+          <h1 className="font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[32px]">{titreEcran}</h1>
+          {aide}
+        </div>
         <div className="space-y-2 rounded-lg border border-outline-variant bg-surface-container-low p-4 text-[14px] text-on-surface">
           <p>
             Au CAP Pâtissier (EP1 / EP2), le carnet de recettes papier ne doit contenir{' '}

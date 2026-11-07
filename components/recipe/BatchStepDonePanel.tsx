@@ -72,6 +72,7 @@ export function BatchStepDonePanel({
   retoursEcart,
   aideRealise,
   aideNote,
+  aideIngredients,
   derniereFois,
 }: {
   step: StepFlags;
@@ -117,10 +118,12 @@ export function BatchStepDonePanel({
   ingredientsEditor?: ReactNode;
   // Retours d'une fournée précédente qui portent une quantité obtenue : au-dessus des quantités.
   retoursEcart?: ReactNode;
-  // Blocs d'aide (JEP-373), montés par la page sur la 1ʳᵉ étape seulement :
-  // avant la case « réalisée » et avant « Ma note ».
+  // Pictos d'aide (JEP-373, JEP-391), montés par la page sur la 1ʳᵉ étape
+  // seulement : à côté de la case « réalisée », du libellé « Ma note » et du
+  // titre « Ingrédients de l'étape ».
   aideRealise?: ReactNode;
   aideNote?: ReactNode;
+  aideIngredients?: ReactNode;
   // « La dernière fois » (JEP-381) : constats de la fournée précédente, posés
   // juste sous la date et les badges de l'étape, visibles étape repliée.
   derniereFois?: ReactNode;
@@ -380,7 +383,10 @@ export function BatchStepDonePanel({
   const noteBlock = readOnly && !step.user_note ? null : (
     <div className="border-l-4 border-green-700 bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
-        <span className="font-label-md text-[10px] uppercase tracking-widest text-secondary">Ma note</span>
+        <span className="flex items-center gap-2 font-label-md text-[10px] uppercase tracking-widest text-secondary">
+          Ma note
+          {aideNote}
+        </span>
         {!editingNote &&
           !readOnly &&
           (canPersonalNotes ? (
@@ -441,7 +447,10 @@ export function BatchStepDonePanel({
     (ingredientsEditor ? ingredients.length > 0 : visible.length > 0) ? (
       <details className="group border border-outline-variant mb-2" open>
         <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-          <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
+          <span className="flex items-center gap-2 font-label-md text-label-md text-primary">
+            Ingrédients de l&apos;étape
+            {aideIngredients}
+          </span>
           <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
         </summary>
         <div className="p-4 bg-white">
@@ -675,7 +684,6 @@ export function BatchStepDonePanel({
   return (
     <div className="flex flex-col gap-3">
       <LoadingOverlay visible={busy} label="Modification en cours…" />
-      {aideRealise}
       <div className="flex flex-col gap-3 border-b border-outline pb-4">
         {/* Case + chevron sur la même ligne que le titre, jamais couplés aux
             badges de date/temps (dayControl/meta) : ces badges peuvent à eux
@@ -688,6 +696,7 @@ export function BatchStepDonePanel({
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div className="min-w-0">{title}</div>
           <div className="no-print flex items-center gap-3 shrink-0">
+            {aideRealise}
             {doneToggle}
             {collapsible && (
               <button
@@ -712,7 +721,6 @@ export function BatchStepDonePanel({
           traitée), la note personnelle sert justement à ajuster la recette
           après coup — la replier avec le reste la rendrait invisible sans
           qu'on pense à dérouler le chevron pour aller la chercher. */}
-      {aideNote}
       {noteBlock}
       {open && (
         <div className="flex flex-col gap-6">

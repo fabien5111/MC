@@ -1,17 +1,19 @@
 'use client';
 
-// Emplacement d'un bloc d'aide précis dans une page (motif : plusieurs blocs
+// Emplacement d'un bloc d'aide précis dans une page (motif : plusieurs pictos
 // dispersés dans le formulaire /creer, partageant un même useHelpBlocks).
-// Ne rend rien si le bloc n'a pas de contenu ou a été masqué.
+// Ne rend rien si le bloc n'a pas de contenu. À poser DANS la ligne du titre ou
+// du libellé qu'il explique (JEP-391) : sans marge propre, jamais entre deux
+// blocs.
 import { HelpBlock } from './HelpBlock';
 import type { HelpBlocksState } from './useHelpBlocks';
 
-export function HelpBlockSlot({ blockKey, help, className = 'mb-8' }: { blockKey: string; help: HelpBlocksState; className?: string }) {
+export function HelpBlockSlot({ blockKey, help, className }: { blockKey: string; help: HelpBlocksState; className?: string }) {
   const block = help.get(blockKey);
   if (!block) return null;
   return (
-    <div className={className}>
-      <HelpBlock block={block} onDismiss={() => help.dismiss(blockKey)} defaultExpanded={help.defaultExpanded} />
-    </div>
+    <span className={`inline-flex shrink-0 ${className ?? ''}`}>
+      <HelpBlock block={block} />
+    </span>
   );
 }

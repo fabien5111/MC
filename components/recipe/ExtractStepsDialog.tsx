@@ -148,6 +148,7 @@ export function ExtractStepsDialog({
             <h3 className="font-headline-md text-headline-md text-primary flex items-center gap-3">
               <span className="material-symbols-outlined">content_cut</span>
               Extraire des étapes
+              {help && <HelpBlockSlot blockKey="recette.extraire" help={help} />}
             </h3>
             <p className="font-body-md text-sm text-on-surface-variant">
               Les étapes cochées deviennent une nouvelle recette, en brouillon privé dans votre carnet. Cette recette-ci
@@ -161,7 +162,6 @@ export function ExtractStepsDialog({
 
         <div className="p-6 flex flex-col gap-6">
           {/* Défile avec la fenêtre (jamais en `fixed`). */}
-          {help && <HelpBlockSlot blockKey="recette.extraire" help={help} />}
           <fieldset className="flex flex-col gap-2">
             <legend className={`${LBL} mb-2`}>Étapes à extraire</legend>
             {steps.map((s, i) => (

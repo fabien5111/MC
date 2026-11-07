@@ -250,10 +250,8 @@ export function CreerForm({
   // depuis la fiche recette (cf. components/recipe/RecetteToc.tsx) : on
   // rouvre l'éditeur là où la recette était consultée, plutôt qu'en haut.
   initialStep?: number | null;
-  // Blocs d'aide contextuelle déjà filtrés par le serveur (contenu renseigné,
-  // ni bloc ni vidéo ni page masqués pour l'utilisateur courant) — cf.
-  // lib/help.ts. Tableau vide la plupart du temps (aucun bloc défini, ou
-  // tout masqué), le composant ne rend alors rien.
+  // Blocs d'aide contextuelle déjà filtrés par le serveur (contenu renseigné)
+  // — cf. lib/help.ts. Vide : aucun picto « ? » affiché.
   helpBlocks?: VisibleHelpBlock[];
   // Retours de mes fournées (JEP-381), lus par la page pour l'auteur d'une
   // recette déjà enregistrée ; `null` : rien à afficher.
@@ -273,9 +271,7 @@ export function CreerForm({
   // et annoncée. La vue par composants est perdue ; les composants eux-mêmes,
   // donc les crédits d'auteur, restent en base (cf. lib/projects.ts).
   const projetIntact = isProjectRecipe(editRecipe) && !isProjectDissolved(editRecipe);
-  // Dépliés par défaut en création, repliés en modification — l'auteur qui
-  // reprend une recette déjà rédigée connaît déjà l'éditeur.
-  const help = useHelpBlocks('creer', helpBlocks ?? [], editingId === null);
+  const help = useHelpBlocks(helpBlocks ?? []);
 
   const [title, setTitle] = useState(editRecipe?.title || '');
   const [description, setDescription] = useState(editRecipe?.description || '');
@@ -1414,8 +1410,10 @@ export function CreerForm({
         {/* Infos de base & média */}
         <section id="sec-description" className="scroll-mt-28 grid grid-cols-1 lg:grid-cols-12 gap-12">
           <div className="lg:col-span-12 flex flex-col">
-            <HelpBlockSlot blockKey="creer.intro" help={help} />
-            <label className="font-label-md text-label-md text-outline mb-1">TITRE DE LA RECETTE</label>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label className="font-label-md text-label-md text-outline">TITRE DE LA RECETTE</label>
+              <HelpBlockSlot blockKey="creer.intro" help={help} />
+            </div>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -1642,12 +1640,13 @@ export function CreerForm({
           </div>
         </section>
 
-        <HelpBlockSlot blockKey="creer.taille" help={help} />
-
         {/* Métadonnées : quantité produite */}
         <section id="sec-taille" className="scroll-mt-28 bg-surface-container-low p-gutter md:p-12 border border-outline-variant ambient-shadow">
           <div className="flex flex-col border-b border-outline-variant pb-4">
-            <label className="font-label-md text-label-md text-outline uppercase mb-4">Taille / Nombre de portions</label>
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <label className="font-label-md text-label-md text-outline uppercase">Taille / Nombre de portions</label>
+              <HelpBlockSlot blockKey="creer.taille" help={help} />
+            </div>
             <div className="flex flex-wrap gap-6">
               {(
                 [
@@ -1781,11 +1780,12 @@ export function CreerForm({
           </div>
         </section>
 
-        <HelpBlockSlot blockKey="creer.ustensiles" help={help} />
-
         {/* Ustensiles */}
         <section id="sec-ustensiles" className="scroll-mt-28 space-y-8">
-          <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary border-b border-primary pb-4">Ustensiles nécessaires</h2>
+          <div className="flex items-center justify-between gap-3 border-b border-primary pb-4">
+            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Ustensiles nécessaires</h2>
+            <HelpBlockSlot blockKey="creer.ustensiles" help={help} />
+          </div>
           <ul className="space-y-4">
             {utensils.map((u, i) => (
               <li key={u.key} className="flex items-start gap-4 group">
@@ -1954,7 +1954,6 @@ export function CreerForm({
                       onAjuster: (coef, r) => void ajusterEtape(si, coef, r),
                     }}
                   />
-                  {si === 0 && <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} />}
                   <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
                     <label className="font-label-md text-label-md text-outline uppercase">Ajustement des quantités de cette étape</label>
                     <select
@@ -1969,6 +1968,7 @@ export function CreerForm({
                         </option>
                       ))}
                     </select>
+                    {si === 0 && <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} className="ml-auto" />}
                   </div>
 
                   {/* gap-6/w-44 (au lieu de gap-8/w-48) : à 1024px (`lg`), la
@@ -2018,8 +2018,6 @@ export function CreerForm({
                     ))}
                   </div>
 
-                  {si === 0 && <HelpBlockSlot blockKey="creer.jour_et_avance" help={help} />}
-
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <label className="font-label-md text-label-md text-outline whitespace-nowrap">À PRÉPARER LE JOUR J −</label>
                     <input
@@ -2031,6 +2029,7 @@ export function CreerForm({
                       placeholder="0"
                     />
                     <span className="text-sm text-on-surface-variant italic">jour(s) avant dégustation</span>
+                    {si === 0 && <HelpBlockSlot blockKey="creer.jour_et_avance" help={help} className="ml-auto" />}
                   </div>
 
                   <label className="flex items-center gap-3 cursor-pointer w-fit">
@@ -2314,14 +2313,15 @@ export function CreerForm({
                     </button>
                   </div>
 
-                  {si === 0 && <HelpBlockSlot blockKey="creer.description_etape" help={help} />}
-
                   <div className="flex flex-col">
-                    <label className="font-label-md text-label-md text-outline mb-2">
-                      DESCRIPTION{' '}
-                      <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
-                        (Afin de faciliter le découpage en sous-étape, commencer vos lignes par -)
+                    <label className="font-label-md text-label-md text-outline mb-2 flex items-center justify-between gap-3">
+                      <span>
+                        DESCRIPTION{' '}
+                        <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
+                          (Afin de faciliter le découpage en sous-étape, commencer vos lignes par -)
+                        </span>
                       </span>
+                      {si === 0 && <HelpBlockSlot blockKey="creer.description_etape" help={help} className="shrink-0" />}
                     </label>
                     {st.subSteps === null ? (
                       // Mode texte libre : description + bouton d'éclatement.
@@ -2574,13 +2574,14 @@ export function CreerForm({
           />
         </section>
 
-        <HelpBlockSlot blockKey="creer.verification" help={help} />
-
         {/* Planning de préparation (aperçu) */}
         <section id="sec-planning" className="scroll-mt-28 space-y-8">
-          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
-            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Planning de préparation</h2>
-            <span className="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
+          <div className="flex items-center justify-between gap-3 border-b border-primary pb-4">
+            <div className="flex flex-col gap-1 md:flex-row md:items-end md:gap-6">
+              <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Planning de préparation</h2>
+              <span className="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
+            </div>
+            <HelpBlockSlot blockKey="creer.verification" help={help} />
           </div>
           <div className="bg-surface-container-high p-gutter rounded">
             {allSameDay ? (
@@ -2713,13 +2714,14 @@ export function CreerForm({
           </div>
         </section>
 
-        <HelpBlockSlot blockKey="creer.ingredients_recap" help={help} />
-
         {/* Récapitulatif des ingrédients (aperçu) */}
         <section id="sec-ingredients" className="scroll-mt-28 space-y-8">
-          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
-            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
-            <span className="text-sm text-on-surface-variant italic">Généré automatiquement depuis les étapes</span>
+          <div className="flex items-center justify-between gap-3 border-b border-primary pb-4">
+            <div className="flex flex-col gap-1 md:flex-row md:items-end md:gap-6">
+              <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
+              <span className="text-sm text-on-surface-variant italic">Généré automatiquement depuis les étapes</span>
+            </div>
+            <HelpBlockSlot blockKey="creer.ingredients_recap" help={help} />
           </div>
           <div className="max-w-2xl">
             {ingredientsRecap.length === 0 ? (
