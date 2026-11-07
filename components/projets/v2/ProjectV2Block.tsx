@@ -66,7 +66,7 @@ export function ProjectV2Block({
       )}
       {replie === undefined || !state.unlocked ? (
         <>
-          <div className="mb-4 flex items-center gap-3">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="font-headline-md text-[22px] text-primary">{titre}</h2>
             {aide}
           </div>

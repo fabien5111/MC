@@ -1410,7 +1410,7 @@ export function CreerForm({
         {/* Infos de base & média */}
         <section id="sec-description" className="scroll-mt-28 grid grid-cols-1 lg:grid-cols-12 gap-12">
           <div className="lg:col-span-12 flex flex-col">
-            <div className="mb-1 flex items-center gap-2">
+            <div className="mb-1 flex items-center justify-between gap-2">
               <label className="font-label-md text-label-md text-outline">TITRE DE LA RECETTE</label>
               <HelpBlockSlot blockKey="creer.intro" help={help} />
             </div>
@@ -1643,7 +1643,7 @@ export function CreerForm({
         {/* Métadonnées : quantité produite */}
         <section id="sec-taille" className="scroll-mt-28 bg-surface-container-low p-gutter md:p-12 border border-outline-variant ambient-shadow">
           <div className="flex flex-col border-b border-outline-variant pb-4">
-            <div className="mb-4 flex items-center gap-2">
+            <div className="mb-4 flex items-center justify-between gap-2">
               <label className="font-label-md text-label-md text-outline uppercase">Taille / Nombre de portions</label>
               <HelpBlockSlot blockKey="creer.taille" help={help} />
             </div>
@@ -1782,7 +1782,7 @@ export function CreerForm({
 
         {/* Ustensiles */}
         <section id="sec-ustensiles" className="scroll-mt-28 space-y-8">
-          <div className="flex items-center gap-3 border-b border-primary pb-4">
+          <div className="flex items-center justify-between gap-3 border-b border-primary pb-4">
             <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Ustensiles nécessaires</h2>
             <HelpBlockSlot blockKey="creer.ustensiles" help={help} />
           </div>
@@ -1956,7 +1956,6 @@ export function CreerForm({
                   />
                   <div className="border-b border-outline-variant/60 pb-4 flex flex-wrap items-center gap-3">
                     <label className="font-label-md text-label-md text-outline uppercase">Ajustement des quantités de cette étape</label>
-                    {si === 0 && <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} />}
                     <select
                       value={st.scaling}
                       onChange={(e) => patchStep(si, { scaling: e.target.value })}
@@ -1969,6 +1968,7 @@ export function CreerForm({
                         </option>
                       ))}
                     </select>
+                    {si === 0 && <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} className="ml-auto" />}
                   </div>
 
                   {/* gap-6/w-44 (au lieu de gap-8/w-48) : à 1024px (`lg`), la
@@ -2020,7 +2020,6 @@ export function CreerForm({
 
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <label className="font-label-md text-label-md text-outline whitespace-nowrap">À PRÉPARER LE JOUR J −</label>
-                    {si === 0 && <HelpBlockSlot blockKey="creer.jour_et_avance" help={help} />}
                     <input
                       value={st.dayOffset}
                       onChange={(e) => patchStep(si, { dayOffset: e.target.value })}
@@ -2030,6 +2029,7 @@ export function CreerForm({
                       placeholder="0"
                     />
                     <span className="text-sm text-on-surface-variant italic">jour(s) avant dégustation</span>
+                    {si === 0 && <HelpBlockSlot blockKey="creer.jour_et_avance" help={help} className="ml-auto" />}
                   </div>
 
                   <label className="flex items-center gap-3 cursor-pointer w-fit">
@@ -2314,12 +2314,14 @@ export function CreerForm({
                   </div>
 
                   <div className="flex flex-col">
-                    <label className="font-label-md text-label-md text-outline mb-2">
-                      DESCRIPTION{' '}
-                      {si === 0 && <HelpBlockSlot blockKey="creer.description_etape" help={help} />}{' '}
-                      <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
-                        (Afin de faciliter le découpage en sous-étape, commencer vos lignes par -)
+                    <label className="font-label-md text-label-md text-outline mb-2 flex items-center justify-between gap-3">
+                      <span>
+                        DESCRIPTION{' '}
+                        <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
+                          (Afin de faciliter le découpage en sous-étape, commencer vos lignes par -)
+                        </span>
                       </span>
+                      {si === 0 && <HelpBlockSlot blockKey="creer.description_etape" help={help} className="shrink-0" />}
                     </label>
                     {st.subSteps === null ? (
                       // Mode texte libre : description + bouton d'éclatement.
@@ -2574,12 +2576,12 @@ export function CreerForm({
 
         {/* Planning de préparation (aperçu) */}
         <section id="sec-planning" className="scroll-mt-28 space-y-8">
-          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-3 border-b border-primary pb-4">
+            <div className="flex flex-col gap-1 md:flex-row md:items-end md:gap-6">
               <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Planning de préparation</h2>
-              <HelpBlockSlot blockKey="creer.verification" help={help} />
+              <span className="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
             </div>
-            <span className="text-sm text-on-surface-variant italic">Organisation visuelle des étapes</span>
+            <HelpBlockSlot blockKey="creer.verification" help={help} />
           </div>
           <div className="bg-surface-container-high p-gutter rounded">
             {allSameDay ? (
@@ -2714,12 +2716,12 @@ export function CreerForm({
 
         {/* Récapitulatif des ingrédients (aperçu) */}
         <section id="sec-ingredients" className="scroll-mt-28 space-y-8">
-          <div className="flex flex-col gap-1 border-b border-primary pb-4 md:flex-row md:items-end md:justify-between md:gap-0">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-3 border-b border-primary pb-4">
+            <div className="flex flex-col gap-1 md:flex-row md:items-end md:gap-6">
               <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Récapitulatif des ingrédients</h2>
-              <HelpBlockSlot blockKey="creer.ingredients_recap" help={help} />
+              <span className="text-sm text-on-surface-variant italic">Généré automatiquement depuis les étapes</span>
             </div>
-            <span className="text-sm text-on-surface-variant italic">Généré automatiquement depuis les étapes</span>
+            <HelpBlockSlot blockKey="creer.ingredients_recap" help={help} />
           </div>
           <div className="max-w-2xl">
             {ingredientsRecap.length === 0 ? (

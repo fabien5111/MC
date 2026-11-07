@@ -578,7 +578,7 @@ export function BatchWidget({
       <h3 className="font-headline-md text-headline-md text-primary mb-6 flex items-center gap-3">
         <span className="material-symbols-outlined">calendar_month</span>
         {editMode && existingBatch ? "Modifier l'ajustement de la fournée" : 'Lancer une fournée'}
-        {!(editMode && existingBatch) && <HelpBlockSlot blockKey="fournee.lancer" help={help} />}
+        {!(editMode && existingBatch) && <HelpBlockSlot blockKey="fournee.lancer" help={help} className="ml-auto" />}
       </h3>
       {/* JEP-381 : le même bloc « Retours de mes fournées » que sur la fiche,
           en tête du panneau, sous le titre (et son picto d'aide). */}

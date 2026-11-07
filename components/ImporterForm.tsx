@@ -518,7 +518,7 @@ export function ImporterForm({
         </div>
       ) : (
         <div className="mb-4">
-          <span className="flex items-center gap-2 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
+          <span className="flex items-center justify-between gap-2 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
             Photos de la recette
             <HelpBlockSlot blockKey="importer.photos" help={help} />
           </span>

@@ -1320,7 +1320,7 @@ export function RelectureEditor({
 
       {/* Infos générales */}
       <section id="sec-infos" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-headline-md text-[22px] text-primary">Informations générales</h2>
           <HelpBlockSlot blockKey="relecture.intro" help={help} />
         </div>
@@ -1442,7 +1442,7 @@ export function RelectureEditor({
             <textarea ref={autoGrow} value={description} onChange={(e) => { setDescription(e.target.value); autoGrow(e.target); }} rows={2} className={`${champ} resize-none overflow-hidden`} />
           </label>
           <div className="flex flex-col gap-1">
-            <span className="flex items-center gap-2 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
+            <span className="flex items-center justify-between gap-2 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
               Taille / Nombre de portions
               <HelpBlockSlot blockKey="relecture.taille" help={help} />
             </span>
@@ -1605,7 +1605,7 @@ export function RelectureEditor({
 
       {/* Ustensiles (liste unique de la recette, regroupée depuis les étapes importées) */}
       <section id="sec-ustensiles" className="scroll-mt-28 bg-surface-container-low border border-outline-variant rounded-xl p-6 mb-8">
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-headline-md text-[22px] text-primary">Ustensiles</h2>
           <HelpBlockSlot blockKey="relecture.ustensiles" help={help} />
         </div>
@@ -1758,7 +1758,7 @@ export function RelectureEditor({
                   </option>
                 ))}
               </select>
-              {si === 0 && <HelpBlockSlot blockKey="relecture.ajustement_etape" help={help} />}
+              {si === 0 && <HelpBlockSlot blockKey="relecture.ajustement_etape" help={help} className="ml-auto" />}
             </div>
 
             {/* Colonnes alignées par le haut : le lien « Une nuit (12 h) » sous
@@ -1840,7 +1840,7 @@ export function RelectureEditor({
                   <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
                 </span>
               </label>
-              {si === 0 && <HelpBlockSlot blockKey="relecture.jour_et_avance" help={help} className="self-end pb-1" />}
+              {si === 0 && <HelpBlockSlot blockKey="relecture.jour_et_avance" help={help} className="ml-auto self-center" />}
               {sp.avance && (
                 <div className="basis-full flex flex-col gap-1">
                   <textarea
@@ -2036,7 +2036,7 @@ export function RelectureEditor({
 
               {/* Étapes */}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 mb-2">
-                <p className="flex items-center gap-2 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
+                <p className="flex items-center justify-between gap-2 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
                   Sous-étapes importées
                   {si === 0 && <HelpBlockSlot blockKey="relecture.description_etape" help={help} />}
                 </p>
@@ -2240,7 +2240,7 @@ export function RelectureEditor({
           n'est enregistré ici — même principe que dans l'éditeur de recette
           (CreerForm). */}
       <section id="sec-planning" className="scroll-mt-28 mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-headline-md text-[22px] text-primary">Planning de préparation</h2>
           <HelpBlockSlot blockKey="relecture.verification" help={help} />
         </div>
@@ -2274,7 +2274,7 @@ export function RelectureEditor({
           unité) de toutes les étapes, purement dérivé (rien n'est enregistré
           ici) — même principe que dans l'éditeur de recette (CreerForm). */}
       <section id="sec-ingredients" className="scroll-mt-28 mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-headline-md text-[22px] text-primary">Récapitulatif des ingrédients</h2>
           <HelpBlockSlot blockKey="relecture.ingredients_recap" help={help} />
         </div>
