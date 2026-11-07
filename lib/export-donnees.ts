@@ -89,6 +89,13 @@ export const RUBRIQUES = [
       'afficher, avec la recette concernée et une copie du texte au moment du choix.',
   },
   {
+    cle: 'photos_de_realisation',
+    titre: 'Photos de réalisation',
+    description:
+      'Les photos que vous avez prises de vos fournées (adresses de la photo et de sa vignette), avec leur ' +
+      'légende, la fournée et l’étape auxquelles elles sont rattachées.',
+  },
+  {
     cle: 'avis',
     titre: 'Avis',
     description: 'Les notes et commentaires que vous avez laissés sur des recettes, avec leur statut de modération.',

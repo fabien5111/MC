@@ -21,3 +21,16 @@ describe('validateReview — photos', () => {
     expect(validateReview(5, '', [p, p, p]).ok).toBe(false);
   });
 });
+
+// Photo de réalisation d'une fournée reprise dans l'avis (JEP-382) : admise
+// seulement si l'appelant l'a vérifiée comme appartenant au membre.
+describe('validateReview — photos de réalisation', () => {
+  const realisation = swift.replace('/avis/', '/realisations/');
+  it('refuse une photo de réalisation non vérifiée', () => {
+    expect(validateReview(5, '', [{ url: realisation, ai_retouched: false }]).ok).toBe(false);
+    expect(validateReview(5, '', [{ url: realisation, ai_retouched: false }], new Set(['autre'])).ok).toBe(false);
+  });
+  it('accepte une photo de réalisation vérifiée', () => {
+    expect(validateReview(5, '', [{ url: realisation, ai_retouched: false }], new Set([realisation])).ok).toBe(true);
+  });
+});

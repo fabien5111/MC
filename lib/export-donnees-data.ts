@@ -244,6 +244,8 @@ export async function exporterDonneesMembre(
 
     // Remarques gardées ou écartées (JEP-381).
     const remarquesGardees = await lire(db, 'remarques_gardees', { colonne: 'user_id', valeur: membreId });
+    // Photos de réalisation des fournées (JEP-382) : adresses seulement.
+    const photosRealisation = await lire(db, 'batch_photos', { colonne: 'user_id', valeur: membreId });
 
     // ── Avis, idées, favoris ─────────────────────────────────
     const [avis, idees, votes, favoris] = await Promise.all([
@@ -357,6 +359,7 @@ export async function exporterDonneesMembre(
       listes_de_recettes: imbriquer(nettoyer(listesRecettes, 'recipe_lists'), nettoyer(contenuListes, 'recipe_list_items'), 'list_id', 'recettes'),
       fournees: fourneesCompletes,
       remarques_de_fournees: nettoyer(remarquesGardees, 'remarques_gardees'),
+      photos_de_realisation: nettoyer(photosRealisation, 'batch_photos'),
       avis: nettoyer(avis, 'comments'),
       idees: {
         proposees: nettoyer(idees, 'ideas'),

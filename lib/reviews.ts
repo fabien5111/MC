@@ -63,7 +63,21 @@ export function reviewCommentRequired(rating: number): boolean {
 
 export type ReviewValidation = { ok: true } | { ok: false; message: string };
 
-export function validateReview(rating: number, comment: string, photos: ReviewPhoto[] = []): ReviewValidation {
+/** Photo de réalisation d'une fournée (JEP-382) reprise dans l'avis : préfixe `realisations/` de `jp-photos`. */
+export function estPhotoRealisation(url: unknown): url is string {
+  return estUrlDuConteneur('photos', 'realisations', url);
+}
+
+// `realisationsAutorisees` : URL de photos de réalisation que l'appelant a
+// vérifiées comme appartenant à une fournée du membre (la route serveur les
+// relit en base ; le formulaire passe celles de la fournée affichée). Une
+// photo `realisations/` absente de cet ensemble est refusée.
+export function validateReview(
+  rating: number,
+  comment: string,
+  photos: ReviewPhoto[] = [],
+  realisationsAutorisees: ReadonlySet<string> = new Set(),
+): ReviewValidation {
   if (!Number.isInteger(rating) || rating < REVIEW_RATING_MIN || rating > REVIEW_RATING_MAX) {
     return { ok: false, message: 'Choisissez une note de 1 à 5 étoiles.' };
   }
@@ -81,13 +95,18 @@ export function validateReview(rating: number, comment: string, photos: ReviewPh
   // le téléversement), soit déjà sur Swift (`jp-photos/avis/`) : le navigateur
   // dépose AVANT d'appeler la route, qui ne reçoit donc que des URL de
   // stockage. Jamais une URL externe quelconque (pixel de suivi chargé dans la
-  // page de modération).
+  // page de modération). Une photo de réalisation (JEP-382) n'est admise que
+  // si elle appartient à une fournée du membre (`realisationsAutorisees`).
   if (
     photos.some(
       (p) =>
         !p ||
         typeof p.url !== 'string' ||
-        !(estDataUrlImage(p.url) || estUrlDuConteneur('photos', 'avis', p.url)) ||
+        !(
+          estDataUrlImage(p.url) ||
+          estUrlDuConteneur('photos', 'avis', p.url) ||
+          (estPhotoRealisation(p.url) && realisationsAutorisees.has(p.url))
+        ) ||
         typeof p.ai_retouched !== 'boolean',
     )
   ) {

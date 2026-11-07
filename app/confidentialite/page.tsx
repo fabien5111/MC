@@ -123,7 +123,7 @@ export default function ConfidentialitePage() {
         <h1 className="font-headline-lg text-headline-lg-mobile text-primary md:text-headline-lg mb-2">
           Politique de confidentialité
         </h1>
-        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 30 octobre 2026.</p>
+        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 7 novembre 2026.</p>
 
         <Section title="1. Responsable du traitement">
           <p>
@@ -161,6 +161,10 @@ export default function ConfidentialitePage() {
           <SousTitre>Contenus et usage du service</SousTitre>
           <Liste>
             <li>Recettes, photos (couverture, étapes), fournées et leurs notes, listes de courses, favoris.</li>
+            <li>
+              Photos de réalisation de vos fournées et leur légende : visibles de vous seul sur le site, jusqu&apos;à ce
+              que vous en choisissiez une pour un avis publié.
+            </li>
             <li>
               Vos préférences de notification (sur le site, par e-mail, sur le téléphone, rythme des récapitulatifs),
               réglables à tout moment depuis les réglages du compte.
@@ -624,7 +628,9 @@ export default function ConfidentialitePage() {
           </Liste>
           <p>
             Les photos que vous publiez sur vos recettes et votre profil sont accessibles à toute personne disposant
-            de leur adresse.
+            de leur adresse. Il en va de même des photos de réalisation de vos fournées : le site ne les montre qu&apos;à
+            vous et n&apos;en publie aucune liste, mais leur adresse, longue et impossible à deviner, n&apos;est pas un
+            secret — ne la communiquez pas si vous voulez que la photo reste privée.
           </p>
         </Section>
 

@@ -81,6 +81,10 @@ export const USAGES = {
   recette: { conteneur: 'photos', prefixe: 'recettes', acces: 'membre' },
   profil: { conteneur: 'photos', prefixe: 'profils', acces: 'membre' },
   avis: { conteneur: 'photos', prefixe: 'avis', acces: 'membre' },
+  // Photos de réalisation d'une fournée (JEP-382) : journal privé, rendu
+  // privé par la RLS de `batch_photos` (la ligne), pas par le conteneur —
+  // arbitrage du 07/11/2026, l'URL est un UUID non devinable, pas un secret.
+  realisation: { conteneur: 'photos', prefixe: 'realisations', acces: 'membre' },
   banniere: { conteneur: 'photos', prefixe: 'bannieres', acces: 'admin' },
   // Dossier neutre, jamais « publicites » : les listes des bloqueurs (Liste FR,
   // EasyList) filtrent ce chemin, et uBlock Origin masquait les visuels de la

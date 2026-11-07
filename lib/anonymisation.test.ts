@@ -7,6 +7,7 @@ import {
   estSlugSupprime,
   identiteFantome,
   photosDeRecettes,
+  photosRealisationASupprimer,
   remplacerPseudo,
   validerDemandeAdmin,
 } from '@/lib/anonymisation';
@@ -110,5 +111,19 @@ describe('composerEmailSuppression', () => {
     expect(m.texte).toContain('Motif : Demande écrite');
     expect(m.texte).not.toContain('prélèvement');
     expect(m.texte).toContain('https://x/contact');
+  });
+});
+
+describe('photosRealisationASupprimer', () => {
+  const u = (n: string) => `https://x/jp-photos/realisations/${n}.jpg`;
+  it('supprime photos et vignettes', () => {
+    expect(photosRealisationASupprimer([{ url: u('a'), thumb_url: u('a-v') }], []).sort()).toEqual([u('a'), u('a-v')].sort());
+  });
+  it('garde une photo reprise dans un avis conservé, et sa vignette', () => {
+    const avis = [{ photo_urls: [{ url: u('a'), ai_retouched: false }] }, { photo_urls: null }];
+    expect(photosRealisationASupprimer([{ url: u('a'), thumb_url: u('a-v') }, { url: u('b'), thumb_url: null }], avis)).toEqual([u('b')]);
+  });
+  it('lit aussi l’ancienne forme des photos d’avis (tableau de chaînes)', () => {
+    expect(photosRealisationASupprimer([{ url: u('a'), thumb_url: null }], [{ photo_urls: [u('a')] }])).toEqual([]);
   });
 });

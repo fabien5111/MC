@@ -45,6 +45,7 @@ import {
   estProfilSupprime,
   identiteFantome,
   photosDeRecettes,
+  photosRealisationASupprimer,
   remplacerPseudo,
   type OrigineSuppression,
 } from '@/lib/anonymisation';
@@ -84,6 +85,9 @@ const listeOr = (valeurs: string[]) => `(${valeurs.map((v) => `"${v.replace(/"/g
 /** Tables vidées de toute ligne du membre (colonne qui le désigne). Ordre indifférent. */
 const TABLES_A_VIDER: [table: string, colonne: string][] = [
   ['batches', 'user_id'],
+  // Photos de réalisation (JEP-382) : parties aussi en cascade avec les
+  // fournées ; nommées pour qu'aucune ligne ne survive à une fournée orpheline.
+  ['batch_photos', 'user_id'],
   ['remarques_gardees', 'user_id'],
   ['shopping_lists', 'user_id'],
   ['shopping_items', 'user_id'],
@@ -494,6 +498,26 @@ export async function anonymiserMembre(
     }
     const echecs = await supprimerPhotos('photos', urls.filter((u) => !encoreCitees.has(u)));
     if (echecs) avertissements.push(`jp-photos : ${echecs} photo(s) de recette non supprimée(s)`);
+  }
+
+  // ── 5b bis. Photos de réalisation des fournées (JEP-382) ──
+  // Lues AVANT la suppression des fournées (cascade). Une photo reprise dans
+  // un avis conservé (rattaché au profil anonyme) reste sur le stockage.
+  const { data: realisations, error: lectureRealisations } = await db
+    .from('batch_photos')
+    .select('url, thumb_url')
+    .eq('user_id', p.membreId);
+  if (lectureRealisations && !absente(lectureRealisations)) noter('photos de réalisation', lectureRealisations);
+  const lignesRealisations = (realisations ?? []) as { url: string | null; thumb_url: string | null }[];
+  if (lignesRealisations.length > 0) {
+    const { data: avisConserves, error: lectureAvis } = await db.from('comments').select('photo_urls').eq('user_id', fantomeId);
+    if (lectureAvis) {
+      // Doute : on ne supprime rien plutôt que de casser la photo d'un avis.
+      avertissements.push('jp-photos : photos de réalisation laissées sur le stockage (avis illisibles)');
+    } else {
+      const echecs = await supprimerPhotos('photos', photosRealisationASupprimer(lignesRealisations, (avisConserves ?? []) as { photo_urls?: unknown }[]));
+      if (echecs) avertissements.push(`jp-photos : ${echecs} photo(s) de réalisation non supprimée(s)`);
+    }
   }
 
   // ── 5c. Tout le reste du membre ──────────────────────────

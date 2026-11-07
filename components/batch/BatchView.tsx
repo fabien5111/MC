@@ -32,6 +32,8 @@ import { useHelpBlocks, type HelpBlocksState } from '@/components/help/useHelpBl
 import type { VisibleHelpBlock } from '@/lib/help';
 import { BatchNotes } from '@/components/recipe/BatchNotes';
 import { BatchReview } from '@/components/batch/BatchReview';
+import { PhotosEtape, PhotosFourneeBloc, PhotosFourneeProvider } from '@/components/batch/PhotosFournee';
+import type { PhotosFourneeInitiales } from '@/lib/batch-photos';
 import type { MyRecipeReview } from '@/lib/reviews-data';
 import { BatchStepIngredients } from '@/components/recipe/BatchIngredientsEditor';
 import { BatchStepDonePanel } from '@/components/recipe/BatchStepDonePanel';
@@ -191,6 +193,11 @@ function batchYieldInfo(batch: BatchFull): { label: string; value: string } | nu
   return null;
 }
 
+// Étapes d'une fournée dans l'ordre du déroulé : rattachement d'une photo.
+function etapesPourPhotos(b: BatchFull): { id: number; titre: string }[] {
+  return [...b.batch_steps].sort((x, y) => x.order_index - y.order_index).map((st) => ({ id: st.id, titre: st.title ?? '' }));
+}
+
 function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -222,7 +229,11 @@ export function BatchView({
   ajustement,
   helpBlocks = [],
   remarques = null,
+  photosFournee = null,
 }: {
+  // Photos de réalisation de la fournée (JEP-382), lues par la page. `null` ou
+  // table absente : ni bloc, ni bouton photo.
+  photosFournee?: PhotosFourneeInitiales | null;
   // « La dernière fois » (JEP-381) : fournée de référence (source « Refaire »,
   // sinon dernière fournée terminée de la même recette) et choix du membre,
   // lus par la page. `null` : rien à afficher.
@@ -560,6 +571,7 @@ export function BatchView({
       recipeId={batch.recipe_id}
       auteur={!!baseRecipe?.authorId && baseRecipe.authorId === batch.user_id}
     >
+      <PhotosFourneeProvider batchId={batch.id} userId={batch.user_id ?? ''} initiales={photosFournee}>
       {validation && (
         <ValidationFournee
           propres={remarquesDeFournee(versReference(batch))}
@@ -757,7 +769,16 @@ export function BatchView({
             help={readOnly ? undefined : help}
           />
         )}
+
+        {/* Photos de réalisation (JEP-382), fournée en cours : sous le déroulé,
+            dans les deux modes. Fournée close : en tête du résumé. */}
+        {batch.status === 'planifiee' && (
+          <div className="mt-8">
+            <PhotosFourneeBloc etapes={etapesPourPhotos(batch)} />
+          </div>
+        )}
       </div>
+      </PhotosFourneeProvider>
     </LeconsProvider>
   );
 }
@@ -1607,6 +1628,8 @@ function PreparerView({
                   }
                 >
                   <StepPhotoGallery photos={photos} />
+                  {/* Photos de réalisation rattachées à l'étape (JEP-382). */}
+                  <PhotosEtape stepId={s.id} />
                   {s.video_url && <StepVideoPlayer url={s.video_url} />}
                   {s.tips && (
                     <details className="group border border-outline-variant" open>
@@ -2280,6 +2303,12 @@ function StepCookCard({
         </div>
       )}
 
+      {/* Photos de réalisation de l'étape (JEP-382) : hors du volet, pour
+          photographier une étape déjà cochée (repliée). */}
+      <div className="px-4 pb-3 empty:hidden">
+        <PhotosEtape stepId={s.id} />
+      </div>
+
       {/* Toujours monté : une étape repliée doit quand même sortir à l'impression
           (le hook `usePrintDetailsExpansion` ne rouvre que les <details>, pas cet
           état React). Masqué à l'écran seulement, `print:block` le rend au papier. */}
@@ -2615,6 +2644,9 @@ function SummaryPanel({
   return (
     <div id="sec-resume" className="scroll-mt-28 mt-6 border border-outline-variant rounded-xl bg-surface-container-lowest p-6 flex flex-col gap-5">
       <h2 className="font-headline-md text-headline-md text-primary">Résumé de la fournée</h2>
+      {/* Photos de réalisation (JEP-382), mises en avant : l'ajout reste permis
+          sur une fournée close (il ne réécrit pas l'historique). */}
+      <PhotosFourneeBloc etapes={etapesPourPhotos(batch)} misEnAvant />
       {validationOuverte && <ValidationFournee propres={remarquesDeFournee(versReference(batch))} onClose={() => setValidationOuverte(false)} />}
       {!refaisableAbsent && (
         <label className="flex items-start gap-2 text-sm cursor-pointer">
