@@ -1622,6 +1622,51 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
   Sur une fournée close, les blocs « Ma note » vides sont omis.
 - **Bilan de la fournée à la clôture** (arbitrage du 04/11/2026, remplace « À retenir pour la prochaine fois ») : question facultative après « Terminer » (`BatchView.finishBatch` ET `PlanningDayView`, `useDemanderBilan`, `lib/batch-lecons-client.ts`), **écrite dans `batches.commentaire_global`** — le même champ que le « Commentaire global » du résumé, qui reste modifiable ensuite. Préremplie si un commentaire existe déjà (fournée reprise). Événement GA `saisir_bilan`. L'ancienne colonne `batches.lecon` reste en base, **ni lue ni écrite** (plus de nature de remarque `lecon`, plus de ligne « À retenir » dans le résumé, le tableau « Comparer » des essais ni l'export des retours) ; les épingles `lecon` déjà posées dans `remarques_gardees` sont orphelines, sans effet. « Refaire » ne recopie pas le bilan.
 
+## Photos de réalisation d'une fournée (JEP-382)
+
+Journal photo **privé** par fournée, puis galeries « Mes réalisations ». Logique
+pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
+écriture : `lib/batch-photos-client.ts` ; affichage : `components/batch/PhotosFournee.tsx`
+(fournisseur + bloc + photos d'étape + passerelle vers l'avis) et
+`components/batch/MesRealisations.tsx`.
+
+- **Table `batch_photos`** (`batch_id` en cascade, `batch_step_id` en `set null`,
+  `user_id` dénormalisé, `url` / `thumb_url`, `legende` ≤ 200, `order_index`).
+  Au plus **6 photos** par fournée (`BATCH_PHOTOS_MAX`, trigger en base). RLS :
+  `batch_photos_proprietaire` (`owns_plan`) + `impersonation_ro_*` + `blocked_user_*`.
+  Écrite par le navigateur sous la session (état optimiste du fournisseur, sans
+  resynchronisation serveur). **Table absente** (migration pas jouée) : ni bloc, ni
+  bouton, ni galerie, rien ne casse. Absente des types générés : accès non typé.
+- **Stockage : `jp-photos/realisations/`** (usage `realisation`), conteneur PUBLIC —
+  arbitrage du 07/11/2026 : l'URL est un UUID non devinable, pas un secret, et la
+  page Confidentialité le dit. « Privé » veut dire : montré au seul propriétaire
+  (RLS), jamais listé ailleurs. Vignette (480 px) calculée **dans le navigateur au
+  dépôt**, depuis la photo fraîche en mémoire (aucune relecture, aucun CORS).
+  Supprimer une photo n'efface pas l'objet : la réconciliation du stockage
+  (`reconcilier_stockage.py`, qui lit `batch_photos` — table **obligatoire**, son
+  absence arrête le script avant toute suppression) reprend les orphelins.
+- **Ajout** : « Prendre une photo » (`capture`, appareil photo sur mobile) et
+  « Depuis la galerie » dans le bloc « Photos de cette fournée » (sous le déroulé
+  d'une fournée en cours ; en tête du résumé, mis en avant, sur une fournée close),
+  bouton « Photo » sur chaque étape (Préparer, et Pâtisser hors du volet replié).
+  **Permis sur une fournée close** (indépendant de `readOnly` / `?lecture=1`, comme
+  l'avis) ; seule l'impersonation lecture seule bloque. Légende et étape modifiables
+  sous chaque vignette, corbeille + confirmation. « Refaire » ne copie pas les
+  photos. Événement GA `ajouter_photo_realisation` après le dépôt réussi.
+- **Passerelle vers l'avis** (`BatchReview`, « Choisir parmi les photos de cette
+  fournée ») : la photo garde son adresse `realisations/` ; `validateReview` ne
+  l'admet que si l'appelant l'a vérifiée (`realisationsAutorisees`) et la route
+  d'avis la relit dans `batch_photos` du MÊME membre, sur la racine de NOTRE
+  stockage (`batch_photos.url` est écrite par le navigateur : un hôte externe y
+  serait sinon admis). Modération comme toute photo d'avis.
+- **Galeries** : fiche recette, « Mes réalisations de cette recette » (photos de
+  MES fournées de cette recette, par fournée, replié) ; `/en-cuisine`, bloc
+  « Mes réalisations » en bas de page (grille chronologique, 120 au plus). Clic →
+  la fournée.
+- **RGPD** : `batch_photos` dans `TABLES_A_VIDER` ; à la suppression du compte, les
+  objets Swift sont effacés **sauf** ceux qu'un avis conservé reprend
+  (`photosRealisationASupprimer`). Export : rubrique `photos_de_realisation`.
+
 ## Avis sur une recette (note + commentaire)
 
 Une fournée **terminée** (`batches.status = 'terminee'`) propose de noter et
@@ -3124,6 +3169,7 @@ principales :
 | Recettes | `recipes`, `recipe_steps`, `step_photos`, `ingredient_groups`, `ingredients`, `recipe_utensils`, `recipe_tags`, `tags`, `difficulties` |
 | Référentiels | `units`, `ingredient_refs`, `utensils`, `molds`, `mold_types` |
 | Interactions | `favorites`, `comments` |
+| Fournées | `batches`, `batch_steps`, `batch_substeps`, `batch_ingredients`, `batch_utensils`, `batch_photos` (photos de réalisation, JEP-382) |
 | Notifications | `notifications`, `notification_preferences` (+ `push`), `notification_outbox`, `email_digest_queue`, `push_subscriptions` — voir « Notifications » ci-dessus |
 | Communauté | `ideas`, `idea_votes` — voir « Boîte à idées » ci-dessus (fonctions `list_ideas`, `suggest_similar_ideas`) |
 | Projets | `recipe_projects`, `recipe_project_components` (+ `scaling_mode`, `recipes.kind` / `recipes.project_stage`, `recipe_steps.component_id`, fonction `owns_recipe`) — voir « Mode projet » ci-dessus |

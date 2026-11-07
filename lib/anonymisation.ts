@@ -135,6 +135,32 @@ export function photosDeRecettes(
   return [...urls];
 }
 
+/**
+ * Photos de réalisation des fournées (JEP-382, photo pleine et vignette) à
+ * supprimer du stockage — sauf celles qu'un avis conservé (« Membre supprimé »)
+ * reprend encore : la photo d'avis pointe la même adresse.
+ */
+export function photosRealisationASupprimer(
+  photos: { url?: string | null; thumb_url?: string | null }[],
+  avisConserves: { photo_urls?: unknown }[],
+): string[] {
+  const gardees = new Set<string>();
+  for (const a of avisConserves) {
+    if (!Array.isArray(a.photo_urls)) continue;
+    for (const ph of a.photo_urls) {
+      const url = typeof ph === 'string' ? ph : ph && typeof ph === 'object' ? (ph as { url?: unknown }).url : null;
+      if (typeof url === 'string') gardees.add(url);
+    }
+  }
+  const urls = new Set<string>();
+  for (const p of photos) {
+    // Une vignette part avec sa photo, sauf si la photo elle-même est gardée.
+    if (p.url && gardees.has(p.url)) continue;
+    for (const u of [p.url, p.thumb_url]) if (u && /^https?:\/\//.test(u) && !gardees.has(u)) urls.add(u);
+  }
+  return [...urls];
+}
+
 export type OrigineSuppression = 'membre' | 'admin';
 
 /** E-mail de confirmation, adressé à l'ancienne adresse du membre (corps seul : le gabarit signe). */

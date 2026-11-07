@@ -12,6 +12,7 @@ import { getMyRecipeReview, recetteEstProjetEnCours } from '@/lib/reviews-data';
 import { getVisibleHelpBlocks } from '@/lib/help';
 import { createClient } from '@/lib/supabase/server';
 import { getRemarques } from '@/lib/batch-lecons-data';
+import { getPhotosFournee } from '@/lib/batch-photos-data';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { MobileNav } from '@/components/MobileNav';
@@ -84,7 +85,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
   const batch = Number.isFinite(batchId) ? await getBatch(batchId) : null;
   if (!batch) notFound();
 
-  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements, essaiProjet, ingredientRefs, refAllergens, moldTypes, helpBlocks, remarques] =
+  const [units, conversions, ingredientDensities, shoppingListsRaw, baseRecipe, allergenRefs, myReview, entitlements, essaiProjet, ingredientRefs, refAllergens, moldTypes, helpBlocks, remarques, photosFournee] =
     await Promise.all([
       getUnits(),
       getIngredientConversions(),
@@ -104,6 +105,8 @@ export default async function FourneePage({ params, searchParams }: Params) {
       // dernière fournée terminée du membre sur la même recette.
       // et choix « garder / écarter » du membre sur cette recette.
       getRemarques({ userId: batch.user_id!, recipeId: batch.recipe_id, excludeId: batch.id, sourcePlanId: batch.source_plan_id }),
+      // Photos de réalisation (JEP-382) : journal privé, RLS propriétaire.
+      getPhotosFournee(batch.id),
     ]);
   // Droits d'abonnement (§4 « Lancer une fournée ») : calculés une fois ici,
   // jamais recalculés plus bas dans l'arbre de composants.
@@ -160,6 +163,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
           ajustement={{ moldTypes, peutAjusterIA, quotaIA }}
           helpBlocks={helpBlocks}
           remarques={remarques}
+          photosFournee={photosFournee}
         />
       </main>
       <div className="no-print">
