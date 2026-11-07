@@ -25,8 +25,6 @@ export function HelpPageSlot({ blockKey, className }: { blockKey: string; classN
   const help = useContext(HelpCtx);
   if (!help || !help.get(blockKey)) return null;
   return (
-    <div className={className}>
-      <HelpBlockSlot blockKey={blockKey} help={help} />
-    </div>
+    <HelpBlockSlot blockKey={blockKey} help={help} className={className} />
   );
 }

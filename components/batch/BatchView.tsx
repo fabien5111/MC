@@ -586,6 +586,7 @@ export function BatchView({
         />
 
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
+          <div className="flex items-center gap-3">
           <h1 className="font-headline-lg text-headline-lg-mobile text-primary">
             {/* Lien vers la recette d'origine, seulement si elle existe encore et
                 reste lisible (`baseRecipe` nul sinon : supprimée, dépubliée ou
@@ -598,6 +599,8 @@ export function BatchView({
               batch.recipe_title || 'Fournée'
             )}
           </h1>
+          {help && <HelpBlockSlot blockKey={mode === 'patisser' ? 'fournee.patisser_intro' : 'fournee.preparer_intro'} help={help} />}
+          </div>
           <span className="flex items-center gap-3">
             <span className={`no-print font-label-md text-[12px] px-3 py-1 rounded-full text-white ${BATCH_STATUS_LBL[batch.status]?.cls || 'bg-secondary'}`}>
               {BATCH_STATUS_LBL[batch.status]?.label || batch.status}
@@ -1063,8 +1066,6 @@ function PreparerView({
           bouton flottant du tiroir se pose dessous elle (z-index inférieur)
           et devient inatteignable au clic sur mobile. */}
       <RecipeToc sections={tocSections} steps={tocSteps} anchorFor={(i) => `etape-${tocSteps[i].key}`} actions={actions} mobile="drawer" mobileInset="nav" />
-
-      {help && <HelpBlockSlot blockKey="fournee.preparer_intro" help={help} />}
 
       <p className="no-print font-body-md text-[12px] text-on-surface-variant">
         Sur cette fiche : <span className="text-green-700">en vert</span> ce que vous avez ajouté (dont les étapes venues
@@ -1584,10 +1585,10 @@ function PreparerView({
                   retoursEcart={editeurMonte ? undefined : retoursEcartNode}
                   aideRealise={help && i === 0 ? <HelpBlockSlot blockKey="fournee.deja_realise" help={help} /> : undefined}
                   aideNote={help && i === 0 ? <HelpBlockSlot blockKey="fournee.notes" help={help} /> : undefined}
+                  aideIngredients={help && i === 0 ? <HelpBlockSlot blockKey="fournee.remplacement" help={help} /> : undefined}
                   ingredientsEditor={
                     !readOnly && ingredientsOfStep.length > 0 ? (
                       <>
-                      {help && i === 0 && <HelpBlockSlot blockKey="fournee.remplacement" help={help} />}
                       {retoursEcartNode}
                       <BatchStepIngredients
                         batch={batch}
@@ -1891,8 +1892,6 @@ function PatisserView({
           atteignables même pour une fournée sans étape. `mobileInset="nav"` :
           même raison que dans PreparerView, cf. son commentaire. */}
       <RecipeToc sections={tocSections} steps={tocSteps} anchorFor={jalonAnchorId} actions={tocActions} onNavigateToStep={expandJalon} mobile="drawer" mobileInset="nav" />
-
-      {help && <HelpBlockSlot blockKey="fournee.patisser_intro" help={help} />}
 
       {meta && <p className="text-on-surface-variant text-sm mb-6">{meta}</p>}
 

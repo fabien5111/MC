@@ -123,9 +123,14 @@ export default async function RecherchePage({
       <SearchProvider criteria={criteria} initialPanelOpen={panelOpen}>
         <main className="max-w-[1400px] mx-auto pb-24">
           <section className="px-margin-mobile md:px-margin-desktop pt-12 pb-6">
-            <h1 className="font-headline-lg text-headline-lg text-primary">
-              {soleCategory ? `Catégorie : ${soleCategory}` : 'Résultats de recherche'}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="font-headline-lg text-headline-lg text-primary">
+                {soleCategory ? `Catégorie : ${soleCategory}` : 'Résultats de recherche'}
+              </h1>
+              {/* Aide (JEP-373) : à côté du titre, visible aussi sur mobile, où les
+                  critères sont dans un tiroir fermé. */}
+              <HelpSlotClient blockKey="recherche.facettes" blocks={helpBlocks} />
+            </div>
             <div className="h-1 w-12 bg-secondary mt-1" />
           </section>
 
@@ -135,9 +140,6 @@ export default async function RecherchePage({
             <SearchFiltersPanel refs={refs} />
 
             <div className="flex-1 min-w-0 px-margin-mobile md:px-margin-desktop py-8">
-              {/* Aide (JEP-373), au-dessus de la liste des résultats : visible aussi
-                  sur mobile, où les critères sont dans un tiroir fermé. */}
-              <HelpSlotClient blockKey="recherche.facettes" blocks={helpBlocks} />
               <SearchSummary total={result.total} authorTotal={result.authorTotal} refs={refs} />
 
               {criteria.includeRecipes && (

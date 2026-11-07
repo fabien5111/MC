@@ -107,9 +107,9 @@ export function NotificationPreferencesCard({
       <p className="mb-6 text-sm text-on-surface-variant">
         Choisissez, pour chaque type d’information, si vous la recevez sur le site, par e-mail
         {clePushPublique ? ', sur votre téléphone' : ''}, ou pas du tout — et à quel rythme. Décochez tout pour ne rien
-        recevoir. Le réglage vaut dès le prochain événement.
+        recevoir. Le réglage vaut dès le prochain événement.{' '}
+        <HelpBlockSlot blockKey="reglages.notifications" help={help} className="ml-1 align-middle" />
       </p>
-      <HelpBlockSlot blockKey="reglages.notifications" help={help} />
       <PushDeviceSection clePublique={clePushPublique} appareils={appareilsPush} />
       <ul className="divide-y divide-outline-variant">
         {categories.map((c) => (

@@ -34,14 +34,14 @@ export default async function NouvelleIdeePage() {
           <span className="material-symbols-outlined text-[16px]">arrow_back</span>
           Boîte à idées
         </Link>
-        <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-2">
-          Proposer une idée
-        </h1>
+        <div className="mb-2 flex items-center gap-3">
+          <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">Proposer une idée</h1>
+          <HelpSlotClient blockKey="idees.nouvelle" blocks={helpBlocks} />
+        </div>
         <p className="text-on-surface-variant mb-8">
           Une phrase claire, ça suffit — les autres membres pourront voter.
         </p>
 
-        <HelpSlotClient blockKey="idees.nouvelle" blocks={helpBlocks} />
         <IdeaForm />
       </main>
       <Footer />

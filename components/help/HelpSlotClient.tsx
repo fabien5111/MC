@@ -20,8 +20,6 @@ export function HelpSlotClient({
   const help = useHelpBlocks(blocks);
   if (!help.get(blockKey)) return null;
   return (
-    <div className={className}>
-      <HelpBlockSlot blockKey={blockKey} help={help} />
-    </div>
+    <HelpBlockSlot blockKey={blockKey} help={help} className={className} />
   );
 }

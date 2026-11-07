@@ -16,6 +16,7 @@ export function ProjectV2Block({
   apercu,
   state,
   replie,
+  aide,
   children,
 }: {
   id: string;
@@ -29,6 +30,8 @@ export function ProjectV2Block({
   // ne doit pas changer d'un rendu à l'autre, sans quoi React refermerait un
   // volet que le membre vient d'ouvrir.
   replie?: boolean;
+  // Picto d'aide (JEP-391), à côté du titre.
+  aide?: ReactNode;
   children?: ReactNode;
 }) {
   const cadre = atelier
@@ -63,13 +66,19 @@ export function ProjectV2Block({
       )}
       {replie === undefined || !state.unlocked ? (
         <>
-          <h2 className="mb-4 font-headline-md text-[22px] text-primary">{titre}</h2>
+          <div className="mb-4 flex items-center gap-3">
+            <h2 className="font-headline-md text-[22px] text-primary">{titre}</h2>
+            {aide}
+          </div>
           {corps}
         </>
       ) : (
         <details open={!replie} className="group">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-            <h2 className="font-headline-md text-[22px] text-primary">{titre}</h2>
+            <span className="flex items-center gap-3">
+              <h2 className="font-headline-md text-[22px] text-primary">{titre}</h2>
+              {aide}
+            </span>
             <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
           </summary>
           <div className="mt-4">{corps}</div>
