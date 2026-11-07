@@ -1662,8 +1662,10 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   serait sinon admis). Modération comme toute photo d'avis.
 - **Galeries** : fiche recette, « Mes réalisations de cette recette » (photos de
   MES fournées de cette recette, par fournée, replié) ; `/en-cuisine`, bloc
-  « Mes réalisations » en bas de page (grille chronologique, 120 au plus). Clic →
-  la fournée.
+  « Mes réalisations » en bas de page (grille chronologique, 120 au plus). Un clic
+  sur la photo l'ouvre en grand (diaporama de `StepPhotoGallery`), le nom de la
+  recette mène à la fournée, la corbeille supprime la photo après confirmation
+  (liste en état local, comme le bloc de la fournée).
 - **RGPD** : `batch_photos` dans `TABLES_A_VIDER` ; à la suppression du compte, les
   objets Swift sont effacés **sauf** ceux qu'un avis conservé reprend
   (`photosRealisationASupprimer`). Export : rubrique `photos_de_realisation`.

@@ -26,10 +26,14 @@ export function StepPhotoGallery({
   // Contenu posé sous chaque vignette (légende modifiable, corbeille…) —
   // photos de réalisation d'une fournée. Hors du bouton qui ouvre le diaporama.
   sousVignette,
+  // Classes de colonnes de la grille, à la place des deux réglages par défaut
+  // (galeries « Mes réalisations » : 3 à 6 colonnes).
+  grille,
 }: {
   photos: StepPhoto[];
   compact?: boolean;
   sousVignette?: (index: number) => ReactNode;
+  grille?: string;
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
@@ -58,7 +62,7 @@ export function StepPhotoGallery({
 
   return (
     <>
-      <div className={`print-step-photos grid grid-cols-2 ${compact ? '' : 'md:grid-cols-4'} gap-4`}>
+      <div className={`print-step-photos grid ${grille ?? `grid-cols-2 ${compact ? '' : 'md:grid-cols-4'}`} gap-4`}>
         {photos.map((p, k) => {
           const vignette = (
             <div
