@@ -168,7 +168,10 @@ function ReviewForm({
   return (
     <div className="flex flex-col gap-4">
       <LoadingOverlay visible={busy} label="Envoi de votre avis…" />
-      <StarPicker value={rating} onChange={setRating} />
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-[14px] font-medium text-on-surface">Indiquez votre note</span>
+        <StarPicker value={rating} onChange={setRating} />
+      </div>
       <div>
         <textarea
           value={comment}
@@ -226,14 +229,21 @@ function ReviewForm({
       </div>
       {error && <p className="text-error text-sm">{error}</p>}
       <div>
+        {/* Infobulle portée par l'enveloppe : un bouton désactivé ne reçoit pas
+            le survol dans tous les navigateurs (d'où pointer-events-none). */}
+        <span
+          className="inline-block"
+          title={rating === 0 && !busy ? 'Indiquez votre note (de 1 à 5 étoiles) pour envoyer votre avis.' : undefined}
+        >
         <button
           type="button"
           onClick={submit}
           disabled={busy || rating === 0}
-          className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label-md text-label-md hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label-md text-label-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
         >
           {submitLabel}
         </button>
+        </span>
       </div>
       <p className="text-[12px] text-on-surface-variant italic">
         Votre avis sera relu par la modération avant d’apparaître sur la recette.
