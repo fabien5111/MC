@@ -622,6 +622,39 @@ export function BatchView({
             </span>
           </span>
         </div>
+        {/* Recette d'origine — absente si la recette de base n'est plus
+            accessible (supprimée/dépubliée), même repli que le bandeau
+            d'avertissement plus haut. Même pattern que la signature de la
+            fiche recette (avatar + nom vers /u/[handle]). Placé sous le titre,
+            mode Préparer seulement. */}
+        {mode === 'preparer' && baseRecipe && (
+          <div className="no-print flex items-center gap-4 flex-wrap mb-2 font-label-md text-label-md text-on-surface-variant">
+            <Link href={`/recette/${baseRecipe.id}`} className="text-primary underline underline-offset-2 hover:text-secondary">
+              Voir la recette d&apos;origine
+            </Link>
+            {baseRecipe.authorId && (
+              <span className="flex items-center gap-2">
+                Par
+                <Link
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                  href={`/u/${baseRecipe.author?.username || baseRecipe.authorId}`}
+                >
+                  <span className="w-6 h-6 rounded-full overflow-hidden border border-outline-variant block bg-surface-container">
+                    {baseRecipe.author?.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                      <img src={baseRecipe.author.avatarUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="material-symbols-outlined text-[16px] text-on-surface-variant flex items-center justify-center w-full h-full">
+                        person
+                      </span>
+                    )}
+                  </span>
+                  <span className="border-b border-primary">{baseRecipe.author?.fullName || 'Auteur'}</span>
+                </Link>
+              </span>
+            )}
+          </div>
+        )}
         <p className="text-on-surface-variant text-sm mb-4">
           {[
             dateTxt ? `Fournée du ${dateTxt}` : '',
@@ -1272,39 +1305,6 @@ function PreparerView({
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Recette d'origine — absente si la recette de base n'est plus
-          accessible (supprimée/dépubliée), même repli que le bandeau
-          d'avertissement plus haut. Même pattern que la signature de la
-          fiche recette (avatar + nom vers /u/[handle]). */}
-      {baseRecipe && (
-        <div className="no-print flex items-center gap-4 flex-wrap font-label-md text-label-md text-on-surface-variant">
-          <Link href={`/recette/${baseRecipe.id}`} className="text-primary underline underline-offset-2 hover:text-secondary">
-            Voir la recette d&apos;origine
-          </Link>
-          {baseRecipe.authorId && (
-            <span className="flex items-center gap-2">
-              Par
-              <Link
-                className="flex items-center gap-2 hover:text-primary transition-colors"
-                href={`/u/${baseRecipe.author?.username || baseRecipe.authorId}`}
-              >
-                <span className="w-6 h-6 rounded-full overflow-hidden border border-outline-variant block bg-surface-container">
-                  {baseRecipe.author?.avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                    <img src={baseRecipe.author.avatarUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="material-symbols-outlined text-[16px] text-on-surface-variant flex items-center justify-center w-full h-full">
-                      person
-                    </span>
-                  )}
-                </span>
-                <span className="border-b border-primary">{baseRecipe.author?.fullName || 'Auteur'}</span>
-              </Link>
-            </span>
-          )}
         </div>
       )}
 
