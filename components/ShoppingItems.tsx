@@ -54,7 +54,7 @@ export function ShoppingItems({
   helpBlocks?: VisibleHelpBlock[];
 }) {
   const router = useRouter();
-  const help = useHelpBlocks('courses', helpBlocks, true);
+  const help = useHelpBlocks(helpBlocks);
   const dialog = useDialog();
   const { mutate } = useMutation();
   // Ordre d'affichage : alphabétique, ou « non barrés d'abord » pour la

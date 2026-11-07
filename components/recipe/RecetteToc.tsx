@@ -77,7 +77,7 @@ export function RecetteToc({
   helpBlocks?: VisibleHelpBlock[];
 }) {
   const router = useRouter();
-  const help = useHelpBlocks('recette', helpBlocks, true);
+  const help = useHelpBlocks(helpBlocks);
   const dialog = useDialog();
   const { mutate, busy: statusBusy } = useMutation();
   const { open, editMode, openCreate, close } = usePlanCtx();

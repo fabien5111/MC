@@ -177,7 +177,7 @@ export function ProjectV2({
 }) {
   useAutoGrowOnResize();
   const router = useRouter();
-  const help = useHelpBlocks('projet', helpBlocks, true);
+  const help = useHelpBlocks(helpBlocks);
   const dialog = useDialog();
   const { mutate, busy, refresh } = useMutation();
   // Sections modifiées et non enregistrées (cf. sections.ts) : alimente les

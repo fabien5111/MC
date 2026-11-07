@@ -135,7 +135,7 @@ export default async function CarnetCapPage({ searchParams }: SearchParams) {
         carnet
         titreEcran="Carnet CAP"
         retour={{ href: retour, label: 'Modifier la sélection' }}
-        aide={<HelpSlotClient page="carnet" blockKey="carnet.cap_apercu" blocks={helpBlocks} />}
+        aide={<HelpSlotClient blockKey="carnet.cap_apercu" blocks={helpBlocks} />}
       />
     );
   }

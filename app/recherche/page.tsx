@@ -137,7 +137,7 @@ export default async function RecherchePage({
             <div className="flex-1 min-w-0 px-margin-mobile md:px-margin-desktop py-8">
               {/* Aide (JEP-373), au-dessus de la liste des résultats : visible aussi
                   sur mobile, où les critères sont dans un tiroir fermé. */}
-              <HelpSlotClient page="recherche" blockKey="recherche.facettes" blocks={helpBlocks} />
+              <HelpSlotClient blockKey="recherche.facettes" blocks={helpBlocks} />
               <SearchSummary total={result.total} authorTotal={result.authorTotal} refs={refs} />
 
               {criteria.includeRecipes && (

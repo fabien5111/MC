@@ -149,7 +149,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
           )}
         </div>
         <CarnetProvider>
-          <HelpPageProvider page="carnet" blocks={helpBlocks}>
+          <HelpPageProvider blocks={helpBlocks}>
           <CarnetToolbar
             params={params}
             counts={countsAffiches}

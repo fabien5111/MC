@@ -77,7 +77,7 @@ export function ImporterForm({
   helpBlocks?: VisibleHelpBlock[];
 } = {}) {
   const router = useRouter();
-  const help = useHelpBlocks('importer', helpBlocks, true);
+  const help = useHelpBlocks(helpBlocks);
   const dialog = useDialog();
   const [onglet, setOnglet] = useState<Onglet>('texte');
   const [texte, setTexte] = useState('');

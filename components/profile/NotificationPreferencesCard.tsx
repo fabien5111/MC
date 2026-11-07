@@ -66,7 +66,7 @@ export function NotificationPreferencesCard({
   /** Blocs d'aide de la page `reglages` (JEP-373). */
   helpBlocks?: VisibleHelpBlock[];
 }) {
-  const help = useHelpBlocks('reglages', helpBlocks, true);
+  const help = useHelpBlocks(helpBlocks);
   const { mutate, busy } = useMutation();
   const [prefs, setPrefs] = useState<PreferencesMembre>(preferences);
 

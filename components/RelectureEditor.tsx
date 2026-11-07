@@ -258,7 +258,7 @@ export function RelectureEditor({
   const router = useRouter();
   const dialog = useDialog();
   const recette = (importRow.recette ?? {}) as any;
-  const help = useHelpBlocks('relecture', helpBlocks ?? [], true);
+  const help = useHelpBlocks(helpBlocks ?? []);
 
   const [hero, setHero] = useState<string | null>(recette.photo_principale ?? null);
   const [heroOriginal, setHeroOriginal] = useState<string | null>(recette.photo_principale_original ?? recette.photo_principale ?? null);

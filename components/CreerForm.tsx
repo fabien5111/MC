@@ -250,10 +250,8 @@ export function CreerForm({
   // depuis la fiche recette (cf. components/recipe/RecetteToc.tsx) : on
   // rouvre l'éditeur là où la recette était consultée, plutôt qu'en haut.
   initialStep?: number | null;
-  // Blocs d'aide contextuelle déjà filtrés par le serveur (contenu renseigné,
-  // ni bloc ni vidéo ni page masqués pour l'utilisateur courant) — cf.
-  // lib/help.ts. Tableau vide la plupart du temps (aucun bloc défini, ou
-  // tout masqué), le composant ne rend alors rien.
+  // Blocs d'aide contextuelle déjà filtrés par le serveur (contenu renseigné)
+  // — cf. lib/help.ts. Vide : aucun picto « ? » affiché.
   helpBlocks?: VisibleHelpBlock[];
   // Retours de mes fournées (JEP-381), lus par la page pour l'auteur d'une
   // recette déjà enregistrée ; `null` : rien à afficher.
@@ -273,9 +271,7 @@ export function CreerForm({
   // et annoncée. La vue par composants est perdue ; les composants eux-mêmes,
   // donc les crédits d'auteur, restent en base (cf. lib/projects.ts).
   const projetIntact = isProjectRecipe(editRecipe) && !isProjectDissolved(editRecipe);
-  // Dépliés par défaut en création, repliés en modification — l'auteur qui
-  // reprend une recette déjà rédigée connaît déjà l'éditeur.
-  const help = useHelpBlocks('creer', helpBlocks ?? [], editingId === null);
+  const help = useHelpBlocks(helpBlocks ?? []);
 
   const [title, setTitle] = useState(editRecipe?.title || '');
   const [description, setDescription] = useState(editRecipe?.description || '');

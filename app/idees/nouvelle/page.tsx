@@ -41,7 +41,7 @@ export default async function NouvelleIdeePage() {
           Une phrase claire, ça suffit — les autres membres pourront voter.
         </p>
 
-        <HelpSlotClient page="idees" blockKey="idees.nouvelle" blocks={helpBlocks} />
+        <HelpSlotClient blockKey="idees.nouvelle" blocks={helpBlocks} />
         <IdeaForm />
       </main>
       <Footer />

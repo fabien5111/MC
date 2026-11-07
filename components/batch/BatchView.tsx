@@ -311,7 +311,7 @@ export function BatchView({
   // repasse `status` à `planifiee`, mais le paramètre d'URL, lui, resterait —
   // la fournée rouverte serait donc encore verrouillée. `resumeBatch` le
   // retire des deux côtés (état + URL).
-  const help = useHelpBlocks('fournee', helpBlocks, true);
+  const help = useHelpBlocks(helpBlocks);
   const [lectureMode, setLectureMode] = useState(lecture);
   useEffect(() => setLectureMode(lecture), [lecture]);
   const readOnly = batch.status !== 'planifiee' || lectureMode || impersonationReadOnly;

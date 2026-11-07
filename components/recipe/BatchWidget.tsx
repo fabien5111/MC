@@ -100,7 +100,7 @@ export function BatchWidget({
   quotaIA?: { allowed: boolean; limit?: number; usage?: number } | null;
 }) {
   const router = useRouter();
-  const help = useHelpBlocks('fournee', helpBlocks ?? [], true);
+  const help = useHelpBlocks(helpBlocks ?? []);
   const dialog = useDialog();
   const writeGuard = useWriteGuard();
   const { open, editMode, close } = usePlanCtx();
