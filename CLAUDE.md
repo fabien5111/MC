@@ -144,8 +144,7 @@ le service managé.
   peut rester à `pgweb_admin`.
 - **Aide contextuelle : un picto « ? », jamais un encadré** (JEP-391).
   Chaque emplacement (`HelpBlockSlot`, `HelpSlotClient`, `HelpPageSlot`) rend
-  `HelpBlock` : picto `help_outline` + libellé « Aide » dès 768 px, picto seul
-  sur téléphone ; le clic ouvre une fenêtre (portée dans `document.body`,
+  `HelpBlock` : picto `help_outline` + libellé « Aide » à toute largeur ; le clic ouvre une fenêtre (portée dans `document.body`,
   `z-[105]`) avec titre, texte et vidéo du bloc. « ? » et non « i » : le « i »
   sert à un renseignement ou un état, pas à l'aide « comment faire ». **Plus
   aucun masquage** : la croix, « Réafficher les aides » (`/reglages`), les

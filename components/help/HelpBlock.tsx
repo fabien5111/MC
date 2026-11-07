@@ -2,7 +2,7 @@
 
 // Aide contextuelle (JEP-391) : un picto « ? » (standard de l'aide « comment
 // faire » ; le « i » sert plutôt à un renseignement ou à un état), suivi du
-// libellé « Aide » dès 768 px — picto seul sur téléphone. Le clic ouvre une
+// libellé « Aide » à toute largeur, téléphone compris. Le clic ouvre une
 // fenêtre avec le titre, le texte et la vidéo du bloc. Remplace l'ancien
 // encadré « Aides et Conseils », qui prenait trop de place.
 //
@@ -51,10 +51,10 @@ export function HelpBlock({ block }: { block: VisibleHelpBlock }) {
         title={`Aide : ${block.title}`}
         aria-label={`Aide : ${block.title}`}
         aria-haspopup="dialog"
-        className="no-print inline-flex items-center gap-1.5 rounded-pill border border-secondary-container bg-secondary-container/30 p-1.5 md:px-3 md:py-1 text-primary transition-colors hover:bg-secondary-container/60"
+        className="no-print inline-flex items-center gap-1.5 rounded-pill border border-secondary-container bg-secondary-container/30 px-3 py-1 text-primary transition-colors hover:bg-secondary-container/60"
       >
         <span className="material-symbols-outlined text-[20px]">help_outline</span>
-        <span className="hidden md:inline font-label-md text-label-md">Aide</span>
+        <span className="font-label-md text-label-md">Aide</span>
       </button>
       {ouvert &&
         createPortal(
