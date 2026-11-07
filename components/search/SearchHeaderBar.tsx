@@ -45,12 +45,18 @@ export function SearchHeaderBar() {
         <form
           role="search"
           data-nav-spinner-ignore
-          onSubmit={(e) => e.preventDefault()}
+          onSubmit={(e) => {
+            e.preventDefault();
+            // Entrée abaisse le clavier mobile : la recherche est déjà partie
+            // pendant la frappe, il ne reste qu'à libérer l'écran.
+            (document.activeElement as HTMLElement | null)?.blur();
+          }}
           className="flex items-center gap-2.5 bg-white border border-outline-variant rounded-full pl-5 pr-2 py-2.5 shadow-sm"
         >
           <span className="material-symbols-outlined text-[21px] text-outline">search</span>
           <input
             type="search"
+            enterKeyHint="search"
             value={criteria.q}
             onChange={(e) =>
               update({ ...criteria, q: e.target.value }, { debounce: true, silent: true })

@@ -124,7 +124,9 @@ export default async function RecherchePage({
         <main className="max-w-[1400px] mx-auto pb-24">
           <section className="px-margin-mobile md:px-margin-desktop pt-12 pb-6">
             <div className="flex items-center gap-3">
-              <h1 className="font-headline-lg text-headline-lg text-primary">
+              {/* Sous 640 px, 22 px : « Résultats de recherche » tient sur une ligne
+                  à côté du picto d'aide, même sur un écran de 320 px. */}
+              <h1 className="font-headline-lg text-[22px] leading-tight sm:text-headline-lg text-primary">
                 {soleCategory ? `Catégorie : ${soleCategory}` : 'Résultats de recherche'}
               </h1>
               {/* Aide (JEP-373) : à côté du titre, visible aussi sur mobile, où les
