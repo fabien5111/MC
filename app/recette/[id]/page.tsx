@@ -22,6 +22,8 @@ import { getActiveAds } from '@/lib/ads';
 import { getUnits, getShoppingListNames, getRecipeCompletedBatches } from '@/lib/profile';
 import { fmtNum } from '@/lib/recipe-plan';
 import { MesFourneesTerminees } from '@/components/recipe/MesFourneesTerminees';
+import { MesRealisationsRecette } from '@/components/batch/MesRealisations';
+import { getRealisations } from '@/lib/batch-photos-data';
 import { getMoldTypes } from '@/lib/admin';
 import { getRecipeDefaultPhoto } from '@/lib/site';
 import { getApprovedComments } from '@/lib/reviews-data';
@@ -159,7 +161,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // dépendent pas les unes des autres — regroupées en un seul `Promise.all`
   // plutôt qu'enchaînées en `await` successifs, qui coûtaient un aller-retour
   // en série par lecture sur la page la plus consultée du site.
-  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials, entitlements, helpPages, remarques, remarquesEssais] = await Promise.all([
+  const [shareInfo, userIsAdmin, shoppingLists, completedBatches, projectCredits, projectTrials, entitlements, helpPages, remarques, remarquesEssais, realisations] = await Promise.all([
     // Réservé au propriétaire : un visiteur n'a pas à savoir avec qui la
     // recette est partagée (lib/shares.ts — à tenir synchrone avec la policy
     // RLS `recipes_partagees`).
@@ -190,6 +192,9 @@ export default async function RecettePage({ params, searchParams }: Params) {
     user ? getRemarques({ userId: user.id, recipeId: recipe.id }) : Promise.resolve(null),
     // Retours de chaque essai d'un projet validé (lecture seule, bloc des essais).
     isProject && isOwner ? getRemarquesEssais(recipe.id) : Promise.resolve(undefined),
+    // Photos de réalisation de MES fournées de cette recette (JEP-382) :
+    // privées, lues sous la session (RLS propriétaire) — jamais celles d'un autre.
+    user ? getRealisations(user.id, recipe.id) : Promise.resolve([]),
   ]);
   const peutAjusterIA = canAccess(entitlements, 'ajustement_ia_mensuel');
   // Extraire des étapes en recette (JEP-258, plan Pro) : les masses
@@ -558,6 +563,10 @@ export default async function RecettePage({ params, searchParams }: Params) {
               (déplié si une fournée est « fournée validée »), avec le
               bouton « Refaire ». Absent de l'impression. */}
           <MesFourneesTerminees batches={completedBatches} recipeTitle={recipe.title} />
+
+          {/* Mes réalisations de cette recette (JEP-382) : photos de mes
+              fournées, visibles de moi seul. Rien sans photo. */}
+          <MesRealisationsRecette realisations={realisations} />
 
           {/* Hero */}
           {recipe.hero_image_url && (

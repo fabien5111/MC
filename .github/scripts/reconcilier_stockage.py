@@ -34,6 +34,11 @@ CIBLES_PAR_CONTENEUR = {
         "scalaires": [
             ("recipes", ["hero_image_url", "hero_image_original_url", "hero_thumb_url", "hero_card_url"]),
             ("step_photos", ["url", "original_url"]),
+            # Photos de réalisation des fournées (JEP-382). Table obligatoire :
+            # si elle manque (migration pas jouée), la lecture échoue et le
+            # script s'arrête AVANT toute suppression — jamais l'inverse, qui
+            # ferait passer toutes les photos `realisations/` pour orphelines.
+            ("batch_photos", ["url", "thumb_url"]),
             ("profiles", ["avatar_url", "banner_url"]),
             ("tags", ["category_picto"]),
             ("allergens", ["picto"]),

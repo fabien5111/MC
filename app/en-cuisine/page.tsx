@@ -9,6 +9,8 @@ import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
 import { CuisineContent } from '@/components/cuisine/CuisineContent';
 import { InvitationScreen } from '@/components/invitation/InvitationScreen';
+import { MesRealisationsCuisine } from '@/components/batch/MesRealisations';
+import { getRealisations } from '@/lib/batch-photos-data';
 
 export const metadata: Metadata = { title: 'En cuisine | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
@@ -31,7 +33,7 @@ export default async function EnCuisinePage() {
     );
   }
 
-  const [planning, batchesTerminees, activeBatches, shoppingLists, entitlements, conversions, units] = await Promise.all([
+  const [planning, batchesTerminees, activeBatches, shoppingLists, entitlements, conversions, units, realisations] = await Promise.all([
     getBatches(user.id, 'actives'),
     getBatches(user.id, 'terminees'),
     getActiveBatches(user.id),
@@ -39,6 +41,8 @@ export default async function EnCuisinePage() {
     getEntitlements(user.id),
     getIngredientConversions(),
     getUnits(),
+    // « Mes réalisations » (JEP-382) : photos de toutes mes fournées.
+    getRealisations(user.id),
   ]);
   // Droits d'abonnement (§4) : calculés une fois ici, jamais recalculés plus
   // bas dans l'arbre de composants.
@@ -69,6 +73,7 @@ export default async function EnCuisinePage() {
           conversions={conversions}
           units={units}
         />
+        <MesRealisationsCuisine realisations={realisations} />
       </main>
       <Footer />
       <MobileNav current="cuisine" />

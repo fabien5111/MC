@@ -5,10 +5,12 @@
 // étape sans revenir à la grille. Le wrapper de chaque vignette reste un
 // `<div>` (pas un `<button>`) : la mise en page d'impression
 // (`.print-step-photos > div`, app/globals.css) cible ce tag directement.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 
-type StepPhoto = { url: string; ai_retouched: boolean };
+// `thumb_url` (vignette de la grille) et `legende` (sous la photo du
+// diaporama) : photos de réalisation d'une fournée (JEP-382), facultatifs.
+type StepPhoto = { url: string; ai_retouched?: boolean; thumb_url?: string | null; legende?: string | null };
 
 const overlayIconBtn =
   'w-11 h-11 rounded-full bg-surface-container/90 text-on-surface flex items-center justify-center hover:bg-surface-container-high transition-colors';
@@ -21,9 +23,17 @@ export function StepPhotoGallery({
   // pixels plutôt que d'élargir la grille (le conteneur, lui, ne s'élargit
   // pas avec le viewport).
   compact = false,
+  // Contenu posé sous chaque vignette (légende modifiable, corbeille…) —
+  // photos de réalisation d'une fournée. Hors du bouton qui ouvre le diaporama.
+  sousVignette,
+  // Classes de colonnes de la grille, à la place des deux réglages par défaut
+  // (galeries « Mes réalisations » : 3 à 6 colonnes).
+  grille,
 }: {
   photos: StepPhoto[];
   compact?: boolean;
+  sousVignette?: (index: number) => ReactNode;
+  grille?: string;
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
@@ -52,26 +62,37 @@ export function StepPhotoGallery({
 
   return (
     <>
-      <div className={`print-step-photos grid grid-cols-2 ${compact ? '' : 'md:grid-cols-4'} gap-4`}>
-        {photos.map((p, k) => (
-          <div
-            key={k}
-            role="button"
-            tabIndex={0}
-            onClick={() => setOpenIndex(k)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setOpenIndex(k);
-              }
-            }}
-            className="relative aspect-square bg-surface-container-high border border-outline-variant overflow-hidden cursor-zoom-in"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
-            <img src={p.url} alt="" className="w-full h-full object-cover" />
-            {p.ai_retouched && <AiPhotoBadge />}
-          </div>
-        ))}
+      <div className={`print-step-photos grid ${grille ?? `grid-cols-2 ${compact ? '' : 'md:grid-cols-4'}`} gap-4`}>
+        {photos.map((p, k) => {
+          const vignette = (
+            <div
+              key={k}
+              role="button"
+              tabIndex={0}
+              onClick={() => setOpenIndex(k)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setOpenIndex(k);
+                }
+              }}
+              className="relative aspect-square bg-surface-container-high border border-outline-variant overflow-hidden cursor-zoom-in"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
+              <img src={p.thumb_url || p.url} alt={p.legende ?? ''} className="w-full h-full object-cover" />
+              {p.ai_retouched && <AiPhotoBadge />}
+            </div>
+          );
+          // Enveloppe seulement s'il y a un contenu sous la vignette : la règle
+          // d'impression vise la vignette, enfant direct de la grille.
+          if (!sousVignette) return vignette;
+          return (
+            <div key={k} className="flex flex-col gap-1.5 min-w-0">
+              {vignette}
+              {sousVignette(k)}
+            </div>
+          );
+        })}
       </div>
 
       {openIndex !== null && (
@@ -103,6 +124,11 @@ export function StepPhotoGallery({
             {/* eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin */}
             <img src={photos[openIndex].url} alt="" className="max-w-full max-h-[85vh] object-contain" />
             {photos[openIndex].ai_retouched && <AiPhotoBadge />}
+            {photos[openIndex].legende && (
+              <p className="mt-2 max-w-xl text-center font-body-md text-sm text-on-surface bg-surface-container/90 px-3 py-1.5 rounded">
+                {photos[openIndex].legende}
+              </p>
+            )}
           </div>
 
           {photos.length > 1 && (

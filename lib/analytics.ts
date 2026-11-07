@@ -31,6 +31,8 @@ export type EvenementsAudience = {
   /** « À retenir pour la prochaine fois » saisi ou modifié (JEP-381). */
   saisir_bilan: null;
   generer_liste_courses: null;
+  /** Photo de réalisation déposée sur une fournée (JEP-382), après le dépôt réussi. */
+  ajouter_photo_realisation: null;
   importer_recette: { source: 'texte' | 'photo' | 'pdf' };
   /** Compte dont l'inscription vient de se terminer (cf. lib/inscription.ts). */
   sign_up: { method: 'email' | 'google' };

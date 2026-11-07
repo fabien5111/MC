@@ -20,6 +20,7 @@ import { televerserImage } from '@/lib/storage-client';
 import { moveAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { useDialog } from '@/components/Dialog';
+import { ChoixPhotoFournee, usePhotosFournee } from '@/components/batch/PhotosFournee';
 
 function ReviewPhotos({ photos }: { photos: ReviewPhoto[] }) {
   if (!photos.length) return null;
@@ -85,6 +86,11 @@ function ReviewForm({
   const [photos, setPhotos] = useState<ReviewPhoto[]>(initialPhotos);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Photos de réalisation de cette fournée (JEP-382) : reprises dans l'avis
+  // par « Choisir parmi les photos de cette fournée ». La route revérifie
+  // qu'elles appartiennent au membre.
+  const photosFournee = usePhotosFournee();
+  const realisations = new Set((photosFournee?.photos ?? []).map((p) => p.url));
 
   const required = rating > 0 && reviewCommentRequired(rating);
 
@@ -133,7 +139,7 @@ function ReviewForm({
       setError('Choisissez une note.');
       return;
     }
-    const validation = validateReview(rating, comment, photos);
+    const validation = validateReview(rating, comment, photos, realisations);
     if (!validation.ok) {
       setError(validation.message);
       return;
@@ -225,6 +231,15 @@ function ReviewForm({
               )}
             </div>
           ))}
+        </div>
+        <div className="mt-3">
+          <ChoixPhotoFournee
+            dejaChoisies={photos.map((p) => p.url)}
+            places={REVIEW_PHOTOS_MAX - photos.length}
+            onChoisir={(url) =>
+              setPhotos((prev) => (prev.length >= REVIEW_PHOTOS_MAX || prev.some((p) => p.url === url) ? prev : [...prev, { url, ai_retouched: false }]))
+            }
+          />
         </div>
       </div>
       {error && <p className="text-error text-sm">{error}</p>}

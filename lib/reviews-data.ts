@@ -20,7 +20,8 @@ import {
   COMMENT_MODERATION_SYSTEM_PROMPT,
 } from '@/lib/ai/comment-moderation';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
-import { validateReview, normalizeReviewPhotos } from '@/lib/reviews';
+import { validateReview, normalizeReviewPhotos, estPhotoRealisation } from '@/lib/reviews';
+import { urlCanonique } from '@/lib/storage-data';
 import type { ReviewPhoto } from '@/lib/reviews';
 import type { BatchFull } from '@/lib/recipe-plan';
 import { isProjectDraft, type ProjectMarks } from '@/lib/projects';
@@ -130,11 +131,40 @@ export async function submitOrUpdateReview(
     return { ok: false, message: 'Une fournée d’essai d’un projet en cours ne peut pas recevoir d’avis.' };
   }
 
-  const validation = validateReview(rating, comment, photos);
+  const admin = createAdminClient();
+
+  // Photos de réalisation reprises dans l'avis (JEP-382) : admises seulement si
+  // elles appartiennent à une fournée de CE membre — relu en base, jamais sur
+  // la foi du navigateur. Lecture en échec : aucune n'est admise.
+  // Seulement les adresses de NOTRE stockage : `batch_photos.url` est écrite
+  // par le navigateur (RLS), un hôte externe y serait sinon admis (pixel de
+  // suivi chargé dans la page de modération).
+  // Racine lue seulement s'il y a une photo de réalisation : sans stockage
+  // configuré, aucune n'est admise (l'avis est refusé par la validation).
+  const candidates = photos.map((p) => p.url).filter(estPhotoRealisation);
+  let racine: string | null = null;
+  if (candidates.length) {
+    try {
+      racine = urlCanonique('photos', 'realisations/');
+    } catch (e) {
+      console.error('submitOrUpdateReview (racine du stockage):', (e as Error).message);
+    }
+  }
+  const realisations = racine ? [...new Set(candidates.filter((u) => u.startsWith(racine!)))] : [];
+  const realisationsAutorisees = new Set<string>();
+  if (realisations.length) {
+    const { data, error } = await (admin as any)
+      .from('batch_photos')
+      .select('url')
+      .eq('user_id', userId)
+      .in('url', realisations);
+    if (error) console.error('submitOrUpdateReview (photos de réalisation):', error.message);
+    for (const l of (data ?? []) as { url: string }[]) realisationsAutorisees.add(l.url);
+  }
+
+  const validation = validateReview(rating, comment, photos, realisationsAutorisees);
   if (!validation.ok) return validation;
   const texte = comment.trim();
-
-  const admin = createAdminClient();
 
   // Avis déjà déposé pour cette recette (un seul par membre, cf.
   // CLAUDE.md) : autorisé UNIQUEMENT en resoumission après refus, et
