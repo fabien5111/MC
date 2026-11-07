@@ -231,6 +231,12 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
           Ajouter des photos
         </button>
       )}
+      {plein && (
+        <span role="status" className="flex items-center gap-1 text-[12px] text-on-surface-variant">
+          <span className="material-symbols-outlined text-[16px]">check_circle</span>
+          {BATCH_PHOTOS_MAX} photos maximum atteintes
+        </span>
+      )}
     </span>
   );
 }
@@ -351,6 +357,7 @@ export function PhotosFourneeBloc({
       {photos.length > 0 ? (
         <StepPhotoGallery
           photos={photos}
+          grille="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
           sousVignette={(i) => <DetailPhoto photo={photos[i]} etapes={etapes} ctx={ctx} avecEtape />}
         />
       ) : (
@@ -372,9 +379,7 @@ export function PhotosEtape({ stepId }: { stepId: number }) {
   return (
     <div className="no-print mt-3 flex flex-col gap-2">
       {photos.length > 0 && (
-        <div className="max-w-md">
-          <StepPhotoGallery photos={photos} compact />
-        </div>
+        <StepPhotoGallery photos={photos} grille="grid-cols-3 sm:grid-cols-4 lg:grid-cols-6" />
       )}
       <div>
         <BoutonsPhoto stepId={stepId} compact />
