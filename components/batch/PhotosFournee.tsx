@@ -180,9 +180,10 @@ export function PhotosFourneeProvider({
 // ── Boutons d'ajout ───────────────────────────────────────────────────────
 
 /**
- * « Prendre une photo » (appareil photo sur mobile, `capture`) et, en version
- * complète, « Depuis la galerie » (sans `capture`, plusieurs fichiers). Sur un
- * ordinateur, `capture` est ignoré : les deux ouvrent le sélecteur de fichiers.
+ * « Ajouter des photos » : un seul bouton, plusieurs fichiers à la fois. Sur un
+ * téléphone, le sélecteur du système propose l'appareil photo ou la photothèque ;
+ * sur ordinateur, les fichiers du disque. En version compacte (sous une étape),
+ * le bouton « Photo » ouvre directement l'appareil photo (`capture`).
  */
 export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | null; compact?: boolean }) {
   const ctx = usePhotosFournee();
@@ -213,28 +214,19 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
           Photo
         </button>
       ) : (
-        <>
-          <button
-            type="button"
-            onClick={() => camera.current?.click()}
-            disabled={plein}
-            title={titrePlein}
-            className="inline-flex items-center gap-1.5 rounded-pill bg-primary px-4 py-2 font-label-md text-label-md text-on-primary hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[18px]">photo_camera</span>
-            Prendre une photo
-          </button>
-          <button
-            type="button"
-            onClick={() => galerie.current?.click()}
-            disabled={plein}
-            title={titrePlein}
-            className="inline-flex items-center gap-1.5 rounded-pill border border-primary px-4 py-2 font-label-md text-label-md text-primary hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
-            Depuis la galerie
-          </button>
-        </>
+        // Un seul bouton : sur un téléphone, le sélecteur du système propose
+        // lui-même l'appareil photo ou la photothèque ; sur ordinateur, les
+        // fichiers du disque. Plusieurs photos à la fois.
+        <button
+          type="button"
+          onClick={() => galerie.current?.click()}
+          disabled={plein}
+          title={titrePlein}
+          className="inline-flex items-center gap-1.5 rounded-pill bg-primary px-4 py-2 font-label-md text-label-md text-on-primary hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
+          Ajouter des photos
+        </button>
       )}
     </span>
   );
@@ -323,7 +315,7 @@ export function PhotosFourneeBloc({
       }`}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h3 className={`flex items-center gap-2 text-primary ${misEnAvant ? 'font-headline-md text-headline-md' : 'font-label-md text-[15px]'}`}>
+        <h3 className={`flex items-center gap-2 text-primary ${misEnAvant ? 'font-headline-md text-[18px] md:text-[20px]' : 'font-label-md text-[15px]'}`}>
           <span className="material-symbols-outlined text-[20px]">photo_library</span>
           Photos de cette fournée
           <span className="font-label-md text-[12px] text-on-surface-variant">

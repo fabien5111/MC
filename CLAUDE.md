@@ -1645,8 +1645,9 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   Supprimer une photo n'efface pas l'objet : la réconciliation du stockage
   (`reconcilier_stockage.py`, qui lit `batch_photos` — table **obligatoire**, son
   absence arrête le script avant toute suppression) reprend les orphelins.
-- **Ajout** : « Prendre une photo » (`capture`, appareil photo sur mobile) et
-  « Depuis la galerie » dans le bloc « Photos de cette fournée » (sous le déroulé
+- **Ajout** : un seul bouton « Ajouter des photos » (plusieurs fichiers ; sur
+  téléphone, le sélecteur du système propose appareil photo ou photothèque) dans le
+  bloc « Photos de cette fournée » (sous le déroulé
   d'une fournée en cours ; en tête du résumé, mis en avant, sur une fournée close),
   bouton « Photo » sur chaque étape (Préparer, et Pâtisser hors du volet replié).
   **Permis sur une fournée close** (indépendant de `readOnly` / `?lecture=1`, comme
