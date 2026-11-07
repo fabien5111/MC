@@ -13,7 +13,7 @@
 // ça ne réécrit pas l'historique — même raisonnement que la carte d'avis,
 // indépendant de `readOnly` et de `?lecture=1`. Seule l'impersonation en
 // lecture seule bloque (garde réelle : RLS `impersonation_ro_*`).
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
@@ -41,7 +41,8 @@ type Ctx = {
   bloque: boolean;
   ajouter: (files: File[], stepId: number | null) => Promise<void>;
   supprimer: (id: number) => Promise<void>;
-  legender: (id: number, legende: string) => Promise<void>;
+  // Rend `true` quand la légende a été écrite (faux : inchangée, refusée ou en échec).
+  legender: (id: number, legende: string) => Promise<boolean>;
   rattacher: (id: number, stepId: number | null) => Promise<void>;
 };
 
@@ -135,16 +136,18 @@ export function PhotosFourneeProvider({
 
   const legender = useCallback(
     async (id: number, legende: string) => {
-      if (!writeGuard('Photo de réalisation')) return;
+      if (!writeGuard('Photo de réalisation')) return false;
       const avant = courantes.current;
       const propre = legende.trim() ? legende.trim().slice(0, LEGENDE_MAX) : null;
-      if (avant.find((p) => p.id === id)?.legende === propre) return;
+      if (avant.find((p) => p.id === id)?.legende === propre) return false;
       setPhotos(avant.map((p) => (p.id === id ? { ...p, legende: propre } : p)));
       const erreur = await modifierLegende(id, legende);
       if (erreur) {
         setPhotos(avant);
         await dialog.alert('La légende n’a pas pu être enregistrée.');
+        return false;
       }
+      return true;
     },
     [dialog, writeGuard],
   );
@@ -245,6 +248,13 @@ function DetailPhoto({
   ctx: Ctx;
   avecEtape: boolean;
 }) {
+  // Confirmation brève après l'enregistrement d'une légende (automatique, sans bouton).
+  const [enregistre, setEnregistre] = useState(false);
+  useEffect(() => {
+    if (!enregistre) return;
+    const t = setTimeout(() => setEnregistre(false), 2500);
+    return () => clearTimeout(t);
+  }, [enregistre]);
   return (
     <div className="no-print flex flex-col gap-1">
       {avecEtape && etapes.length > 0 && (
@@ -273,7 +283,7 @@ function DetailPhoto({
           maxLength={LEGENDE_MAX}
           disabled={ctx.bloque}
           placeholder="Légende (facultatif)"
-          onBlur={(e) => void ctx.legender(photo.id, e.target.value)}
+          onBlur={(e) => void ctx.legender(photo.id, e.target.value).then((ok) => ok && setEnregistre(true))}
           className="w-full min-w-0 rounded border border-outline-variant bg-white px-1.5 py-1 text-[12px] text-on-surface"
         />
         {!ctx.bloque && (
@@ -288,6 +298,12 @@ function DetailPhoto({
           </button>
         )}
       </div>
+      {enregistre && (
+        <p role="status" className="flex items-center gap-1 text-[11px] text-green-700">
+          <span className="material-symbols-outlined text-[14px]">check</span>
+          Légende enregistrée
+        </p>
+      )}
     </div>
   );
 }
@@ -327,6 +343,10 @@ export function PhotosFourneeBloc({
       <p className="mb-3 flex items-start gap-1.5 text-[12px] text-on-surface-variant">
         <span className="material-symbols-outlined text-[16px] shrink-0">lock</span>
         Visibles de vous seul. Une photo ne s’affiche ailleurs que si vous la choisissez pour votre avis.
+      </p>
+      <p className="mb-3 flex items-start gap-1.5 text-[12px] text-on-surface-variant">
+        <span className="material-symbols-outlined text-[16px] shrink-0">cloud_done</span>
+        Pas de bouton « Enregistrer » : les photos, légendes et étapes sont enregistrées automatiquement.
       </p>
       {photos.length > 0 ? (
         <StepPhotoGallery
