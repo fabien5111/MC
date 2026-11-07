@@ -1902,7 +1902,9 @@ export function RelectureEditor({
                         {g.imported ? '• ' + g.imported : <span className="italic opacity-60">ajouté</span>}
                       </div>
                       <div>
-                        <div className="grid gap-2 items-center" style={{ gridTemplateColumns: '1fr 5.5rem 7rem 2rem' }}>
+                        {/* Mobile : libellé pleine largeur, puis quantité / unité / corbeille
+                            sur la ligne du dessous. Dès lg : tout sur une ligne. */}
+                        <div className="grid gap-2 items-center grid-cols-[5.5rem_1fr_2rem] lg:grid-cols-[1fr_5.5rem_7rem_2rem]">
                           <input
                             list="dl-ingredients"
                             value={g.nom}
@@ -1917,7 +1919,7 @@ export function RelectureEditor({
                                 patchIng(si, ii, { nom });
                               }
                             }}
-                            className={champErr(!!(g.nom.trim() && !known))}
+                            className={`${champErr(!!(g.nom.trim() && !known))} col-span-3 lg:col-span-1`}
                             title={g.nom.trim() && !known ? 'Ingrédient absent de la table de référence' : undefined}
                             placeholder="Farine"
                             autoComplete="off"
