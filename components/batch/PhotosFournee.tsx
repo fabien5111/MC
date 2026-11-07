@@ -342,11 +342,11 @@ export function PhotosFourneeBloc({
       </div>
       <p className="mb-3 flex items-start gap-1.5 text-[12px] text-on-surface-variant">
         <span className="material-symbols-outlined text-[16px] shrink-0">lock</span>
-        Visibles de vous seul. Une photo ne s’affiche ailleurs que si vous la choisissez pour votre avis.
+        Visibles de vous seul.
       </p>
       <p className="mb-3 flex items-start gap-1.5 text-[12px] text-on-surface-variant">
         <span className="material-symbols-outlined text-[16px] shrink-0">cloud_done</span>
-        Pas de bouton « Enregistrer » : les photos, légendes et étapes sont enregistrées automatiquement.
+        Les photos, légendes et étapes sont enregistrées automatiquement.
       </p>
       {photos.length > 0 ? (
         <StepPhotoGallery
