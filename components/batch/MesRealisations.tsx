@@ -105,9 +105,9 @@ export function MesRealisationsCuisine({ realisations }: { realisations: Realisa
   return (
     <section id="mes-realisations" className="no-print mt-14 scroll-mt-28 border-t border-outline-variant/60 pt-8">
       <details className="group">
-        <summary className="flex cursor-pointer list-none items-center gap-2 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
+        <summary className="flex cursor-pointer list-none items-center gap-2 font-headline-md text-primary">
           Mes réalisations ({items.length})
-          <span className="material-symbols-outlined text-[18px] transition-transform group-open:rotate-180">expand_more</span>
+          <span className="material-symbols-outlined text-[24px] transition-transform group-open:rotate-180">expand_more</span>
         </summary>
         <p className="mt-4 mb-4 flex items-start gap-1.5 text-[12px] text-on-surface-variant">
           <span className="material-symbols-outlined text-[16px] shrink-0">lock</span>

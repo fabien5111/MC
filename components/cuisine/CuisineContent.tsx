@@ -371,9 +371,9 @@ export function CuisineContent({
         )}
         {terminees.length > 0 && (
           <details className="group mt-10 border-t border-outline-variant/60 pt-8">
-            <summary className="flex cursor-pointer list-none items-center gap-2 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
+            <summary className="flex cursor-pointer list-none items-center gap-2 font-headline-md text-primary">
               Fournées terminées ({terminees.length}{hasMoreTerminees ? '+' : ''})
-              <span className="material-symbols-outlined text-[18px] transition-transform group-open:rotate-180">expand_more</span>
+              <span className="material-symbols-outlined text-[24px] transition-transform group-open:rotate-180">expand_more</span>
             </summary>
             <div className="mt-4 max-w-3xl space-y-4">
               {terminees.map((p) => {
@@ -529,9 +529,9 @@ export function CuisineContent({
         )}
         {archivedShoppingLists.length > 0 && (
           <details className="group mt-10 border-t border-outline-variant/60 pt-8">
-            <summary className="flex cursor-pointer list-none items-center gap-2 font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
-              Archivées ({archivedShoppingLists.length})
-              <span className="material-symbols-outlined text-[18px] transition-transform group-open:rotate-180">
+            <summary className="flex cursor-pointer list-none items-center gap-2 font-headline-md text-primary">
+              Listes archivées ({archivedShoppingLists.length})
+              <span className="material-symbols-outlined text-[24px] transition-transform group-open:rotate-180">
                 expand_more
               </span>
             </summary>
