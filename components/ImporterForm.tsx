@@ -90,6 +90,9 @@ export function ImporterForm({
   const [photos, setPhotos] = useState<PhotoChoisie[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
+  // Champ dédié à l'appareil photo (mobile, tablette) : `capture` ouvre
+  // directement la caméra arrière, une page par prise.
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   const quotaEpuise = quotaImport != null && !quotaImport.allowed;
   // JEP-130 : le motif passe de `title` natif (jamais affiché au doigt, et
@@ -569,6 +572,33 @@ export function ImporterForm({
               </p>
             </div>
           )}
+
+          {/* « Prendre une photo » : écrans tactiles seulement (pointer: coarse),
+              pas un seuil de largeur — un iPad en paysage dépasse 1024 px. */}
+          {photos.length < MAX_PHOTOS && (
+            <button
+              type="button"
+              onClick={() => cameraRef.current?.click()}
+              disabled={busy}
+              className="hidden [@media(pointer:coarse)]:flex mt-3 w-full items-center justify-center gap-2 border border-primary text-primary rounded-full px-6 py-3 font-label-md text-label-md active:scale-95 transition-all disabled:opacity-60"
+            >
+              <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+              {photos.length ? 'Photographier la page suivante' : 'Prendre une photo'}
+            </button>
+          )}
+
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const fs = Array.from(e.target.files || []);
+              if (fs.length) void ajouterPhotos(fs);
+              e.target.value = '';
+            }}
+          />
 
           <input
             ref={photoRef}
