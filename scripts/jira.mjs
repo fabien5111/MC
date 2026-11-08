@@ -1,7 +1,7 @@
 // Accès Jira en ligne de commande, pour lire une spec ou un bug depuis
 // Claude Code (lot 1 de l'outillage Jira — cf. `docs/outillage-jira.md`).
 //
-// Sept verbes : `lire`, `chercher`, `commenter`, `creer`, et trois verbes de
+// Huit verbes : `lire`, `chercher`, `commenter`, `creer`, `changer-type`, et trois verbes de
 // transition étroitement bornés, `demarrer`, `envoyer-en-test` et
 // `a-deployer`. Toujours pas de passe-plat REST générique : un besoin
 // nouveau s'ajoute au script, avec son garde-fou, plutôt que de se
@@ -255,6 +255,13 @@ async function creer(options, entree) {
   if (options.statut) await transitionner(cle, null, options.statut);
 }
 
+/** Change le type d'un ticket (Tâche → Story…), sans toucher à son statut. */
+async function changerType(cle, type) {
+  const config = lireConfig();
+  await appelJira(config, `/rest/api/3/issue/${encodeURIComponent(cle)}`, 'PUT', { fields: { issuetype: { name: type } } });
+  console.log(`${cle} — type changé en « ${type} » (${config.baseUrl}/browse/${cle})`);
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Transitions bornées (`demarrer`, `envoyer-en-test`)
 // ─────────────────────────────────────────────────────────────────────────
@@ -358,6 +365,7 @@ const USAGE = `Usage :
   node scripts/jira.mjs commenter <CLE> "<texte>"     (ou "-" pour lire l'entrée standard)
   node scripts/jira.mjs creer --projet <CLE> [--type Task] [--priorite High] [--sprint-actif] [--statut "<nom>"] < ticket.json
                                                       (ticket.json : { "titre": …, "description": … })
+  node scripts/jira.mjs changer-type <CLE> <Type>     (ex. Story, Task, Bug)
   node scripts/jira.mjs demarrer <CLE>                (→ JIRA_STATUS_IN_PROGRESS, défaut « En cours »)
   node scripts/jira.mjs envoyer-en-test <CLE>         (→ JIRA_STATUS_IN_TEST, défaut « Revue en cours »)
   node scripts/jira.mjs a-deployer <CLE>              (→ JIRA_STATUS_TO_DEPLOY, défaut « A déployer »)
@@ -444,6 +452,13 @@ async function main(argv) {
     if (sprintActif) args.splice(i, 1);
     if (!projet) echouer(`Projet manquant (--projet).\n\n${USAGE}`);
     await creer({ projet, type, priorite, statut, sprintActif }, await lireEntreeStandard());
+    return;
+  }
+
+  if (verbe === 'changer-type') {
+    const [cle, type] = args;
+    if (!cle || !type) echouer(`Clé de ticket ou type manquant.\n\n${USAGE}`);
+    await changerType(cle, type);
     return;
   }
 
