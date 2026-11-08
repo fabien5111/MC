@@ -11,8 +11,13 @@
 // Fichier pur (aucun import serveur) : il est lu par la fenêtre de
 // souscription, un Client Component.
 
-/** Version en vigueur — la date de mise à jour du texte, au format ISO. */
-export const CGV_VERSION = '2026-11-08';
+/**
+ * Version en vigueur — la date de mise à jour du texte, au format ISO,
+ * suffixée d'un indice quand le texte change plusieurs fois le même jour
+ * (`2026-11-08-2` : JEP-361, après JEP-273 le même jour). Deux textes
+ * différents ne portent jamais la même version.
+ */
+export const CGV_VERSION = '2026-11-08-2';
 
 /** Date de mise à jour, telle qu'affichée en tête de la page. */
 export const CGV_DATE_AFFICHEE = '8 novembre 2026';
