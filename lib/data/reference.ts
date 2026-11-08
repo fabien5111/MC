@@ -192,7 +192,8 @@ export const getRecipeTypes = referenceAccessor<RecipeType>({
 // ---------------------------------------------------------------------------
 
 export type Difficulty = Database['public']['Tables']['difficulties']['Row'];
-export type Unit = Database['public']['Tables']['units']['Row'];
+// `round_from` (JEP-389) : colonne posée à la main, absente des types générés.
+export type Unit = Database['public']['Tables']['units']['Row'] & { round_from?: number | null };
 export type MoldType = Database['public']['Tables']['mold_types']['Row'];
 
 // Colonnes énumérées (jamais `select('*')`, cf. spec § 8) — la liste couvre
@@ -204,11 +205,12 @@ export const getDifficulties = referenceAccessor<Difficulty>({
     lignes(await sb.from('difficulties').select('id, level, name, status, tooltip').order('level')),
 });
 
+// `select('*')` et non une liste : `round_from` (JEP-389) est ajoutée par psql,
+// la nommer avant la migration ferait échouer tout le référentiel.
 export const getUnits = referenceAccessor<Unit>({
   table: 'units',
   revalidate: JOUR,
-  query: async (sb) =>
-    lignes(await sb.from('units').select('id, name, abbreviation, status, tooltip').order('name')),
+  query: async (sb) => lignes(await sb.from('units').select('*').order('name')),
 });
 
 export const getMoldTypes = referenceAccessor<MoldType>({

@@ -6,7 +6,7 @@ import { CARD_SELECT, withAllergenNames, type RecipeCard, type RecipeCardWithAll
 import { BATCH_FULL_SELECT, TERMINEES_PAGE_SIZE, type BatchFull } from '@/lib/recipe-plan';
 import { estListeARacheter } from '@/lib/a-racheter';
 
-export type Unit = Database['public']['Tables']['units']['Row'];
+export type Unit = Database['public']['Tables']['units']['Row'] & { round_from?: number | null };
 
 // La recette embarquée reprend exactement les champs de la carte recette
 // (RecipeCard, cf. lib/recipes.ts) : la page profil affiche les favoris avec

@@ -96,7 +96,15 @@ export const SECTIONS: Section[] = [
     type: 'Global',
     badge: 'bg-outline-variant text-on-surface-variant',
     desc: 'Unités disponibles dans les recettes',
-    fields: [{ key: 'name', label: 'Nom', required: true }, TOOLTIP],
+    fields: [
+      { key: 'name', label: 'Nom', required: true },
+      // JEP-389 : à partir de cette valeur, une quantité calculée par le site
+      // (ajustement, moule, fournée…) s'arrondit à l'unité. Vide = pas
+      // d'arrondi à l'unité (deux décimales). Ne touche jamais une quantité
+      // saisie par l'auteur.
+      { key: 'round_from', label: 'Arrondir à l’unité à partir de', type: 'number' },
+      TOOLTIP,
+    ],
   },
   {
     table: 'ingredient_refs',

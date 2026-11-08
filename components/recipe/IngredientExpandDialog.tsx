@@ -25,6 +25,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
+import { useSeuilsArrondi } from '@/components/SeuilsArrondiProvider';
 import { formatTime } from '@/lib/format';
 import { UNITS_LBL, dayLabel, effectiveTimes } from '@/lib/recipe-view';
 import {
@@ -288,7 +289,8 @@ export function IngredientExpandDialog({
   // Aperçu : exactement ce qui sera écrit (même fonction que la
   // matérialisation d'une fournée), pour que le résumé ne puisse pas
   // diverger.
-  const mat = useMemo(() => (source && factor > 0 ? materializeBatch(source, { factor }) : null), [source, factor]);
+  const seuils = useSeuilsArrondi();
+  const mat = useMemo(() => (source && factor > 0 ? materializeBatch(source, { factor, seuils }) : null), [source, factor, seuils]);
 
   // Un ustensile déjà présent dans la fournée n'est pas dupliqué.
   const utensilsToAdd = useMemo(() => {

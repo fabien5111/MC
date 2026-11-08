@@ -12,7 +12,9 @@ import { CookieConsent } from '@/components/CookieConsent';
 import { InscriptionTracker } from '@/components/InscriptionTracker';
 import { DialogProvider } from '@/components/Dialog';
 import { IngredientNomsProvider } from '@/components/IngredientNomsProvider';
-import { getIngredientNomsAccordables } from '@/lib/data/reference';
+import { getIngredientNomsAccordables, getUnits } from '@/lib/data/reference';
+import { seuilsArrondi } from '@/lib/arrondi-unite';
+import { SeuilsArrondiProvider } from '@/components/SeuilsArrondiProvider';
 import { AUCUN_NOM_ACCORDABLE } from '@/lib/ingredient-name';
 import { getImpersonationContext } from '@/lib/impersonation';
 import { APPLE_SPLASH_SCREENS } from '@/lib/apple-splash-screens';
@@ -57,6 +59,9 @@ export default async function RootLayout({
   // Pluriels du référentiel (JEP-282) : lecture en cache, vide si la colonne
   // n'existe pas encore ou si la lecture échoue — jamais bloquant.
   const nomsIngredients = await getIngredientNomsAccordables().catch(() => AUCUN_NOM_ACCORDABLE);
+  // Seuils d'arrondi à l'unité par unité de mesure (JEP-389) : même doctrine,
+  // vides si la colonne n'existe pas encore ou si la lecture échoue.
+  const seuilsUnites = Array.from(seuilsArrondi(await getUnits().catch(() => []))) as [string, number][];
 
   // Material Symbols reste chargée depuis Google (pas de `next/font` pour une
   // police à ligatures d'icônes), mais réduite au strict nécessaire — cf.
@@ -130,7 +135,9 @@ export default async function RootLayout({
                 <ImpersonationBanner targetName={impersonation.targetName} mode={impersonation.mode} />
               )}
               <VisitTracker />
-              <IngredientNomsProvider noms={nomsIngredients}>{children}</IngredientNomsProvider>
+              <IngredientNomsProvider noms={nomsIngredients}>
+                <SeuilsArrondiProvider paires={seuilsUnites}>{children}</SeuilsArrondiProvider>
+              </IngredientNomsProvider>
             </ImpersonationProvider>
           </DialogProvider>
         </PreviousPathProvider>

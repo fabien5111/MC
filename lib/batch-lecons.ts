@@ -17,6 +17,7 @@
 // Rien n'est copié dans la fournée : tout est LU. La seule copie est celle de
 // `remarques_gardees.texte`, qui ne sert que si la fournée d'origine a été
 // supprimée — une remarque gardée ne doit pas disparaître avec elle.
+import { arrondirQuantite, type SeuilsArrondi } from '@/lib/arrondi-unite';
 import { fmtNum } from '@/lib/recipe-plan';
 import { normSearch } from '@/lib/text-search';
 import { ingredientKey } from '@/lib/ingredient-name';
@@ -235,9 +236,12 @@ export function coefficientEcart(
   return isFinite(coef) ? Math.round(coef * 1000) / 1000 : null;
 }
 
-// Quantité ajustée, arrondie comme on pèse : au gramme dès 20 g, au
-// dixième en dessous ; deux décimales dans les autres unités.
-export function arrondiQuantite(q: number, unite: string | null): number {
+// Quantité ajustée. Avec les seuils du référentiel (`units.round_from`,
+// JEP-389) : à l'unité dès le seuil de son unité, sinon deux décimales. Sans
+// seuils (colonne pas encore migrée) : l'ancienne règle, comme on pèse — au
+// gramme dès 20 g, au dixième en dessous, deux décimales dans les autres unités.
+export function arrondiQuantite(q: number, unite: string | null, seuils?: SeuilsArrondi | null): number {
+  if (seuils && seuils.size > 0) return arrondirQuantite(q, unite, seuils);
   const k = VERS_GRAMMES[uniteCle(unite)];
   if (k === 1 && q >= 20) return Math.round(q);
   if (k === 1) return Math.round(q * 10) / 10;
