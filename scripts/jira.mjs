@@ -1,7 +1,7 @@
 // Accès Jira en ligne de commande, pour lire une spec ou un bug depuis
 // Claude Code (lot 1 de l'outillage Jira — cf. `docs/outillage-jira.md`).
 //
-// Six verbes : `lire`, `chercher`, `commenter`, et trois verbes de
+// Sept verbes : `lire`, `chercher`, `commenter`, `creer`, et trois verbes de
 // transition étroitement bornés, `demarrer`, `envoyer-en-test` et
 // `a-deployer`. Toujours pas de passe-plat REST générique : un besoin
 // nouveau s'ajoute au script, avec son garde-fou, plutôt que de se
@@ -191,6 +191,71 @@ async function commenter(cle, texte) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Création (`creer`)
+// ─────────────────────────────────────────────────────────────────────────
+
+const SPRINT_CHAMP = 'customfield_10020';
+
+/**
+ * Corps de création d'un ticket, sans effet de bord. Le ticket est lu depuis
+ * un JSON `{ titre, description }` (entrée standard) : une description de
+ * plusieurs dizaines de lignes ne tient pas dans un argument de commande.
+ */
+export function corpsCreation({ projet, type, priorite, titre, description, sprintId }) {
+  if (!projet) throw new Error('Projet manquant (--projet).');
+  if (typeof titre !== 'string' || !titre.trim()) throw new Error('Titre vide : rien à créer.');
+  if (titre.length > 255) throw new Error('Titre de plus de 255 caractères : Jira le refuserait.');
+  const fields = {
+    project: { key: projet },
+    issuetype: { name: type || 'Task' },
+    summary: titre.trim(),
+    description: texteVersAdf(description ?? ''),
+  };
+  if (priorite) fields.priority = { name: priorite };
+  if (sprintId != null) fields[SPRINT_CHAMP] = sprintId;
+  return { fields };
+}
+
+/** Sprint actif du premier tableau du projet qui en a un (null s'il n'y en a pas). */
+async function sprintActif(config, projet) {
+  const tableaux = await appelJira(config, `/rest/agile/1.0/board?projectKeyOrId=${encodeURIComponent(projet)}`);
+  for (const tableau of tableaux.values ?? []) {
+    const sprints = await appelJira(config, `/rest/agile/1.0/board/${tableau.id}/sprint?state=active`);
+    if (sprints.values?.length) return sprints.values[0];
+  }
+  return null;
+}
+
+/**
+ * Crée un ticket, éventuellement dans le sprint actif, puis l'amène au statut
+ * demandé. Même garde-fou que les transitions : jamais « Déployé ».
+ */
+async function creer(options, entree) {
+  const config = lireConfig();
+  let ticket;
+  try {
+    ticket = JSON.parse(entree);
+  } catch {
+    echouer('Entrée standard illisible : un JSON { "titre": …, "description": … } est attendu.');
+  }
+  let sprint = null;
+  if (options.sprintActif) {
+    sprint = await sprintActif(config, options.projet);
+    if (!sprint) echouer(`Aucun sprint actif trouvé pour le projet ${options.projet}.`);
+  }
+  let corps;
+  try {
+    corps = corpsCreation({ ...options, titre: ticket.titre, description: ticket.description, sprintId: sprint?.id });
+  } catch (e) {
+    echouer(e.message);
+  }
+  const cree = await appelJira(config, '/rest/api/3/issue', 'POST', corps);
+  const cle = cree.key;
+  console.log(`${cle} — créé${sprint ? ` dans « ${sprint.name} »` : ''} (${config.baseUrl}/browse/${cle})`);
+  if (options.statut) await transitionner(cle, null, options.statut);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Transitions bornées (`demarrer`, `envoyer-en-test`)
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -291,6 +356,8 @@ const USAGE = `Usage :
   node scripts/jira.mjs lire <CLE> [--commentaires N]
   node scripts/jira.mjs chercher "<JQL>" [--max N]
   node scripts/jira.mjs commenter <CLE> "<texte>"     (ou "-" pour lire l'entrée standard)
+  node scripts/jira.mjs creer --projet <CLE> [--type Task] [--priorite High] [--sprint-actif] [--statut "<nom>"] < ticket.json
+                                                      (ticket.json : { "titre": …, "description": … })
   node scripts/jira.mjs demarrer <CLE>                (→ JIRA_STATUS_IN_PROGRESS, défaut « En cours »)
   node scripts/jira.mjs envoyer-en-test <CLE>         (→ JIRA_STATUS_IN_TEST, défaut « Revue en cours »)
   node scripts/jira.mjs a-deployer <CLE>              (→ JIRA_STATUS_TO_DEPLOY, défaut « A déployer »)
@@ -308,6 +375,15 @@ Exemples :
 function echouer(message) {
   console.error(message);
   process.exit(1);
+}
+
+function lireTexteOption(args, nom) {
+  const i = args.indexOf(nom);
+  if (i === -1) return undefined;
+  const valeur = args[i + 1];
+  if (!valeur || valeur.startsWith('--')) echouer(`${nom} attend une valeur.`);
+  args.splice(i, 2);
+  return valeur;
 }
 
 function lireOption(args, nom, defaut) {
@@ -355,6 +431,19 @@ async function main(argv) {
     const reste = args.join(' ').trim();
     if (!cle || !reste) echouer(`Clé de ticket ou texte manquant.\n\n${USAGE}`);
     await commenter(cle, reste === '-' ? await lireEntreeStandard() : reste);
+    return;
+  }
+
+  if (verbe === 'creer') {
+    const projet = lireTexteOption(args, '--projet');
+    const type = lireTexteOption(args, '--type');
+    const priorite = lireTexteOption(args, '--priorite');
+    const statut = lireTexteOption(args, '--statut');
+    const i = args.indexOf('--sprint-actif');
+    const sprintActif = i !== -1;
+    if (sprintActif) args.splice(i, 1);
+    if (!projet) echouer(`Projet manquant (--projet).\n\n${USAGE}`);
+    await creer({ projet, type, priorite, statut, sprintActif }, await lireEntreeStandard());
     return;
   }
 

@@ -4,7 +4,7 @@
 // c'est justement ce qui justifie de la tester ici aussi, sinon les deux
 // versions divergeraient sans que rien ne le signale.
 import { describe, expect, it } from 'vitest';
-import { adfVersTexte, resoudreTransition, texteVersAdf, verifierConfigADeployer } from './jira.mjs';
+import { adfVersTexte, corpsCreation, resoudreTransition, texteVersAdf, verifierConfigADeployer } from './jira.mjs';
 
 describe('adfVersTexte', () => {
   it('aplatit paragraphes, sauts de ligne et listes', () => {
@@ -119,3 +119,27 @@ describe('verifierConfigADeployer', () => {
   });
 });
 
+
+describe('corpsCreation', () => {
+  it('pose projet, type, priorité, sprint et description ADF', () => {
+    const { fields } = corpsCreation({ projet: 'JEP', type: 'Task', priorite: 'High', titre: ' Relire ', description: 'a\nb', sprintId: 137 });
+    expect(fields.project).toEqual({ key: 'JEP' });
+    expect(fields.issuetype).toEqual({ name: 'Task' });
+    expect(fields.priority).toEqual({ name: 'High' });
+    expect(fields.summary).toBe('Relire');
+    expect(fields.customfield_10020).toBe(137);
+    expect(adfVersTexte(fields.description).trim()).toBe('a\nb');
+  });
+
+  it("n'ajoute ni priorité ni sprint quand ils ne sont pas demandés", () => {
+    const { fields } = corpsCreation({ projet: 'JEP', titre: 'X' });
+    expect(fields.issuetype).toEqual({ name: 'Task' });
+    expect(fields).not.toHaveProperty('priority');
+    expect(fields).not.toHaveProperty('customfield_10020');
+  });
+
+  it('refuse un titre vide ou trop long', () => {
+    expect(() => corpsCreation({ projet: 'JEP', titre: '  ' })).toThrow();
+    expect(() => corpsCreation({ projet: 'JEP', titre: 'x'.repeat(256) })).toThrow();
+  });
+});

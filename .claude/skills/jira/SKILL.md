@@ -30,6 +30,8 @@ node scripts/jira.mjs lire MC-123 --commentaires 0    # sans les commentaires
 node scripts/jira.mjs chercher "project = MC AND statusCategory != Done ORDER BY updated DESC"
 node scripts/jira.mjs chercher "assignee = currentUser() AND sprint IN openSprints()" --max 50
 node scripts/jira.mjs commenter MC-123 "Corrigé sur la branche claude/… — PR #42."
+node scripts/jira.mjs creer --projet JEP --type Task --priorite High --sprint-actif --statut "Spéc rédigée" < ticket.json
+                                                      # ticket.json : { "titre": …, "description": … }
 node scripts/jira.mjs demarrer MC-123                 # → « En cours », à la prise en charge du ticket
 node scripts/jira.mjs envoyer-en-test MC-123          # → « Revue en cours », dès que l'aperçu de PR est EN LIGNE
 node scripts/jira.mjs a-deployer MC-123               # → « A déployer », à l'envoi de la fusion vers main
