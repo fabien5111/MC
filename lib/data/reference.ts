@@ -366,6 +366,7 @@ const CLES_PUBLIQUES = [
   'banner_home_tablette',
   'banner_home_mobile',
   'recipe_default_photo',
+  'og_site_cover',
   'subscription_trial_days',
 ] as const;
 

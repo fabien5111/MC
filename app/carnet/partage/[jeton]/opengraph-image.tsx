@@ -6,7 +6,7 @@
 import { ImageResponse } from 'next/og';
 import { proprietaireDuJeton } from '@/lib/book-link';
 import { getApercuCarnet } from '@/lib/book-link-data';
-import { chargerImagesOg, OG_COULEURS as C, OG_TAILLE } from '@/lib/og-image';
+import { chargerImagesOg, FAMILLE_TITRE, OG_COULEURS as C, OG_TAILLE, optionsPolice } from '@/lib/og-image';
 import { MESSAGE_PARTAGE_CARNET } from '@/lib/social-share';
 
 export const alt = MESSAGE_PARTAGE_CARNET;
@@ -23,6 +23,7 @@ export default async function Image({ params }: { params: Promise<{ jeton: strin
   // que la carte garde la même composition quel que soit le carnet.
   const tuiles = Array.from({ length: 6 }, (_, i) => photos[i] ?? null);
   const n = apercu?.nbRecettes ?? 0;
+  const police = await optionsPolice();
 
   return new ImageResponse(
     (
@@ -38,7 +39,7 @@ export default async function Image({ params }: { params: Promise<{ jeton: strin
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: 570, padding: '0 48px 0 32px' }}>
-          <div style={{ display: 'flex', fontSize: 50, fontWeight: 700, lineHeight: 1.15, color: C.primaire }}>{MESSAGE_PARTAGE_CARNET}</div>
+          <div style={{ display: 'flex', fontFamily: FAMILLE_TITRE, fontSize: 50, fontWeight: 700, lineHeight: 1.15, color: C.primaire }}>{MESSAGE_PARTAGE_CARNET}</div>
           {apercu && (
             <div style={{ display: 'flex', fontSize: 30, color: C.texteDoux, marginTop: 28 }}>
               {`Carnet de ${apercu.nom} · ${n} recette${n > 1 ? 's' : ''}`}
@@ -61,6 +62,6 @@ export default async function Image({ params }: { params: Promise<{ jeton: strin
         </div>
       </div>
     ),
-    size,
+    { ...size, ...police },
   );
 }

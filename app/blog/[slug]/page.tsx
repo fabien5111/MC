@@ -79,13 +79,13 @@ export async function generateMetadata({
       description,
       publishedTime: article.published_at ?? undefined,
       modifiedTime: article.updated_at,
-      ...(article.cover_image_url ? { images: [article.cover_image_url] } : {}),
+      // Pas d'`images` : la carte vient de `opengraph-image.tsx` (couverture
+      // recadrée en 1,91:1 côté serveur, JEP-281).
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      ...(article.cover_image_url ? { images: [article.cover_image_url] } : {}),
     },
   };
 }

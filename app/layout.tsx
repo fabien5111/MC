@@ -35,7 +35,9 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'Je pâtisse !',
     locale: 'fr_FR',
-    title: 'Je pâtisse !',
+    // Plus long que le titre de l'onglet (JEP-281) : les inspecteurs de carte
+    // conseillent 50 à 60 caractères. Seul og:title change.
+    title: 'Je pâtisse ! — La haute pâtisserie à la maison',
     description: 'La haute pâtisserie à la maison — créez, partagez et maîtrisez vos recettes.',
   },
   twitter: { card: 'summary_large_image' },

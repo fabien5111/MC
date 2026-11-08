@@ -3,6 +3,7 @@ import { requireFullAdmin } from '@/lib/auth';
 import { getSiteSettings } from '@/lib/site';
 import { BannerManager } from '@/components/admin/BannerManager';
 import { RecipeDefaultPhotoManager } from '@/components/admin/RecipeDefaultPhotoManager';
+import { SiteCoverPhotoManager } from '@/components/admin/SiteCoverPhotoManager';
 import { EmailSignaturePhotoManager } from '@/components/admin/EmailSignaturePhotoManager';
 import { CLE_LIEN_SIGNATURE, CLE_PHOTO_SIGNATURE } from '@/lib/email-gabarit';
 import { RecipeImageBackfill } from '@/components/admin/RecipeImageBackfill';
@@ -17,6 +18,7 @@ export default async function AdminPhotosPage() {
     'banner_home_tablette',
     'banner_home_mobile',
     'recipe_default_photo',
+    'og_site_cover',
     CLE_PHOTO_SIGNATURE,
     CLE_LIEN_SIGNATURE,
   ]);
@@ -42,6 +44,15 @@ export default async function AdminPhotosPage() {
             profils, suggestions) quand l&apos;auteur n&apos;a pas ajouté de photo.
           </p>
           <RecipeDefaultPhotoManager initialUrl={settings.recipe_default_photo || null} />
+        </section>
+        <section className="mb-12 max-w-4xl">
+          <h2 className="font-headline-md text-primary mb-2">Carte de partage du site</h2>
+          <p className="text-on-surface-variant mb-8">
+            Photo affichée à droite de la carte d&apos;aperçu quand on partage l&apos;adresse du
+            site sur Facebook, WhatsApp, Pinterest… Format vertical 500 × 630 px, en JPEG. Sans
+            photo, la carte s&apos;affiche en texte seul.
+          </p>
+          <SiteCoverPhotoManager initialUrl={settings.og_site_cover || null} />
         </section>
         <section className="mb-12 max-w-4xl">
           <h2 className="font-headline-md text-primary mb-2">Signature des e-mails</h2>
