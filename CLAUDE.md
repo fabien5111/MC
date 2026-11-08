@@ -1167,6 +1167,34 @@ ancre `#etape-<id>` du déroulé Préparer).
   puis par `mc_ingredient_key`, et la masse volumique de repli de
   `estimateWeightGrams` par `ingredientKey`.
 
+## Arrondi des quantités calculées (JEP-389)
+
+**Chaque unité dit à partir de quelle valeur une quantité calculée s'arrondit à
+l'unité** : colonne `units.round_from` (numérique, nulle par défaut), éditée dans
+Admin → Listes → Unités de mesure (« Arrondir à l'unité à partir de »). Seuil
+**inclus** : avec 10, 10,4 → 10 et 9,87 reste 9,87. Sous le seuil, ou unité sans
+seuil, deux décimales comme avant. Logique pure et testée : `lib/arrondi-unite.ts`
+(`seuilsArrondi`, `arrondirQuantite`).
+
+- **Ne vise que ce que le site CALCULE** — matérialisation et ajustement d'une
+  fournée (`scaleQty`, `scaleFromBase`, `materializeBatch`), coefficient d'une
+  ligne édité dans le mode Préparer, « Ajuster les ingrédients de cette étape »
+  (`arrondiQuantite`, `lib/batch-lecons.ts`), coefficients du mode projet
+  (`scaledQuantityText`). **Jamais une quantité saisie par l'auteur**, ni un
+  coefficient ; **à coefficient 1 rien n'est arrondi** (la recette reste telle
+  quelle).
+- **Acheminement** : `getUnits()` est lue au layout (cache des référentiels) et
+  mise en contexte (`SeuilsArrondiProvider`, paires sérialisables reconstruites en
+  `Map`) ; les composants lisent `useSeuilsArrondi()` et passent la table aux
+  fonctions pures (paramètre facultatif `seuils`). Unité du texte libre rapprochée
+  par nom ou abréviation, sans casse ni accents.
+- **Avant la migration, rien ne casse** : `getUnits` lit en `select('*')` (jamais
+  la colonne nommée) et, table de seuils vide, `arrondiQuantite` garde son ancienne
+  règle (gramme dès 20 g). La colonne est posée par `psql` (nœud 216075) — absente
+  des types générés, d'où `Unit & { round_from?: number | null }`.
+- **Seuils initiaux** : g, ml, cl et unité(s) à 10 (jeu de valeurs joué dans pgweb) ;
+  kg, l et les autres unités sans seuil.
+
 ## Fournées (batches)
 
 Une **fournée** (table `batches`, + `batch_steps`, `batch_substeps`,

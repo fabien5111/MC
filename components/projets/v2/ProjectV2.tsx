@@ -14,6 +14,7 @@
 // - les éléments de recette (photo, catégories, ustensiles…) s'écrivent
 //   section par section, jamais par l'enregistrement global de `CreerForm`
 //   (cf. RecipeDetailEditors).
+import { useSeuilsArrondi } from '@/components/SeuilsArrondiProvider';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
@@ -179,6 +180,8 @@ export function ProjectV2({
   const router = useRouter();
   const help = useHelpBlocks(helpBlocks);
   const dialog = useDialog();
+  // Seuils d'arrondi à l'unité des quantités calculées (JEP-389).
+  const seuils = useSeuilsArrondi();
   const { mutate, busy, refresh } = useMutation();
   // Sections modifiées et non enregistrées (cf. sections.ts) : alimente les
   // boutons « Enregistrer le brouillon » / « Quitter » / « Valider » du rail.
@@ -665,7 +668,7 @@ export function ProjectV2({
           async () => {
             const supabase = createClient();
             try {
-              await scaleAllLines(supabase, comp.lines, coef, comp.scaleFactor ?? 1, scaledQuantityText);
+              await scaleAllLines(supabase, comp.lines, coef, comp.scaleFactor ?? 1, (b, c, u) => scaledQuantityText(b, c, u, seuils));
             } catch (e) {
               return { error: { message: (e as Error).message } };
             }

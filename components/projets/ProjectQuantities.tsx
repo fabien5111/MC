@@ -14,6 +14,7 @@
 //
 // Les quantités proposées sont des POINTS DE DÉPART (spec §6.2), et l'écran
 // le dit. L'utilisateur les affine ici, puis au fil de ses essais.
+import { useSeuilsArrondi } from '@/components/SeuilsArrondiProvider';
 import { useEffect, useState, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -176,6 +177,8 @@ export function QuantitiesStep({
   formatLabel: string;
 }) {
   const dialog = useDialog();
+  // Seuils d'arrondi à l'unité des quantités calculées (JEP-389).
+  const seuils = useSeuilsArrondi();
   const lecons = useLecons();
   // La justification posée par « Modifier les quantités avec ce coefficient »
   // (retour de fournée) n'a plus d'objet une fois le retour désépinglé.
@@ -449,7 +452,7 @@ export function QuantitiesStep({
       async () => {
         const supabase = createClient();
         try {
-          await applyComponentScale(supabase, c.lines, factor, moldCoefs, scalingCoef, scaledQuantityText);
+          await applyComponentScale(supabase, c.lines, factor, moldCoefs, scalingCoef, (b, c2, u) => scaledQuantityText(b, c2, u, seuils));
         } catch (e) {
           return { error: { message: (e as Error).message } };
         }

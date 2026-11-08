@@ -13,6 +13,7 @@
 // Autocomplétion des ingrédients/ustensiles/allergènes via datalist ; ajout à
 // la volée d'un libellé inconnu au référentiel réservé aux administrateurs
 // (bouton « Ajouter au référentiel »).
+import { useSeuilsArrondi } from '@/components/SeuilsArrondiProvider';
 import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { LeconsProvider, PorteeEdition, RetoursAuteur, RetoursEtape, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
@@ -261,6 +262,8 @@ export function CreerForm({
   useAutoGrowOnResize();
   const router = useRouter();
   const dialog = useDialog();
+  // Seuils d'arrondi à l'unité des quantités calculées (JEP-389).
+  const seuils = useSeuilsArrondi();
   const editingId = editRecipe?.id ?? null;
 
   // Recette issue du mode projet dont les composants tiennent encore à leurs
@@ -1244,7 +1247,7 @@ export function CreerForm({
               ...x,
               ings: x.ings.map((g) => {
                 const q = nombre(g.qty);
-                return q == null ? g : { ...g, qty: fmtNum(arrondiQuantite(q * coef, g.unit)) };
+                return q == null ? g : { ...g, qty: fmtNum(arrondiQuantite(q * coef, g.unit, seuils)) };
               }),
             },
       ),

@@ -396,18 +396,18 @@ export async function resequenceProjectSteps(supabase: Supabase, recipeId: strin
 // de la gélatine comme de la crème.
 export async function applyComponentScale(
   supabase: Supabase,
-  lines: { id: number; baseQuantity: number | null; scalingMode: string | null }[],
+  lines: { id: number; baseQuantity: number | null; scalingMode: string | null; unit?: string | null }[],
   factor: number,
   moldCoefs: { surface: number; volume: number } | null,
   coefPourMode: (mode: string | null, factor: number, moldCoefs: { surface: number; volume: number } | null) => number,
-  texte: (base: number | null, coef: number) => string | null,
+  texte: (base: number | null, coef: number, unit?: string | null) => string | null,
 ) {
   for (const l of lines) {
     // Ligne non chiffrée (« 1 pincée ») ou modifiée à la main : jamais
     // recalculée — même doctrine que les lignes `added` d'une fournée.
     if (l.baseQuantity == null) continue;
     const coef = coefPourMode(l.scalingMode, factor, moldCoefs);
-    const q = texte(l.baseQuantity, coef);
+    const q = texte(l.baseQuantity, coef, l.unit);
     const { error } = await supabase.from('ingredients').update({ quantity: q } as never).eq('id', l.id);
     if (error) throw error;
   }
@@ -436,16 +436,16 @@ export async function setLineQuantity(supabase: Supabase, lineId: number, quanti
 // (« 1 pincée ») sont laissées telles quelles.
 export async function scaleAllLines(
   supabase: Supabase,
-  lines: { id: number; quantity: string | null; baseQuantity: number | null }[],
+  lines: { id: number; quantity: string | null; baseQuantity: number | null; unit?: string | null }[],
   coef: number,
   facteurAvant: number,
-  texte: (base: number | null, coef: number) => string | null,
+  texte: (base: number | null, coef: number, unit?: string | null) => string | null,
 ) {
   const avant = facteurAvant > 0 ? facteurAvant : 1;
   for (const l of lines) {
     const actuelle = parseFloat(String(l.quantity ?? '').replace(',', '.'));
     if (!isFinite(actuelle)) continue;
-    const q = texte(actuelle, coef);
+    const q = texte(actuelle, coef, l.unit);
     const base = l.baseQuantity ?? actuelle / avant;
     const { error } = await supabase
       .from('ingredients')

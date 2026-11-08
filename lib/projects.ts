@@ -15,6 +15,7 @@
 // existe depuis toujours et s'affiche dans le carnet sous « Brouillons ») n'a
 // rien à voir avec `project_stage = 'wizard'`.
 
+import { arrondirQuantite, type SeuilsArrondi } from '@/lib/arrondi-unite';
 import { ingredientKey } from '@/lib/ingredient-name';
 
 export type RecipeKind = 'simple' | 'project';
@@ -654,9 +655,14 @@ export function componentScaleProposal(
 // (« 1 pincée »), ou ligne modifiée à la main — qu'un changement de
 // coefficient ne doit plus jamais toucher (même doctrine que les lignes
 // `added` d'une fournée, que `rescaleBatchIngredients` laisse intactes).
-export function scaledQuantityText(base: number | null, coef: number): string | null {
+//
+// JEP-389 : au-delà du seuil de son unité (`units.round_from`), la quantité
+// calculée s'arrondit à l'unité. À coefficient 1 rien n'est calculé : la valeur
+// de l'auteur reste telle quelle.
+export function scaledQuantityText(base: number | null, coef: number, unit?: string | null, seuils?: SeuilsArrondi | null): string | null {
   if (base == null) return null;
-  return String(Math.round(base * coef * 100) / 100).replace('.', ',');
+  const q = coef === 1 ? Math.round(base * 100) / 100 : arrondirQuantite(base * coef, unit, seuils);
+  return String(q).replace('.', ',');
 }
 
 // ── Validation (spec §8) ──────────────────────────────────────────────────

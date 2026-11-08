@@ -8,6 +8,7 @@
 // déroulé. La case d'une étape est unique (`batch_steps.done`) : la cocher
 // dans un mode la coche instantanément dans l'autre, il n'y a plus de
 // session séparée à garder synchronisée — voir CLAUDE.md « Fournées ».
+import { useSeuilsArrondi } from '@/components/SeuilsArrondiProvider';
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { coefficientRetouche, libelleAjustement, lireAjustementIA } from '@/lib/batch-ai';
 import { BatchWidget } from '@/components/recipe/BatchWidget';
@@ -873,6 +874,8 @@ function PreparerView({
   // de l'étape, jamais la recette d'origine : valable aussi pour une recette
   // dont on n'est pas l'auteur. Proposé seulement sur une fournée en cours.
   const { mutate: mutateAjuster, busy: busyAjuster } = useMutation();
+  // Seuils d'arrondi à l'unité des quantités calculées (JEP-389).
+  const seuils = useSeuilsArrondi();
   // Position de la page avant un ajustement : restaurée quand la
   // resynchronisation est revenue (le rendu serveur la remettait en haut).
   const scrollAvantAjuster = useRef<number | null>(null);
@@ -910,7 +913,7 @@ function PreparerView({
             for (const it of lignes) {
               const { error } = await supabase
                 .from('batch_ingredients')
-                .update({ quantity: arrondiQuantite(Number(it.quantity) * coef, it.unit), quantity_text: null })
+                .update({ quantity: arrondiQuantite(Number(it.quantity) * coef, it.unit, seuils), quantity_text: null })
                 .eq('id', it.id);
               if (error) return { error };
             }

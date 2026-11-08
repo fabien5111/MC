@@ -14,6 +14,7 @@
 // (BatchWidget, BatchNoticeBanner) qui doivent enchaîner plusieurs requêtes
 // pour obtenir les id générés (batch → batch_steps → batch_substeps /
 // batch_ingredients → ...), une table dépendant de l'id de la précédente.
+import { arrondirQuantite, type SeuilsArrondi } from '@/lib/arrondi-unite';
 import type { Database } from '@/lib/database.types';
 import type { RecipeFull, RecipeStepView, AllergenRef } from '@/lib/recipes';
 import type { BatchEntry, BatchListRow } from '@/lib/profile';
@@ -778,19 +779,25 @@ export function scalingCoef(mode: string | null | undefined, factor: number, mol
   return factor;
 }
 
-function scaleQty(raw: string | null, coef: number): { quantity: number | null; quantity_text: string | null; base_quantity: number | null } {
+// À coefficient 1 rien n'est calculé : la quantité de l'auteur reste telle
+// quelle (JEP-389 ne vise que ce que le site recalcule).
+function quantiteCalculee(base: number, coef: number, unit?: string | null, seuils?: SeuilsArrondi | null): number {
+  return coef === 1 ? round2(base) : arrondirQuantite(base * coef, unit, seuils);
+}
+
+function scaleQty(raw: string | null, coef: number, unit?: string | null, seuils?: SeuilsArrondi | null): { quantity: number | null; quantity_text: string | null; base_quantity: number | null } {
   const base = numify(raw);
   if (base == null) return { quantity: null, quantity_text: raw && raw.trim() ? raw.trim() : null, base_quantity: null };
-  return { quantity: round2(base * coef), quantity_text: null, base_quantity: base };
+  return { quantity: quantiteCalculee(base, coef, unit, seuils), quantity_text: null, base_quantity: base };
 }
 
 // Rescale une ligne déjà matérialisée (édition du facteur d'une fournée
 // existante, cf. BatchWidget). N'a de sens que pour une ligne issue de la
 // recette (`base_quantity` connu) : les lignes ajoutées à la main dans
 // l'éditeur d'ingrédients ne sont jamais touchées par ce recalcul.
-export function scaleFromBase(baseQuantity: number | null, quantityText: string | null, coef: number): { quantity: number | null; quantity_text: string | null } {
+export function scaleFromBase(baseQuantity: number | null, quantityText: string | null, coef: number, unit?: string | null, seuils?: SeuilsArrondi | null): { quantity: number | null; quantity_text: string | null } {
   if (baseQuantity == null) return { quantity: null, quantity_text: quantityText };
-  return { quantity: round2(baseQuantity * coef), quantity_text: null };
+  return { quantity: quantiteCalculee(baseQuantity, coef, unit, seuils), quantity_text: null };
 }
 
 // ── Matérialisation : contenu de la recette (vivante), scalé par le
@@ -837,7 +844,7 @@ export type MaterializedBatch = { steps: MatStep[]; utensils: MatUtensil[] };
 // `RecipeFull`).
 export type MaterializableRecipe = Pick<RecipeFull, 'ingredient_groups' | 'recipe_steps' | 'recipe_utensils'>;
 
-export function materializeBatch(recipe: MaterializableRecipe, opts: { factor: number; moldCoefs?: { surface: number; volume: number } | null }): MaterializedBatch {
+export function materializeBatch(recipe: MaterializableRecipe, opts: { factor: number; moldCoefs?: { surface: number; volume: number } | null; seuils?: SeuilsArrondi | null }): MaterializedBatch {
   const groupsByOrder = new Map<number, RecipeFull['ingredient_groups'][number]>();
   (recipe.ingredient_groups || []).forEach((g) => groupsByOrder.set(g.order_index ?? 0, g));
 
@@ -850,7 +857,7 @@ export function materializeBatch(recipe: MaterializableRecipe, opts: { factor: n
       const ingredients: MatIngredient[] = [...(group?.ingredients || [])]
         .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
         .map((it, ii) => {
-          const q = scaleQty(it.quantity, coef);
+          const q = scaleQty(it.quantity, coef, it.unit, opts.seuils);
           return {
             order_index: it.order_index ?? ii,
             ref_id: it.ref_id ?? null,

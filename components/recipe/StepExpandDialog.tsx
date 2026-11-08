@@ -26,6 +26,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
+import { useSeuilsArrondi } from '@/components/SeuilsArrondiProvider';
 import { formatTime } from '@/lib/format';
 import { UNITS_LBL, dayLabel, effectiveTimes } from '@/lib/recipe-view';
 import { estimateWeightGrams, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
@@ -255,7 +256,8 @@ export function StepExpandDialog({
     return c && c > 0 ? Math.round(c * 1000) / 1000 : 0;
   }, [yieldInfo, qtyStr, coefStr]);
 
-  const mat = useMemo(() => (source && factor > 0 ? materializeBatch(source, { factor }) : null), [source, factor]);
+  const seuils = useSeuilsArrondi();
+  const mat = useMemo(() => (source && factor > 0 ? materializeBatch(source, { factor, seuils }) : null), [source, factor, seuils]);
 
   const utensilsToAdd = useMemo(() => {
     if (!mat) return [];

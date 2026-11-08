@@ -12,6 +12,8 @@
 // Écriture immédiatement reflétée partout (fiche et mode Pâtisser lisent la
 // même ligne) : plus de session figée à proposer de supprimer après une
 // modification, contrairement à l'ancien modèle plan + session séparés.
+import { useSeuilsArrondi } from '@/components/SeuilsArrondiProvider';
+import { arrondirQuantite } from '@/lib/arrondi-unite';
 import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { RetoursIngredient } from '@/components/batch/DerniereFois';
@@ -78,6 +80,8 @@ export function BatchStepIngredients({
   canReplaceIngredient?: boolean;
 }) {
   const { mutate, busy, refresh } = useMutation();
+  // Seuils d'arrondi à l'unité des quantités calculées (JEP-389).
+  const seuils = useSeuilsArrondi();
   const dialog = useDialog();
   const [editing, setEditing] = useState<EditKey>(null);
   const [adding, setAdding] = useState(false);
@@ -106,7 +110,7 @@ export function BatchStepIngredients({
     if (qv != null && !isNaN(qv)) {
       patch = { quantity: qv, quantity_text: null };
     } else if (cv != null && !isNaN(cv) && cv > 0 && row.base_quantity != null) {
-      patch = { quantity: round2(row.base_quantity * cv), quantity_text: null };
+      patch = { quantity: cv === 1 ? round2(row.base_quantity) : arrondirQuantite(row.base_quantity * cv, row.unit, seuils), quantity_text: null };
     }
     setEditing(null);
     if (!patch) return;

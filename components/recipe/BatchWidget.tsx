@@ -26,6 +26,8 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
+import { useSeuilsArrondi } from '@/components/SeuilsArrondiProvider';
+import type { SeuilsArrondi } from '@/lib/arrondi-unite';
 import { insertMaterializedBatch, recipeContentColumns } from '@/lib/batch-write';
 import { UNITS_LBL, moldMetrics, moldLbl, yieldInfo, MOLD_FORME_DIMS, DIM_LABELS } from '@/lib/recipe-view';
 import type { MergedIngredient } from '@/lib/recipe-view';
@@ -54,12 +56,12 @@ type Supabase = ReturnType<typeof createClient>;
 // Réapplique un nouveau facteur/coefficients moule aux lignes issues de la
 // recette (base_quantity connu) d'une fournée déjà matérialisée. Les lignes
 // ajoutées à la main dans l'éditeur d'ingrédients ne sont jamais touchées.
-async function rescaleBatchIngredients(supabase: Supabase, batch: BatchFull, factor: number, moldCoefs: { surface: number; volume: number } | null) {
+async function rescaleBatchIngredients(supabase: Supabase, batch: BatchFull, factor: number, moldCoefs: { surface: number; volume: number } | null, seuils: SeuilsArrondi) {
   for (const step of batch.batch_steps) {
     const coef = scalingCoef(step.scaling_mode, factor, moldCoefs);
     const rows = batch.batch_ingredients.filter((it) => it.batch_step_id === step.id && !it.added);
     for (const it of rows) {
-      const { quantity, quantity_text } = scaleFromBase(it.base_quantity, it.quantity_text, coef);
+      const { quantity, quantity_text } = scaleFromBase(it.base_quantity, it.quantity_text, coef, it.unit, seuils);
       const { error } = await supabase.from('batch_ingredients').update({ quantity, quantity_text }).eq('id', it.id);
       if (error) throw error;
     }
@@ -104,6 +106,8 @@ export function BatchWidget({
   const dialog = useDialog();
   const writeGuard = useWriteGuard();
   const { open, editMode, close } = usePlanCtx();
+  // Seuils d'arrondi à l'unité des quantités calculées (JEP-389).
+  const seuils = useSeuilsArrondi();
   const today = useMemo(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -417,7 +421,7 @@ export function BatchWidget({
           .update({ adjust_ai: detailIAApplique(res) } as never)
           .eq('id', existingBatch.id);
         try {
-          await rescaleBatchIngredients(supabase, existingBatch, res.factor, res.moldCoefs);
+          await rescaleBatchIngredients(supabase, existingBatch, res.factor, res.moldCoefs, seuils);
         } catch (e) {
           dialog.alert('La date a été mise à jour, mais le nouvel ajustement des quantités a échoué : ' + (e as Error).message);
           setBusy(false);
@@ -464,7 +468,7 @@ export function BatchWidget({
       return;
     }
     try {
-      await insertMaterializedBatch(supabase, batchRow.id, recipe, res.factor, res.moldCoefs);
+      await insertMaterializedBatch(supabase, batchRow.id, recipe, res.factor, res.moldCoefs, seuils);
     } catch (e) {
       await supabase.from('batches').delete().eq('id', batchRow.id);
       dialog.alert('Erreur lors de la création de la fournée : ' + (e as Error).message);

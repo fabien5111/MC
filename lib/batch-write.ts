@@ -5,6 +5,7 @@
 // spec §7) et doit passer par le MÊME moteur — « un projet est une recette »
 // perdrait tout son sens si la fournée d'un projet était insérée autrement
 // que celle d'une recette ordinaire.
+import type { SeuilsArrondi } from '@/lib/arrondi-unite';
 import type { createClient } from '@/lib/supabase/client';
 import { materializeBatch } from '@/lib/recipe-plan';
 import type { RecipeFull } from '@/lib/recipes';
@@ -21,8 +22,10 @@ export async function insertMaterializedBatch(
   recipe: RecipeFull,
   factor: number,
   moldCoefs: { surface: number; volume: number } | null,
+  // Seuils d'arrondi à l'unité des quantités calculées (JEP-389).
+  seuils?: SeuilsArrondi | null,
 ) {
-  const mat = materializeBatch(recipe, { factor, moldCoefs });
+  const mat = materializeBatch(recipe, { factor, moldCoefs, seuils });
   for (const step of mat.steps) {
     const { data: stepRow, error: stepErr } = await supabase
       .from('batch_steps')
