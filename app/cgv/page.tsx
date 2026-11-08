@@ -7,7 +7,7 @@
 // souscrite préservées). Ce n'est PAS un avis juridique : une relecture par
 // un professionnel reste nécessaire avant la commercialisation.
 //
-// Les mentions entre crochets (médiateur, délai de mise en demeure…) sont des
+// Les mentions entre crochets (délai de mise en demeure…) sont des
 // informations encore à fournir — laissées visibles à dessein plutôt
 // qu'inventées. L'identité de l'éditeur, elle, est lue dans `lib/legal.ts`
 // (JEP-129), comme les mentions légales et la politique de confidentialité :
@@ -399,9 +399,18 @@ export default async function CgvPage() {
             <Lien href="/contact">formulaire de contact</Lien> du Site.
           </p>
           <p>
-            À défaut de résolution amiable dans un délai de [deux mois], le Membre peut recourir gratuitement au
-            médiateur de la consommation dont relève « Je pâtisse ! » : [nom du médiateur], [adresse postale], [site
-            internet].
+            À défaut de résolution amiable dans un délai de deux mois suivant sa réclamation écrite, le Membre peut
+            recourir gratuitement au médiateur de la consommation dont relève « Je pâtisse ! » : CM2C (Centre de la
+            médiation de la consommation de conciliateurs de justice), 14 rue Saint Jean, 75017 Paris —{' '}
+            <a
+              href="https://www.cm2c.net"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline underline-offset-2"
+            >
+              www.cm2c.net
+            </a>
+            .
           </p>
         </Section>
 
