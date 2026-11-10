@@ -30,7 +30,7 @@ import { LockedAction } from '@/components/LockedAction';
 import { fmtNum, batchDayLabel, stepDayMoved, type BatchIngredientRow, type BatchStepRow, type BatchSubstepRow } from '@/lib/recipe-plan';
 import { dayLabel } from '@/lib/recipe-view';
 
-type StepFlags = Pick<BatchStepRow, 'id' | 'done' | 'day_offset' | 'base_day_offset' | 'user_note'>;
+type StepFlags = Pick<BatchStepRow, 'id' | 'done' | 'day_offset' | 'base_day_offset' | 'user_note' | 'fait_en_amont'>;
 type IngRow = Pick<
   BatchIngredientRow,
   'id' | 'name' | 'ref_id' | 'quantity' | 'quantity_text' | 'unit' | 'comment' | 'removed' | 'excluded_when_done' | 'expanded_into_recipe_id'
@@ -164,11 +164,29 @@ export function BatchStepDonePanel({
   useEffect(() => setIngredients(initialIngredients), [initialIngredients]);
   useEffect(() => setSubsteps(initialSubsteps), [initialSubsteps]);
 
-  async function toggleDone() {
+  // Case « Déjà réalisée avant la fournée » : l'étape n'appartient pas à cette
+  // fournée (pâte déjà au congélateur). Écrit `fait_en_amont` ET `done` (une
+  // étape en amont est toujours faite) ; décocher rétablit les deux. Ses
+  // ingrédients sortent alors de la liste totale comme des courses.
+  async function toggleAmont() {
     if (readOnly) return;
+    const next = !step.fait_en_amont;
+    const patch = { fait_en_amont: next, done: next, done_at: next ? new Date().toISOString() : null };
+    const ok = await mutate(
+      () => createClient().from('batch_steps').update(patch as never).eq('id', step.id),
+      { errorLabel: 'Modification non enregistrée' },
+    );
+    if (ok) setStep((s) => ({ ...s, fait_en_amont: next, done: next }));
+  }
+
+  // Case de progression (à gauche du titre) : même geste que la case du mode
+  // Pâtisser — l'étape est faite PENDANT la fournée. Ses ingrédients quittent
+  // les courses mais restent dans la liste totale.
+  async function toggleDone() {
+    if (readOnly || step.fait_en_amont) return;
     const next = !step.done;
     const ok = await mutate(
-      () => createClient().from('batch_steps').update({ done: next } as never).eq('id', step.id),
+      () => createClient().from('batch_steps').update({ done: next, done_at: next ? new Date().toISOString() : null } as never).eq('id', step.id),
       { errorLabel: 'Modification non enregistrée' },
     );
     if (ok) setStep((s) => ({ ...s, done: next }));
@@ -340,26 +358,45 @@ export function BatchStepDonePanel({
     </span>
   );
 
-  const doneToggle = (
+  const amontToggle = (
     <label
       className={`flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant ${readOnly ? 'opacity-60' : 'cursor-pointer'}`}
       title={
         readOnly
           ? 'Fournée close : reprenez-la pour modifier ce qui a été réalisé'
-          : step.done
-            ? "Cette étape est à refaire : ses ingrédients reviennent dans les courses et la mise en place"
-            : "J'ai déjà réalisé cette étape : retirer ses ingrédients des courses et de la mise en place"
+          : step.fait_en_amont
+            ? 'Cette étape est à refaire : ses ingrédients reviennent dans la liste totale, les courses et la mise en place'
+            : "Cette étape était déjà faite avant la fournée (ex. pâte au congélateur) : retirer ses ingrédients de la liste totale, des courses et de la mise en place"
       }
     >
       <input
         type="checkbox"
-        checked={step.done}
+        checked={!!step.fait_en_amont}
         disabled={readOnly}
-        onChange={toggleDone}
+        onChange={toggleAmont}
         className={`w-5 h-5 rounded border-outline accent-primary focus:ring-primary ${readOnly ? '' : 'cursor-pointer'}`}
       />
-      Réalisée partiellement ou complètement
+      Déjà réalisée avant la fournée
     </label>
+  );
+
+  // Même geste que la case d'étape du mode Pâtisser.
+  const progressToggle = (
+    <input
+      type="checkbox"
+      checked={step.done}
+      disabled={readOnly || !!step.fait_en_amont}
+      onChange={toggleDone}
+      aria-label="Marquer cette étape comme réalisée"
+      title={
+        step.fait_en_amont
+          ? 'Déjà réalisée avant la fournée : décochez « Déjà réalisée avant la fournée » pour la refaire'
+          : step.done
+            ? 'Étape réalisée — décocher pour la refaire (ses ingrédients reviennent dans les courses)'
+            : 'Marquer cette étape comme réalisée (comme en mode Pâtisser)'
+      }
+      className={`no-print shrink-0 mt-1.5 w-6 h-6 rounded border-outline accent-primary focus:ring-primary ${readOnly || step.fait_en_amont ? '' : 'cursor-pointer'}`}
+    />
   );
 
   // Affiché uniquement quand l'étape vient d'être (ou est déjà) cochée : au
@@ -694,10 +731,13 @@ export function BatchStepDonePanel({
             remplacée, avec sa mention verte/rouge en dessous) ne doit pas
             centrer la case sur toute sa hauteur. */}
         <div className="flex items-start justify-between flex-wrap gap-3">
-          <div className="min-w-0">{title}</div>
+          <div className="min-w-0 flex items-start gap-3">
+            {progressToggle}
+            <div className="min-w-0">{title}</div>
+          </div>
           <div className="no-print flex items-center gap-3 shrink-0">
             {aideRealise}
-            {doneToggle}
+            {amontToggle}
             {collapsible && (
               <button
                 type="button"

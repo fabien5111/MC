@@ -157,6 +157,13 @@ export type BatchStepRow = Database['public']['Tables']['batch_steps']['Row'] & 
   replaced_by_recipe_id: string | null;
   source_replaced_step_id: number | null;
   replaced_recipe?: { id: string; title: string } | null;
+  // « Déjà réalisée avant la fournée » (le praliné est déjà au congélateur) :
+  // l'étape ne fait PAS partie de cette fournée — ses ingrédients sortent de la
+  // liste totale ET des courses. À ne pas confondre avec `done` (étape faite
+  // pendant la fournée : ses ingrédients ne sortent que des courses). Une étape
+  // `fait_en_amont` est toujours aussi `done`. Colonne posée par `psql`
+  // (nœud 216075), absente des types générés ; lue par `select('*')`.
+  fait_en_amont?: boolean | null;
 };
 export type BatchSubstepRow = Database['public']['Tables']['batch_substeps']['Row'];
 export type BatchIngredientRow = Database['public']['Tables']['batch_ingredients']['Row'] & {
@@ -212,7 +219,7 @@ export type BatchFull = Database['public']['Tables']['batches']['Row'] & {
 // toutes sortent du déroulé avec l'étape, mais l'une d'elles peut rester
 // utile (ex. « Porter à ébullition » gardée alors que le mélange initial est
 // déjà fait).
-type StepDoneFlags = Pick<BatchStepRow, 'done' | 'replaced_by_recipe_id'>;
+type StepDoneFlags = Pick<BatchStepRow, 'done' | 'replaced_by_recipe_id'> & { fait_en_amont?: boolean | null };
 type IngredientDoneFlags = Pick<BatchIngredientRow, 'removed' | 'excluded_when_done' | 'expanded_into_recipe_id'>;
 type SubstepDoneFlags = Pick<BatchSubstepRow, 'excluded_when_done'>;
 
@@ -760,8 +767,17 @@ export function mergeBatchIngredients(batch: BatchFull): MergedBatchRow[] {
 // les lignes retirées à la main ou remplacées par une sous-recette
 // disparaissent : elles ne font plus partie de la fournée, alors qu'un
 // ingrédient « déjà pris en compte » en fait toujours partie.
+//
+// Exception : une étape « déjà réalisée avant la fournée » (`fait_en_amont`)
+// n'en fait pas partie — ses ingrédients (sauf ceux que l'utilisateur a
+// décochés pour les garder, `excluded_when_done = false`) sortent de la liste.
 export function mergeAllBatchIngredients(batch: BatchFull): MergedBatchRow[] {
-  return mergeIngredientRows(batch.batch_ingredients.filter((it) => it.name && !it.removed && it.expanded_into_recipe_id == null));
+  const stepById = new Map(batch.batch_steps.map((s) => [s.id, s]));
+  const enAmont = (it: BatchIngredientRow) => {
+    const step = it.batch_step_id != null ? stepById.get(it.batch_step_id) : undefined;
+    return !!step?.fait_en_amont && it.excluded_when_done;
+  };
+  return mergeIngredientRows(batch.batch_ingredients.filter((it) => it.name && !it.removed && it.expanded_into_recipe_id == null && !enAmont(it)));
 }
 
 export function mergedRowQtyText(r: MergedBatchRow): string {

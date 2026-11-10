@@ -1809,10 +1809,11 @@ function PatisserView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [batch.status, readOnly]);
 
-  async function updateStep(id: number, patch: Partial<Pick<BatchStepRow, 'done' | 'done_at' | 'commentaire'>>) {
+  async function updateStep(id: number, patch: Partial<Pick<BatchStepRow, 'done' | 'done_at' | 'commentaire' | 'fait_en_amont'>>) {
     if (readOnly) return;
     setBatch((prev) => ({ ...prev, batch_steps: prev.batch_steps.map((s) => (s.id !== id ? s : { ...s, ...patch })) }));
-    const { error } = await createClient().from('batch_steps').update(patch).eq('id', id);
+    // `fait_en_amont` absente des types générés : cast, comme ailleurs.
+    const { error } = await createClient().from('batch_steps').update(patch as never).eq('id', id);
     if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
   }
 
@@ -1836,7 +1837,11 @@ function PatisserView({
   }
 
   function toggleStep(id: number, checked: boolean) {
-    updateStep(id, { done: checked, done_at: checked ? new Date().toISOString() : null });
+    // Décocher une étape « déjà réalisée avant la fournée » la rend à la
+    // fournée : `fait_en_amont` retombe avec `done` (sinon ses ingrédients
+    // resteraient absents de la liste totale alors qu'elle est à refaire).
+    const enAmont = !checked && batch.batch_steps.find((st) => st.id === id)?.fait_en_amont;
+    updateStep(id, { done: checked, done_at: checked ? new Date().toISOString() : null, ...(enAmont ? { fait_en_amont: false } : {}) });
     if (checked) {
       setTimeout(() => document.querySelector('[data-step-pending]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
       const allDone = batch.batch_steps.length > 0 && batch.batch_steps.every((s) => (s.id === id ? true : s.done));

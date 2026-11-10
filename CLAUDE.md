@@ -1460,6 +1460,23 @@ directes :
   (`batchIngredientExcluded`, `batchSubstepExcluded`, `stepFullyDone`,
   `remainingStepTimes`) : tout l'aval (courses, mise en place, temps affiché,
   tempo de cuisson) en découle.
+- **Deux cases, deux sens** (10/11/2026) : `batch_steps.fait_en_amont`
+  (booléen, défaut `false`, colonne posée par `psql`, nœud 216075, lue par
+  `select('*')`) distingue « déjà réalisée **avant** la fournée » (la pâte est
+  au congélateur : l'étape n'appartient pas à cette fournée) de `done` (faite
+  **pendant** la fournée). En mode Préparer : case **« Déjà réalisée avant la
+  fournée »** (à droite du titre) = `fait_en_amont` + `done` ; case de
+  **progression** à gauche du titre = `done` seul, même geste que la case du
+  mode Pâtisser. Conséquence sur les listes : `fait_en_amont` sort les
+  ingrédients de la **liste totale** (`mergeAllBatchIngredients`, sauf ceux
+  décochés `excluded_when_done = false`) ET des courses (via `done`) ; `done`
+  seul ne les sort que des courses. Une étape `fait_en_amont` est toujours
+  `done` : sa case de progression est verrouillée, et la décocher depuis le
+  mode Pâtisser rend aussi `fait_en_amont` à `false`. « Refaire » ne copie ni
+  l'un ni l'autre. Les fournées antérieures (étapes déjà cochées, sans la
+  colonne) gardent leurs ingrédients dans la liste totale. Le bloc d'aide
+  `fournee.deja_realise` (Admin → Blocs d'aide) est à relire pour ce nouveau
+  sens.
 - **Deux notes par étape**, distinctes : `batch_steps.user_note` porte
   l'intention (écrite en amont, éditable depuis le mode Préparer,
   `BatchStepDonePanel`) ; `batch_steps.commentaire` porte le constat du jour
