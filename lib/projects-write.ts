@@ -401,17 +401,13 @@ export async function applyComponentScale(
   moldCoefs: { surface: number; volume: number } | null,
   coefPourMode: (mode: string | null, factor: number, moldCoefs: { surface: number; volume: number } | null) => number,
   texte: (base: number | null, coef: number, unit?: string | null) => string | null,
-  // Coefficient en vigueur avant cet ajustement : sert à reconstituer la base
-  // d'une ligne qui n'en a pas (retouchée à la main, ou copiée avant la colonne).
-  facteurAvant = 1,
 ) {
   for (const l of lines) {
     // Ligne sans base (retouchée à la main, ou préparation copiée avant que
-    // `base_quantity` soit écrite) : on en déduit une de la quantité actuelle
-    // et du coefficient en vigueur — sans quoi « Appliquer » enregistrait le
+    // `base_quantity` soit écrite) : on en prend la quantité affichée comme base — sans quoi « Appliquer » enregistrait le
     // coefficient sans rien changer, en silence. La ligne suit ensuite les
     // ajustements globaux. Ligne non chiffrée (« 1 pincée ») : laissée telle quelle.
-    const base = baseDeLigne(l, facteurAvant);
+    const base = baseDeLigne(l);
     if (base == null) continue;
     const coef = coefPourMode(l.scalingMode, factor, moldCoefs);
     const q = texte(base, coef, l.unit);
