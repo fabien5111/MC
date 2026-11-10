@@ -38,12 +38,11 @@ export default async function Image() {
   return new ImageResponse(
     (
       <div style={{ display: 'flex', width: '100%', height: '100%', background: C.fond }}>
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 64px', width: couverture ? 700 : 1200, fontFamily: FAMILLE_TITRE }}>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 32px 0 64px', width: couverture ? 700 : 1200, fontFamily: FAMILLE_TITRE }}>
           <div style={{ display: 'flex', fontFamily: FAMILLE_LOGO, fontSize: 112, lineHeight: 1.1, color: C.primaire, marginLeft: 20 }}>Je pâtisse !</div>
-          {/* Deux lignes voulues : sans coupure explicite, « fournée » restait seul. */}
-          <div style={{ display: 'flex', flexDirection: 'column', fontSize: 31, lineHeight: 1.25, color: C.texteDoux, marginTop: 6 }}>
-            <div style={{ display: 'flex' }}>Ton carnet de recettes,</div>
-            <div style={{ display: 'flex' }}>de l’idée à la fournée</div>
+          {/* Une seule ligne : 28 px tient dans la colonne (≈ 566 px de texte pour 604 disponibles). */}
+          <div style={{ display: 'flex', fontSize: 28, lineHeight: 1.25, whiteSpace: 'nowrap', color: C.texteDoux, marginTop: 6 }}>
+            Ton carnet de recettes, de l’idée à la fournée
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: 32 }}>
             {FONCTIONNALITES.map((f) => (
