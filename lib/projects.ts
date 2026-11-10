@@ -657,20 +657,21 @@ export function componentScaleProposal(
 // `added` d'une fournée, que `rescaleBatchIngredients` laisse intactes).
 //
 // Base (quantité à coefficient 1) d'une ligne d'ingrédient d'une préparation :
-// celle qui est enregistrée, sinon déduite de la quantité actuelle et du
-// coefficient en vigueur. `null` = ligne non chiffrée (« 1 pincée »), jamais
-// recalculée. Pur et testé : c'est ce qui décide si « Appliquer » touche une ligne.
-export function baseDeLigne(
-  l: { quantity?: string | null; baseQuantity: number | null },
-  facteurAvant: number,
-): number | null {
+// celle qui est enregistrée, sinon la quantité actuellement affichée. `null` =
+// ligne non chiffrée (« 1 pincée »), jamais recalculée. Pur et testé : c'est ce
+// qui décide si « Appliquer » touche une ligne.
+//
+// On ne divise PAS par le coefficient en vigueur : l'en-tête peut déjà afficher
+// ×0,1 (enregistré par un « Appliquer » antérieur qui ignorait la ligne) alors
+// que la quantité est restée celle de l'auteur — diviser reconstituait alors
+// une base fausse (3000 g) et le nouvel ajustement ne changeait plus rien.
+// Ce que le membre voit devient la référence, comme pour une ligne retouchée.
+export function baseDeLigne(l: { quantity?: string | null; baseQuantity: number | null }): number | null {
   if (l.baseQuantity != null && isFinite(l.baseQuantity)) return l.baseQuantity;
   // Lecture stricte : « 1 pincée » n'est pas le nombre 1.
   const texte = String(l.quantity ?? '').trim().replace(',', '.');
   const actuelle = texte === '' ? NaN : Number(texte);
-  if (!isFinite(actuelle)) return null;
-  const avant = facteurAvant > 0 ? facteurAvant : 1;
-  return actuelle / avant;
+  return isFinite(actuelle) ? actuelle : null;
 }
 
 // JEP-389 : au-delà du seuil de son unité (`units.round_from`), la quantité

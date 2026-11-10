@@ -476,7 +476,7 @@ export function QuantitiesStep({
       async () => {
         const supabase = createClient();
         try {
-          await applyComponentScale(supabase, c.lines, factor, moldCoefs, scalingCoef, (b, c2, u) => scaledQuantityText(b, c2, u, seuils), facteur);
+          await applyComponentScale(supabase, c.lines, factor, moldCoefs, scalingCoef, (b, c2, u) => scaledQuantityText(b, c2, u, seuils));
         } catch (e) {
           return { error: { message: (e as Error).message } };
         }

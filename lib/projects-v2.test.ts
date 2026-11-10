@@ -255,15 +255,14 @@ describe('compatibilité poids / parts de l’ajustement par le format', () => {
 
 describe('baseDeLigne', () => {
   it('garde la base enregistrée', () => {
-    expect(baseDeLigne({ quantity: '30', baseQuantity: 300 }, 0.1)).toBe(300);
+    expect(baseDeLigne({ quantity: '30', baseQuantity: 300 })).toBe(300);
   });
-  it('déduit la base d’une ligne retouchée à la main (quantité ÷ coefficient en vigueur)', () => {
-    expect(baseDeLigne({ quantity: '300', baseQuantity: null }, 1)).toBe(300);
-    expect(baseDeLigne({ quantity: '30', baseQuantity: null }, 0.1)).toBeCloseTo(300);
-    expect(baseDeLigne({ quantity: '25', baseQuantity: null }, 0)).toBe(25);
+  it('prend la quantité affichée pour une ligne sans base, quel que soit le coefficient en en-tête', () => {
+    expect(baseDeLigne({ quantity: '300', baseQuantity: null })).toBe(300);
+    expect(baseDeLigne({ quantity: '2,5', baseQuantity: null })).toBe(2.5);
   });
   it('ignore une ligne non chiffrée', () => {
-    expect(baseDeLigne({ quantity: '1 pincée', baseQuantity: null }, 1)).toBeNull();
-    expect(baseDeLigne({ quantity: null, baseQuantity: null }, 1)).toBeNull();
+    expect(baseDeLigne({ quantity: '1 pincée', baseQuantity: null })).toBeNull();
+    expect(baseDeLigne({ quantity: null, baseQuantity: null })).toBeNull();
   });
 });
