@@ -64,6 +64,24 @@ describe('planifierRecalculAmont', () => {
     expect(plan.confirmation).toBeNull();
   });
 
+  it('deux ingrédients fabriqués dans la même étape : intro unique, une ligne chacun', () => {
+    const b = fournee([]);
+    const ing = (id: number, name: string, qty: number, step: number, recipe: string | null) =>
+      ({ id, name, quantity: qty, unit: 'g', batch_step_id: step, expanded_into_recipe_id: recipe, removed: false, excluded_when_done: true });
+    (b.batch_steps as unknown as unknown[]).push({ id: 4, fait_en_amont: false, source_ingredient_id: 30 });
+    b.batch_ingredients.push(
+      ing(30, 'Pâte sucrée', 300, 1, 'r2') as never,
+      ing(31, 'Pâte sucrée', 200, 2, 'r2') as never,
+      ing(40, 'Farine', 400, 4, null) as never,
+    );
+    const plan = planifierRecalculAmont(b, 1, true);
+    expect(plan.expansions).toHaveLength(2);
+    expect(plan.confirmation).toBe(
+      'Cette étape a déjà été réalisée avant la fournée. En cochant la case, il y aura un impact sur plusieurs ingrédients à fabriquer :\n' +
+        '• « Praliné » : 200 g ⇒ 100 g\n• « Pâte sucrée » : 500 g ⇒ 200 g',
+    );
+  });
+
   it('une ligne décochée pour être gardée compte toujours dans le besoin', () => {
     const b = fournee([]);
     (b.batch_ingredients[0] as { excluded_when_done: boolean }).excluded_when_done = false;

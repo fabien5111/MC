@@ -106,15 +106,25 @@ export function planifierRecalculAmont(batch: BatchFull, stepId: number, suivant
   const q = (n: number, u: string | null) => `${fmtNum(n)}${u ? ' ' + u : ''}`;
   const intro = suivant ? 'Cette étape a déjà été réalisée avant la fournée.' : 'Cette étape doit être réalisée dans cette fournée.';
   const geste = suivant ? 'En cochant la case' : 'En décochant la case';
-  const lignes = expansions.map((e) => {
-    if (e.statut === 'recalcule') {
-      return `${geste}, il y aura un impact sur le « ${e.nom} » à fabriquer : ${q(e.besoinAvant, e.unite)} ⇒ ${q(e.besoinApres, e.unite)}.`;
-    }
+  const detail = (e: RecalculExpansion) => {
     if (e.statut === 'plus-rien') {
-      return `${geste}, il n'y aura plus rien à fabriquer pour le « ${e.nom} » (toutes ses utilisations sont déjà réalisées). Les quantités des étapes ajoutées restent inchangées : annulez le remplacement si vous n'en avez plus besoin.`;
+      return `il n'y aura plus rien à fabriquer pour le « ${e.nom} » (toutes ses utilisations sont déjà réalisées). Les quantités des étapes ajoutées restent inchangées : annulez le remplacement si vous n'en avez plus besoin.`;
     }
-    return `${geste}, les quantités des étapes ajoutées pour fabriquer le « ${e.nom} » ne peuvent pas être recalculées automatiquement. Vérifiez-les.`;
-  });
-  const confirmation = intro + ' ' + lignes.join('\n');
+    if (e.statut === 'sans-reference') {
+      return `les quantités des étapes ajoutées pour fabriquer le « ${e.nom} » ne peuvent pas être recalculées automatiquement. Vérifiez-les.`;
+    }
+    return `il y aura un impact sur le « ${e.nom} » à fabriquer : ${q(e.besoinAvant, e.unite)} ⇒ ${q(e.besoinApres, e.unite)}.`;
+  };
+  let confirmation: string;
+  if (expansions.length === 1) {
+    confirmation = `${intro} ${geste}, ${detail(expansions[0])}`;
+  } else {
+    const puces = expansions.map((e) => {
+      if (e.statut === 'recalcule') return `• « ${e.nom} » : ${q(e.besoinAvant, e.unite)} ⇒ ${q(e.besoinApres, e.unite)}`;
+      const d = detail(e);
+      return `• ${d.charAt(0).toUpperCase()}${d.slice(1)}`;
+    });
+    confirmation = `${intro} ${geste}, il y aura un impact sur plusieurs ingrédients à fabriquer :\n${puces.join('\n')}`;
+  }
   return { expansions, ecritures, confirmation };
 }
