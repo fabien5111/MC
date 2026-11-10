@@ -1123,6 +1123,35 @@ même clic ne débitent qu'une fois, mais une reprise délibérée après « cha
 de carte » repart à neuf. Une clé stable sur dix minutes rejouerait le refus
 en cache et rendrait ce conseil inapplicable.
 
+### Montée en gamme et confirmation bancaire (JEP-361, 10/11/2026)
+
+Premier essai en live, carte française : la montée Plus → Pro échouait avec
+le message générique. Journal : `subscription_payment_intent_requires_action`
+— la banque exigeait une confirmation 3-D Secure, impossible à donner sur un
+débit lancé par le serveur, et `error_if_incomplete` faisait échouer l'appel
+entier. Jamais vu en test, où les cartes n'en demandent pas.
+
+**Correctif** : `payment_behavior: 'pending_if_incomplete'`. Stripe n'applique
+le changement que si le prorata est payé ; sinon il le garde en attente
+(`pending_update`), l'abonnement conserve son prix, et la route renvoie
+l'adresse de la facture hébergée (`hosted_invoice_url`, `lireMonteeEnAttente`,
+seule une adresse `https://invoice.stripe.com/` est rendue). `/plans` y envoie
+le membre après confirmation ; payée, la facture applique le changement et le
+webhook pose le palier. L'invariant « jamais monté sans avoir payé » tient.
+
+- **Paramètres refusés par ce mode** : `metadata` (trace des CGV) part dans un
+  appel séparé AVANT la montée ; `cancel_at_period_end: false` (reprise d'une
+  résiliation) dans un appel APRÈS, seulement si la montée est appliquée
+  sans confirmation. Montée en attente : la résiliation reste programmée, et
+  le membre en est prévenu.
+- **Descente programmée** libérée avant la montée : remise en place si la
+  montée échoue ; perdue (annoncée) si la montée est en attente — Stripe
+  n'admet pas d'échéancier sur un abonnement qui porte un changement en
+  attente.
+- **À vérifier en live** : qu'une facture de prorata abandonnée est bien
+  annulée à l'expiration du changement en attente, et jamais prélevée plus
+  tard par les relances (sinon : prorata payé sans montée, à rembourser).
+
 ### Ce qui reste à vérifier sur un vrai compte Stripe
 
 La documentation Stripe est inaccessible depuis l'environnement de

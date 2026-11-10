@@ -509,6 +509,11 @@ export function codeErreurStripe(corps: unknown): string | null {
 export function messageRefusChangement(code: string | null): string {
   switch (code) {
     case 'authentication_required':
+    // Code renvoyé par une mise à jour d'abonnement dont le prorata exige une
+    // confirmation 3-D Secure (constaté en live le 10/11/2026, JEP-361). Ne
+    // devrait plus remonter depuis le passage en `pending_if_incomplete`,
+    // mais reste traduit : le message générique cachait la vraie cause.
+    case 'subscription_payment_intent_requires_action':
       return (
         'Votre banque demande une confirmation pour ce paiement. Mettez à jour ou reconfirmez votre moyen ' +
         'de paiement depuis « Factures et moyen de paiement », puis réessayez.'
@@ -523,6 +528,34 @@ export function messageRefusChangement(code: string | null): string {
     default:
       return "Le changement de formule n'a pas pu aboutir. Votre formule actuelle est inchangée.";
   }
+}
+
+/**
+ * Montée en gamme restée EN ATTENTE de paiement (`pending_if_incomplete`).
+ *
+ * Stripe n'applique alors pas le changement : l'abonnement garde son prix
+ * actuel et porte un `pending_update`, tant que la facture de prorata n'est
+ * pas réglée — typiquement parce que la banque exige une confirmation
+ * 3-D Secure, impossible à donner sur un débit lancé par le serveur. La
+ * facture hébergée par Stripe (`hosted_invoice_url`) est l'endroit où le
+ * membre la donne : une fois payée, Stripe applique le changement et le
+ * webhook pose le nouveau palier.
+ *
+ * `latest_invoice` doit avoir été demandée en `expand` : sous forme
+ * d'identifiant seul, l'adresse est introuvable et vaut `null`.
+ */
+export function lireMonteeEnAttente(abonnement: unknown): { enAttente: boolean; urlFacture: string | null } {
+  const objet = (abonnement ?? {}) as Record<string, unknown>;
+  const enAttente = objet.pending_update !== null && objet.pending_update !== undefined;
+  const facture = objet.latest_invoice;
+  const url =
+    facture && typeof facture === 'object' ? (facture as { hosted_invoice_url?: unknown }).hosted_invoice_url : null;
+  // Seule une adresse Stripe est rendue au navigateur, qui va s'y rendre :
+  // la réponse vient de Stripe, mais on ne redirige jamais sur la foi d'un
+  // champ sans en vérifier l'origine.
+  const urlFacture =
+    typeof url === 'string' && /^https:\/\/invoice\.stripe\.com\//.test(url) ? url : null;
+  return { enAttente, urlFacture };
 }
 
 /** Un champ `schedule` Stripe est soit l'identifiant, soit l'objet complet. */

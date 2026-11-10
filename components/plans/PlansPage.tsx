@@ -235,6 +235,31 @@ export function PlansPage({
         dialog.alert(data?.erreur || "Le changement de formule n'a pas pu aboutir.");
         return;
       }
+      // Montée en attente d'une confirmation bancaire (3-D Secure, JEP-361) :
+      // rien n'est encore facturé ni changé. La facture de prorata, hébergée
+      // par Stripe, est l'endroit où le membre la donne ; une fois payée,
+      // Stripe applique la nouvelle formule et le webhook la pose ici.
+      if (typeof data?.confirmation === 'string') {
+        const ok = await dialog.confirm(
+          `Votre banque demande de confirmer le paiement de la différence pour passer à ${planLabel}. ` +
+            'Vous allez être redirigé vers la page de paiement sécurisée de Stripe pour le valider ' +
+            '(application bancaire ou code reçu), puis revenez sur Je pâtisse !. ' +
+            'Tant que ce paiement n’est pas confirmé, votre formule actuelle est inchangée et rien n’est débité.' +
+            (data?.avertissement ? `\n\n${data.avertissement}` : ''),
+          { okLabel: 'Confirmer le paiement', cancelLabel: 'Plus tard', largeur: 'large' },
+        );
+        if (ok) {
+          // Même départ pleine page que Checkout ; `busy` reste vrai jusqu'au départ.
+          window.location.href = data.confirmation;
+          return;
+        }
+        await dialog.alert(
+          'Changement non confirmé : votre formule actuelle est inchangée. Il sera abandonné de lui-même ' +
+            'faute de confirmation ; vous pourrez recommencer depuis cette page.',
+        );
+        router.refresh();
+        return;
+      }
       await dialog.alert(
         data?.immediat
           ? // Comme au retour de Checkout : le paiement est fait, mais c'est le
@@ -246,6 +271,7 @@ export function PlansPage({
           : `Changement programmé : vous gardez votre formule actuelle jusqu'au ${formatDate(data?.effetLe)}, ` +
               `puis vous passerez à ${planLabel}.`,
       );
+      if (data?.avertissement) await dialog.alert(data.avertissement);
       router.refresh();
     } catch {
       // Même filet que `demarrerAbonnement` : sans lui, un échec réseau

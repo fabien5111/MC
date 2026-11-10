@@ -12,6 +12,7 @@ import {
   echeancierConforme,
   lirePhasesEcheancier,
   messageRefusChangement,
+  lireMonteeEnAttente,
   phaseCourante,
   sensChangement,
   encoderFormulaireStripe,
@@ -322,6 +323,40 @@ describe('messageRefusChangement', () => {
   it('dit que la formule est inchangée quand le motif est inconnu', () => {
     expect(messageRefusChangement(null)).toContain('inchangée');
     expect(messageRefusChangement('quelque_chose_de_nouveau')).toContain('inchangée');
+  });
+
+  it('traduit la confirmation 3-D Secure demandée sur une mise à jour d’abonnement (JEP-361)', () => {
+    expect(messageRefusChangement('subscription_payment_intent_requires_action')).toBe(
+      messageRefusChangement('authentication_required'),
+    );
+  });
+});
+
+describe('lireMonteeEnAttente', () => {
+  const URL = 'https://invoice.stripe.com/i/acct_x/live_abc';
+
+  it('repère une montée en attente et rend l’adresse de la facture', () => {
+    expect(
+      lireMonteeEnAttente({ pending_update: { expires_at: 1 }, latest_invoice: { hosted_invoice_url: URL } }),
+    ).toEqual({ enAttente: true, urlFacture: URL });
+  });
+
+  it('une montée appliquée n’est pas en attente', () => {
+    expect(lireMonteeEnAttente({ pending_update: null, latest_invoice: { hosted_invoice_url: URL } }).enAttente).toBe(
+      false,
+    );
+    expect(lireMonteeEnAttente({}).enAttente).toBe(false);
+    expect(lireMonteeEnAttente(null).enAttente).toBe(false);
+  });
+
+  it('sans facture développée, pas d’adresse', () => {
+    expect(lireMonteeEnAttente({ pending_update: {}, latest_invoice: 'in_123' }).urlFacture).toBeNull();
+  });
+
+  it('ne rend jamais une adresse hors de Stripe', () => {
+    for (const autre of ['https://evil.example/pay', 'http://invoice.stripe.com/i/x', 'https://invoice.stripe.com.evil.fr/x']) {
+      expect(lireMonteeEnAttente({ pending_update: {}, latest_invoice: { hosted_invoice_url: autre } }).urlFacture).toBeNull();
+    }
   });
 });
 
