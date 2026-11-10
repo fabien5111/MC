@@ -242,15 +242,47 @@ export function PlansPage({
       if (typeof data?.confirmation === 'string') {
         const ok = await dialog.confirm(
           `Votre banque demande de confirmer le paiement de la différence pour passer à ${planLabel}. ` +
-            'Vous allez être redirigé vers la page de paiement sécurisée de Stripe pour le valider ' +
-            '(application bancaire ou code reçu), puis revenez sur Je pâtisse !. ' +
+            'La page de paiement sécurisée de Stripe va s’ouvrir dans un nouvel onglet pour le valider ' +
+            '(application bancaire ou code reçu). ' +
             'Tant que ce paiement n’est pas confirmé, votre formule actuelle est inchangée et rien n’est débité.' +
             (data?.avertissement ? `\n\n${data.avertissement}` : ''),
           { okLabel: 'Confirmer le paiement', cancelLabel: 'Plus tard', largeur: 'large' },
         );
         if (ok) {
-          // Même départ pleine page que Checkout ; `busy` reste vrai jusqu'au départ.
-          window.location.href = data.confirmation;
+          // **Nouvel onglet, pas une redirection** : contrairement à Checkout
+          // (`success_url`), la facture hébergée par Stripe ne sait pas renvoyer
+          // vers le site une fois payée — le membre y restait bloqué. L'onglet
+          // du site reste donc ouvert derrière, et se resynchronise au retour.
+          // Ouvert juste après le clic (activation utilisateur encore valable) ;
+          // bloqué malgré tout par le navigateur → départ pleine page, comme
+          // avant : le paiement ne doit jamais être empêché.
+          const onglet = window.open(data.confirmation, '_blank');
+          if (!onglet) {
+            window.location.href = data.confirmation;
+            return;
+          }
+          // Pas de `noopener` dans `window.open` (il rendrait toujours `null`,
+          // indiscernable d'un blocage) : le lien est coupé à la main.
+          try {
+            onglet.opener = null;
+          } catch {
+            /* onglet déjà sur une autre origine : rien à couper */
+          }
+          // Au retour sur l'onglet du site : resynchronisation, puis une seconde
+          // quelques secondes plus tard — le palier n'est posé que par le
+          // webhook, qui peut arriver juste après le retour.
+          const auRetour = () => {
+            if (document.visibilityState !== 'visible') return;
+            document.removeEventListener('visibilitychange', auRetour);
+            router.refresh();
+            window.setTimeout(() => router.refresh(), 4000);
+          };
+          document.addEventListener('visibilitychange', auRetour);
+          await dialog.alert(
+            'Validez le paiement dans l’onglet Stripe, puis revenez sur cet onglet : votre formule se mettra ' +
+              'à jour d’elle-même. Si elle n’a pas encore changé, actualisez la page après quelques secondes.',
+          );
+          router.refresh();
           return;
         }
         await dialog.alert(
