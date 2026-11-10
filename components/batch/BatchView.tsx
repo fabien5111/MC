@@ -23,6 +23,7 @@ import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { annulationRemplacement } from '@/lib/batch-annulation-remplacement';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
@@ -49,7 +50,7 @@ import { UNITS_LBL, matchAllergenPictos, tempsCarte } from '@/lib/recipe-view';
 import { estimateWeightGrams, ingredientConversionText, shortUnitLbl, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { groupWithTotal } from '@/lib/ingredients-recap';
-import { IngredientTotalList } from '@/components/IngredientTotalList';
+import { IngredientTotalList, type IngredientTotalGroup } from '@/components/IngredientTotalList';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
 import type { Unit } from '@/lib/profile';
 import type { AllergenRef } from '@/lib/recipes';
@@ -71,6 +72,7 @@ import {
   batchStepReplaced,
   batchSubstepExcluded,
   expandableGroup,
+  expandedGroup,
   expansionSource,
   groupBatchStepsByDay,
   mergeAllBatchIngredients,
@@ -965,6 +967,23 @@ function PreparerView({
     conversions,
     units,
   );
+  // Ingrédients remplacés par une recette : rappelés en bas de la liste
+  // totale, barrés en rouge, avec l'annulation du remplacement — un groupe
+  // (`expandedGroup` : même recette + nom + unité) par entrée, sa quantité
+  // étant la somme de ses occurrences.
+  const ingredientsRemplaces = (() => {
+    const vus = new Set<number>();
+    const out: { row: BatchIngredientRow; qty: string }[] = [];
+    batch.batch_ingredients.forEach((it) => {
+      if (it.expanded_into_recipe_id == null || it.removed || vus.has(it.id)) return;
+      const groupe = expandedGroup(batch, it).filter((g) => !g.removed);
+      groupe.forEach((g) => vus.add(g.id));
+      const chiffrees = groupe.filter((g) => g.quantity != null);
+      const qty = chiffrees.length > 0 ? fmtNum(chiffrees.reduce((a, g) => a + (g.quantity ?? 0), 0)) : it.quantity_text || '';
+      out.push({ row: it, qty });
+    });
+    return out;
+  })();
   const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
   const allergens = (() => {
     const seen = new Map<string, { key: string; name: string }>();
@@ -1378,7 +1397,7 @@ function PreparerView({
             {help && <HelpBlockSlot blockKey="fournee.remplacement" help={help} />}
           </div>
           <IngredientTotalList
-            groups={allIngredientGroups.map((g) => {
+            groups={allIngredientGroups.map((g): IngredientTotalGroup => {
               // Quantité + unité (infobulle) + équivalent, comme partout ailleurs.
               const qtyNode = (qtyTxt: string, unit: string, refId: number | null) => {
                 const tip = unit ? unitTips[unit.toLowerCase().trim()] : undefined;
@@ -1450,7 +1469,49 @@ function PreparerView({
                   };
                 }),
               };
-            })}
+            }).concat(
+              ingredientsRemplaces.map(({ row, qty }) => ({
+                key: 'remplace-' + row.id,
+                name: (
+                  <>
+                    <span className="text-error line-through">
+                      <NomIngredient nom={row.name} quantite={qty} unite={row.unit} refId={row.ref_id} />
+                    </span>
+                    {row.expanded_recipe && (
+                      <span className="text-green-700 text-sm"> — fabriqué à partir de « {row.expanded_recipe.title} »</span>
+                    )}
+                  </>
+                ),
+                allergen: null,
+                total: null,
+                lines: [
+                  {
+                    key: 'remplace',
+                    qty: (
+                      <span className="whitespace-nowrap">
+                        {qty}
+                        {qty && row.unit ? ' ' : ''}
+                        {row.unit}
+                      </span>
+                    ),
+                    barre: true,
+                    action: !readOnly ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const { ecrire, confirm } = annulationRemplacement(batch, row);
+                          void mutateReplace(ecrire, { confirm, errorLabel: 'Annulation impossible' });
+                        }}
+                        title="Annuler le remplacement et retirer les étapes ajoutées"
+                        className="text-primary hover:opacity-70"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">undo</span>
+                      </button>
+                    ) : null,
+                  },
+                ],
+              })),
+            )}
           />
         </div>
       )}

@@ -1501,6 +1501,12 @@ directes :
   droit (`droits.remplacementIngredient`, avec `LockedAction` en repli),
   masqué sur une fournée fermée (`readOnly`) comme le reste des actions de
   cette vue.
+  **Les ingrédients remplacés y sont rappelés en bas de liste** (10/11/2026),
+  barrés en rouge avec « fabriqué à partir de … » et un picto `undo` qui
+  annule le remplacement — un groupe `expandedGroup` par entrée, quantités
+  additionnées. Annulation partagée avec le bloc de l'étape
+  (`annulationRemplacement`, `lib/batch-annulation-remplacement.ts`).
+  Le bloc d'aide `fournee.remplacement` est aussi posé à côté du titre.
 - **Le remplacement couvre TOUTES les occurrences du même ingrédient**
   (JEP-254) : le praliné d'une ganache ET d'un croustillant, remplacé en un
   seul geste — la liste totale fusionne déjà les lignes identiques (nom +

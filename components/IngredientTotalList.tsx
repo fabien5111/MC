@@ -22,6 +22,11 @@ export type IngredientTotalLine = {
   action?: ReactNode;
   // Ligne ajoutée à la main sur une fournée (« absent de la recette de base »).
   added?: boolean;
+  // Ligne qui ne fait plus partie des courses (ingrédient remplacé par une
+  // recette sur une fournée) : barrée en rouge, comme dans « Ingrédients de
+  // l'étape ». Seule la quantité est barrée ici : le nom (`name` du groupe)
+  // se barre chez l'appelant, qui peut y ajouter une mention non barrée.
+  barre?: boolean;
 };
 
 export type IngredientTotalGroup = {
@@ -56,8 +61,8 @@ export function IngredientTotalList({ groups }: { groups: IngredientTotalGroup[]
           return (
             <li key={g.key} className="border-b border-outline-variant/30 py-2" style={ROW_STYLE}>
               {actionCell(l.action)}
-              <span className={`font-label-md text-label-md ${l.added ? 'text-green-700' : 'text-primary'}`}>{l.qty}</span>
-              <span className={`font-body-md text-body-md break-words ${l.added ? 'text-green-700' : ''}`}>
+              <span className={`font-label-md text-label-md ${l.barre ? 'text-error line-through' : l.added ? 'text-green-700' : 'text-primary'}`}>{l.qty}</span>
+              <span className={`font-body-md text-body-md break-words ${l.added && !l.barre ? 'text-green-700' : ''}`}>
                 {g.name}
                 <Allergen value={g.allergen} />
                 {l.comment && <span className="print-fs-9 text-on-surface-variant text-sm italic"> — {l.comment}</span>}
