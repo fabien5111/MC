@@ -152,8 +152,12 @@ export function BatchStepDonePanel({
   // dépliée malgré son nouveau statut. Ne force rien tant que `collapsible`
   // ne change pas de valeur : un dépliage manuel sur une étape déjà
   // repliable n'est donc jamais écrasé par un rendu qui ne change rien.
+  // Symétrique : quand l'étape cesse d'être repliable (case « réalisée »
+  // décochée), elle se redéplie — sans cela `open` restait à false alors que
+  // le chevron avait disparu, et ingrédients/sous-étapes restaient cachés
+  // jusqu'au rechargement de la page.
   useEffect(() => {
-    if (collapsible) setOpen(false);
+    setOpen(!collapsible);
   }, [collapsible]);
   // `busy` repasse à false dès que l'écriture réseau aboutit, avant que
   // router.refresh() n'ait fini de resynchroniser les props — état local mis
