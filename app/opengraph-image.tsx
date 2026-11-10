@@ -10,7 +10,7 @@
 // sociaux la mettent de toute façon en cache de leur côté.
 import { ImageResponse } from 'next/og';
 import { getPublicSiteSettings } from '@/lib/site';
-import { chargerImageOg, FAMILLE_TITRE, OG_COULEURS as C, OG_TAILLE, optionsPolice } from '@/lib/og-image';
+import { chargerImageOg, FAMILLE_LOGO, FAMILLE_TITRE, OG_COULEURS as C, OG_TAILLE, optionsPolice } from '@/lib/og-image';
 
 export const alt = 'Je pâtisse ! — la haute pâtisserie à la maison';
 export const size = OG_TAILLE;
@@ -22,7 +22,7 @@ export const contentType = 'image/png';
 // demande comme la carte du carnet ; les réseaux sociaux la mettent en cache.
 export const dynamic = 'force-dynamic';
 
-const FONCTIONNALITES = ['Carnet de recettes', 'Fournées guidées pas à pas', 'Ajustement au moule', 'Liste de courses'];
+const FONCTIONNALITES = ['Recettes ajustables', 'Planification & Pas à pas', 'Import de recettes', 'Mode création de recettes'];
 
 export default async function Image() {
   let couverture: string | null = null;
@@ -38,9 +38,13 @@ export default async function Image() {
   return new ImageResponse(
     (
       <div style={{ display: 'flex', width: '100%', height: '100%', background: C.fond }}>
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 64px', width: couverture ? 700 : 1200 }}>
-          <div style={{ display: 'flex', fontFamily: FAMILLE_TITRE, fontSize: 84, fontWeight: 700, color: C.primaire }}>Je pâtisse !</div>
-          <div style={{ display: 'flex', fontSize: 34, color: C.texteDoux, marginTop: 12 }}>La haute pâtisserie à la maison</div>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 64px', width: couverture ? 700 : 1200, fontFamily: FAMILLE_TITRE }}>
+          <div style={{ display: 'flex', fontFamily: FAMILLE_LOGO, fontSize: 112, lineHeight: 1.1, color: C.primaire, marginLeft: 20 }}>Je pâtisse !</div>
+          {/* Deux lignes voulues : sans coupure explicite, « fournée » restait seul. */}
+          <div style={{ display: 'flex', flexDirection: 'column', fontSize: 31, lineHeight: 1.25, color: C.texteDoux, marginTop: 6 }}>
+            <div style={{ display: 'flex' }}>Ton carnet de recettes,</div>
+            <div style={{ display: 'flex' }}>de l’idée à la fournée</div>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: 32 }}>
             {FONCTIONNALITES.map((f) => (
               <div key={f} style={{ display: 'flex', alignItems: 'center', fontSize: 28, color: C.primaire, marginTop: 10 }}>
@@ -65,8 +69,11 @@ export default async function Image() {
           </div>
         </div>
         {couverture && (
-          // eslint-disable-next-line @next/next/no-img-element -- rendu Satori, pas le DOM
-          <img src={couverture} alt="" width={500} height={630} style={{ objectFit: 'cover', width: 500, height: 630 }} />
+          // Photo détourée d'une marge, coins arrondis (JEP-281).
+          <div style={{ display: 'flex', width: 500, height: 630, padding: 36 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- rendu Satori, pas le DOM */}
+            <img src={couverture} alt="" width={428} height={558} style={{ objectFit: 'cover', width: 428, height: 558, borderRadius: 28 }} />
+          </div>
         )}
       </div>
     ),

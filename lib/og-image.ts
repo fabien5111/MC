@@ -35,26 +35,40 @@ export async function chargerImagesOg(urls: string[]): Promise<string[]> {
   return (await Promise.all(urls.map((u) => chargerImageOg(u)))).filter((u): u is string => !!u);
 }
 
-// Playfair Display (police des titres du site), en TTF STATIQUE gras : le
-// moteur de `next/og` ne lit ni le WOFF2 servi par `next/font` ni les polices
-// variables. Fichier versionné dans `app/fonts/og/` (instance 700 tirée de
-// `playfair-display-latin.woff2`). Lu une fois par processus ; en cas d'échec
-// (fichier absent, illisible) on rend `undefined` et la carte s'affiche avec
-// la police par défaut du générateur — jamais d'erreur.
-let policeTitre: Promise<ArrayBuffer | null> | null = null;
+// Polices des cartes, en TTF STATIQUES : le moteur de `next/og` ne lit ni le
+// WOFF2 servi par `next/font` ni les polices variables. Fichiers versionnés
+// dans `app/fonts/og/` :
+// - Playfair Display 700 (titres), instance gras tirée de la police variable
+//   `playfair-display-latin.woff2` ;
+// - Parisienne 400 (le « Je pâtisse ! » du logo), `parisienne-latin.woff2`
+//   reconverti en TTF.
+// Chaque fichier est lu une fois par processus. En cas d'échec (absent,
+// illisible) on ne déclare pas la police et la carte s'affiche avec celle par
+// défaut du générateur — jamais d'erreur.
+const polices = new Map<string, Promise<ArrayBuffer | null>>();
 
-export function chargerPoliceTitre(): Promise<ArrayBuffer | null> {
-  policeTitre ??= readFile(path.join(process.cwd(), 'app', 'fonts', 'og', 'playfair-display-700.ttf'))
-    .then((b) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer)
-    .catch(() => null);
-  return policeTitre;
+function lirePolice(fichier: string): Promise<ArrayBuffer | null> {
+  let p = polices.get(fichier);
+  if (!p) {
+    p = readFile(path.join(process.cwd(), 'app', 'fonts', 'og', fichier))
+      .then((b) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer)
+      .catch(() => null);
+    polices.set(fichier, p);
+  }
+  return p;
 }
 
-/** Option `fonts` d'`ImageResponse` : vide si la police n'a pas pu être lue. */
+/** Option `fonts` d'`ImageResponse` : ne contient que les polices lues. */
 export async function optionsPolice() {
-  const data = await chargerPoliceTitre();
-  return data ? { fonts: [{ name: 'Playfair Display', data, weight: 700 as const, style: 'normal' as const }] } : {};
+  const [titre, script] = await Promise.all([lirePolice('playfair-display-700.ttf'), lirePolice('parisienne-400.ttf')]);
+  const fonts = [
+    ...(titre ? [{ name: 'Playfair Display', data: titre, weight: 700 as const, style: 'normal' as const }] : []),
+    ...(script ? [{ name: 'Parisienne', data: script, weight: 400 as const, style: 'normal' as const }] : []),
+  ];
+  return fonts.length ? { fonts } : {};
 }
 
 /** Famille CSS des titres : Playfair si chargée, sinon la police par défaut. */
 export const FAMILLE_TITRE = 'Playfair Display, serif';
+/** Famille du logo « Je pâtisse ! » : Parisienne si chargée. */
+export const FAMILLE_LOGO = 'Parisienne, cursive';
