@@ -26,6 +26,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
+import type { PlanRecalculAmont } from '@/lib/batch-expansion-recalcul';
 import { LockedAction } from '@/components/LockedAction';
 import { fmtNum, batchDayLabel, stepDayMoved, type BatchIngredientRow, type BatchStepRow, type BatchSubstepRow } from '@/lib/recipe-plan';
 import { dayLabel } from '@/lib/recipe-view';
@@ -73,6 +74,7 @@ export function BatchStepDonePanel({
   aideRealise,
   aideNote,
   aideIngredients,
+  planAmont,
   derniereFois,
 }: {
   step: StepFlags;
@@ -124,6 +126,10 @@ export function BatchStepDonePanel({
   aideRealise?: ReactNode;
   aideNote?: ReactNode;
   aideIngredients?: ReactNode;
+  // Recalcul des sous-recettes quand l'étape passe « avant la fournée » (cf.
+  // `lib/batch-expansion-recalcul.ts`) : fourni par BatchView, qui connaît toute
+  // la fournée. Absent : la case n'écrit que l'étape.
+  planAmont?: (suivant: boolean) => PlanRecalculAmont;
   // « La dernière fois » (JEP-381) : constats de la fournée précédente, posés
   // juste sous la date et les badges de l'étape, visibles étape repliée.
   derniereFois?: ReactNode;
@@ -176,9 +182,18 @@ export function BatchStepDonePanel({
     if (readOnly) return;
     const next = !step.fait_en_amont;
     const patch = { fait_en_amont: next, done: next, done_at: next ? new Date().toISOString() : null };
+    // Ingrédients de sous-recette à recalculer (un remplacement dont une
+    // utilisation passe « en amont » : on en fabrique moins). Confirmé avant.
+    const plan = planAmont?.(next);
     const ok = await mutate(
-      () => createClient().from('batch_steps').update(patch as never).eq('id', step.id),
-      { errorLabel: 'Modification non enregistrée' },
+      async () => {
+        const supabase = createClient();
+        const r = await supabase.from('batch_steps').update(patch as never).eq('id', step.id);
+        if (r.error || !plan?.ecritures.length) return r;
+        const res = await Promise.all(plan.ecritures.map((w) => supabase.from('batch_ingredients').update({ quantity: w.quantity } as never).eq('id', w.id)));
+        return res.find((x) => x.error) ?? r;
+      },
+      { confirm: plan?.confirmation ?? undefined, errorLabel: 'Modification non enregistrée' },
     );
     if (ok) setStep((s) => ({ ...s, fait_en_amont: next, done: next }));
   }

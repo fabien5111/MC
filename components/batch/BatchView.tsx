@@ -24,6 +24,7 @@ import { useDialog } from '@/components/Dialog';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { annulationRemplacement } from '@/lib/batch-annulation-remplacement';
+import { planifierRecalculAmont } from '@/lib/batch-expansion-recalcul';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
@@ -978,8 +979,11 @@ function PreparerView({
       if (it.expanded_into_recipe_id == null || it.removed || vus.has(it.id)) return;
       const groupe = expandedGroup(batch, it).filter((g) => !g.removed);
       groupe.forEach((g) => vus.add(g.id));
-      const chiffrees = groupe.filter((g) => g.quantity != null);
-      const qty = chiffrees.length > 0 ? fmtNum(chiffrees.reduce((a, g) => a + (g.quantity ?? 0), 0)) : it.quantity_text || '';
+      // Utilisations déjà réalisées avant la fournée : plus à fabriquer.
+      const stepEnAmont = new Set(batch.batch_steps.filter((st) => st.fait_en_amont).map((st) => st.id));
+      const restantes = groupe.filter((g) => !(g.batch_step_id != null && stepEnAmont.has(g.batch_step_id) && g.excluded_when_done));
+      const chiffrees = restantes.filter((g) => g.quantity != null);
+      const qty = chiffrees.length > 0 ? fmtNum(chiffrees.reduce((a, g) => a + (g.quantity ?? 0), 0)) : restantes.length === 0 ? '0' : it.quantity_text || '';
       out.push({ row: it, qty });
     });
     return out;
@@ -1676,6 +1680,7 @@ function PreparerView({
                   aideRealise={help && i === 0 ? <HelpBlockSlot blockKey="fournee.deja_realise" help={help} /> : undefined}
                   aideNote={help && i === 0 ? <HelpBlockSlot blockKey="fournee.notes" help={help} /> : undefined}
                   aideIngredients={help && i === 0 ? <HelpBlockSlot blockKey="fournee.remplacement" help={help} /> : undefined}
+                  planAmont={(suivant) => planifierRecalculAmont(batch, s.id, suivant, seuils)}
                   ingredientsEditor={
                     !readOnly && ingredientsOfStep.length > 0 ? (
                       <>
@@ -1754,6 +1759,7 @@ function PatisserView({
 }) {
   const dialog = useDialog();
   const router = useRouter();
+  const seuilsPatisser = useSeuilsArrondi();
   const commentTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const wakeLock = useRef<WakeLockSentinel | null>(null);
   // Jours DÉPLIÉS par défaut : on suit donc les jours que l'utilisateur a
@@ -1836,11 +1842,27 @@ function PatisserView({
     }
   }
 
-  function toggleStep(id: number, checked: boolean) {
+  async function toggleStep(id: number, checked: boolean) {
     // Décocher une étape « déjà réalisée avant la fournée » la rend à la
     // fournée : `fait_en_amont` retombe avec `done` (sinon ses ingrédients
-    // resteraient absents de la liste totale alors qu'elle est à refaire).
+    // resteraient absents de la liste totale alors qu'elle est à refaire), et
+    // les sous-recettes dont une utilisation revient sont recalculées.
     const enAmont = !checked && batch.batch_steps.find((st) => st.id === id)?.fait_en_amont;
+    if (enAmont) {
+      const plan = planifierRecalculAmont(batch, id, false, seuilsPatisser);
+      if (plan.confirmation && !(await dialog.confirm(plan.confirmation))) return;
+      if (plan.ecritures.length) {
+        const supabase = createClient();
+        const res = await Promise.all(plan.ecritures.map((w) => supabase.from('batch_ingredients').update({ quantity: w.quantity } as never).eq('id', w.id)));
+        const echec = res.find((r) => r.error);
+        if (echec?.error) {
+          dialog.alert('Sauvegarde impossible : ' + echec.error.message);
+          return;
+        }
+        const nouvelles = new Map(plan.ecritures.map((w) => [w.id, w.quantity]));
+        setBatch((prev) => ({ ...prev, batch_ingredients: prev.batch_ingredients.map((it) => (nouvelles.has(it.id) ? { ...it, quantity: nouvelles.get(it.id)! } : it)) }));
+      }
+    }
     updateStep(id, { done: checked, done_at: checked ? new Date().toISOString() : null, ...(enAmont ? { fait_en_amont: false } : {}) });
     if (checked) {
       setTimeout(() => document.querySelector('[data-step-pending]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);

@@ -1477,6 +1477,23 @@ directes :
   colonne) gardent leurs ingrédients dans la liste totale. Le bloc d'aide
   `fournee.deja_realise` (Admin → Blocs d'aide) est à relire pour ce nouveau
   sens.
+  **Remplacement par une recette + « avant la fournée »** (10/11/2026) : une
+  sous-recette est fabriquée en une fois pour toutes les occurrences de
+  l'ingrédient remplacé ; quand l'une de ces occurrences se trouve dans une étape
+  `fait_en_amont`, on n'en fabrique plus la part. `planifierRecalculAmont`
+  (`lib/batch-expansion-recalcul.ts`, pur et testé) calcule le besoin avant et
+  après (occurrences non « en amont », sauf lignes décochées `excluded_when_done =
+  false`) et multiplie les lignes **des étapes insérées** par « après / avant »
+  (arrondi `units.round_from`) ; coche et décoche, mode Préparer
+  (`BatchStepDonePanel`, prop `planAmont`) comme décoche depuis le mode Pâtisser
+  (`toggleStep`), après une **confirmation chiffrée** (« Praliné à fabriquer :
+  200 g → 100 g »). Pas de colonne : on part des quantités actuelles (un
+  coefficient retouché à la main reste proportionnel) — un arrondi d'unité peut
+  décaler d'un gramme après plusieurs coches. Cas limites : toutes les
+  utilisations en amont (**plus rien à fabriquer**) ou retour depuis cet état
+  (rapport indéfini) → rien n'est réécrit, un avertissement le dit ; annuler le
+  remplacement reste le geste. La ligne rouge de la liste totale n'affiche que
+  la quantité encore à fabriquer.
 - **Deux notes par étape**, distinctes : `batch_steps.user_note` porte
   l'intention (écrite en amont, éditable depuis le mode Préparer,
   `BatchStepDonePanel`) ; `batch_steps.commentaire` porte le constat du jour
