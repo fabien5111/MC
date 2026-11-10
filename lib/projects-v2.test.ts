@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { stepTimeSums } from '@/lib/recipe-view';
-import { pointsRestants, empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, baseDeLigne, coefPreparation, modePreparation, utensilsToAdd, componentScaleProposal, scaleIncompatibility } from '@/lib/projects';
+import { pointsRestants, empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, baseDeLigne, coefPreparation, utensilsToAdd, componentScaleProposal, scaleIncompatibility } from '@/lib/projects';
 
 describe('projectV2BlockStates', () => {
   it('ne débloque que l’intention, l’identité et le format sur un projet vierge', () => {
@@ -280,16 +280,5 @@ describe('coefPreparation', () => {
   });
   it('prend le coefficient tel quel sans proposition d’après le format', () => {
     expect(coefPreparation('foncage', 3)).toBe(3);
-  });
-});
-
-describe('modePreparation', () => {
-  it('lit le mode commun des lignes, volume par défaut', () => {
-    expect(modePreparation(null, [{ scalingMode: 'aucun' }, { scalingMode: 'aucun' }])).toBe('aucun');
-    expect(modePreparation(null, [{ scalingMode: null }])).toBe('simple');
-    expect(modePreparation('foncage', [])).toBe('foncage');
-  });
-  it('signale des modes différents selon l’étape', () => {
-    expect(modePreparation('aucun', [{ scalingMode: 'aucun' }, { scalingMode: 'foncage' }])).toBe('mixte');
   });
 });

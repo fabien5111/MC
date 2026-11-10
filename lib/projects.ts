@@ -693,19 +693,6 @@ export function coefPreparation(
   return factor;
 }
 
-// Mode d'ajustement d'une préparation, tel que le volet l'affiche : celui de
-// la préparation s'il est posé, sinon celui de ses groupes d'ingrédients
-// (s'ils sont tous identiques), sinon « mixte ». Vide = volume, par défaut.
-export function modePreparation(
-  modeComposant: string | null | undefined,
-  lignes: { scalingMode: string | null }[],
-): string | 'mixte' {
-  const modes = new Set(lignes.map((l) => l.scalingMode || 'simple'));
-  if (modes.size > 1) return 'mixte';
-  if (modes.size === 1) return [...modes][0];
-  return modeComposant || 'simple';
-}
-
 // JEP-389 : au-delà du seuil de son unité (`units.round_from`), la quantité
 // calculée s'arrondit à l'unité. À coefficient 1 rien n'est calculé : la valeur
 // de l'auteur reste telle quelle.
