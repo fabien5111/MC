@@ -5,17 +5,31 @@
 // (règle ESLint du dépôt ; un palier ajouté en back-office doit se placer
 // tout seul).
 //
-// **Montée en gamme : immédiate, payée au prorata, et ATOMIQUE.**
+// **Montée en gamme : immédiate, payée au prorata, jamais sans paiement.**
 // `proration_behavior: 'always_invoice'` facture la différence tout de suite,
-// `payment_behavior: 'error_if_incomplete'` fait échouer l'appel entier si ce
-// paiement n'aboutit pas. Conséquence voulue : le membre est soit monté ET
-// payé, soit ni l'un ni l'autre — jamais monté sans avoir payé.
+// `payment_behavior: 'pending_if_incomplete'` n'applique le changement QUE si
+// ce paiement aboutit. Conséquence voulue : le membre est soit monté ET payé,
+// soit toujours sur son ancienne formule — jamais monté sans avoir payé.
 //
 // Ce dernier point n'est pas théorique : notre propre arbitrage mappe
 // `past_due` sur `ACTIVE` (un abonné dont la carte expire garde son accès
 // pendant les relances, §14). Laisser une montée s'installer en `past_due`
 // reviendrait donc à **offrir le palier supérieur** à qui n'a pas payé. D'où
-// l'atomicité, et le refus de `default_incomplete`.
+// le refus de `default_incomplete` / `allow_incomplete`.
+//
+// **Confirmation bancaire (3-D Secure), JEP-361.** Jusqu'au 10/11/2026 la
+// montée passait en `error_if_incomplete` : une banque qui exigeait une
+// confirmation faisait échouer l'appel entier, sans aucun moyen de la donner
+// (le débit est lancé par le serveur, il n'y a pas de page). Jamais vu en
+// mode test, où les cartes n'en demandent pas ; constaté au premier essai en
+// live avec une carte française. En `pending_if_incomplete`, Stripe garde le
+// changement EN ATTENTE (`pending_update`) et la facture de prorata ouverte :
+// la route renvoie l'adresse de cette facture hébergée par Stripe, où le
+// membre confirme ; payée, elle applique le changement, et le webhook pose le
+// palier comme d'habitude. Abandonnée, le changement expire sans rien
+// appliquer. Ce mode n'admet que quelques paramètres (articles, prorata…) :
+// la trace des CGV (`metadata`) et la reprise d'une résiliation
+// (`cancel_at_period_end`) partent donc dans des appels séparés.
 //
 // **Descente en gamme : à l'échéance, sans remboursement.** Le membre garde
 // ce qu'il a payé jusqu'au bout. Un simple changement de prix sur
@@ -37,6 +51,7 @@ import {
   echeancierConforme,
   identifiantEcheancier,
   lireAbonnementStripe,
+  lireMonteeEnAttente,
   lirePhasesEcheancier,
   messageRefusChangement,
   phaseCourante,
@@ -194,27 +209,9 @@ export async function POST(req: Request) {
     }
   }
 
-  const resultat = await appelStripe<unknown>(`/subscriptions/${courant.subscriptionId}`, {
-    idempotencyKey: jeton ? `monter:${user.id}:${jeton}` : cleIdempotence('monter', user.id, courant.subscriptionId, prixCible),
-    corps: {
-      items: [{ id: abo.itemId, price: prixCible }],
-      proration_behavior: 'always_invoice',
-      payment_behavior: 'error_if_incomplete',
-      // Monter en gamme vaut reprise : payer davantage dit assez clairement
-      // qu'on veut continuer. Sans ça, un membre ayant résilié paierait un
-      // prorata sur un abonnement que Stripe clôt à l'échéance.
-      cancel_at_period_end: false,
-      // Seules ces clés sont transmises : Stripe fusionne les métadonnées sur
-      // une mise à jour, `user_id` posé à la souscription est donc préservé.
-      // La version des CGV est réécrite : c'est la dernière acceptée qui
-      // régit l'abonnement monté.
-      metadata: { waiver_accepted_at: accepteLe, cgv_version: CGV_VERSION, cgv_accepted_at: accepteLe },
-    },
-  });
-
-  if (!resultat.ok) {
-    console.error('abonnement/changer (montée):', resultat.message);
-    let message = messageRefusChangement(resultat.code);
+  // Échec AVANT que le changement ne soit appliqué : on remet en place la
+  // descente qu'il avait fallu libérer, sans quoi elle disparaîtrait en silence.
+  const echecMontee = async (message: string, status: number) => {
     if (prixDescenteProgrammee) {
       const remise = await programmerDescente(
         user.id,
@@ -229,12 +226,92 @@ export async function POST(req: Request) {
         message += ' Le changement de formule que vous aviez programmé a été annulé : reprogrammez-le si besoin.';
       }
     }
-    return NextResponse.json({ erreur: message }, { status: resultat.status === 402 ? 402 : 502 });
+    return NextResponse.json({ erreur: message }, { status });
+  };
+
+  // 1. Trace de l'acceptation des CGV, à part : `pending_if_incomplete`
+  // refuse `metadata` dans le même appel. Posée AVANT la montée — c'est la
+  // preuve que le membre a accepté le texte, elle doit exister si le
+  // changement s'applique. Seules ces clés sont transmises : Stripe fusionne
+  // les métadonnées, `user_id` posé à la souscription est préservé. La version
+  // des CGV est réécrite : c'est la dernière acceptée qui régit l'abonnement.
+  const trace = await appelStripe<unknown>(`/subscriptions/${courant.subscriptionId}`, {
+    idempotencyKey: jeton ? `monter-cgv:${user.id}:${jeton}` : cleIdempotence('monter-cgv', user.id, courant.subscriptionId, prixCible),
+    corps: { metadata: { waiver_accepted_at: accepteLe, cgv_version: CGV_VERSION, cgv_accepted_at: accepteLe } },
+  });
+  if (!trace.ok) {
+    console.error('abonnement/changer (trace CGV):', trace.message);
+    return echecMontee("Le changement de formule n'a pas pu aboutir. Votre formule actuelle est inchangée.", 502);
+  }
+
+  // 2. La montée elle-même, appliquée seulement si le prorata est payé.
+  const resultat = await appelStripe<unknown>(`/subscriptions/${courant.subscriptionId}`, {
+    idempotencyKey: jeton ? `monter:${user.id}:${jeton}` : cleIdempotence('monter', user.id, courant.subscriptionId, prixCible),
+    corps: {
+      items: [{ id: abo.itemId, price: prixCible }],
+      proration_behavior: 'always_invoice',
+      payment_behavior: 'pending_if_incomplete',
+      // Développée pour lire l'adresse de la facture si la banque demande une
+      // confirmation (`lireMonteeEnAttente`).
+      expand: ['latest_invoice'],
+    },
+  });
+
+  if (!resultat.ok) {
+    console.error('abonnement/changer (montée):', resultat.message);
+    return echecMontee(messageRefusChangement(resultat.code), resultat.status === 402 ? 402 : 502);
+  }
+
+  const attente = lireMonteeEnAttente(resultat.data);
+  if (attente.enAttente) {
+    // Rien n'est appliqué : l'abonnement garde son prix, le webhook ne
+    // changera rien tant que la facture n'est pas payée. Une résiliation
+    // programmée le reste (pas de reprise sur un paiement non confirmé), et la
+    // descente libérée n'est pas remise : Stripe n'accepte pas d'échéancier
+    // sur un abonnement qui porte un changement en attente.
+    console.warn('abonnement/changer: montée en attente de confirmation bancaire');
+    let avertissement = abo.annulationProgrammee
+      ? 'Votre résiliation reste programmée : après paiement, la nouvelle formule vaudra jusqu’à l’échéance.'
+      : null;
+    if (prixDescenteProgrammee) {
+      avertissement = [avertissement, 'Le changement de formule que vous aviez programmé a été annulé.']
+        .filter(Boolean)
+        .join(' ');
+    }
+    if (!attente.urlFacture) {
+      console.error('abonnement/changer: montée en attente sans adresse de facture');
+      return NextResponse.json(
+        {
+          erreur:
+            'Votre banque demande une confirmation pour ce paiement. Ouvrez « Factures et moyen de paiement » ' +
+            'depuis vos réglages pour régler la facture en attente.',
+        },
+        { status: 402 },
+      );
+    }
+    return NextResponse.json({ sens: 'MONTEE', planCode, immediat: false, confirmation: attente.urlFacture, avertissement });
+  }
+
+  // 3. Montée appliquée et payée. Monter en gamme vaut reprise : payer
+  // davantage dit assez clairement qu'on veut continuer. Sans ça, un membre
+  // ayant résilié paierait un prorata sur un abonnement que Stripe clôt à
+  // l'échéance. Appel séparé (refusé par `pending_if_incomplete`), et
+  // seulement maintenant que le paiement est acquis.
+  let avertissement: string | null = null;
+  if (abo.annulationProgrammee) {
+    const reprise = await appelStripe<unknown>(`/subscriptions/${courant.subscriptionId}`, {
+      idempotencyKey: jeton ? `monter-reprise:${user.id}:${jeton}` : cleIdempotence('monter-reprise', user.id, courant.subscriptionId, prixCible),
+      corps: { cancel_at_period_end: false },
+    });
+    if (!reprise.ok) {
+      console.error('abonnement/changer (reprise):', reprise.message);
+      avertissement = 'Votre résiliation est toujours programmée : contactez-nous si vous souhaitez la lever.';
+    }
   }
 
   // Aucune écriture en base ici : `customer.subscription.updated` arrive dans
   // la foulée et c'est le webhook qui pose le nouveau palier (§14).
-  return NextResponse.json({ sens: 'MONTEE', planCode, immediat: true });
+  return NextResponse.json({ sens: 'MONTEE', planCode, immediat: true, avertissement });
 }
 
 /**
