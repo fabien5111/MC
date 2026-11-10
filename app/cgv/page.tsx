@@ -7,9 +7,10 @@
 // souscrite préservées). Ce n'est PAS un avis juridique : une relecture par
 // un professionnel reste nécessaire avant la commercialisation.
 //
-// Les mentions entre crochets (délai de mise en demeure…) sont des
-// informations encore à fournir — laissées visibles à dessein plutôt
-// qu'inventées. L'identité de l'éditeur, elle, est lue dans `lib/legal.ts`
+// Plus aucune mention entre crochets (JEP-361) : délai de mise en demeure
+// fixé à 15 jours, fonctionnalités payantes énumérées (liste « notamment »,
+// non exhaustive — la page /plans fait foi). L'identité de l'éditeur, elle,
+// est lue dans `lib/legal.ts`
 // (JEP-129), comme les mentions légales et la politique de confidentialité :
 // une seule copie, sinon les pages finissent par se contredire.
 //
@@ -131,7 +132,10 @@ export default async function CgvPage() {
           <p>
             Les formules payantes donnent accès à des fonctionnalités supplémentaires, notamment : import de recette
             par intelligence artificielle (texte, photo, PDF), ajustement des quantités par intelligence artificielle,
-            mode projet assisté par intelligence artificielle, [autres fonctionnalités].
+            mode projet assisté par intelligence artificielle, listes de recettes personnelles, carnet au format de
+            l&apos;examen du CAP Pâtissier, extraction d&apos;étapes en nouvelle recette, liste de courses « À
+            racheter », navigation sans publicité, ainsi que des limites d&apos;usage plus élevées (recettes,
+            favoris, fournées, listes de courses).
           </p>
           <p>
             Le contenu exact de chaque formule est décrit sur la page <Lien href="/plans">Nos formules</Lien>, qui
@@ -320,7 +324,7 @@ export default async function CgvPage() {
           <p>
             En cas de manquement grave du Membre aux Conditions générales d&apos;utilisation (fraude, contournement
             des limites d&apos;usage, atteinte au Site ou à d&apos;autres Membres), « Je pâtisse ! » peut résilier
-            l&apos;abonnement après une mise en demeure restée sans effet pendant [15] jours, sauf urgence ou fraude
+            l&apos;abonnement après une mise en demeure restée sans effet pendant 15 jours, sauf urgence ou fraude
             avérée. La part du prix correspondant à la Période restant à courir est alors remboursée au prorata, sauf
             en cas de fraude.
           </p>
@@ -441,8 +445,8 @@ export default async function CgvPage() {
               À l&apos;attention de {EDITEUR.nom}, {EDITEUR.adresse}, {EDITEUR.email} :
             </p>
             <p>
-              Je vous notifie par la présente ma rétractation du contrat portant sur l&apos;abonnement suivant :
-              [formule]
+              Je vous notifie par la présente ma rétractation du contrat portant sur l&apos;abonnement suivant
+              (formule) : ………………
             </p>
             <p>
               Souscrit le : ………………
