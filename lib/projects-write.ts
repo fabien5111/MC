@@ -19,7 +19,7 @@
 //     rattachement : seul un déplacement ou une suppression de composant
 //     redistribue les blocs (`resequenceProjectSteps`).
 import type { createClient } from '@/lib/supabase/client';
-import { baseDeLigne, utensilsToAdd, type ComponentStepDraft, type ComponentUtensil } from '@/lib/projects';
+import { baseDeLigne, nettoyerUstensilsEtape, utensilsToAdd, type ComponentStepDraft, type ComponentUtensil } from '@/lib/projects';
 import { fixOeufLigature } from '@/lib/text';
 import { noteAvance } from '@/lib/recipe-view';
 
@@ -99,7 +99,7 @@ export async function readComponentDraft(
   const { data: stepDetails, error: stepErr } = await supabase
     .from('recipe_steps')
     .select(
-      'id, order_index, title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, can_prepare_ahead, advance_note, step_photos(url, original_url, order_index, ai_retouched)',
+      'id, order_index, title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset, can_prepare_ahead, advance_note, utensils, step_photos(url, original_url, order_index, ai_retouched)',
     )
     .in('id', mine.map((s) => s.id));
   if (stepErr) throw stepErr;
@@ -129,6 +129,7 @@ export async function readComponentDraft(
     day_offset: number | null;
     can_prepare_ahead?: boolean | null;
     advance_note?: string | null;
+    utensils?: unknown;
     step_photos: { url: string; original_url: string | null; order_index: number | null; ai_retouched: boolean }[] | null;
   };
   // `*` et non une liste : `base_quantity` est absente des types générés
@@ -184,6 +185,7 @@ export async function readComponentDraft(
       day_offset: d?.day_offset ?? null,
       can_prepare_ahead: d?.can_prepare_ahead === true,
       advance_note: d?.advance_note ?? null,
+      utensils: nettoyerUstensilsEtape(d?.utensils),
       ingredients: ingredients.length ? ingredients : [{ name: '', quantity: '', unit: null, comment: null, allergen: null, ref_id: null }],
       photos: [...(d?.step_photos ?? [])]
         .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
@@ -236,6 +238,9 @@ export async function writeComponentContent(
         // Écrite seulement si cochée, comme dans CreerForm.
         ...(st.can_prepare_ahead ? { can_prepare_ahead: true } : {}),
         ...(st.can_prepare_ahead && noteAvance(st.advance_note) ? { advance_note: noteAvance(st.advance_note) } : {}),
+        // Écrite seulement si l'étape en a : sans la colonne (migration pas
+        // jouée), une étape sans ustensile s'enregistre quand même.
+        ...(nettoyerUstensilsEtape(st.utensils).length ? { utensils: nettoyerUstensilsEtape(st.utensils) } : {}),
       } as never)
       .select('id')
       .single();
@@ -296,6 +301,14 @@ export async function writeComponentContent(
     );
     if (ingErr) throw ingErr;
   }
+
+  // Les ustensiles d'étape alimentent la liste globale de la recette (ceux qui
+  // y manquent seulement, rien n'y est jamais retiré).
+  await ajouterUstensilsGlobaux(
+    supabase,
+    recipeId,
+    retenues.flatMap((st) => nettoyerUstensilsEtape(st.utensils)),
+  );
 }
 
 // Mode d'ajustement choisi pour un composant à l'étape 3 (JEP-254, point 4) :
@@ -538,6 +551,16 @@ export async function attachComponentUtensils(
     .update({ utensils } as never)
     .eq('id', componentId);
   if (cErr && !/utensils/.test(cErr.message)) throw cErr;
+  await ajouterUstensilsGlobaux(supabase, recipeId, utensils);
+}
+
+// Ajoute à la liste globale de la recette (`recipe_utensils`) les ustensiles
+// qui y manquent — même nom normalisé ou même référentiel. Rien n'est retiré.
+export async function ajouterUstensilsGlobaux(
+  supabase: Supabase,
+  recipeId: string,
+  utensils: ComponentUtensil[],
+) {
   if (!utensils.length) return;
 
   const { data, error } = await supabase

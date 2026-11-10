@@ -1300,6 +1300,7 @@ export function ProjectV2({
           componentIds={ordered.map((c) => c.id)}
           units={units}
           ingredientRefs={ingredientRefs}
+          utensilNames={utensilNames}
           referenceAllergenes={referenceAllergenes}
           tagsReference={tags}
           peutGenererIA={peutGenererIA}
