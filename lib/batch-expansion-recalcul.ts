@@ -104,7 +104,7 @@ export function planifierRecalculAmont(batch: BatchFull, stepId: number, suivant
   if (expansions.length === 0) return { expansions, ecritures, confirmation: null };
 
   const q = (n: number, u: string | null) => `${fmtNum(n)}${u ? ' ' + u : ''}`;
-  const intro = suivant ? 'Cette étape a déjà été réalisée avant la fournée.' : 'Cette étape doit être réalisée dans cette fournée.';
+  const intro = suivant ? 'Vous voulez indiquer que cette étape a déjà été réalisée avant la fournée.' : 'Vous voulez indiquer que cette étape doit être réalisée dans cette fournée.';
   const geste = suivant ? 'En cochant la case' : 'En décochant la case';
   const detail = (e: RecalculExpansion) => {
     if (e.statut === 'plus-rien') {
