@@ -8,12 +8,12 @@
 import { HelpBlock } from './HelpBlock';
 import type { HelpBlocksState } from './useHelpBlocks';
 
-export function HelpBlockSlot({ blockKey, help, className, compact }: { blockKey: string; help: HelpBlocksState; className?: string; compact?: boolean }) {
+export function HelpBlockSlot({ blockKey, help, className }: { blockKey: string; help: HelpBlocksState; className?: string }) {
   const block = help.get(blockKey);
   if (!block) return null;
   return (
     <span className={`inline-flex shrink-0 ${className ?? ''}`}>
-      <HelpBlock block={block} compact={compact} />
+      <HelpBlock block={block} />
     </span>
   );
 }

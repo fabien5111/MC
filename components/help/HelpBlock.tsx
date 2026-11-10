@@ -16,7 +16,7 @@ import { createPortal } from 'react-dom';
 import { StepVideoPlayer } from '@/components/recipe/StepVideoPlayer';
 import type { VisibleHelpBlock } from '@/lib/help';
 
-export function HelpBlock({ block, compact = false }: { block: VisibleHelpBlock; compact?: boolean }) {
+export function HelpBlock({ block }: { block: VisibleHelpBlock }) {
   const [ouvert, setOuvert] = useState(false);
   const fermerRef = useRef<HTMLButtonElement>(null);
   const declencheurRef = useRef<HTMLButtonElement>(null);
@@ -51,14 +51,9 @@ export function HelpBlock({ block, compact = false }: { block: VisibleHelpBlock;
         title={`Aide : ${block.title}`}
         aria-label={`Aide : ${block.title}`}
         aria-haspopup="dialog"
-        className={`no-print inline-flex shrink-0 items-center align-middle normal-case tracking-normal text-primary transition-colors ${
-          compact
-            ? 'p-1 hover:text-primary/70'
-            : 'gap-1.5 rounded-pill border border-secondary-container bg-secondary-container/30 p-1.5 md:px-3 md:py-1 hover:bg-secondary-container/60'
-        }`}
+        className="no-print inline-flex shrink-0 items-center align-middle normal-case tracking-normal p-1 text-primary transition-colors hover:text-primary/70"
       >
         <span className="material-symbols-outlined text-[20px]">help_outline</span>
-        {!compact && <span className="hidden md:inline font-label-md text-label-md">Aide</span>}
       </button>
       {ouvert &&
         createPortal(

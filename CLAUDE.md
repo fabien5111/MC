@@ -144,7 +144,7 @@ le service managé.
   peut rester à `pgweb_admin`.
 - **Aide contextuelle : un picto « ? », jamais un encadré** (JEP-391).
   Chaque emplacement (`HelpBlockSlot`, `HelpSlotClient`, `HelpPageSlot`) rend
-  `HelpBlock` : picto `help_outline` + libellé « Aide » à toute largeur ; le clic ouvre une fenêtre (portée dans `document.body`,
+  `HelpBlock` : picto `help_outline` seul (« ? » dans son cercle foncé, sans libellé ni fond), à toute largeur et sur tous les appareils, titre en infobulle et `aria-label` ; le clic ouvre une fenêtre (portée dans `document.body`,
   `z-[105]`) avec titre, texte et vidéo du bloc. « ? » et non « i » : le « i »
   sert à un renseignement ou un état, pas à l'aide « comment faire ». **Plus
   aucun masquage** : la croix, « Réafficher les aides » (`/reglages`), les
@@ -152,7 +152,7 @@ le service managé.
   ont disparu ; `help_dismissals` reste en base, ni lue ni écrite (les anciens
   masquages sont sans effet). Contenu : Admin → Blocs d'aide ; lecture par le
   cache des référentiels, aucune requête par rendu.
-  **Éléments répétés (étapes de `/creer`, de la relecture, du mode Préparer)** : le picto est posé sur **chaque** étape, en variante `compact` (`HelpBlock` / `HelpBlockSlot`, prop `compact` : l'icône seule (« ? » dans son cercle foncé), sans le mot « Aide » ni fond rose, à toute largeur ; titre en infobulle et `aria-label`). Plus de `=== 0` : l'aide n'est plus réservée à la première étape. Les aides uniques (page, titre de liste) gardent « Aide ».
+  **Éléments répétés (étapes de `/creer`, de la relecture, du mode Préparer)** : le picto est posé sur **chaque** étape (plus de `=== 0`), même rendu que partout ailleurs.
 - **Polices** : Playfair Display / Work Sans / Parisienne sont servies par
   `next/font/local` (`app/fonts.ts`), fichiers `.woff2` versionnés dans
   `app/fonts/` (sous-ensemble `latin` des polices variables de Google Fonts),

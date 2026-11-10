@@ -1971,7 +1971,7 @@ export function CreerForm({
                         </option>
                       ))}
                     </select>
-                    <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} className="ml-auto" compact />
+                    <HelpBlockSlot blockKey="creer.ajustement_etape" help={help} className="ml-auto" />
                   </div>
 
                   {/* gap-6/w-44 (au lieu de gap-8/w-48) : à 1024px (`lg`), la
@@ -2032,7 +2032,7 @@ export function CreerForm({
                       placeholder="0"
                     />
                     <span className="text-sm text-on-surface-variant italic">jour(s) avant dégustation</span>
-                    <HelpBlockSlot blockKey="creer.jour_et_avance" help={help} className="ml-auto" compact />
+                    <HelpBlockSlot blockKey="creer.jour_et_avance" help={help} className="ml-auto" />
                   </div>
 
                   <label className="flex items-center gap-3 cursor-pointer w-fit">
@@ -2324,7 +2324,7 @@ export function CreerForm({
                           (Afin de faciliter le découpage en sous-étape, commencer vos lignes par -)
                         </span>
                       </span>
-                      <HelpBlockSlot blockKey="creer.description_etape" help={help} className="shrink-0" compact />
+                      <HelpBlockSlot blockKey="creer.description_etape" help={help} className="shrink-0" />
                     </label>
                     {st.subSteps === null ? (
                       // Mode texte libre : description + bouton d'éclatement.
