@@ -1371,7 +1371,12 @@ function PreparerView({
           tout est déjà réalisé. */}
       {batch.batch_ingredients.length > 0 && (
         <div id="sec-ingredients-complets" className="scroll-mt-28">
-          <h3 className="font-headline-md text-headline-md text-primary mb-4">Liste totale des ingrédients</h3>
+          {/* Même aide que le bloc « Ingrédients de l'étape » : le picto de
+              remplacement est aussi sur chaque ligne de cette liste. */}
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <h3 className="font-headline-md text-headline-md text-primary">Liste totale des ingrédients</h3>
+            {help && <HelpBlockSlot blockKey="fournee.remplacement" help={help} />}
+          </div>
           <IngredientTotalList
             groups={allIngredientGroups.map((g) => {
               // Quantité + unité (infobulle) + équivalent, comme partout ailleurs.
