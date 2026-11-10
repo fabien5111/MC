@@ -19,7 +19,7 @@
 //     rattachement : seul un déplacement ou une suppression de composant
 //     redistribue les blocs (`resequenceProjectSteps`).
 import type { createClient } from '@/lib/supabase/client';
-import { utensilsToAdd, type ComponentStepDraft, type ComponentUtensil } from '@/lib/projects';
+import { baseDeLigne, utensilsToAdd, type ComponentStepDraft, type ComponentUtensil } from '@/lib/projects';
 import { fixOeufLigature } from '@/lib/text';
 import { noteAvance } from '@/lib/recipe-view';
 
@@ -396,19 +396,29 @@ export async function resequenceProjectSteps(supabase: Supabase, recipeId: strin
 // de la gélatine comme de la crème.
 export async function applyComponentScale(
   supabase: Supabase,
-  lines: { id: number; baseQuantity: number | null; scalingMode: string | null; unit?: string | null }[],
+  lines: { id: number; quantity?: string | null; baseQuantity: number | null; scalingMode: string | null; unit?: string | null }[],
   factor: number,
   moldCoefs: { surface: number; volume: number } | null,
   coefPourMode: (mode: string | null, factor: number, moldCoefs: { surface: number; volume: number } | null) => number,
   texte: (base: number | null, coef: number, unit?: string | null) => string | null,
+  // Coefficient en vigueur avant cet ajustement : sert à reconstituer la base
+  // d'une ligne qui n'en a pas (retouchée à la main, ou copiée avant la colonne).
+  facteurAvant = 1,
 ) {
   for (const l of lines) {
-    // Ligne non chiffrée (« 1 pincée ») ou modifiée à la main : jamais
-    // recalculée — même doctrine que les lignes `added` d'une fournée.
-    if (l.baseQuantity == null) continue;
+    // Ligne sans base (retouchée à la main, ou préparation copiée avant que
+    // `base_quantity` soit écrite) : on en déduit une de la quantité actuelle
+    // et du coefficient en vigueur — sans quoi « Appliquer » enregistrait le
+    // coefficient sans rien changer, en silence. La ligne suit ensuite les
+    // ajustements globaux. Ligne non chiffrée (« 1 pincée ») : laissée telle quelle.
+    const base = baseDeLigne(l, facteurAvant);
+    if (base == null) continue;
     const coef = coefPourMode(l.scalingMode, factor, moldCoefs);
-    const q = texte(l.baseQuantity, coef, l.unit);
-    const { error } = await supabase.from('ingredients').update({ quantity: q } as never).eq('id', l.id);
+    const q = texte(base, coef, l.unit);
+    const { error } = await supabase
+      .from('ingredients')
+      .update({ quantity: q, base_quantity: base } as never)
+      .eq('id', l.id);
     if (error) throw error;
   }
 }
