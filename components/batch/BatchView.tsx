@@ -1677,9 +1677,9 @@ function PreparerView({
                   readOnly={readOnly}
                   derniereFois={<DerniereFoisEtape stepId={s.id} sansEcart />}
                   retoursEcart={editeurMonte ? undefined : retoursEcartNode}
-                  aideRealise={help && i === 0 ? <HelpBlockSlot blockKey="fournee.deja_realise" help={help} /> : undefined}
-                  aideNote={help && i === 0 ? <HelpBlockSlot blockKey="fournee.notes" help={help} /> : undefined}
-                  aideIngredients={help && i === 0 ? <HelpBlockSlot blockKey="fournee.remplacement" help={help} /> : undefined}
+                  aideRealise={help ? <HelpBlockSlot blockKey="fournee.deja_realise" help={help} compact /> : undefined}
+                  aideNote={help ? <HelpBlockSlot blockKey="fournee.notes" help={help} compact /> : undefined}
+                  aideIngredients={help ? <HelpBlockSlot blockKey="fournee.remplacement" help={help} compact /> : undefined}
                   planAmont={(suivant) => planifierRecalculAmont(batch, s.id, suivant, seuils)}
                   ingredientsEditor={
                     !readOnly && ingredientsOfStep.length > 0 ? (

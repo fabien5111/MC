@@ -1758,7 +1758,7 @@ export function RelectureEditor({
                   </option>
                 ))}
               </select>
-              {si === 0 && <HelpBlockSlot blockKey="relecture.ajustement_etape" help={help} className="ml-auto" />}
+              <HelpBlockSlot blockKey="relecture.ajustement_etape" help={help} className="ml-auto" compact />
             </div>
 
             {/* Colonnes alignées par le haut : le lien « Une nuit (12 h) » sous
@@ -1840,7 +1840,7 @@ export function RelectureEditor({
                   <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
                 </span>
               </label>
-              {si === 0 && <HelpBlockSlot blockKey="relecture.jour_et_avance" help={help} className="ml-auto self-center" />}
+              <HelpBlockSlot blockKey="relecture.jour_et_avance" help={help} className="ml-auto self-center" compact />
               {sp.avance && (
                 <div className="basis-full flex flex-col gap-1">
                   <textarea
@@ -2038,7 +2038,7 @@ export function RelectureEditor({
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 mb-2">
                 <p className="flex items-center justify-between gap-2 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
                   Sous-étapes importées
-                  {si === 0 && <HelpBlockSlot blockKey="relecture.description_etape" help={help} />}
+                  <HelpBlockSlot blockKey="relecture.description_etape" help={help} compact />
                 </p>
                 <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Version corrigée</p>
               </div>

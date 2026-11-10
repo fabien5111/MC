@@ -152,6 +152,7 @@ le service managé.
   ont disparu ; `help_dismissals` reste en base, ni lue ni écrite (les anciens
   masquages sont sans effet). Contenu : Admin → Blocs d'aide ; lecture par le
   cache des référentiels, aucune requête par rendu.
+  **Éléments répétés (étapes de `/creer`, de la relecture, du mode Préparer)** : le picto est posé sur **chaque** étape, en variante `compact` (`HelpBlock` / `HelpBlockSlot`, prop `compact` : le « ? » dans son cercle, sans le mot « Aide », à toute largeur ; titre en infobulle et `aria-label`). Plus de `=== 0` : l'aide n'est plus réservée à la première étape. Les aides uniques (page, titre de liste) gardent « Aide ».
 - **Polices** : Playfair Display / Work Sans / Parisienne sont servies par
   `next/font/local` (`app/fonts.ts`), fichiers `.woff2` versionnés dans
   `app/fonts/` (sous-ensemble `latin` des polices variables de Google Fonts),
