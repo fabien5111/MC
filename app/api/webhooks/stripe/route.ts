@@ -31,6 +31,7 @@ import {
   isoDepuisUnixStripe,
   lireAbonnementStripe,
   lireDetailsSouscription,
+  alerteEchecPrelevement,
   lireClientFacture,
   lireSessionCheckout,
   messageAbonnementConfirme,
@@ -188,6 +189,9 @@ async function traiter(type: string, objet: unknown): Promise<void> {
  * qui devient urgente.
  */
 async function notifierEchecPaiement(objet: unknown): Promise<void> {
+  // Prorata d'une montée en gamme en attente de confirmation bancaire : rien
+  // n'est perdu, l'ancienne formule continue — pas d'alerte (JEP-361).
+  if (!alerteEchecPrelevement(objet)) return;
   const customerId = lireClientFacture(objet);
   if (!customerId) return;
 

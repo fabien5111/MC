@@ -163,8 +163,11 @@ type SubscriptionStripe = { status?: string; schedule?: unknown };
  * refuse de toucher l'abonnement directement). Aucun remboursement
  * automatique : geste manuel du Dashboard, comme ailleurs. La table
  * `subscriptions` est alignée par le webhook (`customer.subscription.deleted`).
+ *
+ * Partagée avec l'annulation immédiate du back-office
+ * (`/api/admin/membres/[id]/abonnement/annuler`, JEP-361).
  */
-async function resilierImmediatement(subscriptionId: string, membreId: string): Promise<{ ok: true } | { ok: false; message: string }> {
+export async function resilierImmediatement(subscriptionId: string, membreId: string): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     const lu = await appelStripe<SubscriptionStripe>(`/subscriptions/${subscriptionId}`);
     if (!lu.ok) return lu.status === 404 ? { ok: true } : { ok: false, message: lu.message };
