@@ -772,7 +772,7 @@ export function mergeBatchIngredients(batch: BatchFull): MergedBatchRow[] {
 // n'en fait pas partie — ses ingrédients (sauf ceux que l'utilisateur a
 // décochés pour les garder, `excluded_when_done = false`) sortent de la liste.
 export function mergeAllBatchIngredients(batch: BatchFull): MergedBatchRow[] {
-  const stepById = new Map(batch.batch_steps.map((s) => [s.id, s]));
+  const stepById = new Map((batch.batch_steps ?? []).map((s) => [s.id, s]));
   const enAmont = (it: BatchIngredientRow) => {
     const step = it.batch_step_id != null ? stepById.get(it.batch_step_id) : undefined;
     return !!step?.fait_en_amont && it.excluded_when_done;

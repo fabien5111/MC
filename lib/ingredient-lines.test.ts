@@ -93,6 +93,24 @@ describe('mergeAllBatchIngredients — fournée', () => {
     expect(mergeAllBatchIngredients(b)[0].stepIds).toEqual([7, 9]);
   });
 
+  it('une étape « déjà réalisée avant la fournée » sort ses ingrédients de la liste totale', () => {
+    const base = (batch as unknown as { batch_ingredients: object[] }).batch_ingredients[0];
+    const ligne = (id: number, step: number, excluded_when_done: boolean) => ({ ...base, id, batch_step_id: step, excluded_when_done });
+    const b = {
+      batch_steps: [
+        { id: 1, fait_en_amont: true, done: true },
+        { id: 2, fait_en_amont: false, done: true },
+      ],
+      batch_ingredients: [
+        { ...ligne(10, 1, true), name: 'Farine' },
+        { ...ligne(11, 1, false), name: 'Œuf de dorure' },
+        { ...ligne(12, 2, true), name: 'Beurre' },
+      ],
+    } as unknown as BatchFull;
+    // Étape en amont : retirée, sauf la ligne décochée (gardée). Étape seulement `done` : conservée.
+    expect(mergeAllBatchIngredients(b).map((r) => r.name).sort()).toEqual(['Beurre', 'Œuf de dorure']);
+  });
+
   it('le total de l’ingrédient se calcule par groupWithTotal', () => {
     const g = groupWithTotal(mergeAllBatchIngredients(batch), (r) => ({ name: r.name, qty: mergedRowQtyText(r), unit: r.unit, refId: r.ref_id }), [], []);
     expect(g).toHaveLength(1);
