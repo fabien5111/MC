@@ -114,6 +114,7 @@ export function ComponentResolver({
   ingredientRefs = [],
   conversions = [],
   unitRefs = [],
+  utensilNames = [],
   referenceAllergenes,
   tagsReference = [],
   peutGenererIA = true,
@@ -144,6 +145,9 @@ export function ComponentResolver({
   // Conversions d'ingrédients et unités : équivalent en grammes sous la quantité.
   conversions?: ConversionRef[];
   unitRefs?: UnitRef[];
+  // Noms d'ustensiles du référentiel : suggestions de saisie des ustensiles
+  // de chaque étape.
+  utensilNames?: string[];
   // Allergènes du référentiel (menu + pastilles) et allergènes par ingrédient
   // du référentiel (pré-remplissage) — comme l'éditeur de recette. Absent :
   // champ texte libre.
@@ -202,6 +206,7 @@ export function ComponentResolver({
   // Aperçu d'une recette trouvée, dans la fenêtre (œil) : ce qui serait copié.
   const [apercu, setApercu] = useState<{ item: Trouvee; steps: ComponentStepDraft[] } | null>(null);
   const datalistId = `dl-ingredients-composant-${component.id}`;
+  const utensilsDatalistId = `dl-ustensiles-composant-${component.id}`;
   // Consignes pour une nouvelle proposition de l'IA (JEP-254, point 8).
   const [consignes, setConsignes] = useState('');
   // Précision libre saisie avant la PREMIÈRE proposition (JEP-254) — distincte
@@ -1048,6 +1053,7 @@ export function ComponentResolver({
                     )
                   }
                   datalistId={ingredientRefs.length ? datalistId : undefined}
+                  utensilsDatalistId={utensilNames.length ? utensilsDatalistId : undefined}
                   onChange={(patch) => majEtape(i, patch)}
                   onIngredientChange={(j, patch) => majIngredient(i, j, patch)}
                   onIngredientAdd={() =>
@@ -1087,6 +1093,14 @@ export function ComponentResolver({
                 <span className="material-symbols-outlined">add_circle</span> Ajouter une étape
               </button>
             </div>
+
+            {utensilNames.length > 0 && (
+              <datalist id={utensilsDatalistId}>
+                {utensilNames.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+            )}
 
             {ingredientRefs.length > 0 && (
               <datalist id={datalistId}>
