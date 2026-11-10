@@ -19,6 +19,7 @@ import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { SCALING_OPTIONS } from '@/components/projets/StepEditorCard';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -690,6 +691,43 @@ export function ProjectV2({
     };
   }
 
+  // « Ajustement des quantités de cette étape » : même réglage et même libellé
+  // que dans l'éditeur de recette, sous le titre de l'étape. Le mode est celui
+  // du groupe d'ingrédients de l'étape (`ingredient_groups.scaling_mode`) ; le
+  // coefficient d'une préparation s'applique de toute façon à toutes ses lignes
+  // (`coefPreparation`), le mode départage surface et volume et vaut pour les
+  // fournées futures. Pas de sélecteur pour une étape sans ingrédient.
+  function selecteurAjustement(s: RecipeStepView) {
+    const g = groupByOrder.get(s.order_index ?? -1);
+    if (!g || !g.ingredients.length) return undefined;
+    return (
+      <div className="flex flex-wrap items-center gap-3 border-b border-outline-variant/60 pb-4">
+        <label htmlFor={`ajust-${s.id}`} className="font-label-md text-label-md text-outline uppercase">
+          Ajustement des quantités de cette étape
+        </label>
+        <select
+          id={`ajust-${s.id}`}
+          value={g.scaling_mode ?? 'simple'}
+          disabled={busy}
+          onChange={(e) =>
+            void mutate(
+              async () => createClient().from('ingredient_groups').update({ scaling_mode: e.target.value } as never).eq('id', g.id),
+              { errorLabel: 'Mode d’ajustement' },
+            )
+          }
+          className="editorial-input max-w-full text-on-surface cursor-pointer shrink-0"
+          style={{ width: 'auto' }}
+        >
+          {SCALING_OPTIONS.map(([v, l]) => (
+            <option key={v} value={v}>
+              {l}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
   // Même présentation que la fiche recette (`RecipeStep`, partagé). `dernier`
   // : pas de filet sous la dernière étape d'un groupe.
   function etape(s: RecipeStepView, i: number, dernier: boolean) {
@@ -715,6 +753,7 @@ export function ProjectV2({
             </button>
           ) : undefined
         }
+        ajustement={comp ? selecteurAjustement(s) : undefined}
         retoursEtape={<RetoursEtape stepId={s.id} ajustement={comp ? ajustementEcart(comp, s) : undefined} />}
         retoursIngredient={(it) => <RetoursIngredient stepId={s.id} ingredientId={it.id} />}
         retoursSousEtape={(t) => <RetoursSousEtape stepId={s.id} texte={t} />}

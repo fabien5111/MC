@@ -23,7 +23,7 @@ const MAX_PHOTOS = 4;
 const MAX_ALLERGENS = 3;
 // Modes d'ajustement d'une étape — ceux de l'éditeur pour une recette en moule
 // (un projet est toujours dimensionné sur un format).
-const SCALING_OPTIONS: [string, string][] = [
+export const SCALING_OPTIONS: [string, string][] = [
   ['simple', 'Ajustement selon la taille du moule (volume)'],
   ['foncage', 'Recouvre une surface (pâte à tarte, glaçage…)'],
   ['aucun', "Pas d'ajustement pour cette étape"],

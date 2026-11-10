@@ -22,11 +22,10 @@ import { useDialog } from '@/components/Dialog';
 import { useLecons } from '@/components/batch/DerniereFois';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { moldMetrics } from '@/lib/recipe-view';
-import { applyComponentScale, setComponentScalingMode, setLineQuantity } from '@/lib/projects-write';
+import { applyComponentScale, setLineQuantity } from '@/lib/projects-write';
 import {
   COMPONENT_SOURCE_LABELS,
   coefPreparation,
-  modePreparation,
   componentScaleProposal,
   scaleIncompatibility,
   projectFormatKey,
@@ -117,15 +116,6 @@ const MODE_LABEL: Record<string, string> = {
   foncage: 'recouvre une surface (fonçage, glaçage)',
   aucun: 'ne doit pas être ajustée',
 };
-
-// Mode d'ajustement de la préparation, choisi dans le volet : ce qu'il change,
-// en une phrase. « Aucun » ne bloque plus le coefficient du projet
-// (`coefPreparation`) : il ne vaut que pour les fournées futures.
-const MODES_VOLET: { value: string; label: string; aide: string }[] = [
-  { value: 'simple', label: 'Volume', aide: 'Appareil, crème, caramel… : avec « Proposer d’après le format », suit le rapport des volumes des moules.' },
-  { value: 'foncage', label: 'Surface', aide: 'Pâte à foncer, glaçage… : avec « Proposer d’après le format », suit le rapport des surfaces des moules.' },
-  { value: 'aucun', label: 'Pas d’ajustement', aide: 'Votre coefficient s’applique quand même ici. Seules les fournées futures de la recette validée garderont ces quantités fixes si le moule change.' },
-];
 
 // Format visé par le projet, dans la forme attendue par le calcul.
 function targetFormat(project: ProjectFull, forme: string | null): ScalableFormat {
@@ -516,20 +506,6 @@ export function QuantitiesStep({
     );
   }
 
-  async function changerMode(c: ProjectComponent, mode: string) {
-    await mutate(
-      async () => {
-        try {
-          await setComponentScalingMode(createClient(), project.id, c.id, mode);
-        } catch (e) {
-          return { error: { message: (e as Error).message } };
-        }
-        return { error: null };
-      },
-      { errorLabel: 'Mode d’ajustement' },
-    );
-  }
-
   async function editerLigne(c: ProjectComponent, lineId: number, valeur: string) {
     await mutate(
       async () => {
@@ -674,44 +650,6 @@ export function QuantitiesStep({
                     className={`${champ} w-full`}
                   />
                 </div>
-
-                {/* Mode d'ajustement de la préparation, modifiable ici : il
-                    départage surface et volume pour « Proposer d'après le
-                    format » ; « aucun » ne bloque pas le coefficient du projet. */}
-                {(() => {
-                  const mode = modePreparation(c.scalingMode, c.lines);
-                  const aide = MODES_VOLET.find((m) => m.value === mode)?.aide;
-                  return (
-                    <div className="mb-3">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <label htmlFor={`mode-${c.id}`} className="font-label-md text-[12px] text-outline">
-                          MODE D’AJUSTEMENT
-                        </label>
-                        <select
-                          id={`mode-${c.id}`}
-                          value={mode}
-                          disabled={busy}
-                          onChange={(e) => void changerMode(c, e.target.value)}
-                          className={`${champ} py-1.5`}
-                        >
-                          {mode === 'mixte' && (
-                            <option value="mixte" disabled>
-                              Différent selon l’étape
-                            </option>
-                          )}
-                          {MODES_VOLET.map((m) => (
-                            <option key={m.value} value={m.value}>
-                              {m.label}
-                            </option>
-                          ))}
-                        </select>
-                      </span>
-                      <p className="mt-1 text-[12px] text-on-surface-variant">
-                        {aide ?? 'Les étapes de cette préparation n’ont pas toutes le même mode. En choisir un l’applique à toutes.'}
-                      </p>
-                    </div>
-                  );
-                })()}
 
                 {/* Justification consultable en une phrase (§6.4) : la
                     proposition du moment, sinon celle qui a été appliquée.
