@@ -1486,8 +1486,10 @@ directes :
   false`) et multiplie les lignes **des étapes insérées** par « après / avant »
   (arrondi `units.round_from`) ; coche et décoche, mode Préparer
   (`BatchStepDonePanel`, prop `planAmont`) comme décoche depuis le mode Pâtisser
-  (`toggleStep`), après une **confirmation chiffrée** (« Praliné à fabriquer :
-  200 g → 100 g »). Pas de colonne : on part des quantités actuelles (un
+  (`toggleStep`), après une **confirmation chiffrée** (« Cette étape a déjà été
+  réalisée avant la fournée. En cochant la case, il y aura un impact sur le
+  « Praliné » à fabriquer : 300 g ⇒ 100 g. » ; à la décoche, « Cette étape doit
+  être réalisée dans cette fournée. En décochant la case… »). Pas de colonne : on part des quantités actuelles (un
   coefficient retouché à la main reste proportionnel) — un arrondi d'unité peut
   décaler d'un gramme après plusieurs coches. Cas limites : toutes les
   utilisations en amont (**plus rien à fabriquer**) ou retour depuis cet état

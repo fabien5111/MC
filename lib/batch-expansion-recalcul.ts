@@ -104,15 +104,17 @@ export function planifierRecalculAmont(batch: BatchFull, stepId: number, suivant
   if (expansions.length === 0) return { expansions, ecritures, confirmation: null };
 
   const q = (n: number, u: string | null) => `${fmtNum(n)}${u ? ' ' + u : ''}`;
+  const intro = suivant ? 'Cette étape a déjà été réalisée avant la fournée.' : 'Cette étape doit être réalisée dans cette fournée.';
+  const geste = suivant ? 'En cochant la case' : 'En décochant la case';
   const lignes = expansions.map((e) => {
     if (e.statut === 'recalcule') {
-      return `• « ${e.nom} » à fabriquer : ${q(e.besoinAvant, e.unite)} → ${q(e.besoinApres, e.unite)}. Les ingrédients des étapes ajoutées pour le fabriquer sont recalculés.`;
+      return `${geste}, il y aura un impact sur le « ${e.nom} » à fabriquer : ${q(e.besoinAvant, e.unite)} ⇒ ${q(e.besoinApres, e.unite)}.`;
     }
     if (e.statut === 'plus-rien') {
-      return `• « ${e.nom} » : plus rien à fabriquer (toutes ses utilisations sont déjà réalisées). Les quantités des étapes ajoutées restent inchangées — annulez le remplacement si vous n'en avez plus besoin.`;
+      return `${geste}, il n'y aura plus rien à fabriquer pour le « ${e.nom} » (toutes ses utilisations sont déjà réalisées). Les quantités des étapes ajoutées restent inchangées : annulez le remplacement si vous n'en avez plus besoin.`;
     }
-    return `• « ${e.nom} » : les quantités des étapes ajoutées ne peuvent pas être recalculées automatiquement. Vérifiez-les.`;
+    return `${geste}, les quantités des étapes ajoutées pour fabriquer le « ${e.nom} » ne peuvent pas être recalculées automatiquement. Vérifiez-les.`;
   });
-  const confirmation = (suivant ? 'Cette étape est déjà réalisée avant la fournée.\n\n' : 'Cette étape est à refaire.\n\n') + lignes.join('\n') + '\n\nContinuer ?';
+  const confirmation = intro + ' ' + lignes.join('\n');
   return { expansions, ecritures, confirmation };
 }

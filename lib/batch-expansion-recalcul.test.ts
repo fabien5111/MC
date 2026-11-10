@@ -29,12 +29,20 @@ describe('planifierRecalculAmont', () => {
     expect(plan.expansions).toHaveLength(1);
     expect([plan.expansions[0].besoinAvant, plan.expansions[0].besoinApres]).toEqual([200, 100]);
     expect(plan.ecritures).toEqual([{ id: 20, quantity: 60 }, { id: 21, quantity: 40 }]);
-    expect(plan.confirmation).toContain('200 g → 100 g');
+    expect(plan.confirmation).toBe(
+      'Cette étape a déjà été réalisée avant la fournée. En cochant la case, il y aura un impact sur le « Praliné » à fabriquer : 200 g ⇒ 100 g.',
+    );
   });
 
   it('décocher rétablit les quantités', () => {
     const plan = planifierRecalculAmont(fournee([1]), 1, false);
     expect(plan.ecritures).toEqual([{ id: 20, quantity: 120 }, { id: 21, quantity: 80 }]);
+  });
+
+  it('à la décoche, le message le dit', () => {
+    expect(planifierRecalculAmont(fournee([1]), 1, false).confirmation).toBe(
+      'Cette étape doit être réalisée dans cette fournée. En décochant la case, il y aura un impact sur le « Praliné » à fabriquer : 100 g ⇒ 200 g.',
+    );
   });
 
   it('toutes les utilisations en amont : rien n’est écrit, avertissement', () => {
