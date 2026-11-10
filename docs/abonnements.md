@@ -1156,6 +1156,32 @@ L'invariant « jamais monté sans avoir payé » tient.
   annulée à l'expiration du changement en attente, et jamais prélevée plus
   tard par les relances (sinon : prorata payé sans montée, à rembourser).
 
+### Back-office et abonnement payé par carte (JEP-361, 10/11/2026)
+
+Constaté en recette live : « Annuler » de la fiche membre
+(`mc_admin_cancel_subscription`) ne fait qu'écrire en base. Sur un
+abonnement Stripe, le membre repassait en gratuit sur le site **et restait
+abonné chez Stripe**, donc prélevé à l'échéance. « Attribuer », « Changer de
+plan » et « Prolonger » avaient le même défaut (écriture en base seule).
+
+- **Abonnement Stripe** (`SubscriptionRow.stripe` : `provider = 'stripe'` et
+  identifiant Stripe présent) : seul « Annuler chez Stripe » est proposé, par
+  `POST /api/admin/membres/[id]/abonnement/annuler` (admin complet,
+  `getVerifiedUser`, refusé en lecture seule). Immédiat :
+  `resilierImmediatement` (chemin de la suppression de compte) ; à échéance :
+  `cancel_at_period_end` (chemin de la modération). Le motif est posé en
+  métadonnée Stripe (`admin_annulation_motif`) et journalisé ; la base est
+  alignée par le webhook. Aucun remboursement automatique.
+- **Autres abonnements** (essai, cadeau, attribution manuelle) : inchangés,
+  toujours par `mc_admin_*`.
+
+**Fausse alerte d'échec de prélèvement** : pendant une montée en attente de
+confirmation bancaire, Stripe émet `invoice.payment_failed` sur la facture de
+prorata. Le webhook envoyait alors « échec de prélèvement » au membre en train
+de payer. `alerteEchecPrelevement` écarte désormais les factures
+`billing_reason = 'subscription_update'` : l'ancienne formule continue, rien
+n'est menacé. Un renouvellement refusé alerte comme avant.
+
 ### Ce qui reste à vérifier sur un vrai compte Stripe
 
 La documentation Stripe est inaccessible depuis l'environnement de

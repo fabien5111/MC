@@ -22,6 +22,13 @@ export type SubscriptionRow = {
   status: string;
   reason: string | null;
   createdBy: string | null;
+  /**
+   * Abonnement payé par carte (Stripe). Il ne se modifie que CHEZ Stripe :
+   * une écriture directe en base (`mc_admin_*`) le désynchroniserait — le
+   * membre perdrait sa formule et resterait prélevé (constaté le 10/11/2026,
+   * JEP-361). L'écran bascule alors sur la route Stripe.
+   */
+  stripe: boolean;
 };
 
 export type MemberSubscriptionOverview = {
@@ -45,6 +52,8 @@ function versLigne(r: {
   status: string;
   reason: string | null;
   created_by: string | null;
+  provider: string;
+  external_subscription_id: string | null;
   plan_versions: { plans: { code: string; label: string } };
 }): SubscriptionRow {
   return {
@@ -58,6 +67,7 @@ function versLigne(r: {
     status: r.status,
     reason: r.reason,
     createdBy: r.created_by,
+    stripe: r.provider === 'stripe' && !!r.external_subscription_id,
   };
 }
 
@@ -67,7 +77,9 @@ export async function getMemberSubscriptionOverview(userId: string): Promise<Mem
   const [{ data: rows }, { data: profil }, { data: plans }] = await Promise.all([
     supabase
       .from('subscriptions')
-      .select('id, type, periodicity, starts_at, ends_at, status, reason, created_by, plan_versions!inner(plans!inner(code, label))')
+      .select(
+        'id, type, periodicity, starts_at, ends_at, status, reason, created_by, provider, external_subscription_id, plan_versions!inner(plans!inner(code, label))',
+      )
       .eq('user_id', userId)
       .order('starts_at', { ascending: false }),
     supabase.from('profiles').select('email').eq('id', userId).maybeSingle(),

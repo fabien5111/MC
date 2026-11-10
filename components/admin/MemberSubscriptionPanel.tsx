@@ -13,6 +13,12 @@
 // qui tiennent le journal. Un motif est de ce fait toujours demandé — la
 // base le refuse sinon, mais mieux vaut ne jamais lui envoyer la requête vide.
 //
+// **Exception : un abonnement payé par carte (Stripe).** `mc_admin_*` n'écrit
+// qu'en base ; sur un abonnement Stripe, le membre perdait sa formule et
+// restait prélevé (JEP-361). Seule l'annulation est alors proposée, par la
+// route `/api/admin/membres/[id]/abonnement/annuler`, qui agit chez Stripe ;
+// le webhook aligne la base.
+//
 // Section de page (`/admin/membres/[id]`), pas un panneau superposé : plus de
 // second drawer empilé sur la fiche membre. Rendu nu (sans son propre
 // encadré/en-tête) : le parent (`MemberDetail`) l'enveloppe dans son
@@ -122,8 +128,49 @@ export function MemberSubscriptionPanel({ memberId }: { memberId: string }) {
     );
   }
 
+  // Abonnement payé par carte : annulé CHEZ Stripe, par la route serveur ; le
+  // webhook aligne ensuite la base (JEP-361). `mc_admin_cancel_subscription`
+  // ne touchait que la base : le membre repassait en gratuit et restait prélevé.
+  async function annulerStripe() {
+    if (!data?.current?.stripe) return;
+    const immediat = await dialog.confirm(
+      'Abonnement payé par carte : l’annulation est faite chez Stripe.\n\n' +
+        'Effet immédiat (le prélèvement s’arrête et le droit s’éteint tout de suite) ?\n' +
+        'Annuler cette confirmation propose l’effet à échéance à la place.\n\n' +
+        'Aucun remboursement automatique : à faire dans le Dashboard Stripe si besoin.',
+      { okLabel: 'Immédiat', cancelLabel: 'À échéance', largeur: 'large' },
+    );
+    const motif = await dialog.prompt('Motif (obligatoire) :', { required: true });
+    if (!motif) return;
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/admin/membres/${memberId}/abonnement/annuler`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ abonnement: data.current.id, immediat, motif }),
+      });
+      const res = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        dialog.alert(res?.erreur || 'L’annulation n’a pas pu aboutir.');
+        return;
+      }
+      // La base n'est mise à jour que par le webhook, quelques secondes après.
+      await new Promise((ok) => setTimeout(ok, 2500));
+      await recharger();
+      await dialog.alert(
+        (immediat ? 'Abonnement annulé immédiatement chez Stripe.' : 'Abonnement annulé à échéance chez Stripe.') +
+          ' La fiche se met à jour à réception de la confirmation de Stripe : rechargez-la si elle n’a pas encore changé.',
+      );
+    } catch {
+      dialog.alert('Connexion impossible, réessayez.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function annuler() {
     if (!data?.current || data.current.type === 'DEFAULT') return;
+    if (data.current.stripe) return annulerStripe();
     const immediat = await dialog.confirm(
       'Effet immédiat (le droit s’éteint tout de suite) ?\nAnnuler cette confirmation propose l’effet à échéance à la place.',
       { okLabel: 'Immédiat', cancelLabel: 'À échéance' },
@@ -193,11 +240,26 @@ export function MemberSubscriptionPanel({ memberId }: { memberId: string }) {
                 )}
               </section>
 
+              {data.current?.stripe && (
+                <p className="text-xs text-on-surface-variant">
+                  Abonnement payé par carte : l’annulation passe par Stripe. Attribuer, changer de plan ou
+                  prolonger écrirait en base sans toucher à Stripe — le membre resterait prélevé —, d’où leur
+                  absence. Changement de formule : par le membre depuis « Nos formules », ou dans le Dashboard
+                  Stripe.
+                </p>
+              )}
               <section className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => attribuer(false)} className={btn}>
-                  Attribuer
-                </button>
-                {data.current && data.current.type !== 'DEFAULT' && (
+                {!data.current?.stripe && (
+                  <button type="button" onClick={() => attribuer(false)} className={btn}>
+                    Attribuer
+                  </button>
+                )}
+                {data.current?.stripe && (
+                  <button type="button" onClick={annuler} className={btnDanger}>
+                    Annuler chez Stripe
+                  </button>
+                )}
+                {data.current && data.current.type !== 'DEFAULT' && !data.current.stripe && (
                   <>
                     <button type="button" onClick={() => attribuer(true)} className={btn}>
                       Changer de plan

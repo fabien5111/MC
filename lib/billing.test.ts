@@ -13,6 +13,7 @@ import {
   lirePhasesEcheancier,
   messageRefusChangement,
   lireMonteeEnAttente,
+  alerteEchecPrelevement,
   phaseCourante,
   sensChangement,
   encoderFormulaireStripe,
@@ -544,5 +545,18 @@ describe('cgvVersionValide', () => {
     expect(cgvVersionValide('2020-01-01')).toBe(false);
     expect(cgvVersionValide(undefined)).toBe(false);
     expect(cgvVersionValide(true)).toBe(false);
+  });
+});
+
+describe('alerteEchecPrelevement', () => {
+  it('n’alerte pas pour le prorata d’un changement de formule en attente (JEP-361)', () => {
+    expect(alerteEchecPrelevement({ billing_reason: 'subscription_update' })).toBe(false);
+  });
+
+  it('alerte pour un renouvellement, et par défaut', () => {
+    expect(alerteEchecPrelevement({ billing_reason: 'subscription_cycle' })).toBe(true);
+    expect(alerteEchecPrelevement({ billing_reason: 'subscription_create' })).toBe(true);
+    expect(alerteEchecPrelevement({})).toBe(true);
+    expect(alerteEchecPrelevement(null)).toBe(true);
   });
 });

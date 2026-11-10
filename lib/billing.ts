@@ -558,6 +558,24 @@ export function lireMonteeEnAttente(abonnement: unknown): { enAttente: boolean; 
   return { enAttente, urlFacture };
 }
 
+/**
+ * Un `invoice.payment_failed` doit-il alerter le membre (« échec de
+ * prélèvement ») ?
+ *
+ * Pas pour la facture d'un CHANGEMENT de formule (`billing_reason =
+ * 'subscription_update'`) : c'est le prorata d'une montée en gamme, passée en
+ * `pending_if_incomplete` — tant qu'il n'est pas payé, rien n'est appliqué et
+ * l'ancienne formule continue, il n'y a donc aucune continuité de service à
+ * défendre. Stripe émet pourtant cet événement dès que la banque demande une
+ * confirmation 3-D Secure : le membre recevait une alerte d'échec au moment
+ * même où il payait (constaté le 10/11/2026, JEP-361). Tout autre motif —
+ * renouvellement (`subscription_cycle`) en tête — alerte comme avant.
+ */
+export function alerteEchecPrelevement(facture: unknown): boolean {
+  const motif = (facture as { billing_reason?: unknown } | null)?.billing_reason;
+  return motif !== 'subscription_update';
+}
+
 /** Un champ `schedule` Stripe est soit l'identifiant, soit l'objet complet. */
 export function identifiantEcheancier(valeur: unknown): string | null {
   if (typeof valeur === 'string') return valeur || null;
