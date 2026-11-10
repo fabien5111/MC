@@ -1135,9 +1135,13 @@ entier. Jamais vu en test, où les cartes n'en demandent pas.
 le changement que si le prorata est payé ; sinon il le garde en attente
 (`pending_update`), l'abonnement conserve son prix, et la route renvoie
 l'adresse de la facture hébergée (`hosted_invoice_url`, `lireMonteeEnAttente`,
-seule une adresse `https://invoice.stripe.com/` est rendue). `/plans` y envoie
-le membre après confirmation ; payée, la facture applique le changement et le
-webhook pose le palier. L'invariant « jamais monté sans avoir payé » tient.
+seule une adresse `https://invoice.stripe.com/` est rendue). `/plans` l'ouvre
+dans un **nouvel onglet** après confirmation — la facture hébergée, contrairement
+à Checkout, ne renvoie jamais vers le site une fois payée : le membre y restait
+bloqué ; l'onglet du site reste ouvert et se resynchronise à son retour
+(`visibilitychange`), pleine page seulement si le navigateur bloque l'onglet.
+Payée, la facture applique le changement et le webhook pose le palier.
+L'invariant « jamais monté sans avoir payé » tient.
 
 - **Paramètres refusés par ce mode** : `metadata` (trace des CGV) part dans un
   appel séparé AVANT la montée ; `cancel_at_period_end: false` (reprise d'une
