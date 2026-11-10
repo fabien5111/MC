@@ -127,7 +127,10 @@ export function IngredientExpandDialog({
   const [loading, setLoading] = useState(false);
 
   // ── Étape 1 : recherche ────────────────────────────────────────────────
-  const [term, setTerm] = useState('');
+  // Pré-rempli avec le nom de l'ingrédient tel que saisi dans la recette
+  // (« Praliné ») : on cherche presque toujours la recette du même nom. Reste
+  // modifiable ; la recherche ignore casse et accents.
+  const [term, setTerm] = useState(() => (row?.name ?? '').trim());
   const [scopes, setScopes] = useState<Set<Scope>>(new Set<Scope>(['mine', 'draft', 'fav']));
   const [items, setItems] = useState<PickerItem[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);

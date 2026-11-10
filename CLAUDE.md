@@ -1541,6 +1541,9 @@ directes :
   additionnées. Annulation partagée avec le bloc de l'étape
   (`annulationRemplacement`, `lib/batch-annulation-remplacement.ts`).
   Le bloc d'aide `fournee.remplacement` est aussi posé à côté du titre.
+  **La recherche de la recette de remplacement s'ouvre pré-remplie du nom de
+  l'ingrédient** (10/11/2026, `IngredientExpandDialog`, nom tel que saisi dans la
+  recette de l'occurrence-repère) : modifiable, sans accents ni casse.
 - **Le remplacement couvre TOUTES les occurrences du même ingrédient**
   (JEP-254) : le praliné d'une ganache ET d'un croustillant, remplacé en un
   seul geste — la liste totale fusionne déjà les lignes identiques (nom +
