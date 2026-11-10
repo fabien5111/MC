@@ -674,6 +674,38 @@ export function baseDeLigne(l: { quantity?: string | null; baseQuantity: number 
   return isFinite(actuelle) ? actuelle : null;
 }
 
+// Coefficient effectif d'une ligne quand on applique le coefficient d'UNE
+// préparation du mode projet. Même calcul que `scalingCoef`
+// (`lib/recipe-plan.ts`), sauf pour « aucun » : ici, le coefficient est un
+// choix explicite du pâtissier pour adapter la recette de base à SON dessert,
+// il s'applique donc à toutes les lignes. « Aucun » garde son sens pour les
+// fournées futures de la recette validée (changement de moule), où
+// `scalingCoef` laisse l'étape fixe. Avec une proposition d'après le format
+// (`moldCoefs`), « aucun » prend le coefficient proposé tel quel.
+export function coefPreparation(
+  mode: string | null | undefined,
+  factor: number,
+  moldCoefs?: { surface: number; volume: number } | null,
+): number {
+  if (moldCoefs && mode !== 'aucun') {
+    return mode === 'foncage' ? (moldCoefs.surface ?? moldCoefs.volume) : (moldCoefs.volume ?? moldCoefs.surface);
+  }
+  return factor;
+}
+
+// Mode d'ajustement d'une préparation, tel que le volet l'affiche : celui de
+// la préparation s'il est posé, sinon celui de ses groupes d'ingrédients
+// (s'ils sont tous identiques), sinon « mixte ». Vide = volume, par défaut.
+export function modePreparation(
+  modeComposant: string | null | undefined,
+  lignes: { scalingMode: string | null }[],
+): string | 'mixte' {
+  const modes = new Set(lignes.map((l) => l.scalingMode || 'simple'));
+  if (modes.size > 1) return 'mixte';
+  if (modes.size === 1) return [...modes][0];
+  return modeComposant || 'simple';
+}
+
 // JEP-389 : au-delà du seuil de son unité (`units.round_from`), la quantité
 // calculée s'arrondit à l'unité. À coefficient 1 rien n'est calculé : la valeur
 // de l'auteur reste telle quelle.
