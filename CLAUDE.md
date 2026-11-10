@@ -2233,6 +2233,31 @@ seulement** — la fournée n'en copie rien (on y déplace déjà le jour de cha
   toutes les grilles du site échoueraient sans elle. DDL sur une table
   existante → `psql` en tant que `postgres` sur le nœud 216075.
 
+## Ustensiles d'une étape (10/11/2026)
+
+Chaque étape peut porter ses ustensiles (`recipe_steps.utensils`, jsonb :
+`[{ name, ref_id, comment }]`), saisis **sous la description** dans `/creer`
+(`CreerForm`) et dans l'ajout manuel d'un composant du mode projet
+(`StepEditorCard`, `ComponentStepDraft.utensils`) — mêmes lignes « nom +
+commentaire » que la liste globale, suggestions du référentiel (`dl-utensils` /
+`utensilNames`). Logique pure et testée : `nettoyerUstensilsEtape`
+(`lib/projects.ts`, nom nettoyé, lignes vides et doublons écartés).
+
+- **Alimente la liste globale, ne s'y substitue pas** : à l'enregistrement, les
+  ustensiles d'étape absents de `recipe_utensils` (même nom normalisé,
+  `utensilsToAdd`) y sont ajoutés à la suite ; rien n'en est jamais retiré.
+  `CreerForm` (mêmes lignes que la liste globale, qui se met à jour à l'écran) et
+  `writeComponentContent` → `ajouterUstensilsGlobaux` (`lib/projects-write.ts`,
+  partagé avec `attachComponentUtensils`).
+- **Consultation inchangée** : la fiche recette n'affiche que la liste globale ;
+  `RecipeStep` ne lit pas la colonne.
+- **Avant la migration, rien ne casse** : la colonne n'est écrite que si l'étape a
+  des ustensiles. Exception : `readComponentDraft` la nomme dans son `select`, elle
+  doit donc exister avant le déploiement. DDL par `psql` (nœud 216075).
+- `duplicate_recipe` doit recopier la colonne (comme `can_prepare_ahead`).
+  **Hors périmètre** : fournée, relecture d'import, extraction d'étapes, copie d'une
+  recette source en mode projet.
+
 ## Extraire des étapes en recette (JEP-258)
 
 Sur la fiche recette, l'action du rail « Extraire des étapes en recette »

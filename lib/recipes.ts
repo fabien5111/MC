@@ -159,6 +159,10 @@ export type RecipeStepView = {
   can_prepare_ahead?: boolean | null;
   // Précisions de l'auteur sur la préparation à l'avance (conservation…).
   advance_note?: string | null;
+  // Ustensiles propres à l'étape (jsonb, saisis dans l'éditeur, alimentent la
+  // liste globale). Lue par `recipe_steps(*)`, absente des types générés ;
+  // jamais affichée en consultation.
+  utensils?: unknown;
   // Absentes en portée `texte`, sans `original_url` en portée `lecture`.
   step_photos?: { url: string; original_url?: string | null; order_index: number | null; ai_retouched: boolean }[];
   // Mode planifié seulement : étape signalée « déjà faite » et conservée pour

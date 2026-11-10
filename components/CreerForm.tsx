@@ -36,7 +36,7 @@ import { RecipeToc, CREER_SECTIONS, stepAnchorId } from '@/components/recipe/Rec
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
-import { isProjectRecipe, isProjectDissolved } from '@/lib/projects';
+import { isProjectRecipe, isProjectDissolved, nettoyerUstensilsEtape, utensilsToAdd } from '@/lib/projects';
 import type { Tag, Difficulty } from '@/lib/taxonomy';
 import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
@@ -73,6 +73,8 @@ type StepState = {
   prepAhead: boolean;
   // Précisions sur la préparation à l'avance (conservation…), saisies quand la case est cochée.
   prepAheadNote: string;
+  // Ustensiles nécessaires à l'étape : alimentent la liste globale à l'enregistrement.
+  utensils: { key: string; name: string; comment: string }[];
   prep: string;
   cook: string;
   temp: string;
@@ -147,6 +149,7 @@ const emptyStep = (): StepState => ({
   dayOffset: '',
   prepAhead: false,
   prepAheadNote: '',
+  utensils: [],
   prep: '',
   cook: '',
   temp: '',
@@ -183,6 +186,7 @@ function stepsFromRecipe(r: RecipeFull): StepState[] {
       dayOffset: s.day_offset ? String(s.day_offset) : '',
       prepAhead: s.can_prepare_ahead === true,
       prepAheadNote: s.advance_note || '',
+      utensils: nettoyerUstensilsEtape(s.utensils).map((u) => ({ key: key(), name: u.name, comment: u.comment || '' })),
       prep: s.prep_time != null ? String(s.prep_time) : '',
       cook: s.cook_time != null ? String(s.cook_time) : '',
       temp: s.cook_temp != null ? String(s.cook_temp) : '',
@@ -540,6 +544,12 @@ export function CreerForm({
   function patchStep(i: number, p: Partial<StepState>) {
     setSteps((s) => s.map((st, k) => (k === i ? { ...st, ...p } : st)));
   }
+  const patchStepUtensil = (si: number, ui: number, p: Partial<StepState['utensils'][number]>) =>
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, utensils: st.utensils.map((u, j) => (j === ui ? { ...u, ...p } : u)) } : st)));
+  const addStepUtensil = (si: number) =>
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, utensils: [...st.utensils, { key: key(), name: '', comment: '' }] } : st)));
+  const delStepUtensil = (si: number, ui: number) =>
+    setSteps((s) => s.map((st, k) => (k === si ? { ...st, utensils: st.utensils.filter((_, j) => j !== ui) } : st)));
   const patchIng = (si: number, ii: number, p: Partial<IngLine>) =>
     setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: st.ings.map((g, j) => (j === ii ? { ...g, ...p } : g)) } : st)));
   const addIng = (si: number) => setSteps((s) => s.map((st, k) => (k === si ? { ...st, ings: [...st.ings, emptyIng()] } : st)));
@@ -970,9 +980,29 @@ export function CreerForm({
         if (error) throw error;
       }
 
-      const utRows = utensils
+      const utSaisis = utensils
         .map((u, i) => ({ recipe_id: recipeId, name: capitalizeSentences(u.name.trim()), comment: u.comment.trim() || null, order_index: i }))
         .filter((u) => u.name);
+      // Les ustensiles saisis sur les étapes alimentent la liste globale : ceux
+      // qui y manquent (même nom normalisé) sont ajoutés à la suite, rien n'est
+      // jamais retiré de ce que l'auteur a saisi dans la liste globale.
+      const utDesEtapes = steps.flatMap((st) =>
+        st.utensils
+          .map((u) => ({ name: capitalizeSentences(u.name.trim()), ref_id: null as number | null, comment: u.comment.trim() || null }))
+          .filter((u) => u.name),
+      );
+      const utAjoutes = utensilsToAdd(utSaisis.map((u) => ({ name: u.name, ref_id: null })), utDesEtapes);
+      const utRows = [
+        ...utSaisis,
+        ...utAjoutes.map((u, i) => ({ recipe_id: recipeId, name: u.name, comment: u.comment, order_index: utSaisis.length + i })),
+      ];
+      if (utAjoutes.length) {
+        // Reflète l'ajout dans la liste globale affichée (le formulaire reste ouvert).
+        setUtensils((p) => [
+          ...p.filter((u) => u.name.trim() || u.comment.trim()),
+          ...utAjoutes.map((u) => ({ key: key(), name: u.name, comment: u.comment || '' })),
+        ]);
+      }
       if (utRows.length) {
         const { error } = await supabase.from('recipe_utensils').insert(utRows);
         if (error) throw error;
@@ -1004,6 +1034,9 @@ export function CreerForm({
           })
           .filter((l) => l.name);
         const photoRows = st.photos.filter((p): p is StepPhoto => !!p);
+        const utensilsEtape = nettoyerUstensilsEtape(
+          st.utensils.map((u) => ({ name: capitalizeSentences(u.name.trim()), comment: u.comment })),
+        );
         const hasContent = st.title.trim() || desc || subs.length || lines.length || photoRows.length;
         if (!hasContent) continue;
 
@@ -1034,7 +1067,10 @@ export function CreerForm({
             // La note n'est écrite que si la case est cochée : décochée, elle est perdue
             // (la reprise d'un champ masqué en base surprendrait plus qu'elle n'aiderait).
             ...(st.prepAhead && noteAvance(st.prepAheadNote) ? { advance_note: noteAvance(st.prepAheadNote) } : {}),
-          } as never) // `can_prepare_ahead` / `advance_note` absentes des types générés
+            // Écrite seulement si l'étape a des ustensiles : sans la colonne
+            // (migration pas jouée), une étape sans ustensile s'enregistre quand même.
+            ...(utensilsEtape.length ? { utensils: utensilsEtape } : {}),
+          } as never) // `can_prepare_ahead` / `advance_note` / `utensils` absentes des types générés
           .select('id')
           .single();
         if (stepErr || !stepRow) throw stepErr || new Error('Étape non enregistrée');
@@ -2439,6 +2475,61 @@ export function CreerForm({
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* Ustensiles de l'étape : alimentent « Ustensiles nécessaires »
+                      à l'enregistrement (ceux qui y manquent), jamais affichés
+                      étape par étape en consultation. */}
+                  <div className="space-y-3">
+                    <span className="font-label-md text-label-md text-outline">USTENSILES DE L&apos;ÉTAPE</span>
+                    {st.utensils.map((u, ui) => (
+                      <div key={u.key} className="flex items-start gap-4">
+                        <div className="grid flex-grow grid-cols-1 items-start gap-x-6 gap-y-1 md:grid-cols-2">
+                          <input
+                            list="dl-utensils"
+                            data-name-utensil-step={si}
+                            value={u.name}
+                            onChange={(e) => patchStepUtensil(si, ui, { name: e.target.value })}
+                            className={`editorial-input text-on-surface w-full${unknownRefClass(knownUtensils, u.name)}`}
+                            placeholder="Nom de l'ustensile"
+                            autoComplete="off"
+                          />
+                          <input
+                            value={u.comment}
+                            onChange={(e) => patchStepUtensil(si, ui, { comment: e.target.value })}
+                            onKeyDown={(e) => {
+                              // Tab depuis le dernier champ de la dernière ligne : nouvelle ligne.
+                              if (e.key === 'Tab' && !e.shiftKey && ui === st.utensils.length - 1) {
+                                e.preventDefault();
+                                addStepUtensil(si);
+                                setTimeout(() => {
+                                  const noms = document.querySelectorAll<HTMLInputElement>(`[data-name-utensil-step="${si}"]`);
+                                  noms[noms.length - 1]?.focus();
+                                }, 0);
+                              }
+                            }}
+                            className="editorial-input text-on-surface w-full"
+                            placeholder="Commentaire (optionnel)"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          title="Supprimer"
+                          onClick={() => delStepUtensil(si, ui)}
+                          className="p-1 text-error hover:opacity-70 shrink-0 mt-1"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addStepUtensil(si)}
+                      className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"
+                    >
+                      <span className="material-symbols-outlined">add</span> Ajouter un ustensile
+                    </button>
                   </div>
 
                   <p className="mb-2 text-[12px] text-on-surface-variant">

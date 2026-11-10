@@ -427,6 +427,29 @@ export function utensilsToAdd<T extends { name: string; ref_id: number | null }>
   return out;
 }
 
+// Ustensiles propres à UNE étape (`recipe_steps.utensils`, jsonb). Relus de
+// façon défensive : la colonne est ajoutée à la main et son contenu n'est
+// jamais garanti. Nom nettoyé, lignes vides et doublons (même clé de
+// rapprochement que la liste globale) écartés, ordre conservé.
+export function nettoyerUstensilsEtape(raw: unknown): ComponentUtensil[] {
+  if (!Array.isArray(raw)) return [];
+  const vus = new Set<string>();
+  const out: ComponentUtensil[] = [];
+  for (const it of raw) {
+    if (!it || typeof it !== 'object') continue;
+    const o = it as { name?: unknown; ref_id?: unknown; comment?: unknown };
+    const name = typeof o.name === 'string' ? o.name.trim() : '';
+    if (!name) continue;
+    const ref_id = typeof o.ref_id === 'number' ? o.ref_id : null;
+    const cles = utensilKeys({ name, ref_id });
+    if (cles.some((k) => vus.has(k))) continue;
+    cles.forEach((k) => vus.add(k));
+    const comment = typeof o.comment === 'string' && o.comment.trim() ? o.comment.trim() : null;
+    out.push({ name, ref_id, comment });
+  }
+  return out;
+}
+
 export type ComponentStepDraft = {
   title: string | null;
   // Mode d'échelle du groupe d'ingrédients de l'étape (`aucun`, `foncage`…).
@@ -447,6 +470,10 @@ export type ComponentStepDraft = {
   can_prepare_ahead?: boolean;
   // Précisions sur la préparation à l'avance (conservation…).
   advance_note?: string | null;
+  // Ustensiles nécessaires à cette étape. À l'enregistrement, ceux qui
+  // manquent sont ajoutés à la liste globale de la recette (jamais retirés).
+  // Absent des propositions de l'IA et des copies.
+  utensils?: ComponentUtensil[];
   ingredients: ComponentIngredientDraft[];
   // Photos de l'étape. Absentes des copies et des propositions de l'IA ;
   // relues par `readComponentDraft` pour qu'une modification du composant
