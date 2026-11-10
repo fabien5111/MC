@@ -244,7 +244,15 @@ export function batchSubstepExcluded(step: StepDoneFlags, sub: SubstepDoneFlags)
   return step.done && sub.excluded_when_done;
 }
 
-const NO_STEP: StepDoneFlags = { done: false, replaced_by_recipe_id: null };
+// En exécution (mode Pâtisser), un ingrédient remplacé par une recette reste à
+// incorporer comme les autres (la sous-recette le fabrique) : il n'est donc
+// PAS exclu pour cette seule raison. Mais si son étape est déjà réalisée (avant
+// ou pendant la fournée) et qu'il n'a pas été gardé, il sort comme les autres.
+export function batchIngredientExcluCuisine(step: StepDoneFlags, ing: IngredientDoneFlags): boolean {
+  return batchIngredientExcluded(step, { ...ing, expanded_into_recipe_id: null });
+}
+
+const NO_STEP: StepDoneFlags ={ done: false, replaced_by_recipe_id: null };
 
 // Prédicat lié à une fournée donnée : une ligne d'ingrédient ne porte que son
 // `batch_step_id`, jamais son étape entière — utilisé par mergeBatchIngredients,

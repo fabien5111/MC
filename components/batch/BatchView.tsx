@@ -67,7 +67,7 @@ import {
   BATCH_STATUS_LBL,
   batchDayLabel,
   batchFactor,
-  batchIngredientExcluded,
+  batchIngredientExcluCuisine,
   batchStepIsExpansion,
   batchStepIsStepReplacement,
   batchStepReplaced,
@@ -2302,9 +2302,12 @@ function StepCookCard({
   // il reste à incorporer comme n'importe quel autre (cf. commentaire du
   // parent) — seule `batchIngredientExcluded` « déjà réalisé » / étape
   // remplacée le sort encore du parcours.
-  const cookExcluded = (it: BatchIngredientRow) => it.expanded_into_recipe_id == null && batchIngredientExcluded(s, it);
+  const cookExcluded = (it: BatchIngredientRow) => batchIngredientExcluCuisine(s, it);
   const activeIngredients = ingredients.filter((it) => !cookExcluded(it));
   const activeSubsteps = substeps.filter((su) => !batchSubstepExcluded(s, su));
+  // Barrée / atténuée seulement si plus rien n'y reste à faire : une étape
+  // « déjà réalisée » qui garde une sous-étape ou un ingrédient reste normale.
+  const entierementTraitee = s.done && activeIngredients.length === 0 && activeSubsteps.length === 0;
   // Ingrédients de l'étape que le texte de chaque sous-étape semble nommer
   // (cf. lib/recipe-plan.ts), chacun affiché à sa seule première sous-étape —
   // le lait versé en début d'étape n'est pas une nouvelle quantité à chaque
@@ -2336,7 +2339,7 @@ function StepCookCard({
   ].filter(Boolean);
 
   return (
-    <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden print:overflow-visible print:[break-inside:auto]${s.done ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
+    <div id={`etape-${s.id}`} className={`scroll-mt-28 border border-outline-variant rounded-lg bg-white overflow-hidden print:overflow-visible print:[break-inside:auto]${entierementTraitee ? ' opacity-70' : ''}`} data-step-pending={isPending ? '' : undefined}>
       {/* Tout l'en-tête déplie/replie l'étape, pas seulement le chevron : une
           cible de la taille d'une icône était inutilement difficile à viser,
           au doigt comme à la souris. La case à cocher garde donc son propre
@@ -2372,7 +2375,7 @@ function StepCookCard({
           />
         </span>
         <span className="flex-1 min-w-0">
-          <span className={`font-headline-md text-[16px] font-bold uppercase tracking-wide text-primary block${s.done ? ' line-through' : ''}`}>{s.title}</span>
+          <span className={`font-headline-md text-[16px] font-bold uppercase tracking-wide text-primary block${entierementTraitee ? ' line-through' : ''}`}>{s.title}</span>
           <span className="text-[12px] font-label-md text-on-surface-variant">{badges.join(' · ')}</span>
           {!open && insideSummary.length > 0 && (
             <span className="text-[12px] font-body-md text-outline block mt-0.5">{insideSummary.join(' · ')}</span>
