@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { stepTimeSums } from '@/lib/recipe-view';
-import { pointsRestants, empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, utensilsToAdd, componentScaleProposal, scaleIncompatibility } from '@/lib/projects';
+import { pointsRestants, empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, baseDeLigne, utensilsToAdd, componentScaleProposal, scaleIncompatibility } from '@/lib/projects';
 
 describe('projectV2BlockStates', () => {
   it('ne débloque que l’intention, l’identité et le format sur un projet vierge', () => {
@@ -250,5 +250,20 @@ describe('compatibilité poids / parts de l’ajustement par le format', () => {
   it('ne touche pas moule contre moule', () => {
     const m = { measure_type: 'mold', forme: 'cylindre', dims: { diametre: 20, hauteur: 2 }, count: 1, yieldQty: null, yieldUnit: null };
     expect(scaleIncompatibility(m, cible)).toBeNull();
+  });
+});
+
+describe('baseDeLigne', () => {
+  it('garde la base enregistrée', () => {
+    expect(baseDeLigne({ quantity: '30', baseQuantity: 300 }, 0.1)).toBe(300);
+  });
+  it('déduit la base d’une ligne retouchée à la main (quantité ÷ coefficient en vigueur)', () => {
+    expect(baseDeLigne({ quantity: '300', baseQuantity: null }, 1)).toBe(300);
+    expect(baseDeLigne({ quantity: '30', baseQuantity: null }, 0.1)).toBeCloseTo(300);
+    expect(baseDeLigne({ quantity: '25', baseQuantity: null }, 0)).toBe(25);
+  });
+  it('ignore une ligne non chiffrée', () => {
+    expect(baseDeLigne({ quantity: '1 pincée', baseQuantity: null }, 1)).toBeNull();
+    expect(baseDeLigne({ quantity: null, baseQuantity: null }, 1)).toBeNull();
   });
 });

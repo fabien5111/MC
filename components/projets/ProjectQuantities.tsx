@@ -53,7 +53,22 @@ const fr = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
 // ml, pincée) ne s'additionnent pas sans conversion : elles sont ignorées, et
 // l'écran le dit (« ingrédients pesés »). `base` : quantités de la recette
 // d'origine, avant ajustement.
-function masseGrammes(lines: ProjectComponent['lines'], base: boolean): number | null {
+function masseGrammes(
+  lines: ProjectComponent['lines'],
+  base: boolean,
+  estimer?: EstimerMasse,
+): { grammes: number; horsTotal: string[] } | null {
+  // Avec le référentiel (conversions, masse volumique) : un lait ou une crème
+  // en cl / ml compte dans la masse, au lieu d'être ignoré en silence.
+  if (estimer) {
+    const ls = lines.map((l) => {
+      const q = base ? l.baseQuantity : parseFloat(String(l.quantity ?? '').replace(',', '.'));
+      return { name: l.name, quantity: q != null && isFinite(q) ? q : null, unit: l.unit };
+    });
+    const e = estimer(ls.filter((l) => l.quantity != null));
+    // Une ligne non chiffrée (« 1 pincée ») n'a pas à être signalée : elle ne pèse rien.
+    return e.grammes > 0 ? { grammes: e.grammes, horsTotal: e.nonConvertis } : null;
+  }
   let total = 0;
   let vu = false;
   for (const l of lines) {
@@ -65,8 +80,13 @@ function masseGrammes(lines: ProjectComponent['lines'], base: boolean): number |
     total += q * mult;
     vu = true;
   }
-  return vu ? total : null;
+  return vu ? { grammes: total, horsTotal: [] } : null;
 }
+
+// Estimation de masse par le référentiel, fournie par la page (`estimateWeightGrams`).
+export type EstimerMasse = (
+  lignes: { name: string; quantity: number | null; unit: string | null }[],
+) => { grammes: number; nonConvertis: string[] };
 
 const masseTexte = (g: number) => (g >= 1000 ? `${fr(g / 1000)} kg` : `${Math.round(g)} g`);
 
@@ -146,6 +166,7 @@ export function QuantitiesStep({
   etapeIds,
   quotaAjustementIA = null,
   suggestion = null,
+  estimerMasse,
 }: {
   project: ProjectFull;
   targetForme: string | null;
@@ -175,6 +196,9 @@ export function QuantitiesStep({
   // Format visé, en clair (« Cercle Ø 20 × 4 cm ») : sert à décrire la cible
   // à l'IA quand la géométrie ne suffit pas.
   formatLabel: string;
+  // Masse par le référentiel (conversions, masse volumique) : sans lui, seules
+  // les lignes en g / kg comptent dans « Ingrédients pesés ».
+  estimerMasse?: EstimerMasse;
 }) {
   const dialog = useDialog();
   // Seuils d'arrondi à l'unité des quantités calculées (JEP-389).
@@ -339,7 +363,7 @@ export function QuantitiesStep({
       // que comparer des surfaces/volumes de moules — inutile pour un insert,
       // dont la quantité ne dépend pas du moule mais de sa place dans le
       // montage. Le poids pesé lui donne un ordre de grandeur de départ.
-      const masseBase = masseGrammes(c.lines, true);
+      const masseBase = masseGrammes(c.lines, true, estimerMasse)?.grammes ?? null;
       const autres = ordered.filter((o) => o.id !== c.id).map((o) => `${o.name}${o.role ? ` (${o.role})` : ''}`);
       const prompt = [
         `Adapter la préparation « ${c.name} »${c.role ? `, rôle : ${c.role},` : ''} au dessert « ${project.title} » :`,
@@ -452,7 +476,7 @@ export function QuantitiesStep({
       async () => {
         const supabase = createClient();
         try {
-          await applyComponentScale(supabase, c.lines, factor, moldCoefs, scalingCoef, (b, c2, u) => scaledQuantityText(b, c2, u, seuils));
+          await applyComponentScale(supabase, c.lines, factor, moldCoefs, scalingCoef, (b, c2, u) => scaledQuantityText(b, c2, u, seuils), facteur);
         } catch (e) {
           return { error: { message: (e as Error).message } };
         }
@@ -463,7 +487,7 @@ export function QuantitiesStep({
             scale_reason: reason,
             // L'ajustement global reprend la main : les lignes touchées à la
             // main gardent malgré tout leur valeur (leur `base_quantity` est
-            // vide, `applyComponentScale` les ignore).
+            // vide, `applyComponentScale` en déduit une de la quantité actuelle).
             manually_adjusted: false,
           } as never)
           .eq('id', c.id);
@@ -519,8 +543,8 @@ export function QuantitiesStep({
       {ordered.filter((c) => componentId == null || c.id === componentId).map((c) => {
         const facteur = c.scaleFactor ?? 1;
         const prop = propositions[c.id];
-        const masseOrigine = masseGrammes(c.lines, true);
-        const masseActuelle = masseGrammes(c.lines, false);
+        const masseOrigine = masseGrammes(c.lines, true, estimerMasse);
+        const masseActuelle = masseGrammes(c.lines, false, estimerMasse);
         const perime = quantitiesStale(c, cleFormat);
         return (
           <div key={c.id} className={componentId == null ? 'rounded-xl border border-outline-variant p-4' : ''}>
@@ -601,9 +625,14 @@ export function QuantitiesStep({
                     <>
                       <dt className="text-outline">Ingrédients pesés</dt>
                       <dd className="text-on-surface">
-                        {masseOrigine != null && Math.abs(masseOrigine - masseActuelle) > 0.5
-                          ? `${masseTexte(masseOrigine)} dans la recette d’origine → ${masseTexte(masseActuelle)} pour ce dessert`
-                          : masseTexte(masseActuelle)}
+                        {masseOrigine != null && Math.abs(masseOrigine.grammes - masseActuelle.grammes) > 0.5
+                          ? `${masseTexte(masseOrigine.grammes)} dans la recette d’origine → ${masseTexte(masseActuelle.grammes)} pour ce dessert`
+                          : masseTexte(masseActuelle.grammes)}
+                        {masseActuelle.horsTotal.length > 0 && (
+                          <span className="block text-[12px] text-outline">
+                            Hors total (conversion inconnue) : {masseActuelle.horsTotal.join(', ')}
+                          </span>
+                        )}
                       </dd>
                     </>
                   )}

@@ -1080,6 +1080,10 @@ export function ProjectV2({
                             componentId={c.id}
                             etapeIds={own.map((st) => st.id)}
                             quotaAjustementIA={quotaAjustementIA}
+                            estimerMasse={(ls) => {
+                              const e = estimateWeightGrams(ls.map((l) => ({ ...l, ref_id: null })), conversions, unitRefs, ingredientDensities);
+                              return { grammes: e.grams, nonConvertis: e.unconverted.map((u) => u.name) };
+                            }}
                             pied={<VerifCase item={verifDe(c.id, 'quantites')} onToggle={(it) => void basculerVerif(it)} busy={busy} />}
                           />
                         </div>
