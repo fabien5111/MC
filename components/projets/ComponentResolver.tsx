@@ -40,7 +40,7 @@ import {
   type ComponentSourceKind, type ComponentStepDraft, type ComponentUtensil, type CopyableRecipe } from '@/lib/projects';
 import { attachComponentUtensils, resetComponent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import type { ProjectComponent } from '@/lib/projects-data';
-import { resolveIngredientRefId, type IngredientRefOption } from '@/lib/ingredient-conversions';
+import { poidsEquivalentTexte, resolveIngredientRefId, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
 import { RecipeStep } from '@/components/recipe/RecipeStep';
 import type { IngredientView, RecipeStepView } from '@/lib/recipes';
 import { StepEditorCard } from '@/components/projets/StepEditorCard';
@@ -110,6 +110,8 @@ export function ComponentResolver({
   componentIds,
   units,
   ingredientRefs = [],
+  conversions = [],
+  unitRefs = [],
   referenceAllergenes,
   tagsReference = [],
   peutGenererIA = true,
@@ -135,6 +137,9 @@ export function ComponentResolver({
   // rattachement au référentiel à l'enregistrement, comme dans l'éditeur de
   // recette (JEP-254, point 9).
   ingredientRefs?: IngredientRefOption[];
+  // Conversions d'ingrédients et unités : équivalent en grammes sous la quantité.
+  conversions?: ConversionRef[];
+  unitRefs?: UnitRef[];
   // Allergènes du référentiel (menu + pastilles) et allergènes par ingrédient
   // du référentiel (pré-remplissage) — comme l'éditeur de recette. Absent :
   // champ texte libre.
@@ -939,6 +944,15 @@ export function ComponentResolver({
                     });
                   }}
                   units={units}
+                  poidsEquivalent={(g) =>
+                    poidsEquivalentTexte(
+                      conversions,
+                      unitRefs,
+                      g.ref_id ?? (ingredientRefs.length ? resolveIngredientRefId(g.name, ingredientRefs) : null),
+                      g.unit,
+                      g.quantity,
+                    )
+                  }
                   datalistId={ingredientRefs.length ? datalistId : undefined}
                   onChange={(patch) => majEtape(i, patch)}
                   onIngredientChange={(j, patch) => majIngredient(i, j, patch)}

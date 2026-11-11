@@ -1337,6 +1337,8 @@ export function ProjectV2({
           componentIds={ordered.map((c) => c.id)}
           units={units}
           ingredientRefs={ingredientRefs}
+          conversions={conversions}
+          unitRefs={unitRefs}
           referenceAllergenes={referenceAllergenes}
           tagsReference={tags}
           peutGenererIA={peutGenererIA}

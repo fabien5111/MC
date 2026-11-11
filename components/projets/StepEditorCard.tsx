@@ -67,6 +67,7 @@ export function StepEditorCard({
   retoursEtape,
   retoursIngredient,
   retoursSousEtape,
+  poidsEquivalent,
 }: {
   step: ComponentStepDraft;
   index: number;
@@ -95,6 +96,9 @@ export function StepEditorCard({
   retoursEtape?: React.ReactNode;
   retoursIngredient?: (g: Ingredient, j: number) => React.ReactNode;
   retoursSousEtape?: (texte: string, k: number) => React.ReactNode;
+  // Équivalent en grammes d'une ligne (« ≈ 104 g »), affiché sous la quantité
+  // pour homogénéiser les unités des recettes reprises. Absent : rien.
+  poidsEquivalent?: (g: Ingredient) => string | null;
 }) {
   const photos = step.photos ?? [];
   const sous = step.sous_etapes;
@@ -331,20 +335,30 @@ export function StepEditorCard({
                       data-name-step={index}
                     />
                   </div>
-                  <input
-                    value={g.quantity ?? ''}
-                    // Quantité retouchée à la main : la ligne sort du recalcul
-                    // global (base effacée), comme à l'étape « Quantités ».
-                    onChange={(e) =>
-                      onIngredientChange(j, {
-                        quantity: e.target.value,
-                        ...(g.base_quantity !== undefined ? { base_quantity: null } : {}),
-                      })
-                    }
-                    className="w-16 min-[1232px]:w-20 editorial-input text-on-surface"
-                    type="text"
-                    placeholder="Qté"
-                  />
+                  <div className="relative w-16 min-[1232px]:w-20 shrink-0">
+                    <input
+                      value={g.quantity ?? ''}
+                      // Quantité retouchée à la main : la ligne sort du recalcul
+                      // global (base effacée), comme à l'étape « Quantités ».
+                      onChange={(e) =>
+                        onIngredientChange(j, {
+                          quantity: e.target.value,
+                          ...(g.base_quantity !== undefined ? { base_quantity: null } : {}),
+                        })
+                      }
+                      className="w-full editorial-input text-on-surface"
+                      type="text"
+                      placeholder="Qté"
+                    />
+                    {/* Positionné hors flux : n'altère ni la hauteur ni
+                        l'alignement des colonnes (l'espace entre deux lignes
+                        d'ingrédients le reçoit). */}
+                    {poidsEquivalent?.(g) && (
+                      <span className="absolute left-0 top-full mt-0.5 whitespace-nowrap text-[12px] leading-none text-on-surface-variant">
+                        {poidsEquivalent(g)}
+                      </span>
+                    )}
+                  </div>
                   <select
                     value={g.unit ?? ''}
                     onChange={(e) => onIngredientChange(j, { unit: e.target.value || null })}
