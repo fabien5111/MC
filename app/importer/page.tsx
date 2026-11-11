@@ -10,7 +10,8 @@ import { ImporterForm } from '@/components/ImporterForm';
 import { ImporterList } from '@/components/ImporterList';
 import Link from 'next/link';
 import { canAccess } from '@/lib/entitlements';
-import { getCurrentPlan, getEntitlements, checkQuota, messageImportEpuise } from '@/lib/entitlements-data';
+import { getCurrentPlan, getEntitlements, checkQuota, messageCreditsEpuises } from '@/lib/entitlements-data';
+import { CLE_CREDITS_IA } from '@/lib/credits-ia';
 
 export const metadata: Metadata = { title: 'Importer une recette | Je pâtisse !' };
 
@@ -43,13 +44,16 @@ export default async function ImporterPage() {
   // JEP-77) : grise les boutons « Importer » une fois le quota mensuel
   // épuisé, plutôt que de laisser découvrir le refus après une tentative.
   // Seulement quand l'écran est déjà accessible.
-  const quotaImport = peutImporter ? await checkQuota(user.id, 'import_ia_mensuel') : null;
+  // JEP-405 : c'est la dotation de crédits IA qui se consomme, plus un quota
+  // d'imports propre ; l'accès reste porté par le droit d'import.
+  const quotaImport =
+    peutImporter && canAccess(droits, 'import_ia_mensuel') ? await checkQuota(user.id, CLE_CREDITS_IA) : null;
 
   // JEP-76 : même texte que le refus de la route, pour l'infobulle des boutons
   // grisés (date de recharge exacte comprise).
   const messageQuotaImport =
     quotaImport && !quotaImport.allowed
-      ? await messageImportEpuise(user.id, quotaImport.limit ?? null)
+      ? await messageCreditsEpuises(user.id, { limite: quotaImport.limit ?? null })
       : null;
 
   // JEP-56 : le nombre d'imports RÉALISÉS DANS LA FORMULE remplace l'ancien
@@ -67,8 +71,8 @@ export default async function ImporterPage() {
   const compteurImports =
     quotaImport && quotaImport.usage != null
       ? quotaImport.limit != null
-        ? `${quotaImport.usage} / ${quotaImport.limit} imports ${periode}`
-        : `${quotaImport.usage} import${quotaImport.usage > 1 ? 's' : ''} ${periode}`
+        ? `${quotaImport.usage} / ${quotaImport.limit} crédits IA utilisés ${periode}`
+        : `${quotaImport.usage} crédit${quotaImport.usage > 1 ? 's' : ''} IA utilisé${quotaImport.usage > 1 ? 's' : ''} ${periode}`
       : null;
 
   return (

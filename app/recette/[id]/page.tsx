@@ -18,6 +18,7 @@ import { LeconsProvider, RetoursAuteur, RetoursEtape, RetoursIngredient, Retours
 import { getVisibleHelpBlocksForPages } from '@/lib/help';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements, checkQuota } from '@/lib/entitlements-data';
+import { CLE_CREDITS_IA } from '@/lib/credits-ia';
 import { getActiveAds } from '@/lib/ads';
 import { getUnits, getShoppingListNames, getRecipeCompletedBatches } from '@/lib/profile';
 import { fmtNum } from '@/lib/recipe-plan';
@@ -205,7 +206,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
   // Lecture d'affichage uniquement (`mc_check_quota`, §1.3 docs/abonnements.md) :
   // seulement quand le droit existe déjà, pour ne pas payer cet aller-retour
   // aux membres qui n'ont de toute façon pas accès à l'ajustement par IA.
-  const quotaIA = user && peutAjusterIA ? await checkQuota(user.id, 'ajustement_ia_mensuel') : null;
+  const quotaIA = user && peutAjusterIA ? await checkQuota(user.id, CLE_CREDITS_IA) : null;
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
     if (u.tooltip) unitTips[String(u.name).toLowerCase().trim()] = u.tooltip;

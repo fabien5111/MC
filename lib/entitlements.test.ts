@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import {
   annualSaving,
   blockingMessage,
-  importEpuiseMessage,
+  creditsEpuisesMessage,
   canAccess,
   coherenceIssues,
   diffRights,
@@ -274,28 +274,33 @@ describe('blocage éducatif', () => {
     );
   });
 
-  it('JEP-76 : import épuisé en essai — pas de renouvellement, on propose la formule', () => {
-    const suggestion = { planCode: 'PLUS', planLabel: 'Plus', value: '10 import(s) / mois' };
-    expect(importEpuiseMessage({ limite: 3, essai: true, rechargeLe: null, suggestion })).toEqual({
-      titre: "Vous avez utilisé vos 3 imports d'essai",
-      corps: "Pour continuer à importer des recettes par IA, passez à la formule Plus : jusqu'à 10 imports par mois.",
+  it('JEP-405 : crédits épuisés en essai — pas de renouvellement, on propose la formule', () => {
+    const suggestion = { planCode: 'PLUS', planLabel: 'Plus', value: '120 crédit(s) / mois' };
+    expect(creditsEpuisesMessage({ limite: 40, utilises: 40, cout: 1, essai: true, rechargeLe: null, suggestion })).toEqual({
+      titre: "Vous avez utilisé vos 40 crédits IA d'essai",
+      corps: "Pour continuer à utiliser l'IA, passez à la formule Plus : jusqu'à 120 crédits par mois.",
     });
   });
 
-  it('JEP-76 : import épuisé en abonnement — date exacte de recharge', () => {
-    const suggestion = { planCode: 'PRO', planLabel: 'Pro', value: '100 import(s) / mois' };
-    expect(importEpuiseMessage({ limite: 10, essai: false, rechargeLe: '21 novembre 2026', suggestion })).toEqual({
-      titre: 'Vous avez utilisé vos 10 imports du mois',
+  it('JEP-405 : crédits épuisés en abonnement — date exacte de recharge', () => {
+    const suggestion = { planCode: 'PRO', planLabel: 'Pro', value: '300 crédit(s) / mois' };
+    expect(creditsEpuisesMessage({ limite: 120, essai: false, rechargeLe: '21 novembre 2026', suggestion })).toEqual({
+      titre: 'Vous avez utilisé vos 120 crédits IA du mois',
       corps:
-        "Votre crédit se renouvelle le 21 novembre 2026. Envie d'aller plus loin ? Avec la formule Pro : jusqu'à 100 imports par mois.",
+        "Vos crédits se renouvellent le 21 novembre 2026. Envie d'aller plus loin ? Avec la formule Pro : jusqu'à 300 crédits par mois.",
     });
   });
 
-  it('JEP-76 : import épuisé sans date ni formule supérieure', () => {
-    expect(importEpuiseMessage({ limite: 1, essai: false, rechargeLe: null, suggestion: null })).toEqual({
-      titre: 'Vous avez utilisé votre import du mois',
-      corps: "Votre crédit se renouvelle à la prochaine échéance de votre abonnement.",
+  it('JEP-405 : solde non nul mais insuffisant pour le coût de l’action', () => {
+    expect(
+      creditsEpuisesMessage({ limite: 120, utilises: 118, cout: 3, essai: false, rechargeLe: null, suggestion: null }),
+    ).toEqual({
+      titre: 'Il vous reste 2 crédits IA, cette action en demande 3',
+      corps: 'Vos crédits se renouvellent à la prochaine échéance de votre abonnement.',
     });
+    expect(
+      creditsEpuisesMessage({ limite: 120, utilises: 119, cout: 3, essai: false, rechargeLe: null, suggestion: null }).titre,
+    ).toBe('Il vous reste 1 crédit IA, cette action en demande 3');
   });
 
   it('n’invente pas d’alternative gratuite quand il n’y en a pas', () => {

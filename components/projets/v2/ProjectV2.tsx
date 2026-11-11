@@ -282,7 +282,7 @@ export function ProjectV2({
   const [thinking, setThinking] = useState(false);
   const iaEpuise = peutGenererIA && quotaProjetIA != null && !quotaProjetIA.allowed;
   const iaMessage = peutGenererIA
-    ? `Quota de générations par IA atteint ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Le crédit se renouvelle à la prochaine période.`
+    ? `Crédits IA épuisés ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Ils se renouvellent à la prochaine période.`
     : 'La proposition de format et de préparations par IA n’est pas incluse dans votre formule.';
 
   async function saveIntent(): Promise<boolean> {

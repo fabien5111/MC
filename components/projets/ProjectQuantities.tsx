@@ -670,7 +670,7 @@ export function QuantitiesStep({
                     disabled={iaEpuise}
                     title={
                       iaEpuise
-                        ? `Quota d’ajustements par IA atteint ce mois-ci (${iaLimite ?? '?'}/${iaLimite ?? '?'}). Le crédit se renouvelle à la prochaine période.`
+                        ? `Crédits IA épuisés ce mois-ci (${iaLimite ?? '?'}/${iaLimite ?? '?'}). Ils se renouvellent à la prochaine période.`
                         : undefined
                     }
                     className={`${btnGhost} disabled:cursor-not-allowed disabled:opacity-50`}
@@ -680,9 +680,9 @@ export function QuantitiesStep({
                   {iaRestants != null && (
                     <span
                       className={`text-[12px] ${iaEpuise ? 'text-error' : 'text-on-surface-variant'}`}
-                      title="Ajustements par IA du mois (« Ajuster avec l’IA » des quantités). Les propositions de préparations du mode projet ont leur propre quota."
+                      title="Crédits IA du mois, communs à l’import, à l’ajustement et au mode projet. « Ajuster avec l’IA » coûte 1 crédit."
                     >
-                      Utilisation quota IA : {(iaLimite ?? 0) - iaRestants}/{iaLimite} par mois
+                      Crédits IA : {(iaLimite ?? 0) - iaRestants}/{iaLimite} utilisés ce mois-ci
                     </span>
                   )}
                 </div>

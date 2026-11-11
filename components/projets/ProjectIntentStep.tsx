@@ -47,7 +47,7 @@ export function ProjectIntentStep({
   const [erreur, setErreur] = useState<string | null>(null);
 
   const iaMessage = peutGenererIA
-    ? `Quota de générations par IA atteint ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Le crédit se renouvelle à la prochaine période.`
+    ? `Crédits IA épuisés ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Ils se renouvellent à la prochaine période.`
     : "L'aide de l'IA pour composer un projet n'est pas incluse dans votre formule.";
 
   function continuer() {

@@ -203,7 +203,7 @@ export function ComponentResolver({
   // `title` natif. Le motif décide de l'issue : sans le droit, /plans ;
   // crédit épuisé, aucun lien (il se renouvelle tout seul).
   const iaMessage = peutGenererIA
-    ? `Quota de générations par IA atteint ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Le crédit se renouvelle à la prochaine période.`
+    ? `Crédits IA épuisés ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Ils se renouvellent à la prochaine période.`
     : "La proposition d'une recette de base par IA n'est pas incluse dans votre formule.";
 
   // Brouillon de contenu, alimenté soit par une proposition de l'IA, soit

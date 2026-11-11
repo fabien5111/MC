@@ -23,7 +23,8 @@ import { EMPTY_USAGE, IMPORT_MODEL, TRANSCRIBE_MODEL, addUsage, type ClaudeUsage
 import { computeCost } from '@/lib/ai/cost';
 import { normalizeRecette } from '@/lib/ai/import-pivot';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
-import { estRefus, reserverQuota } from '@/lib/quota-route';
+import { estRefusCredits, lierCredits, pagesPhotoDebitees, reserverCredits } from '@/lib/quota-route';
+import { COUT_PHOTO_STRUCTURATION, coutImportTexte, groupeValide } from '@/lib/credits-ia';
 import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 60;
@@ -141,16 +142,28 @@ export async function POST(req: Request) {
   // des unités extraites par l'IA (cf. lib/ai/import-pivot.ts normaliseUnite).
   const { data: unitsRows } = await supabase.from('units').select('name, abbreviation');
 
-  // Quota d'abonnement. Réservé AVANT l'appel — le décompte doit borner la
-  // dépense, pas la constater : un contrôle suivi d'un appel de trente
-  // secondes laisse passer autant d'appels simultanés qu'il y a de requêtes.
-  // Le crédit est rendu si la structuration échoue (cf. `rendre()` plus bas).
+  // Crédits IA (JEP-405), débités AVANT l'appel — le décompte doit borner la
+  // dépense, pas la constater — et rendus si la structuration échoue (cf.
+  // `rendre()` plus bas).
   //
-  // Un import vaut UN crédit, quel que soit le nombre de photos : la
-  // transcription page par page a lieu dans d'autres requêtes, qui vérifient
-  // le droit sans rien décompter.
-  const quota = await reserverQuota(user.id, 'import_ia_mensuel');
-  if (estRefus(quota)) return quota.refus;
+  // Texte ou PDF : tarif par tranche de longueur du texte réellement envoyé
+  // (recalculé ici, jamais repris du navigateur). Photo : les pages ont déjà
+  // été débitées une à une par /api/transcribe-photo ; la mise en forme coûte
+  // alors un forfait — mais seulement si ce groupe porte réellement des pages
+  // payées par ce membre, sans quoi un texte quelconque annoncé « photo »
+  // échapperait au tarif par longueur.
+  const longueur = Math.min(texte.length, 60000);
+  const groupePhoto = estPhoto ? groupeValide(body?.groupe) : null;
+  const photoPayee = groupePhoto ? (await pagesPhotoDebitees(groupePhoto)) > 0 : false;
+  const quota = photoPayee
+    ? await reserverCredits(user.id, 'import_photo_structuration', COUT_PHOTO_STRUCTURATION, {
+        groupe: groupePhoto,
+        detail: { pages: nbPhotos, caracteres: longueur },
+      })
+    : await reserverCredits(user.id, estPdf ? 'import_pdf' : 'import_texte', coutImportTexte(longueur), {
+        detail: { caracteres: longueur, ...(estPhoto ? { source: 'photo' } : {}) },
+      });
+  if (estRefusCredits(quota)) return quota.refus;
 
   // Collecteur de la seule passe de STRUCTURATION : la transcription est
   // journalisée à la source, dans /api/transcribe-photo, où l'appel a
@@ -295,6 +308,8 @@ export async function POST(req: Request) {
   }
 
   await enregistrerAppelsIa('import_recette', user.id, appels, { table: 'imports', id: row.id });
+  // Lien de l'historique des crédits vers le brouillon produit (pages comprises).
+  await lierCredits(user.id, quota.groupe, { table: 'imports', id: row.id });
 
   return NextResponse.json({ import: row, alertes, quota_restant: Math.max(0, QUOTA - compte - 1) });
 }

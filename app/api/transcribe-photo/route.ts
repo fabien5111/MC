@@ -13,7 +13,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isReadOnlySession } from '@/lib/impersonation';
-import { verifierAcces } from '@/lib/quota-route';
+import { estRefusCredits, reserverCredits } from '@/lib/quota-route';
+import { COUT_PHOTO_PAGE, groupeValide } from '@/lib/credits-ia';
 import { TRANSCRIBE_MODEL } from '@/lib/ai/claude';
 import { transcrireUne } from '@/lib/ai/transcribe';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
@@ -58,15 +59,18 @@ export async function POST(req: Request) {
     );
   }
 
-  // Droit d'import vérifié, mais AUCUN crédit consommé : un import vaut un
-  // crédit, pas une page. C'est /api/import-url qui décompte, une fois, quand
-  // les transcriptions lui reviennent assemblées.
-  const refus = await verifierAcces(user.id, 'import_ia_mensuel');
-  if (refus) return refus;
 
   const body = await req.json().catch(() => ({}));
   const brut = typeof body?.image === 'string' ? body.image : '';
   const numero = Number.isInteger(body?.page) && body.page > 0 ? body.page : 1;
+  // Identifiant de l'import, tiré par le navigateur et repris par
+  // /api/import-url : il rassemble les pages et la mise en forme d'un même
+  // import dans le journal des crédits, et c'est sur lui que la base tient le
+  // plafond de pages (JEP-405).
+  const groupe = groupeValide(body?.groupe);
+  if (!groupe) {
+    return NextResponse.json({ erreur: 'Import incomplet : rechargez la page puis réessayez.' }, { status: 400 });
+  }
 
   const separation = brut.indexOf(',');
   const correspondance = /^data:([a-z/+-]+);base64$/i.exec(separation > 0 ? brut.slice(0, separation) : '');
@@ -97,6 +101,16 @@ export async function POST(req: Request) {
     );
   }
 
+  // Crédits IA (JEP-405) : chaque page lue est débitée ici, côté serveur —
+  // jusqu'ici la lecture ne consommait rien et restait appelable sans limite
+  // une fois le quota d'imports épuisé. Le plafond de pages par import est
+  // tenu par la base (`mc_debiter_credits`, sous verrou), pas par l'écran.
+  const quota = await reserverCredits(user.id, 'import_photo_page', COUT_PHOTO_PAGE, {
+    groupe,
+    detail: { page: numero },
+  });
+  if (estRefusCredits(quota)) return quota.refus;
+
   // C'est ICI, et non dans /api/import-url, que l'appel de transcription a
   // réellement lieu : c'est donc ici qu'il faut le journaliser (vrai
   // request_id, vraie latence), pas depuis la valeur que le navigateur
@@ -112,6 +126,7 @@ export async function POST(req: Request) {
       modele: TRANSCRIBE_MODEL,
     });
   } catch (e) {
+    await quota.rendre();
     console.error(`[transcribe-photo] page ${numero} :`, e);
     const timeout = (e as { code?: string }).code === 'TIMEOUT';
     return NextResponse.json(

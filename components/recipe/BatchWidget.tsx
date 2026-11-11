@@ -128,7 +128,7 @@ export function BatchWidget({
   // sortie ; crédit épuisé, il n'y en a pas à proposer (il se renouvelle),
   // doctrine JEP-77 conservée.
   const iaMessage = peutAjusterIA
-    ? `Quota d'ajustements par IA atteint ce mois-ci (${quotaIA?.usage ?? quotaIA?.limit}/${quotaIA?.limit}). Le crédit se renouvelle à la prochaine période.`
+    ? `Crédits IA épuisés ce mois-ci (${quotaIA?.usage ?? quotaIA?.limit}/${quotaIA?.limit}). Ils se renouvellent à la prochaine période.`
     : "L'ajustement des quantités par IA n'est pas inclus dans votre formule.";
 
   const yInfo = yieldInfo(recipe);
@@ -799,7 +799,7 @@ export function BatchWidget({
                 {!dimensionsIADispo && (
                   <p className="text-xs text-on-surface-variant">
                     {iaEpuise ? (
-                      <>Quota d&apos;ajustements par IA atteint ce mois-ci ({quotaIA?.usage ?? quotaIA?.limit}/{quotaIA?.limit}) — le crédit se renouvelle à la prochaine période.</>
+                      <>Crédits IA épuisés ce mois-ci ({quotaIA?.usage ?? quotaIA?.limit}/{quotaIA?.limit}) — ils se renouvellent à la prochaine période.</>
                     ) : (
                       <>
                         Ajustement automatique par IA non inclus dans votre formule —{' '}

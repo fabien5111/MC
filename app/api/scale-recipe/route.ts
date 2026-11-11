@@ -6,7 +6,8 @@ import { isReadOnlySession } from '@/lib/impersonation';
 import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildContenu, normaliseResultat } from '@/lib/ai/scale-recipe';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
-import { estRefus, reserverQuota } from '@/lib/quota-route';
+import { estRefusCredits, reserverCredits } from '@/lib/quota-route';
+import { COUT_AJUSTEMENT } from '@/lib/credits-ia';
 import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 30;
@@ -43,9 +44,9 @@ export async function POST(req: Request) {
   const prompt = typeof body?.prompt === 'string' ? body.prompt.trim() : '';
   if (prompt.length < 3) return NextResponse.json({ erreur: "Décrivez l'ajustement souhaité." }, { status: 400 });
 
-  // Réservé avant l'appel, rendu s'il échoue (cf. lib/quota-route.ts).
-  const quota = await reserverQuota(user.id, 'ajustement_ia_mensuel');
-  if (estRefus(quota)) return quota.refus;
+  // Crédits IA (JEP-405) : débités avant l'appel, rendus s'il échoue.
+  const quota = await reserverCredits(user.id, 'ajustement', COUT_AJUSTEMENT);
+  if (estRefusCredits(quota)) return quota.refus;
 
   const { sink, appels } = collecteurAppelsIa();
   try {

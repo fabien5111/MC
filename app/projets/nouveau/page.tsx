@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements, checkQuota } from '@/lib/entitlements-data';
+import { CLE_CREDITS_IA } from '@/lib/credits-ia';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MobileNav } from '@/components/MobileNav';
@@ -25,7 +26,7 @@ export default async function NouveauProjetPage() {
   const droits = await getEntitlements(user.id);
   const peutProjet = canAccess(droits, 'mode_projet');
   const peutGenererIA = peutProjet && canAccess(droits, 'mode_projet_ia_mensuel');
-  const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, 'mode_projet_ia_mensuel') : null;
+  const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, CLE_CREDITS_IA) : null;
 
   return (
     <>

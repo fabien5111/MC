@@ -25,7 +25,8 @@ import {
   getFeatureRows,
   getPlanRows,
 } from '@/lib/data/reference';
-import { importEpuiseMessage, quotaFailure, upgradeSuggestion, type QuotaFailure } from '@/lib/entitlements';
+import { creditsEpuisesMessage, quotaFailure, upgradeSuggestion, type QuotaFailure } from '@/lib/entitlements';
+import { CLE_CREDITS_IA } from '@/lib/credits-ia';
 import { formatDate } from '@/lib/format';
 import type {
   Entitlements,
@@ -399,23 +400,23 @@ export const checkQuota = cache(async (userId: string, key: string): Promise<Quo
 });
 
 /**
- * Texte du quota d'imports par IA épuisé (JEP-76), avec la date exacte de
- * recharge. `mc_usage_report` vaut cinq comptages : on ne le lit qu'ici, au
- * moment du refus ou pour griser le bouton d'un membre déjà à sec — jamais
- * pour un contrôle d'accès. Lecture en échec : message sans date.
+ * Texte des crédits IA insuffisants (JEP-76, généralisé par JEP-405), avec la
+ * date exacte de recharge. `mc_usage_report` vaut cinq comptages : on ne le lit
+ * qu'ici, au moment du refus ou pour griser le bouton d'un membre déjà à sec —
+ * jamais pour un contrôle d'accès. Lecture en échec : message sans date.
  */
-export async function messageImportEpuise(
+export async function messageCreditsEpuises(
   userId: string,
-  limite: number | null,
+  args: { limite: number | null; utilises?: number | null; cout?: number | null },
 ): Promise<{ titre: string; corps: string }> {
   const [grille, plan] = await Promise.all([getGrid(), getCurrentPlan(userId)]);
   const essai = plan?.type === 'TRIAL';
   const rapport = essai ? [] : await getUsageReport(userId);
-  const fin = rapport.find((l) => l.featureKey === 'import_ia_mensuel')?.periodEnd ?? null;
-  return importEpuiseMessage({
-    limite,
+  const fin = rapport.find((l) => l.featureKey === CLE_CREDITS_IA)?.periodEnd ?? null;
+  return creditsEpuisesMessage({
+    ...args,
     essai,
     rechargeLe: fin ? formatDate(fin) : null,
-    suggestion: upgradeSuggestion(grille, 'import_ia_mensuel', plan?.code ?? ''),
+    suggestion: upgradeSuggestion(grille, CLE_CREDITS_IA, plan?.code ?? ''),
   });
 }

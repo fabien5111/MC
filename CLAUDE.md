@@ -3290,6 +3290,45 @@ principales :
   résultat en pull request), dont l'en-tête
   décrit le mode opératoire.
 
+## Crédits IA (JEP-405)
+
+**Les fonctions d'IA débitent une dotation mensuelle unique de crédits**, et
+non plus un quota par fonction : fonctionnalité FLOW `credits_ia_mensuel` de la
+grille (PLUS 120, PRO 300, PRO_ESSAI 40, FREE sans accès). Grille pure et
+testée : `lib/credits-ia.ts`, **seul endroit où un coût est écrit** —
+ajustement 1, structure de projet 1, préparation de projet 2, import texte ou
+PDF 3 / 6 / 9 selon la longueur du texte envoyé (seuils 8 000 et 20 000
+caractères, recalculés par la route), import photo 2 + 3 par page (8 pages au
+plus). Règle de chiffrage d'une nouvelle fonction : coût p90 ÷ 0,004 $, arrondi
+au-dessus (relevé `ai_usage` du 11/11/2026).
+
+- **L'accès reste porté par les clés d'origine** (`import_ia_mensuel`,
+  `ajustement_ia_mensuel`, `mode_projet_ia_mensuel`, passées en « oui / non ») :
+  le mode projet reste fermé au PLUS quel que soit son solde. `reserverCredits`
+  (`lib/quota-route.ts`) vérifie ce droit (`DROIT_ACTION`), puis débite.
+- **Débit et journal dans la même transaction** : `mc_debiter_credits`
+  (SECURITY DEFINER, `postgres`) appelle `mc_consume` puis écrit la ligne de
+  `ai_credit_movements` — l'historique ne peut pas diverger du solde. Elle tient
+  aussi, sous verrou, le plafond de pages d'un import photo. **Rendre** passe par
+  `mc_rendre_credits`, exécutable par la seule clé service_role : appelable par
+  un membre, elle lui rendrait ses crédits après un appel réussi. Elle rend sur
+  la période du débit et passe la ligne à `rendu`, une seule fois.
+- **Import photo** : le navigateur tire un `groupe` (UUID) par import ; chaque
+  page est débitée par `/api/transcribe-photo` (qui ne consommait rien jusque-là
+  et restait appelable sans limite une fois le quota épuisé). `/api/import-url`
+  n'applique le forfait de mise en forme (2) que si ce groupe porte des pages
+  payées par ce membre, sinon le tarif par longueur. L'écran vérifie le solde
+  avant la première page (`soldeCouvre`, `ImporterForm`).
+- **Fonction absente** (SQL pas joué) : l'action passe sans débit, journalisé
+  (« échouer en ouvert sur une erreur de configuration »). Mais sans la ligne
+  `credits_ia_mensuel` dans la grille, toutes les fonctions IA sont refusées :
+  **SQL avant déploiement**.
+- **Journal `ai_credit_movements`** : lecture du propriétaire (RLS), aucune
+  policy d'écriture, purge à 13 mois (pg_cron). Dans `TABLES_A_VIDER` et
+  l'export (`historique_credits_ia`). L'historique dans `/reglages`, le coût sur
+  chaque bouton et l'alerte à 80 % : lot 3. Recharges payantes : plus tard,
+  ticket séparé.
+
 ## Routes IA (API Anthropic)
 
 - `POST /api/import-url` — analyse un texte de recette collé et produit un

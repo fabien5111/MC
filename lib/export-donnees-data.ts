@@ -322,6 +322,7 @@ export async function exporterDonneesMembre(
       encarts,
       ia,
       compteurs,
+      creditsIa,
     ] = await Promise.all([
       lire(db, 'subscriptions', { colonne: 'user_id', valeur: membreId }),
       lire(db, 'subscription_requests', { colonne: 'user_id', valeur: membreId }),
@@ -335,6 +336,7 @@ export async function exporterDonneesMembre(
       lire(db, 'ad_events', { colonne: 'user_id', valeur: membreId }),
       lire(db, 'ai_usage', { colonne: 'user_id', valeur: membreId }),
       lire(db, 'usage_counters', { colonne: 'user_id', valeur: membreId }),
+      lire(db, 'ai_credit_movements', { colonne: 'user_id', valeur: membreId }, 'created_at'),
     ]);
     // Domaine du service de push seul : l'adresse complète est un jeton technique.
     const appareilsLisibles = nettoyer(appareils, 'push_subscriptions').map((a, i) => {
@@ -399,6 +401,7 @@ export async function exporterDonneesMembre(
         encarts_partenaires: nettoyer(encarts, 'ad_events'),
         utilisation_ia: nettoyer(ia, 'ai_usage'),
         compteurs_usage: nettoyer(compteurs, 'usage_counters'),
+        historique_credits_ia: nettoyer(creditsIa, 'ai_credit_movements'),
       },
     };
 

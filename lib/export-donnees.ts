@@ -168,7 +168,8 @@ export const RUBRIQUES = [
     titre: 'Données techniques',
     description:
       'Historique de connexion (début, dernière activité, nombre de pages vues), affichages et clics sur les ' +
-      'encarts partenaires, utilisation des fonctions d’IA et compteurs d’usage de votre formule.',
+      'encarts partenaires, utilisation des fonctions d’IA, compteurs d’usage de votre formule et historique de vos ' +
+      'crédits IA.',
   },
 ] as const;
 
