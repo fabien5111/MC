@@ -19,11 +19,11 @@
 // quand la sous-recette est la recette de la fournée elle-même : on
 // supprimerait ses propres ustensiles.
 import { createClient } from '@/lib/supabase/client';
-import { expandedGroup, type BatchFull, type BatchIngredientRow } from '@/lib/recipe-plan';
+import { expandedGroupAnyUnit, type BatchFull, type BatchIngredientRow } from '@/lib/recipe-plan';
 
 export function annulationRemplacement(batch: BatchFull, row: BatchIngredientRow) {
   const subRecipeId = row.expanded_into_recipe_id;
-  const group = expandedGroup(batch, row);
+  const group = expandedGroupAnyUnit(batch, row);
   const groupIds = group.map((it) => it.id);
   const stepIds = batch.batch_steps.filter((s) => s.source_ingredient_id != null && groupIds.includes(s.source_ingredient_id)).map((s) => s.id);
   const stillUsed = batch.batch_ingredients.some((it) => !groupIds.includes(it.id) && it.expanded_into_recipe_id === subRecipeId);

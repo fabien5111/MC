@@ -1137,6 +1137,8 @@ function PreparerView({
         <IngredientExpandDialog
           batch={batch}
           rows={expandingIngredient}
+          conversions={conversions}
+          units={units}
           onClose={() => setExpandingIngredient(null)}
           onDone={refreshExpand}
         />
@@ -1415,8 +1417,41 @@ function PreparerView({
                   </span>
                 );
               };
+              // Picto « remplacer par une recette » (JEP-254) : le remplacement vaut
+              // pour l'ingrédient entier, il se pose donc sur le TOTAL quand
+              // l'ingrédient a plusieurs lignes (sinon sur son unique ligne).
+              // `expandableGroup` ne couvre qu'une unité : on réunit celles de
+              // toutes les lignes, la fenêtre convertit les quantités.
+              const pictoRemplacer = (expandable: BatchIngredientRow[]) =>
+                expandable.length === 0 ? null : droits.remplacementIngredient ? (
+                  <button
+                    type="button"
+                    onClick={() => setExpandingIngredient(expandable)}
+                    title="Remplacer cet ingrédient par une recette (le fabriquer soi-même, y compris dans les autres étapes qui l’utilisent)"
+                    className="text-primary hover:opacity-70"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                  </button>
+                ) : (
+                  <LockedAction
+                    label="Remplacer cet ingrédient par une recette"
+                    message="Remplacer un ingrédient par une recette (le fabriquer soi-même) n'est pas inclus dans votre formule."
+                  />
+                );
+              const plusieursLignes = g.lines.length > 1;
+              const expandableTotal: BatchIngredientRow[] = [];
+              if (plusieursLignes && !readOnly) {
+                const vues = new Set<string>();
+                for (const r of g.lines) {
+                  const u = (r.unit || '').toLowerCase();
+                  if (vues.has(u)) continue;
+                  vues.add(u);
+                  expandableTotal.push(...expandableGroup(batch, r.name, r.unit));
+                }
+              }
               return {
                 key: ingredientKey(g.name),
+                totalAction: plusieursLignes ? pictoRemplacer(expandableTotal) : null,
                 // JEP-282 : le nom suit la quantité du total (ou de l'unique ligne).
                 name: g.subtotal
                   ? <NomIngredient nom={g.name} quantite={g.subtotal.qty} unite={g.subtotal.unit} refId={g.lines[0].ref_id} />
@@ -1424,13 +1459,10 @@ function PreparerView({
                 allergen: Array.from(new Set(g.lines.flatMap((r) => (r.allergen ? r.allergen.split(',').map((a) => a.trim()) : [])).filter(Boolean))).join(', ') || null,
                 total: g.subtotal ? qtyNode(g.subtotal.qty, g.subtotal.unit, g.lines[0].ref_id) : null,
                 lines: g.lines.map((r) => {
-                  // Picto « remplacer par une recette » (JEP-254) : couvre TOUTES
-                  // les occurrences réelles derrière cette ligne fusionnée (même
-                  // ingrédient utilisé dans plusieurs étapes) — un seul geste
-                  // suffit, plus besoin de deviner laquelle remplacer. Posé sur
-                  // chaque ligne de détail (il remplace nom + unité, pas un
-                  // commentaire), jamais sur le total, qui peut mêler des unités.
-                  const expandable = !readOnly ? expandableGroup(batch, r.name, r.unit) : [];
+                  // Ingrédient seul : le picto reste sur sa ligne et couvre TOUTES
+                  // les occurrences réelles (même ingrédient dans plusieurs étapes).
+                  // Ingrédient à plusieurs lignes : le picto est sur le total.
+                  const expandable = !readOnly && !plusieursLignes ? expandableGroup(batch, r.name, r.unit) : [];
                   return {
                     key: r.unit + '|' + (r.comment || ''),
                     qty: qtyNode(mergedRowQtyText(r), r.unit, r.ref_id),
@@ -1452,24 +1484,7 @@ function PreparerView({
                           })}
                         </span>
                       ) : null,
-                    action:
-                      expandable.length > 0 ? (
-                        droits.remplacementIngredient ? (
-                          <button
-                            type="button"
-                            onClick={() => setExpandingIngredient(expandable)}
-                            title="Remplacer cet ingrédient par une recette (le fabriquer soi-même, y compris dans les autres étapes qui l’utilisent)"
-                            className="text-primary hover:opacity-70"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
-                          </button>
-                        ) : (
-                          <LockedAction
-                            label="Remplacer cet ingrédient par une recette"
-                            message="Remplacer un ingrédient par une recette (le fabriquer soi-même) n'est pas inclus dans votre formule."
-                          />
-                        )
-                      ) : null,
+                    action: pictoRemplacer(expandable),
                   };
                 }),
               };

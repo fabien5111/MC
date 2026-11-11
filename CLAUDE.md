@@ -1538,6 +1538,16 @@ directes :
   droit (`droits.remplacementIngredient`, avec `LockedAction` en repli),
   masqué sur une fournée fermée (`readOnly`) comme le reste des actions de
   cette vue.
+  **Sur le TOTAL, pas sur chaque ligne** (11/11/2026) : un ingrédient à plusieurs
+  lignes (commentaires ou unités différents) porte son picto sur sa ligne de
+  total (`IngredientTotalGroup.totalAction`), puisque le remplacement vaut pour
+  toute la recette ; ses lignes de détail n'en ont plus. Un ingrédient seul garde
+  le picto de sa ligne. Le clic réunit les occurrences de TOUTES les unités du
+  groupe ; `IngredientExpandDialog` (props `conversions` / `units`) convertit les
+  quantités dans l'unité de l'occurrence-repère (`convertQty`) pour proposer la
+  somme — **une seule conversion inconnue et aucune quantité n'est proposée**, à
+  saisir à la main. L'annulation passe par `expandedGroupAnyUnit` (toutes unités)
+  pour rétablir ensemble les lignes d'unités différentes.
   **Les ingrédients remplacés y sont rappelés en bas de liste** (10/11/2026),
   barrés en rouge avec « fabriqué à partir de … » et un picto `undo` qui
   annule le remplacement — un groupe `expandedGroup` par entrée, quantités
