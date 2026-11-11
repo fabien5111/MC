@@ -27,6 +27,7 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import { useSeuilsArrondi } from '@/components/SeuilsArrondiProvider';
 import { formatTime } from '@/lib/format';
+import { convertQty, type ConversionRef, type UnitRef } from '@/lib/ingredient-conversions';
 import { UNITS_LBL, dayLabel, effectiveTimes } from '@/lib/recipe-view';
 import {
   computeInsertOrderIndexes,
@@ -87,10 +88,16 @@ const LBL = 'font-label-md text-[10px] uppercase tracking-widest text-on-surface
 export function IngredientExpandDialog({
   batch,
   rows,
+  conversions,
+  units,
   onClose,
   onDone,
 }: {
   batch: BatchFull;
+  // Pour additionner des occurrences en unités différentes (clic sur le total) ;
+  // facultatifs : sans eux, des unités différentes ne se convertissent pas.
+  conversions?: ConversionRef[];
+  units?: UnitRef[];
   // Toutes les occurrences de l'ingrédient à remplacer — le même ingrédient
   // (nom + unité) peut être utilisé dans plusieurs étapes (JEP-254, ex. le
   // praliné d'une ganache ET d'un croustillant) : les étapes de la
@@ -231,17 +238,27 @@ export function IngredientExpandDialog({
   // qu'affiche la « Liste totale des ingrédients » d'où vient le clic) — la
   // sous-recette doit produire assez pour l'ensemble des étapes concernées,
   // pas seulement la première.
+  // Occurrences en plusieurs unités (clic sur le total d'un ingrédient dont les
+  // lignes sont en cl et en g) : chaque quantité est convertie dans l'unité de
+  // l'occurrence-repère par la table de conversions de l'ingrédient. Une seule
+  // conversion manquante et on ne propose AUCUNE quantité (`null`) : additionner
+  // des unités sans conversion connue donnerait un nombre faux, à saisir à la main.
+  const unitesMelangees = useMemo(() => new Set(rows.map((r) => normUnit(r.unit))).size > 1, [rows]);
   const totalQty = useMemo(() => {
     let sum = 0;
     let any = false;
     for (const r of rows) {
-      if (r.quantity != null) {
-        sum += r.quantity;
-        any = true;
+      if (r.quantity == null) continue;
+      let q: number | null = r.quantity;
+      if (normUnit(r.unit) !== normUnit(row.unit)) {
+        q = convertQty(conversions ?? [], units ?? [], r.ref_id, r.unit, r.quantity, row.unit);
+        if (q == null) return null;
       }
+      sum += q;
+      any = true;
     }
     return any ? sum : null;
-  }, [rows]);
+  }, [rows, row, conversions, units]);
 
   // Charge le contenu de la recette choisie (RLS via la session) et prépare
   // les valeurs par défaut : quantité visée = celle de l'ingrédient remplacé,
@@ -463,7 +480,7 @@ export function IngredientExpandDialog({
     }
   }
 
-  const replacedQty = totalQty != null ? fmtNum(totalQty) : row.quantity_text || '';
+  const replacedQty = totalQty != null ? fmtNum(totalQty) : unitesMelangees ? '' : row.quantity_text || '';
   // Étapes de la fournée où l'ingrédient apparaît (JEP-254) — affiché quand il
   // y en a plusieurs, pour que le pâtissier sache ce qu'englobe le
   // remplacement avant de le lancer.

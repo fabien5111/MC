@@ -35,6 +35,10 @@ export type IngredientTotalGroup = {
   allergen?: string | null;
   // Quantité du total ; ignorée pour un ingrédient à une seule ligne.
   total?: ReactNode;
+  // Picto de la ligne de total (colonne de gauche), pour un geste qui vaut pour
+  // l'ingrédient entier (remplacement par une recette en fournée). Ignoré pour
+  // un ingrédient à une seule ligne, dont le picto reste celui de sa ligne.
+  totalAction?: ReactNode;
   lines: IngredientTotalLine[];
 };
 
@@ -46,7 +50,7 @@ function Allergen({ value }: { value?: string | null }) {
 }
 
 export function IngredientTotalList({ groups }: { groups: IngredientTotalGroup[] }) {
-  const hasActions = groups.some((g) => g.lines.some((l) => l.action));
+  const hasActions = groups.some((g) => g.totalAction || g.lines.some((l) => l.action));
   // La colonne des pictos n'existe que si un écran en porte : sans elle, les
   // quantités resteraient décalées d'une colonne vide.
   const cols = hasActions ? 'grid-cols-[max-content_max-content_minmax(0,1fr)]' : 'grid-cols-[max-content_minmax(0,1fr)]';
@@ -74,7 +78,7 @@ export function IngredientTotalList({ groups }: { groups: IngredientTotalGroup[]
         return (
           <Fragment key={g.key}>
               <li className="pt-2" style={ROW_STYLE}>
-                {actionCell()}
+                {actionCell(g.totalAction)}
                 <span className="font-label-md text-label-md text-primary font-bold">{g.total}</span>
                 <span className="font-body-md text-body-md font-semibold break-words">
                   {g.name}

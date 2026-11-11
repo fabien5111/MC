@@ -517,6 +517,17 @@ export function expandedGroup(batch: Pick<BatchFull, 'batch_ingredients'>, row: 
   );
 }
 
+// Comme `expandedGroup`, mais toutes unités confondues : un remplacement lancé
+// depuis le TOTAL d'un ingrédient en plusieurs unités (cl + g) marque des
+// lignes d'unités différentes avec la même recette. L'annulation doit les
+// rétablir ensemble — les étapes insérées ne sont liées qu'à l'une d'elles.
+export function expandedGroupAnyUnit(batch: Pick<BatchFull, 'batch_ingredients'>, row: BatchIngredientRow): BatchIngredientRow[] {
+  const subRecipeId = row.expanded_into_recipe_id;
+  if (subRecipeId == null) return [row];
+  const n = ingredientKey(row.name);
+  return batch.batch_ingredients.filter((it) => it.expanded_into_recipe_id === subRecipeId && ingredientKey(it.name) === n);
+}
+
 // Étape issue de l'éclatement d'un ingrédient (et non de la recette de base).
 export function batchStepIsExpansion(s: Pick<BatchStepRow, 'source_ingredient_id'>): boolean {
   return s.source_ingredient_id != null;
