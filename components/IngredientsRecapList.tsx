@@ -30,7 +30,7 @@ export function IngredientsRecapList({
     return (
       <span className="whitespace-nowrap">
         {[qty, unit].filter(Boolean).join(' ')}
-        {conv && <span className="text-on-surface-variant font-body-md font-normal text-[12px]"> ({conv})</span>}
+        {conv && <span className="block text-on-surface-variant font-body-md font-normal text-[12px]">{conv}</span>}
       </span>
     );
   };
