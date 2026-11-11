@@ -54,9 +54,8 @@ export function IngredientsRecapList({
                     key={si}
                     type="button"
                     onClick={() => goToStep(si)}
-                    className="inline-flex items-center gap-1 text-primary text-[12px] hover:underline"
+                    className="text-[12px] text-secondary underline underline-offset-2 hover:text-primary"
                   >
-                    <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                     {stepTitle(si)}
                   </button>
                 ))}
