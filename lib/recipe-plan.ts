@@ -82,6 +82,10 @@ export type PlanningDayItem = {
   // Case unique de l'étape (cf. en-tête du fichier) : cochée avant ou pendant
   // le jour J, une seule et même colonne.
   done: boolean;
+  // Faite ET plus rien à y réaliser (aucune sous-étape ni ingrédient gardé,
+  // cf. `stepFullyDone`) : seul cas où le planning la barre. Une pâte « déjà
+  // faite avant la fournée » dont la cuisson reste à faire n'est pas barrée.
+  fullyDone: boolean;
 };
 export type PlanningDayGroup = { date: string; items: PlanningDayItem[] };
 
@@ -111,7 +115,10 @@ export function groupPlanningStepsByDate(plans: BatchListRow[]): PlanningDayGrou
       .forEach((s, i) => {
         const d = new Date(p.planned_date + 'T00:00:00');
         d.setDate(d.getDate() - Math.max(0, s.day_offset || 0));
+        const flags = { done: s.done, replaced_by_recipe_id: s.replaced_by_recipe_id ?? null };
+        const ingOfStep = (p.batch_ingredients ?? []).filter((it) => it.batch_step_id === s.id);
         withDate.push({
+          fullyDone: stepFullyDone(flags, ingOfStep, s.batch_substeps ?? []),
           stepId: s.id,
           planId: p.id,
           recipeTitle,

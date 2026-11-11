@@ -218,7 +218,7 @@ export function PlanningDayView({
   const fullyDoneBatchIds = new Set(
     list.filter((p) => p.batch_steps.every((s) => s.done) && !pendingFinish.has(p.id)).map((p) => p.id),
   );
-  const isDone = (g: PlanningDayGroup) => g.items.every((it) => it.done && fullyDoneBatchIds.has(it.planId));
+  const isDone = (g: PlanningDayGroup) => g.items.every((it) => it.done && it.fullyDone && fullyDoneBatchIds.has(it.planId));
   const pendingGroups = groups.filter((g) => !isDone(g));
   const doneGroups = groups.filter(isDone);
 
@@ -294,9 +294,10 @@ export function PlanningDayView({
                     </Link>
                   </div>
                   {(() => {
-                    const href = `/fournee/${it.planId}#etape-${it.stepId}`;
-                    const numberSpan = <span className={`font-label-md text-label-md shrink-0 ${it.done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>;
-                    const titleSpan = <span className={`font-body-md ${it.done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>;
+                    // Les ancres `etape-<id>` n'existent que dans le déroulé du mode Préparer.
+                    const href = `/fournee/${it.planId}?mode=preparer#etape-${it.stepId}`;
+                    const numberSpan = <span className={`font-label-md text-label-md shrink-0 ${it.fullyDone ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>;
+                    const titleSpan = <span className={`font-body-md ${it.fullyDone ?'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>;
                     return (
                       <div className="flex items-center gap-1.5 pl-[26px]">
                         <input

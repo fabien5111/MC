@@ -51,6 +51,17 @@ export type BatchListRow = {
     wait_time: number | null;
     cook_time: number | null;
     cook_temp: number | null;
+    // Sert au calcul « étape entièrement traitée » (`stepFullyDone`) du planning :
+    // une étape faite qui garde une sous-étape ou un ingrédient n'est pas barrée.
+    replaced_by_recipe_id?: string | null;
+    batch_substeps?: { excluded_when_done: boolean }[];
+  }[];
+  // Lignes d'ingrédients, même usage que ci-dessus (planning seulement).
+  batch_ingredients?: {
+    batch_step_id: number | null;
+    removed: boolean;
+    expanded_into_recipe_id: string | null;
+    excluded_when_done: boolean;
   }[];
   // `hero_thumb_url`, jamais `hero_image_url` : ces listes n'affichent qu'une
   // vignette (56-64 px), or `hero_image_url` est une data-URL pleine
@@ -120,7 +131,7 @@ export async function getBatches(
   let query = supabase
     .from('batches')
     .select(
-      'id, recipe_id, recipe_title, planned_date, degustation_at, factor, adjust_label, notes, status, date_debut, date_fin, recipes(id, title, hero_thumb_url, prep_time, total_time), batch_steps(id, title, day_offset, day_order_index, order_index, done, prep_time, wait_time, cook_time, cook_temp)',
+      'id, recipe_id, recipe_title, planned_date, degustation_at, factor, adjust_label, notes, status, date_debut, date_fin, recipes(id, title, hero_thumb_url, prep_time, total_time), batch_steps(id, title, day_offset, day_order_index, order_index, done, prep_time, wait_time, cook_time, cook_temp, replaced_by_recipe_id, batch_substeps(excluded_when_done)), batch_ingredients(batch_step_id, removed, expanded_into_recipe_id, excluded_when_done)',
     )
     .eq('user_id', userId);
   query = scope === 'actives' ? query.eq('status', 'planifiee') : query.in('status', ['terminee', 'abandonnee']);
