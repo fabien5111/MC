@@ -51,6 +51,18 @@ export type BatchListRow = {
     wait_time: number | null;
     cook_time: number | null;
     cook_temp: number | null;
+    // Lus pour décider si une étape « déjà faite » est vraiment terminée
+    // (`stepComplete`) ; absents des listes qui ne les demandent pas.
+    replaced_by_recipe_id?: string | null;
+    batch_substeps?: { id: number; done: boolean; excluded_when_done: boolean }[];
+  }[];
+  batch_ingredients?: {
+    id: number;
+    batch_step_id: number | null;
+    done: boolean;
+    removed: boolean;
+    excluded_when_done: boolean;
+    expanded_into_recipe_id: string | null;
   }[];
   // `hero_thumb_url`, jamais `hero_image_url` : ces listes n'affichent qu'une
   // vignette (56-64 px), or `hero_image_url` est une data-URL pleine
@@ -117,10 +129,16 @@ export async function getBatches(
   // CLAUDE.md « Fournées »), aucune de ces colonnes n'est utilisée par les
   // listes de l'écran « En cuisine ». Les sélectionner quand même alourdissait
   // le payload RSC de la page pour rien.
+  // Sous-étapes et ingrédients : seulement pour les fournées actives, dont la
+  // vue par jour barre une étape uniquement quand plus rien n'y reste à faire.
+  const detail = scope === 'actives';
   let query = supabase
     .from('batches')
     .select(
-      'id, recipe_id, recipe_title, planned_date, degustation_at, factor, adjust_label, notes, status, date_debut, date_fin, recipes(id, title, hero_thumb_url, prep_time, total_time), batch_steps(id, title, day_offset, day_order_index, order_index, done, prep_time, wait_time, cook_time, cook_temp)',
+      'id, recipe_id, recipe_title, planned_date, degustation_at, factor, adjust_label, notes, status, date_debut, date_fin, recipes(id, title, hero_thumb_url, prep_time, total_time), batch_steps(id, title, day_offset, day_order_index, order_index, done, prep_time, wait_time, cook_time, cook_temp' +
+        (detail ? ', replaced_by_recipe_id, batch_substeps(id, done, excluded_when_done)' : '') +
+        ')' +
+        (detail ? ', batch_ingredients(id, batch_step_id, done, removed, excluded_when_done, expanded_into_recipe_id)' : ''),
     )
     .eq('user_id', userId);
   query = scope === 'actives' ? query.eq('status', 'planifiee') : query.in('status', ['terminee', 'abandonnee']);

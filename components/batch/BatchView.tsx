@@ -2323,6 +2323,10 @@ function StepCookCard({
   // Barrée / atténuée seulement si plus rien n'y reste à faire : une étape
   // « déjà réalisée » qui garde une sous-étape ou un ingrédient reste normale.
   const entierementTraitee = s.done && activeIngredients.length === 0 && activeSubsteps.length === 0;
+  // Case de l'étape : cochée seulement quand plus rien de gardé n'y reste à
+  // faire (cf. `stepComplete`) — `s.done` seul resterait vrai pour une pâte
+  // « déjà réalisée avant la fournée » dont la cuisson est encore à faire.
+  const complete = s.done && activeIngredients.every((it) => it.done) && activeSubsteps.every((su) => su.done);
   // Ingrédients de l'étape que le texte de chaque sous-étape semble nommer
   // (cf. lib/recipe-plan.ts), chacun affiché à sa seule première sous-étape —
   // le lait versé en début d'étape n'est pas une nouvelle quantité à chaque
@@ -2376,10 +2380,19 @@ function StepCookCard({
         <span onClick={(ev) => ev.stopPropagation()} className="shrink-0 mt-0.5 flex">
           <input
             type="checkbox"
-            checked={s.done}
+            checked={complete}
             disabled={readOnly}
             aria-label={`Marquer « ${s.title || 'cette étape'} » comme réalisée`}
             onChange={(ev) => {
+              // Étape « déjà réalisée » qui garde une sous-étape ou un
+              // ingrédient : cocher la case termine ce qui reste, sans
+              // toucher à `done` (déjà vrai).
+              if (ev.target.checked && s.done && !complete) {
+                activeIngredients.filter((it) => !it.done).forEach((it) => onToggleIng(it.id, true));
+                activeSubsteps.filter((su) => !su.done).forEach((su) => onToggleSub(su.id, true));
+                setOpen(false);
+                return;
+              }
               onToggleStep(s.id, ev.target.checked);
               // Étape cochée depuis son en-tête : on la replie, elle est
               // terminée. Seulement ce geste — l'auto-coche (dernier
