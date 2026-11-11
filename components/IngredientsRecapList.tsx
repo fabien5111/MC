@@ -44,15 +44,24 @@ export function IngredientsRecapList({
           key: m.note.toLowerCase(),
           qty: qtyNode(m.name, m.unit, m.qty),
           comment: m.note || null,
+          // Toutes les étapes où la ligne apparaît, chacune cliquable (même
+          // principe que la fiche recette et la fournée).
           links:
-            m.stepIndices.length === 1 ? (
-              <button type="button" onClick={() => goToStep(m.stepIndices[0])} className="inline-flex items-center gap-1 text-primary text-[12px] hover:underline">
-                <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                1 étape — {stepTitle(m.stepIndices[0])}
-              </button>
-            ) : (
-              <span className="text-on-surface-variant text-[12px]">{m.stepIndices.length} étapes</span>
-            ),
+            m.stepIndices.length > 0 ? (
+              <span className="inline-flex flex-wrap gap-x-3 gap-y-1">
+                {m.stepIndices.map((si) => (
+                  <button
+                    key={si}
+                    type="button"
+                    onClick={() => goToStep(si)}
+                    className="inline-flex items-center gap-1 text-primary text-[12px] hover:underline"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                    {stepTitle(si)}
+                  </button>
+                ))}
+              </span>
+            ) : null,
         })),
       }))}
     />

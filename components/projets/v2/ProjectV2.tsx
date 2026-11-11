@@ -535,6 +535,12 @@ export function ProjectV2({
         unitRefs,
       )
     : [];
+  // Table `order_index` du groupe → étape (titre + ancre `sec-etape-N`, posée par
+  // `RecipeStep` à l'index dans `steps`), pour les renvois de la liste totale.
+  const etapeParOrdre = new Map<number, { titre: string; ancre: string }>();
+  steps.forEach((s, i) => {
+    etapeParOrdre.set(s.order_index ?? 0, { titre: s.title || `Étape ${i + 1}`, ancre: stepAnchorId(i) });
+  });
   const days = planningDays(steps);
 
   // ── Reste à faire ─────────────────────────────────────────────────────
@@ -1192,11 +1198,42 @@ export function ProjectV2({
                       .filter(Boolean)
                       .join(', ') || null,
                   total: g.subtotal ? [g.subtotal.qty, g.subtotal.unit].filter(Boolean).join(' ') : null,
-                  lines: g.lines.map((m, k) => ({
-                    key: `${k}-${m.comment || ''}`,
-                    qty: [m.qty, m.unit].filter(Boolean).join(' '),
-                    comment: m.comment,
-                  })),
+                  lines: g.lines.map((m, k) => {
+                    // Étapes où cette ligne apparaît (même principe que la fiche
+                    // recette et la fournée) : groupes d'ingrédients fusionnés
+                    // → étapes, appariés par `order_index`.
+                    const etapesDe = (m.groupOrders || [])
+                      .map((o) => etapeParOrdre.get(o))
+                      .filter((st): st is { titre: string; ancre: string } => !!st);
+                    return {
+                      key: `${k}-${m.comment || ''}`,
+                      qty: [m.qty, m.unit].filter(Boolean).join(' '),
+                      comment: m.comment,
+                      links:
+                        etapesDe.length > 0 ? (
+                          <span className="no-print inline-flex flex-wrap gap-x-3 gap-y-1">
+                            {etapesDe.map((st) => (
+                              <a
+                                key={st.ancre}
+                                href={`#${st.ancre}`}
+                                // Les étapes d'une préparation peuvent être dans un
+                                // volet replié : on le rouvre avant de défiler.
+                                onClick={(e) => {
+                                  const cible = document.getElementById(st.ancre);
+                                  if (!cible) return;
+                                  e.preventDefault();
+                                  for (let d = cible.closest('details'); d; d = d.parentElement?.closest('details') ?? null) d.open = true;
+                                  cible.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }}
+                                className="text-[12px] text-secondary underline underline-offset-2 hover:text-primary"
+                              >
+                                {st.titre}
+                              </a>
+                            ))}
+                          </span>
+                        ) : null,
+                    };
+                  }),
                 }))}
               />
             ) : (
