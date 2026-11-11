@@ -215,10 +215,11 @@ export function PlanningDayView({
   // une journée de préparation intermédiaire (dont les étapes sont cochées)
   // basculait en « terminée » alors que la recette continue sur d'autres
   // jours, la faisant disparaître du planning actif à tort.
+  const incompletePlanIds = new Set(groups.flatMap((g) => g.items.filter((it) => !it.complete).map((it) => it.planId)));
   const fullyDoneBatchIds = new Set(
-    list.filter((p) => p.batch_steps.every((s) => s.done) && !pendingFinish.has(p.id)).map((p) => p.id),
+    list.filter((p) => p.batch_steps.every((s) => s.done) && !incompletePlanIds.has(p.id) && !pendingFinish.has(p.id)).map((p) => p.id),
   );
-  const isDone = (g: PlanningDayGroup) => g.items.every((it) => it.done && fullyDoneBatchIds.has(it.planId));
+  const isDone = (g: PlanningDayGroup) => g.items.every((it) => it.complete && fullyDoneBatchIds.has(it.planId));
   const pendingGroups = groups.filter((g) => !isDone(g));
   const doneGroups = groups.filter(isDone);
 
@@ -226,10 +227,13 @@ export function PlanningDayView({
     return (
       <ul className="flex flex-col px-6 pb-6">
         {g.items.map((it, idx) => {
-              const stepTotal = (it.prep_time || 0) + (it.wait_time || 0) + (it.cook_time || 0);
+              // Étape déjà faite mais pas terminée : la préparation est derrière,
+              // il ne reste que la cuisson.
+              const resteSeul = it.done && !it.complete;
+              const stepTotal = (resteSeul ? 0 : (it.prep_time || 0) + (it.wait_time || 0)) + (it.cook_time || 0);
               const badges = [
-                it.prep_time ? `PRÉP ${formatTime(it.prep_time).toUpperCase()}` : '',
-                it.wait_time ? `ATTENTE ${formatTime(it.wait_time).toUpperCase()}` : '',
+                it.prep_time && !resteSeul ? `PRÉP ${formatTime(it.prep_time).toUpperCase()}` : '',
+                it.wait_time && !resteSeul ? `ATTENTE ${formatTime(it.wait_time).toUpperCase()}` : '',
                 it.cook_time
                   ? `CUISSON ${formatTime(it.cook_time).toUpperCase()}${it.cook_temp ? ' · ' + it.cook_temp + ' °C' : ''}`
                   : it.cook_temp
@@ -294,22 +298,53 @@ export function PlanningDayView({
                     </Link>
                   </div>
                   {(() => {
-                    const href = `/fournee/${it.planId}#etape-${it.stepId}`;
-                    const numberSpan = <span className={`font-label-md text-label-md shrink-0 ${it.done ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>;
-                    const titleSpan = <span className={`font-body-md ${it.done ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>;
+                    // `complete` (et non `done`) : une étape « déjà réalisée avant
+                    // la fournée » qui garde sa sous-étape de cuisson n'est ni
+                    // barrée ni cochée. Le clic sur le titre mène à l'étape, dans
+                    // le mode Préparer (pictos ci-contre pour Pâtisser).
+                    const hrefPreparer = `/fournee/${it.planId}?mode=preparer#etape-${it.stepId}`;
+                    const hrefPatisser = `/fournee/${it.planId}?mode=patisser#etape-${it.stepId}`;
+                    const resteAFaire = it.done && !it.complete;
+                    const numberSpan = <span className={`font-label-md text-label-md shrink-0 ${it.complete ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>;
+                    const titleSpan = <span className={`font-body-md ${it.complete ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>;
                     return (
                       <div className="flex items-center gap-1.5 pl-[26px]">
                         <input
                           type="checkbox"
-                          checked={it.done}
+                          checked={it.complete}
+                          disabled={resteAFaire}
                           onChange={(e) => toggleDone(it.stepId, e.target.checked)}
-                          title={it.done ? 'Marquer comme non faite' : 'Marquer comme faite'}
-                          className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0"
+                          title={
+                            resteAFaire
+                              ? 'Il reste une sous-étape à faire : à cocher depuis le mode Pâtisser'
+                              : it.complete
+                                ? 'Marquer comme non faite'
+                                : 'Marquer comme faite'
+                          }
+                          className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 disabled:cursor-not-allowed"
                         />
-                        <Link href={href} className="flex items-baseline gap-1.5 hover:underline">
+                        <Link href={hrefPreparer} className="flex items-baseline gap-1.5 hover:underline">
                           {numberSpan}
                           {titleSpan}
                         </Link>
+                        <span className="no-print ml-auto flex items-center gap-1 shrink-0">
+                          <Link
+                            href={hrefPreparer}
+                            title="Ouvrir cette étape en mode Préparer"
+                            aria-label="Ouvrir cette étape en mode Préparer"
+                            className="inline-flex text-primary hover:opacity-70"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">checklist</span>
+                          </Link>
+                          <Link
+                            href={hrefPatisser}
+                            title="Ouvrir cette étape en mode Pâtisser"
+                            aria-label="Ouvrir cette étape en mode Pâtisser"
+                            className="inline-flex text-primary hover:opacity-70"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">skillet</span>
+                          </Link>
+                        </span>
                       </div>
                     );
                   })()}

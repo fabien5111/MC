@@ -28,15 +28,15 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import type { PlanRecalculAmont } from '@/lib/batch-expansion-recalcul';
 import { LockedAction } from '@/components/LockedAction';
-import { fmtNum, batchDayLabel, stepDayMoved, type BatchIngredientRow, type BatchStepRow, type BatchSubstepRow } from '@/lib/recipe-plan';
+import { fmtNum, batchDayLabel, stepDayMoved, stepComplete, type BatchIngredientRow, type BatchStepRow, type BatchSubstepRow } from '@/lib/recipe-plan';
 import { dayLabel } from '@/lib/recipe-view';
 
 type StepFlags = Pick<BatchStepRow, 'id' | 'done' | 'day_offset' | 'base_day_offset' | 'user_note' | 'fait_en_amont'>;
 type IngRow = Pick<
   BatchIngredientRow,
   'id' | 'name' | 'ref_id' | 'quantity' | 'quantity_text' | 'unit' | 'comment' | 'removed' | 'excluded_when_done' | 'expanded_into_recipe_id'
-> & { expanded_recipe?: { id: string; title: string } | null };
-type SubRow = Pick<BatchSubstepRow, 'id' | 'texte' | 'order_index' | 'excluded_when_done' | 'added'>;
+> & { done?: boolean; expanded_recipe?: { id: string; title: string } | null };
+type SubRow = Pick<BatchSubstepRow, 'id' | 'texte' | 'order_index' | 'excluded_when_done' | 'added'> & { done?: boolean };
 
 function qtyText(it: Pick<IngRow, 'quantity' | 'quantity_text'>): string {
   return it.quantity != null ? fmtNum(it.quantity) : it.quantity_text || '';
@@ -399,16 +399,21 @@ export function BatchStepDonePanel({
     </label>
   );
 
-  // Même geste que la case d'étape du mode Pâtisser.
+  // Même geste que la case d'étape du mode Pâtisser. Cochée seulement quand
+  // plus rien n'y reste à faire (`stepComplete`) : une pâte « déjà réalisée
+  // avant la fournée » qui garde sa sous-étape de cuisson n'est pas terminée.
+  const resteAFaire = step.done && !stepComplete({ done: step.done, replaced_by_recipe_id: null }, ingredients, substeps);
   const progressToggle = (
     <input
       type="checkbox"
-      checked={step.done}
-      disabled={readOnly || !!step.fait_en_amont}
+      checked={step.done && !resteAFaire}
+      disabled={readOnly || !!step.fait_en_amont || resteAFaire}
       onChange={toggleDone}
       aria-label="Marquer cette étape comme réalisée"
       title={
-        step.fait_en_amont
+        resteAFaire
+          ? 'Il reste une sous-étape à faire : elle se coche en mode Pâtisser'
+          : step.fait_en_amont
           ? 'Déjà réalisée avant la fournée : décochez « Déjà réalisée avant la fournée » pour la refaire'
           : step.done
             ? 'Étape réalisée — décocher pour la refaire (ses ingrédients reviennent dans les courses)'

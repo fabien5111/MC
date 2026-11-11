@@ -82,6 +82,9 @@ export type PlanningDayItem = {
   // Case unique de l'étape (cf. en-tête du fichier) : cochée avant ou pendant
   // le jour J, une seule et même colonne.
   done: boolean;
+  // Cochée ET plus rien de gardé à faire (`stepComplete`) : c'est elle, et non
+  // `done`, qui barre l'étape dans le planning.
+  complete: boolean;
 };
 export type PlanningDayGroup = { date: string; items: PlanningDayItem[] };
 
@@ -121,6 +124,11 @@ export function groupPlanningStepsByDate(plans: BatchListRow[]): PlanningDayGrou
           order_index: s.order_index,
           day_order_index: s.day_order_index,
           done: s.done,
+          complete: stepComplete(
+            { done: s.done, replaced_by_recipe_id: s.replaced_by_recipe_id ?? null },
+            (p.batch_ingredients ?? []).filter((it) => it.batch_step_id === s.id),
+            s.batch_substeps ?? [],
+          ),
           prep_time: s.prep_time,
           wait_time: s.wait_time,
           cook_time: s.cook_time,
@@ -271,6 +279,25 @@ function excludedInBatch(batch: BatchFull): (it: BatchIngredientRow) => boolean 
 export function stepFullyDone(step: StepDoneFlags, ingredientsOfStep: IngredientDoneFlags[], substepsOfStep: SubstepDoneFlags[]): boolean {
   if (!step.done) return false;
   return ingredientsOfStep.every((it) => batchIngredientExcluded(step, it)) && substepsOfStep.every((su) => batchSubstepExcluded(step, su));
+}
+
+// Étape RÉELLEMENT terminée : cochée (avant ou pendant la fournée) ET sans rien
+// de gardé qui reste à faire. Une pâte « déjà réalisée avant la fournée » dont
+// on a conservé la sous-étape de cuisson est `done` (ses autres lignes sortent
+// des courses) mais pas terminée : tant que cette sous-étape n'est pas cochée,
+// la case de l'étape, le barré du planning et le temps restant ne doivent pas
+// dire le contraire. `done` seul garde son rôle d'exclusion (courses, liste
+// totale) ; c'est ce prédicat qui dit « il n'y a plus rien à faire ici ».
+export function stepComplete(
+  step: StepDoneFlags,
+  ingredientsOfStep: (IngredientDoneFlags & { done?: boolean })[],
+  substepsOfStep: (SubstepDoneFlags & { done?: boolean })[],
+): boolean {
+  if (!step.done) return false;
+  return (
+    ingredientsOfStep.every((it) => batchIngredientExcluded(step, it) || !!it.done) &&
+    substepsOfStep.every((su) => batchSubstepExcluded(step, su) || !!su.done)
+  );
 }
 
 // Temps restant d'une étape : une étape entièrement traitée n'a plus rien à
