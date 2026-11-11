@@ -220,7 +220,7 @@ export function ShoppingWidget({
                     {[m.qty, m.unit].filter(Boolean).join(' ')}
                     {(() => {
                       const conv = ingredientConversionText(conversions, units, m.ref_id, m.unit, m.qty);
-                      return conv ? <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span> : null;
+                      return conv ? <span className="block text-on-surface-variant font-body-md text-[12px]">{conv}</span> : null;
                     })()}
                   </span>
                 </li>

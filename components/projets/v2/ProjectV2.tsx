@@ -771,7 +771,7 @@ export function ProjectV2({
           return (
             <>
               <span className="whitespace-nowrap">{[it.quantity, it.unit].filter(Boolean).join(' ')}</span>
-              {conv && <span className="font-body-md text-[12px] text-on-surface-variant"> ({conv})</span>}
+              {conv && <span className="block font-body-md text-[12px] text-on-surface-variant">{conv}</span>}
             </>
           );
         }}
@@ -1337,6 +1337,8 @@ export function ProjectV2({
           componentIds={ordered.map((c) => c.id)}
           units={units}
           ingredientRefs={ingredientRefs}
+          conversions={conversions}
+          unitRefs={unitRefs}
           referenceAllergenes={referenceAllergenes}
           tagsReference={tags}
           peutGenererIA={peutGenererIA}

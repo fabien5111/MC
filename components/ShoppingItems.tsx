@@ -390,7 +390,7 @@ export function ShoppingItems({
                   </span>
                   <span className={`font-label-md text-label-md text-primary whitespace-nowrap ${struck}`}>
                     {qty}
-                    {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
+                    {conv && <span className="block text-on-surface-variant font-body-md text-[12px]">{conv}</span>}
                   </span>
                   <button
                     type="button"

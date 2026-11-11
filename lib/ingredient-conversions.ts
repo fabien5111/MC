@@ -124,6 +124,29 @@ export function convertQty(
   return null;
 }
 
+// Équivalent en grammes d'une ligne exprimée dans une autre unité que le
+// gramme ou le kilo (« 2,08 unité(s) » d'œuf → « ≈ 104 g »), pour homogénéiser
+// l'affichage des quantités d'une recette reprise (mode projet). Passe
+// uniquement par la table de conversions de l'ingrédient (`convertQty`) :
+// `null` — donc rien d'affiché — si l'ingrédient n'est pas référencé, si la
+// conversion n'existe pas, si la quantité n'est pas un nombre, ou si la ligne
+// est déjà en masse. Un poids faux est pire qu'un poids absent.
+export function poidsEquivalentTexte(
+  conversions: ConversionRef[],
+  units: UnitRef[],
+  refId: number | null | undefined,
+  unitText: string | null | undefined,
+  quantity: string | number | null | undefined,
+): string | null {
+  const qty = parseQty(quantity);
+  if (!refId || !unitText || qty == null || qty <= 0) return null;
+  const key = normUnit(unitText);
+  if (key === 'g' || key === 'kg') return null;
+  const grams = convertQty(conversions, units, refId, unitText, qty, 'g');
+  if (grams == null || !isFinite(grams) || grams <= 0) return null;
+  return `≈ ${Math.round(grams)} g`;
+}
+
 export type WeightEstimate = {
   // Arrondi au gramme — c'est une estimation, pas une pesée.
   grams: number;

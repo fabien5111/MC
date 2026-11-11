@@ -1413,7 +1413,7 @@ function PreparerView({
                     {qtyTxt}
                     {qtyTxt && unit ? ' ' : ''}
                     {unit ? (tip ? <span className="unit-tip" title={tip}>{unit}</span> : unit) : null}
-                    {conv && <span className="text-on-surface-variant font-body-md font-normal text-[12px]"> ({conv})</span>}
+                    {conv && <span className="block text-on-surface-variant font-body-md font-normal text-[12px]">{conv}</span>}
                   </span>
                 );
               };
@@ -2511,7 +2511,7 @@ function StepCookCard({
                   <ARacheterButton nom={ing.name} refId={ing.ref_id} autorise={peutRacheter} />
                 </div>
                 <span className={`font-label-md text-label-md text-on-surface-variant ml-9${struck}`}>
-                  prévu {prevTxt} {conv && <span className="text-[14px]">({conv})</span>}
+                  prévu {prevTxt} {conv && <span className="block text-[14px]">{conv}</span>}
                 </span>
                 <div className="flex items-center gap-2 sm:gap-3 ml-9">
                   {realInput}
@@ -2563,7 +2563,7 @@ function StepCookCard({
                           <span className={`text-[12px] font-label-md text-on-surface-variant${su.done || subExcluded ? ' line-through opacity-50' : ''}`}>
                             <NomIngredient nom={it.name} quantite={it.quantity ?? it.quantity_text} unite={it.unit} refId={it.ref_id} />
                             {qtyTxt && <> — {qtyTxt}</>}
-                            {conv && <> ({conv})</>}
+                            {conv && <span className="block">{conv}</span>}
                             {it.comment && <span className="italic"> ({it.comment})</span>}
                           </span>
                         </li>

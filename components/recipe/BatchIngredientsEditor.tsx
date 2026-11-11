@@ -239,7 +239,7 @@ export function BatchStepIngredients({
             )
           ) : null}
         </span>
-        {conv && <span className="text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
+        {conv && <span className="block text-on-surface-variant font-body-md text-[12px]">{conv}</span>}
       </>
     );
   };

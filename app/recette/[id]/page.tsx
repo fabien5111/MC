@@ -238,7 +238,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
             )
           ) : null}
         </span>
-        {conv && <span className="print-fs-9 text-on-surface-variant font-body-md text-[12px]"> ({conv})</span>}
+        {conv && <span className="block print-fs-9 text-on-surface-variant font-body-md text-[12px]">{conv}</span>}
       </>
     );
   };
