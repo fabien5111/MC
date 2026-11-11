@@ -8,6 +8,7 @@
 import 'server-only';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import sharp from 'sharp';
 
 export const OG_TAILLE = { width: 1200, height: 630 };
 
@@ -72,3 +73,15 @@ export async function optionsPolice() {
 export const FAMILLE_TITRE = 'Playfair Display, serif';
 /** Famille du logo « Je pâtisse ! » : Parisienne si chargée. */
 export const FAMILLE_LOGO = 'Parisienne, cursive';
+
+/**
+ * Convertit en JPEG la carte rendue par `ImageResponse` (toujours du PNG) : les
+ * routes `opengraph-image` qui recadrent une photo déclarent `image/jpeg`, la
+ * carte de repli doit donc en être un aussi, sans quoi le type annoncé dans les
+ * balises ne correspondrait pas à l'image servie.
+ */
+export async function carteEnJpeg(carte: Response, cache: string): Promise<Response> {
+  const png = Buffer.from(await carte.arrayBuffer());
+  const jpeg = await sharp(png).jpeg({ quality: 88 }).toBuffer();
+  return new Response(new Uint8Array(jpeg), { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': cache } });
+}

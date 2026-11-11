@@ -13,7 +13,7 @@
 import sharp from 'sharp';
 import { ImageResponse } from 'next/og';
 import { getArticle } from '@/lib/blog';
-import { FAMILLE_TITRE, OG_COULEURS as C, OG_TAILLE, optionsPolice } from '@/lib/og-image';
+import { carteEnJpeg, FAMILLE_TITRE, OG_COULEURS as C, OG_TAILLE, optionsPolice } from '@/lib/og-image';
 import { cleDepuisUrlCanonique, urlCanonique } from '@/lib/storage-data';
 
 export const alt = 'Article du blog Je pâtisse !';
@@ -93,5 +93,5 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     ),
     { ...OG_TAILLE, ...police },
   );
-  return carte;
+  return carteEnJpeg(carte, CACHE);
 }
