@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: 'Je pâtisse !',
   description:
-    'La haute pâtisserie à la maison — créez, partagez et maîtrisez vos recettes.',
+    'Ton carnet de recettes, de l’idée à la fournée — créez, partagez et maîtrisez vos recettes.',
   manifest: '/manifest.json',
   // Carte d'aperçu des partages (JEP-21) — l'image vient de
   // `app/opengraph-image.tsx`, que Next associe d'office.
@@ -37,8 +37,8 @@ export const metadata: Metadata = {
     locale: 'fr_FR',
     // Plus long que le titre de l'onglet (JEP-281) : les inspecteurs de carte
     // conseillent 50 à 60 caractères. Seul og:title change.
-    title: 'Je pâtisse ! — La haute pâtisserie à la maison',
-    description: 'La haute pâtisserie à la maison — créez, partagez et maîtrisez vos recettes.',
+    title: 'Je pâtisse ! — Ton carnet de recettes, de l’idée à la fournée',
+    description: 'Ton carnet de recettes, de l’idée à la fournée — créez, partagez et maîtrisez vos recettes.',
   },
   twitter: { card: 'summary_large_image' },
 };

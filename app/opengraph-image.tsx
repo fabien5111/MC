@@ -12,7 +12,7 @@ import { ImageResponse } from 'next/og';
 import { getPublicSiteSettings } from '@/lib/site';
 import { chargerImageOg, FAMILLE_LOGO, FAMILLE_TITRE, OG_COULEURS as C, OG_TAILLE, optionsPolice } from '@/lib/og-image';
 
-export const alt = 'Je pâtisse ! — la haute pâtisserie à la maison';
+export const alt = 'Je pâtisse ! — Ton carnet de recettes, de l’idée à la fournée';
 export const size = OG_TAILLE;
 export const contentType = 'image/png';
 // Jamais pré-générée pendant la construction : avec les vraies variables, le

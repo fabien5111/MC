@@ -52,4 +52,4 @@ export function lienReseau(reseau: Reseau, c: ContenuPartage): string {
 export const MESSAGE_PARTAGE_CARNET = 'Je te partage mes recettes sur Je pâtisse !';
 
 export const MESSAGE_PARTAGE_SITE =
-  'Je pâtisse ! — la haute pâtisserie à la maison : ton carnet de recettes, les fournées guidées et la liste de courses.';
+  'Je pâtisse ! — Ton carnet de recettes, de l’idée à la fournée : recettes ajustables, planification pas à pas, import et création de recettes.';
