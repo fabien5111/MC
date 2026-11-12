@@ -3323,6 +3323,16 @@ au-dessus (relevé `ai_usage` du 11/11/2026).
   (« échouer en ouvert sur une erreur de configuration »). Mais sans la ligne
   `credits_ia_mensuel` dans la grille, toutes les fonctions IA sont refusées :
   **SQL avant déploiement**.
+- **Tarif affiché sur la page des plans** (`lignesCoutIA`, `lib/credits-ia.ts`,
+  rendu par `PlansPage`) : une fonction d'IA n'y montre plus un plafond mensuel
+  mais son **coût en crédits** — import déplié en trois lignes (texte collé, PDF,
+  photos), ajustement, mode projet —, avec une **fourchette** quand un calcul
+  précède l'imputation (« 3 à 9 crédits » selon la longueur du texte, « 5 à 26 »
+  pour 1 à 8 pages) et la précision en petit sous le chiffre (pas d'infobulle :
+  pas de survol au doigt). Textes **calculés depuis les constantes de la grille**,
+  jamais saisis en base : la page ne peut pas s'écarter de ce qui est facturé.
+  Les formules sans droit gardent « — ». Une nouvelle fonction d'IA se déclare
+  dans `lignesCoutIA`, avec son test.
 - **Journal `ai_credit_movements`** : lecture du propriétaire (RLS), aucune
   policy d'écriture, purge à 13 mois (pg_cron). Dans `TABLES_A_VIDER` et
   l'export (`historique_credits_ia`). L'historique dans `/reglages`, le coût sur

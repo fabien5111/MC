@@ -93,6 +93,73 @@ export function coutImportPhoto(nbPages: number): number {
   return COUT_PHOTO_STRUCTURATION + COUT_PHOTO_PAGE * pages;
 }
 
+// ── Affichage du tarif (page des plans) ─────────────────────
+
+/** « 3 à 9 crédits », ou « 1 crédit » quand il n'y a rien à encadrer. */
+function fourchette(min: number, max: number): string {
+  return min === max ? libelleCredits(min) : `${min} à ${libelleCredits(max)}`;
+}
+
+/** Une ligne du tableau des formules : ce que coûte une action, en crédits. */
+export type LigneCout = {
+  /** Libellé de la ligne ; `null` = celui de la fonctionnalité de la grille. */
+  label: string | null;
+  /** Ce qui s'affiche dans la cellule des formules qui y ont droit. */
+  texte: string;
+  /** Précision en petit sous le chiffre (jamais une infobulle : pas de survol au doigt). */
+  precision: string;
+};
+
+/**
+ * Lignes de coût d'une fonctionnalité d'IA, pour le tableau des formules
+ * (JEP-405). Calculées depuis les constantes de la grille ci-dessus — jamais
+ * écrites à la main —, pour que ce que la page annonce ne puisse pas s'écarter
+ * de ce qui est facturé. `null` : la fonctionnalité n'est pas une fonction d'IA
+ * (la page l'affiche alors comme n'importe quelle ligne de la grille).
+ *
+ * **Fourchette quand un calcul précède l'imputation** : la longueur du texte
+ * (import texte, PDF), le nombre de pages (photos) ou la nature de la demande
+ * (mode projet).
+ */
+export function lignesCoutIA(featureKey: string): LigneCout[] | null {
+  const maxTranche = TRANCHES_IMPORT[TRANCHES_IMPORT.length - 1].credits;
+  switch (featureKey) {
+    case 'import_ia_mensuel':
+      return [
+        {
+          label: 'Import par texte collé',
+          texte: fourchette(TRANCHES_IMPORT[0].credits, maxTranche),
+          precision: 'selon la longueur du texte',
+        },
+        {
+          label: 'Import par PDF',
+          texte: fourchette(TRANCHES_IMPORT[0].credits, maxTranche),
+          precision: 'selon la longueur du texte du PDF',
+        },
+        {
+          label: 'Import par photos',
+          texte: fourchette(coutImportPhoto(1), coutImportPhoto(PAGES_PHOTO_MAX)),
+          precision: `${COUT_PHOTO_STRUCTURATION} + ${COUT_PHOTO_PAGE} par page, ${PAGES_PHOTO_MAX} pages au plus`,
+        },
+      ];
+    case 'ajustement_ia_mensuel':
+      return [{ label: null, texte: libelleCredits(COUT_AJUSTEMENT), precision: 'par ajustement' }];
+    case 'mode_projet_ia_mensuel':
+      return [
+        {
+          label: null,
+          texte: fourchette(
+            Math.min(COUT_PROJET_STRUCTURE, COUT_PROJET_COMPOSANT),
+            Math.max(COUT_PROJET_STRUCTURE, COUT_PROJET_COMPOSANT),
+          ),
+          precision: `${COUT_PROJET_STRUCTURE} par proposition de structure, ${COUT_PROJET_COMPOSANT} par préparation`,
+        },
+      ];
+    default:
+      return null;
+  }
+}
+
 // ── Solde ───────────────────────────────────────────────────
 
 /** Ce que l'interface sait du solde (`mc_check_quota`). `null` = inconnu. */

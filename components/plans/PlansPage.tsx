@@ -18,6 +18,7 @@ import { formatDate } from '@/lib/format';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { CheckoutWaiverDialog } from '@/components/plans/CheckoutWaiverDialog';
 import { CGV_VERSION } from '@/lib/cgv';
+import { lignesCoutIA, type LigneCout } from '@/lib/credits-ia';
 import {
   annualSaving,
   diffRights,
@@ -592,35 +593,50 @@ function FragmentSection({
       </tr>
       {[...features]
         .sort((a, b) => a.orderIndex - b.orderIndex)
-        .map((f) => (
-          <tr key={f.key} className="border-b border-outline-variant/50">
-            <td className="sticky left-0 z-10 min-w-[8.5rem] bg-surface p-3 text-on-surface-variant shadow-[2px_0_0_0_rgb(0_0_0/0.06)] sm:shadow-none" title={f.description ?? undefined}>
-              {f.label}
-            </td>
-            {plans.map((p) => {
-              const right = grid.rights[p.code]?.[f.key];
-              // JEP-55 : un plan inactif ne peut apparaître dans `plans` que
-              // s'il est le plan courant du membre affiché (filtre au-dessus,
-              // `p.active || p.code === currentPlanCode`) — c'est donc,
-              // structurellement, la colonne d'un plan technique d'essai
-              // (§12 docs/abonnements.md), jamais une formule qu'on peut
-              // souscrire. Pas de champ dédié à ajouter : l'invariant existe
-              // déjà.
-              const texte = formatRight(right, f, !p.active);
-              return (
-                <td key={p.code} className="p-3 text-center">
-                  {right?.value === 'NO' ? (
-                    <span className="text-on-surface-variant/50">—</span>
-                  ) : right?.value === 'YES' ? (
-                    <span className="material-symbols-outlined align-middle text-tertiary">check</span>
-                  ) : (
-                    <span className="font-semibold text-on-surface">{texte}</span>
-                  )}
-                </td>
-              );
-            })}
-          </tr>
-        ))}
+        .flatMap((f) => {
+          // JEP-405 : une fonction d'IA ne montre pas un plafond mensuel mais
+          // ce qu'elle COÛTE en crédits (une ligne par usage, fourchette quand
+          // un calcul précède l'imputation). Textes calculés depuis la grille
+          // de `lib/credits-ia.ts`, jamais saisis en base.
+          const couts = lignesCoutIA(f.key);
+          const lignes: { cle: string; label: string; cout: LigneCout | null }[] = couts
+            ? couts.map((c, i) => ({ cle: `${f.key}:${i}`, label: c.label ?? f.label, cout: c }))
+            : [{ cle: f.key, label: f.label, cout: null }];
+          return lignes.map(({ cle, label, cout }) => (
+            <tr key={cle} className="border-b border-outline-variant/50">
+              <td className="sticky left-0 z-10 min-w-[8.5rem] bg-surface p-3 text-on-surface-variant shadow-[2px_0_0_0_rgb(0_0_0/0.06)] sm:shadow-none" title={f.description ?? undefined}>
+                {label}
+              </td>
+              {plans.map((p) => {
+                const right = grid.rights[p.code]?.[f.key];
+                // JEP-55 : un plan inactif ne peut apparaître dans `plans` que
+                // s'il est le plan courant du membre affiché (filtre au-dessus,
+                // `p.active || p.code === currentPlanCode`) — c'est donc,
+                // structurellement, la colonne d'un plan technique d'essai
+                // (§12 docs/abonnements.md), jamais une formule qu'on peut
+                // souscrire. Pas de champ dédié à ajouter : l'invariant existe
+                // déjà.
+                const texte = formatRight(right, f, !p.active);
+                return (
+                  <td key={p.code} className="p-3 text-center">
+                    {right?.value === 'NO' || (cout && !right) ? (
+                      <span className="text-on-surface-variant/50">—</span>
+                    ) : cout && right ? (
+                      <>
+                        <span className="font-semibold text-on-surface">{cout.texte}</span>
+                        <span className="mt-0.5 block text-xs font-normal text-on-surface-variant">{cout.precision}</span>
+                      </>
+                    ) : right.value === 'YES' ? (
+                      <span className="material-symbols-outlined align-middle text-tertiary">check</span>
+                    ) : (
+                      <span className="font-semibold text-on-surface">{texte}</span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ));
+        })}
     </>
   );
 }
