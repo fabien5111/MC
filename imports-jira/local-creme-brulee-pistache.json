@@ -1,0 +1,87 @@
+{
+  "ticket": "local-creme-brulee-pistache",
+  "recette": {
+    "titre": "Crème brûlée pistache",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème onctueuse et fondante au goût franc de pistache, cuite à basse température sans caramélisation. Coulée en cercle puis congelée, elle sert d'insert crémeux dans un entremets, une bûche ou des individuels.",
+    "rendement": "1 cercle Ø 18 cm, 1,4 cm de hauteur — environ 360 g de crème utilisable (402 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Bol",
+      "Fouet",
+      "Maryse",
+      "Mixeur plongeant",
+      "Chinois étamine",
+      "Thermomètre de cuisson",
+      "Cercle Ø 18 cm",
+      "Plaque de cuisson",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crème brûlée pistache",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 265,
+        "temps_cuisson_minutes": 50,
+        "temperature_cuisson_celsius": 95,
+        "anticipation_jours": 1,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 2 mois au congélateur, décerclée et filmée au contact.",
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 260,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de pistache",
+            "quantite": 35,
+            "unite": "g",
+            "commentaire": "pure, 100 % pistache, sans sucre"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 2,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 95 °C, puis filmer le fond d'un cercle Ø 18 cm en remontant le film sur l'extérieur et le poser sur une plaque.",
+          "Faire tremper la gélatine 10 min dans un bol d'eau froide.",
+          "Chauffer la crème à 80 °C dans une casserole, y dissoudre hors du feu la gélatine essorée, puis la verser petit à petit sur la pâte de pistache en mélangeant pour la détendre sans grumeaux.",
+          "Mélanger les jaunes et le sucre au fouet dans un cul-de-poule, juste jusqu'à dissolution du sucre, sans faire mousser.",
+          "Verser la crème pistache chaude sur les jaunes en mélangeant à la maryse, puis mixer au mixeur plongeant, tête immergée, pour lisser l'appareil.",
+          "Passer au chinois étamine et laisser reposer 10 min, puis retirer les bulles remontées en surface.",
+          "Couler dans le cercle filmé sur environ 1,4 cm et cuire 45 à 55 min à 95 °C, jusqu'à ce que la crème soit prise sur les bords et tremblotante au centre.",
+          "Laisser tiédir 15 min, puis congeler à cœur au moins 4 h avant de décercler."
+        ],
+        "conseils_etape": "Ne jamais faire mousser les jaunes : chaque bulle laisse un trou dans l'insert, d'où le mixage tête immergée et l'écumage avant cuisson ; le film doit être bien tendu et remonté à l'extérieur du cercle pour que l'appareil ne fuie pas. La crème est cuite quand elle tremble d'un bloc au centre sans onde liquide — au-delà de 85 °C à cœur elle graine et rend de l'eau. La gélatine ne sert qu'à la tenue de l'insert à la décongélation dans l'entremets : ne pas dépasser 2 g, sinon la crème perd son fondant."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets Ø 20 cm, insert Ø 16 cm sur 1,5 cm : ≈ 305 g de crème, soit ×0,85 de la recette.",
+      "Utilisation — Entremets Ø 24 cm, insert Ø 20 cm sur 1,5 cm : ≈ 475 g de crème, soit ×1,32 de la recette.",
+      "Utilisation — Entremets Ø 16 cm, insert Ø 14 cm sur 1,5 cm : ≈ 235 g de crème, soit ×0,65 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, insert Ø 5 cm sur 1,5 cm (empreintes ou mini-cercles filmés) : ≈ 30 g de crème par pièce, soit environ 12 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert en bande 20 x 4 cm sur 1,5 cm : ≈ 120 g de crème, soit ×0,33 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert en bande 30 x 5 cm sur 1,5 cm : ≈ 225 g de crème, soit ×0,63 de la recette.",
+      "Utilisation — Entremets carré en cadre 18 x 18 cm, insert carré 16 x 16 cm sur 1,5 cm : ≈ 390 g de crème, soit ×1,08 de la recette.",
+      "Variante — Pâte de pistache sucrée : garder 35 g de pâte et réduire le sucre semoule à 30 g.",
+      "Variante — Pistache-griotte : déposer quelques griottes égouttées dans l'appareil coulé avant cuisson."
+    ],
+    "conseils_conservation": "Congelée, décerclée et filmée au contact : jusqu'à 2 mois. Toujours la poser congelée dans le montage (mousse ou crémeux), sans la décongeler avant. Une fois l'entremets monté, compter 24 h de décongélation au réfrigérateur et 2 jours de consommation."
+  }
+}
