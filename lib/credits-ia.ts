@@ -95,9 +95,13 @@ export function coutImportPhoto(nbPages: number): number {
 
 // ── Affichage du tarif (page des plans) ─────────────────────
 
-/** « 3 à 9 crédits », ou « 1 crédit » quand il n'y a rien à encadrer. */
+/**
+ * « 3 à 9 crédits IA », ou « 1 crédit IA » quand il n'y a rien à encadrer. Le
+ * « IA » est écrit ici, et non seulement dans le libellé de la ligne « Crédits
+ * IA » : dans le tableau, la cellule se lit seule, sans repasser par sa ligne.
+ */
 function fourchette(min: number, max: number): string {
-  return min === max ? libelleCredits(min) : `${min} à ${libelleCredits(max)}`;
+  return `${min === max ? libelleCredits(min) : `${min} à ${libelleCredits(max)}`} IA`;
 }
 
 /** Une ligne du tableau des formules : ce que coûte une action, en crédits. */
@@ -143,7 +147,7 @@ export function lignesCoutIA(featureKey: string): LigneCout[] | null {
         },
       ];
     case 'ajustement_ia_mensuel':
-      return [{ label: null, texte: libelleCredits(COUT_AJUSTEMENT), precision: 'par ajustement' }];
+      return [{ label: null, texte: fourchette(COUT_AJUSTEMENT, COUT_AJUSTEMENT), precision: 'par ajustement' }];
     case 'mode_projet_ia_mensuel':
       return [
         {

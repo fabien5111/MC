@@ -77,22 +77,22 @@ describe('tarif affiché sur la page des plans', () => {
   it('import : trois lignes, fourchettes calculées depuis la grille', () => {
     const l = lignesCoutIA('import_ia_mensuel');
     expect(l?.map((x) => [x.label, x.texte])).toEqual([
-      ['Import par texte collé', '3 à 9 crédits'],
-      ['Import par PDF', '3 à 9 crédits'],
-      ['Import par photos', '5 à 26 crédits'],
+      ['Import par texte collé', '3 à 9 crédits IA'],
+      ['Import par PDF', '3 à 9 crédits IA'],
+      ['Import par photos', '5 à 26 crédits IA'],
     ]);
     expect(l?.[2].precision).toBe('2 + 3 par page, 8 pages au plus');
   });
 
   it('ajustement : un seul coût, libellé de la grille conservé', () => {
     expect(lignesCoutIA('ajustement_ia_mensuel')).toEqual([
-      { label: null, texte: '1 crédit', precision: 'par ajustement' },
+      { label: null, texte: '1 crédit IA', precision: 'par ajustement' },
     ]);
   });
 
   it('mode projet : de 1 à 2 crédits selon la demande', () => {
     const l = lignesCoutIA('mode_projet_ia_mensuel');
-    expect(l?.[0].texte).toBe('1 à 2 crédits');
+    expect(l?.[0].texte).toBe('1 à 2 crédits IA');
     expect(l?.[0].precision).toBe('1 par proposition de structure, 2 par préparation');
   });
 
