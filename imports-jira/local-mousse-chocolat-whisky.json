@@ -1,0 +1,91 @@
+{
+  "ticket": "local-mousse-chocolat-whisky",
+  "recette": {
+    "titre": "Mousse chocolat-whisky (pâte à bombe)",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse au chocolat noir aérienne et dense à la fois, montée sur une pâte à bombe, relevée par des notes boisées et vanillées de whisky. Idéale en version adulte de bûche, elle sert de corps de l'entremets ou de remplissage autour d'un croustillant ou d'un biscuit.",
+    "rendement": "1 entremets rond Ø 20 cm, 4 cm de hauteur — environ 700 g de mousse crue",
+    "ustensiles": [
+      "Casserole",
+      "Thermomètre de cuisson",
+      "Robot pâtissier avec fouet",
+      "Fouet",
+      "Bain-marie",
+      "Cul-de-poule",
+      "Maryse"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Mousse chocolat-whisky",
+        "page": null,
+        "temps_preparation_minutes": 35,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir 66 %",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 %",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Whisky",
+            "quantite": 35,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans de l'eau très froide pendant 10 minutes, puis l'essorer.",
+          "Faire fondre le chocolat au bain-marie à 45 °C, puis le maintenir à 40 °C au bain-marie, hors du feu.",
+          "Monter la crème liquide très froide au fouet jusqu'à une texture mousseuse et souple, qui forme un bec d'oiseau mou, puis la réserver au froid.",
+          "Cuire l'eau et le sucre à 118 °C dans une casserole.",
+          "Fouetter les jaunes à vitesse moyenne, verser le sirop à 118 °C en filet le long du bol, ajouter aussitôt la gélatine essorée, puis fouetter 8 à 10 minutes jusqu'à refroidissement (30 °C) et texture de ruban épais et pâle.",
+          "Verser un tiers de la pâte à bombe sur le chocolat et mélanger vigoureusement, puis incorporer le reste à la maryse en soulevant la masse.",
+          "Ajouter le whisky en filet, en deux fois, sur cette base encore tiède à 35 °C, puis lisser jusqu'à obtenir un appareil brillant.",
+          "Incorporer la crème montée en trois fois à la maryse, sans écraser, puis utiliser aussitôt et laisser prendre 4 h au réfrigérateur."
+        ],
+        "conseils_etape": "Le whisky (40 % vol.) est dosé à 5 % du poids de la mousse, soit 35 g pour 700 g, sans jamais dépasser 6 % : au-delà, l'alcool et l'eau diluent la structure du chocolat et du beurre de cacao, et la mousse devient fluide. Ne jamais cuire ni chauffer le whisky ; l'ajouter sur la base tiède et avant la crème, afin de ne pas faire retomber la mousse par un mélange tardif. Ne pas monter la crème trop ferme : elle deviendrait granuleuse."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, hauteur 4 cm : ≈ 450 g de mousse, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, hauteur 4 cm : ≈ 700 g de mousse, soit ×1 (recette entière).",
+      "Utilisation — Entremets rond Ø 24 cm, hauteur 4 cm : ≈ 1010 g de mousse, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles, hauteur 4 cm : Ø 7 cm ≈ 85 g par pièce (×0,12), soit 8 pièces avec la recette entière ; Ø 8 cm ≈ 110 g par pièce (×0,16), soit 6 pièces.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm (demi-cylindre, profondeur 3,5 cm), mousse en corps de bûche autour d'un croustillant ou d'un insert : ≈ 215 g de mousse gouttière pleine, à réduire du volume de l'insert, soit ×0,31 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm (demi-cylindre, profondeur 4 cm), mousse en corps de bûche : ≈ 420 g de mousse gouttière pleine, à réduire du volume de l'insert, soit ×0,60 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, hauteur 3 cm, mousse en couche d'entremets : ≈ 540 g de mousse, soit ×0,77 de la recette.",
+      "Utilisation — Cadre carré 24 x 24 cm, hauteur 3 cm, mousse en couche d'entremets : ≈ 965 g de mousse, soit ×1,38 de la recette.",
+      "Astuce — Pour une bûche destinée à la congélation, rester à 5 % de whisky : à cette dose, l'alcool (environ 2 % de la mousse) ne modifie pas la tenue après décongélation, alors qu'un surdosage fragilise la structure.",
+      "Astuce — Choisir un whisky rond et fruité (single malt doux, bourbon) ; un whisky très tourbé domine vite le chocolat."
+    ],
+    "conseils_conservation": "Mousse montée à utiliser aussitôt après sa préparation, avant qu'elle ne se raffermisse. Conservation de la mousse prise 2 jours au réfrigérateur sous film au contact (jaunes chauffés par le sirop sans pasteurisation garantie : ne pas dépasser 48 h ; préférer des jaunes pasteurisés pour les publics fragiles). Congélation possible jusqu'à 1 mois, bien emballée. Décongeler 8 h au réfrigérateur, jamais à température ambiante. Sortir 15 minutes avant la dégustation pour une texture fondante."
+  }
+}
