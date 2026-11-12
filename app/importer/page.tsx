@@ -67,12 +67,13 @@ export default async function ImporterPage() {
   // `usage` absent = lecture en échec (best-effort, cf. `checkQuota`) : pas
   // de chiffre à afficher plutôt qu'un nombre inventé.
   const essai = currentPlan?.type === 'TRIAL';
-  const periode = essai ? "dans l'essai" : 'dans le mois';
+  // JEP-405 : on annonce ce qu'il RESTE, pas ce qui est consommé — c'est ce qui
+  // dit si l'import qu'on s'apprête à lancer passera.
   const compteurImports =
-    quotaImport && quotaImport.usage != null
-      ? quotaImport.limit != null
-        ? `${quotaImport.usage} / ${quotaImport.limit} crédits IA utilisés ${periode}`
-        : `${quotaImport.usage} crédit${quotaImport.usage > 1 ? 's' : ''} IA utilisé${quotaImport.usage > 1 ? 's' : ''} ${periode}`
+    quotaImport && quotaImport.usage != null && quotaImport.limit != null
+      ? `Il vous reste ${Math.max(0, quotaImport.limit - quotaImport.usage)} crédit${
+          quotaImport.limit - quotaImport.usage > 1 ? 's' : ''
+        } IA sur ${quotaImport.limit} ${essai ? "pour l'essai" : 'ce mois-ci'}`
       : null;
 
   return (

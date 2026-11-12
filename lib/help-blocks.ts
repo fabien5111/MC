@@ -147,6 +147,7 @@ export const HELP_BLOCKS: HelpBlockDef[] = [
   { key: 'recette.extraire', title: 'Extraire des étapes en recette', page: 'recette', adminLabel: "Fenêtre « Extraire des étapes en recette », en tête" },
   { key: 'recherche.facettes', title: 'Affiner sa recherche', page: 'recherche', adminLabel: "/recherche, au-dessus de la liste des résultats" },
   { key: 'reglages.notifications', title: 'Régler ses notifications', page: 'reglages', adminLabel: "Bloc « Notifications », avant la grille" },
+  { key: 'reglages.credits_ia', title: 'Comment marchent les crédits IA', page: 'reglages', adminLabel: "Bloc « Historique des crédits IA », en tête" },
   { key: 'idees.nouvelle', title: 'Proposer une idée', page: 'idees', adminLabel: "/idees/nouvelle, avant le formulaire" },
 ];
 

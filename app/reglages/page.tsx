@@ -13,6 +13,8 @@ import { RecipeSharesCard } from '@/components/profile/RecipeSharesCard';
 import { getVisibleHelpBlocks } from '@/lib/help';
 import { NotificationPreferencesCard } from '@/components/profile/NotificationPreferencesCard';
 import { UsageCard } from '@/components/profile/UsageCard';
+import { CreditsIaHistorique } from '@/components/profile/CreditsIaHistorique';
+import { getHistoriqueCredits } from '@/lib/credits-historique-data';
 import { MesDemandesCard } from '@/components/profile/MesDemandesCard';
 import { DeleteAccountCard } from '@/components/profile/DeleteAccountCard';
 import { ExportDonneesCard } from '@/components/profile/ExportDonneesCard';
@@ -84,7 +86,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
   const identities = await getUserIdentities();
   const hasPassword = identities ? identities.some((i) => i.provider === 'email') : true;
 
-  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notificationPrefs, usage, grid, currentPlan, trialConsumed, mesDemandes, abonnementStripeCourant, appareilsPush, helpBlocks] =
+  const [followCounts, following, bookSharesGiven, recipeSharesGiven, notificationPrefs, usage, grid, currentPlan, trialConsumed, mesDemandes, abonnementStripeCourant, appareilsPush, helpBlocks, historiqueCredits] =
     await Promise.all([
       getFollowCounts(user.id),
       getFollowing(user.id),
@@ -99,6 +101,7 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
       getAbonnementStripeCourant(user.id),
       countPushDevices(user.id),
       getVisibleHelpBlocks('reglages', user.id),
+      getHistoriqueCredits(user.id),
     ]);
   // Second temps, dépendant du premier : `getChangementProgramme` a besoin de
   // l'identifiant Stripe résolu ci-dessus, pas de raison de le lancer pour un
@@ -155,6 +158,14 @@ export default async function ReglagesPage({ searchParams }: SearchParams) {
           hasStripeCustomer={!!(await getIdClientStripe(user.id))}
           changementProgramme={changementProgramme}
         />
+        {/* JEP-405 — table absente (migration pas jouée) : rien d'affiché. */}
+        {historiqueCredits && (
+          <CreditsIaHistorique
+            periodes={historiqueCredits.periodes}
+            importsExistants={historiqueCredits.importsExistants}
+            helpBlocks={helpBlocks}
+          />
+        )}
         {user.email && <EmailChangeCard email={user.email} hasPassword={hasPassword} />}
         {user.email && <PasswordChangeCard email={user.email} hasPassword={hasPassword} />}
         <FollowingCard userId={user.id} following={following} />

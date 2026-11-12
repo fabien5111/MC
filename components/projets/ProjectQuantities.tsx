@@ -37,6 +37,7 @@ import {
   type ScaleProposal,
 } from '@/lib/projects';
 import type { ProjectComponent, ProjectFull } from '@/lib/projects-data';
+import { COUT_AJUSTEMENT, libelleCredits } from '@/lib/credits-ia';
 
 const btnGhost =
   'rounded-pill border border-outline-variant px-4 py-2 font-label-md text-[12.5px] font-semibold text-primary transition-colors hover:bg-surface-container disabled:opacity-40';
@@ -226,7 +227,8 @@ export function QuantitiesStep({
     iaLimite != null && quotaAjustementIA?.usage != null
       ? Math.max(0, iaLimite - quotaAjustementIA.usage - iaConsommes)
       : null;
-  const iaEpuise = quotaAjustementIA != null && (!quotaAjustementIA.allowed || iaRestants === 0);
+  const iaEpuise =
+    quotaAjustementIA != null && (!quotaAjustementIA.allowed || (iaRestants != null && iaRestants < COUT_AJUSTEMENT));
   const [propositions, setPropositions] = useState<Record<number, ScaleProposal>>({});
   const [saisie, setSaisie] = useState<Record<number, string>>({});
   // Précisions libres pour l'ajustement par IA, par composant (JEP-254,
@@ -675,14 +677,14 @@ export function QuantitiesStep({
                     }
                     className={`${btnGhost} disabled:cursor-not-allowed disabled:opacity-50`}
                   >
-                    Ajuster avec l’IA
+                    Ajuster avec l’IA · {libelleCredits(COUT_AJUSTEMENT)} IA
                   </button>
                   {iaRestants != null && (
                     <span
                       className={`text-[12px] ${iaEpuise ? 'text-error' : 'text-on-surface-variant'}`}
-                      title="Crédits IA du mois, communs à l’import, à l’ajustement et au mode projet. « Ajuster avec l’IA » coûte 1 crédit."
+                      title="Crédits IA du mois, communs à l’import, à l’ajustement et au mode projet."
                     >
-                      Crédits IA : {(iaLimite ?? 0) - iaRestants}/{iaLimite} utilisés ce mois-ci
+                      Il vous reste {libelleCredits(iaRestants)} IA ce mois-ci
                     </span>
                   )}
                 </div>

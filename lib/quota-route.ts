@@ -14,13 +14,16 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { blockingMessage, quotaFailure, type QuotaFailure, type Verdict } from '@/lib/entitlements';
-import { CLE_CREDITS_IA, DROIT_ACTION, PAGES_PHOTO_MAX, type ActionCredits } from '@/lib/credits-ia';
+import { CLE_CREDITS_IA, DROIT_ACTION, PAGES_PHOTO_MAX, seuilFranchi, type ActionCredits } from '@/lib/credits-ia';
+import { notifier } from '@/lib/notifier';
+import { formatDate } from '@/lib/format';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   getCurrentPlan,
   getEntitlements,
   getGrid,
+  getUsageReport,
   messageCreditsEpuises,
 } from '@/lib/entitlements-data';
 
@@ -164,6 +167,8 @@ export async function reserverCredits(
   }
 
   const mouvementId = typeof data === 'number' ? data : Number(data) || null;
+  // Alerte à 80 % : après le débit, best-effort, jamais bloquante.
+  await alerterSeuilCredits(userId, credits);
   let rendu = false;
   return {
     mouvementId,
@@ -174,6 +179,39 @@ export async function reserverCredits(
       await rendreCredits(mouvementId);
     },
   };
+}
+
+/**
+ * Prévient le membre (cloche + téléphone par défaut) quand CE débit franchit
+ * 80 % de sa dotation. Une seule fois par période : la clé de dédoublonnage
+ * porte la date de recharge, donc un remboursement suivi d'un nouveau débit ne
+ * la renvoie pas. Best-effort absolu : une panne ici ne doit jamais faire
+ * échouer l'action IA, déjà débitée.
+ *
+ * Le seuil se détecte sur `mc_check_quota` (une lecture après le débit) ;
+ * `mc_usage_report`, plus lourd, n'est lu que dans le cas, rare, où le seuil
+ * est franchi — pour la date de recharge.
+ */
+async function alerterSeuilCredits(userId: string, credits: number): Promise<void> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc('mc_check_quota', { p_user_id: userId, p_key: CLE_CREDITS_IA });
+    if (error) return;
+    const d = data as { limit?: number; usage?: number } | null;
+    if (!seuilFranchi(d?.usage, d?.limit, credits)) return;
+
+    const rapport = await getUsageReport(userId);
+    const fin = rapport.find((l) => l.featureKey === CLE_CREDITS_IA)?.periodEnd ?? null;
+    const limite = d?.limit ?? 0;
+    await notifier(createAdminClient(), {
+      userId,
+      evenement: 'credits_ia_80',
+      donnees: { restants: Math.max(0, limite - (d?.usage ?? 0)), limite, rechargeLe: fin ? formatDate(fin) : null },
+      cleDedoublonnage: `credits_ia_80:${fin ?? new Date().toISOString().slice(0, 7)}`,
+    });
+  } catch (e) {
+    console.error('credits-ia/alerte :', (e as Error).message);
+  }
 }
 
 /**

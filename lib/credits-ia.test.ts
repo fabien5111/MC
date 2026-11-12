@@ -12,6 +12,7 @@ import {
   groupeValide,
   libelleCredits,
   lignesCoutIA,
+  seuilFranchi,
   soldeSuffisant,
 } from '@/lib/credits-ia';
 
@@ -105,5 +106,24 @@ describe('tarif affiché sur la page des plans', () => {
     for (const n of [0, 8_000, 8_001, 20_000, 20_001, 60_000]) {
       expect([3, 6, 9]).toContain(coutImportTexte(n));
     }
+  });
+});
+
+describe('alerte à 80 %', () => {
+  it('se déclenche au débit qui franchit le seuil, une fois', () => {
+    // Dotation 120 : seuil à 96 crédits.
+    expect(seuilFranchi(95, 120, 3)).toBe(false); // reste sous le seuil
+    expect(seuilFranchi(96, 120, 3)).toBe(true); // 93 -> 96 : franchi
+    expect(seuilFranchi(98, 120, 3)).toBe(true); // 95 -> 98 : franchi
+    expect(seuilFranchi(99, 120, 3)).toBe(false); // 96 -> 99 : déjà au-dessus
+    expect(seuilFranchi(120, 120, 1)).toBe(false);
+  });
+  it('un gros débit qui saute le seuil le franchit aussi', () => {
+    expect(seuilFranchi(100, 120, 26)).toBe(true); // 74 -> 100
+  });
+  it('dotation illimitée ou inconnue : jamais', () => {
+    expect(seuilFranchi(90, null, 3)).toBe(false);
+    expect(seuilFranchi(undefined, 120, 3)).toBe(false);
+    expect(seuilFranchi(90, 0, 3)).toBe(false);
   });
 });

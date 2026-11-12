@@ -42,6 +42,7 @@ import {
   coutImportTexte,
   creditsRestants,
   libelleCredits,
+  lignesCoutIA,
 } from '@/lib/credits-ia';
 
 type Result = {
@@ -61,6 +62,13 @@ const MAX_PDF_OCTETS = 30 * 1024 * 1024;
 // Plafond tenu aussi par la base (`mc_debiter_credits`, JEP-405) : l'écran
 // ne fait que l'annoncer.
 const MAX_PHOTOS = PAGES_PHOTO_MAX;
+
+// Coût annoncé avant l'envoi, depuis la grille (`lignesCoutIA`), jamais recopié :
+// un PDF se chiffre sur le texte qu'on en extrait (connu après lecture, donc
+// une fourchette ici), des photos sur leur nombre de pages (connu d'emblée).
+const COUTS_IMPORT = lignesCoutIA('import_ia_mensuel') ?? [];
+const COUT_PDF_AFFICHE = COUTS_IMPORT.find((l) => l.label === 'Import par PDF')?.texte ?? '3 à 9 crédits IA';
+const COUT_PHOTOS_AFFICHE = COUTS_IMPORT.find((l) => l.label === 'Import par photos')?.texte ?? '5 à 26 crédits IA';
 
 const tailleLisible = (octets: number): string =>
   octets < 1024 * 1024
@@ -467,7 +475,7 @@ export function ImporterForm({
               className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
-              Importer
+              Importer · {libelleCredits(coutImportTexte(texte.trim().length))} IA
             </button>
           </LockedHint>
         </div>
@@ -546,7 +554,7 @@ export function ImporterForm({
               className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
             >
               <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
-              Importer
+              Importer · {COUT_PDF_AFFICHE} IA
             </button>
           </LockedHint>
         </div>
@@ -657,7 +665,7 @@ export function ImporterForm({
               className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
             >
               <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
-              Importer
+              Importer · {photos.length ? `${libelleCredits(coutImportPhoto(photos.length))} IA` : COUT_PHOTOS_AFFICHE}
             </button>
           </LockedHint>
         </div>

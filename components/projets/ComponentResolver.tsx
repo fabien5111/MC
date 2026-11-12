@@ -49,6 +49,7 @@ import { RetoursEtape, RetoursIngredientNom, RetoursSousEtape, useEtapeRetours }
 import { TagFilter, type TagOption } from '@/components/projets/TagFilter';
 import { televerserImage } from '@/lib/storage-client';
 import { autoGrow, useAutoGrowOnResize } from '@/lib/auto-grow';
+import { COUT_PROJET_COMPOSANT, creditsRestants, libelleCredits } from '@/lib/credits-ia';
 
 // Délai avant de lancer la recherche pendant la frappe (JEP-254, point 11) —
 // même valeur que la recherche avancée.
@@ -198,12 +199,20 @@ export function ComponentResolver({
   // de `consignes` ci-dessus, qui corrige une proposition déjà vue.
   const [contexteIA, setContexteIA] = useState('');
 
-  const iaEpuise = peutGenererIA && quotaProjetIA != null && !quotaProjetIA.allowed;
+  // Crédits IA (JEP-405) : une proposition de préparation en coûte 2. Un solde
+  // de 1 ne suffit donc pas — le bouton se grise avant le clic, pas après un refus.
+  const soldeProjet = creditsRestants({ limite: quotaProjetIA?.limit ?? null, utilises: quotaProjetIA?.usage ?? null });
+  const iaEpuise =
+    peutGenererIA &&
+    quotaProjetIA != null &&
+    (!quotaProjetIA.allowed || (soldeProjet != null && soldeProjet < COUT_PROJET_COMPOSANT));
   // JEP-130 : même repère et même bulle que partout ailleurs, à la place du
   // `title` natif. Le motif décide de l'issue : sans le droit, /plans ;
   // crédit épuisé, aucun lien (il se renouvelle tout seul).
   const iaMessage = peutGenererIA
-    ? `Crédits IA épuisés ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Ils se renouvellent à la prochaine période.`
+    ? soldeProjet != null && soldeProjet > 0
+      ? `Il vous reste ${libelleCredits(soldeProjet)} IA ; cette proposition en demande ${COUT_PROJET_COMPOSANT}. Ils se renouvellent à la prochaine période.`
+      : `Crédits IA épuisés ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Ils se renouvellent à la prochaine période.`
     : "La proposition d'une recette de base par IA n'est pas incluse dans votre formule.";
 
   // Brouillon de contenu, alimenté soit par une proposition de l'IA, soit
@@ -743,7 +752,7 @@ export function ComponentResolver({
                         block
                       </span>
                     )}
-                    Demander une proposition à l’IA
+                    Demander une proposition à l’IA · {libelleCredits(COUT_PROJET_COMPOSANT)} IA
                   </button>
                 </LockedHint>
               )}
@@ -847,7 +856,7 @@ export function ComponentResolver({
                 Retour aux recettes
               </button>
               <button type="button" onClick={() => void demanderIA()} className={btnPrimary}>
-                Générer
+                Générer · {libelleCredits(COUT_PROJET_COMPOSANT)} IA
               </button>
             </div>
           </>

@@ -185,6 +185,26 @@ export function soldeSuffisant(etat: EtatCredits | null | undefined, cout: numbe
   return restants == null || restants >= cout;
 }
 
+/** Part de la dotation à partir de laquelle le membre est prévenu (alerte unique par période). */
+export const SEUIL_ALERTE_POURCENT = 80;
+
+/**
+ * Ce débit vient-il de FRANCHIR le seuil d'alerte ? `utilises` est la
+ * consommation APRÈS le débit de `credits`. Vrai une seule fois par montée :
+ * avant le débit on était sous le seuil, après on l'a atteint. Dotation
+ * illimitée ou inconnue : jamais.
+ */
+export function seuilFranchi(
+  utilises: number | null | undefined,
+  limite: number | null | undefined,
+  credits: number,
+  pourcent: number = SEUIL_ALERTE_POURCENT,
+): boolean {
+  if (utilises == null || limite == null || limite <= 0 || credits <= 0) return false;
+  const avant = utilises - credits;
+  return avant * 100 < pourcent * limite && utilises * 100 >= pourcent * limite;
+}
+
 /** « 1 crédit », « 6 crédits ». */
 export function libelleCredits(n: number): string {
   return `${n} crédit${Math.abs(n) > 1 ? 's' : ''}`;
