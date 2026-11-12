@@ -6,6 +6,9 @@
 // et en taille, puis passées en data-URL : une photo qui ne passe pas
 // disparaît de la carte, la carte, elle, s'affiche toujours.
 import 'server-only';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import sharp from 'sharp';
 
 export const OG_TAILLE = { width: 1200, height: 630 };
 
@@ -31,4 +34,54 @@ export async function chargerImageOg(url: string, delaiMs = 4000): Promise<strin
 
 export async function chargerImagesOg(urls: string[]): Promise<string[]> {
   return (await Promise.all(urls.map((u) => chargerImageOg(u)))).filter((u): u is string => !!u);
+}
+
+// Polices des cartes, en TTF STATIQUES : le moteur de `next/og` ne lit ni le
+// WOFF2 servi par `next/font` ni les polices variables. Fichiers versionnés
+// dans `app/fonts/og/` :
+// - Playfair Display 700 (titres), instance gras tirée de la police variable
+//   `playfair-display-latin.woff2` ;
+// - Parisienne 400 (le « Je pâtisse ! » du logo), `parisienne-latin.woff2`
+//   reconverti en TTF.
+// Chaque fichier est lu une fois par processus. En cas d'échec (absent,
+// illisible) on ne déclare pas la police et la carte s'affiche avec celle par
+// défaut du générateur — jamais d'erreur.
+const polices = new Map<string, Promise<ArrayBuffer | null>>();
+
+function lirePolice(fichier: string): Promise<ArrayBuffer | null> {
+  let p = polices.get(fichier);
+  if (!p) {
+    p = readFile(path.join(process.cwd(), 'app', 'fonts', 'og', fichier))
+      .then((b) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer)
+      .catch(() => null);
+    polices.set(fichier, p);
+  }
+  return p;
+}
+
+/** Option `fonts` d'`ImageResponse` : ne contient que les polices lues. */
+export async function optionsPolice() {
+  const [titre, script] = await Promise.all([lirePolice('playfair-display-700.ttf'), lirePolice('parisienne-400.ttf')]);
+  const fonts = [
+    ...(titre ? [{ name: 'Playfair Display', data: titre, weight: 700 as const, style: 'normal' as const }] : []),
+    ...(script ? [{ name: 'Parisienne', data: script, weight: 400 as const, style: 'normal' as const }] : []),
+  ];
+  return fonts.length ? { fonts } : {};
+}
+
+/** Famille CSS des titres : Playfair si chargée, sinon la police par défaut. */
+export const FAMILLE_TITRE = 'Playfair Display, serif';
+/** Famille du logo « Je pâtisse ! » : Parisienne si chargée. */
+export const FAMILLE_LOGO = 'Parisienne, cursive';
+
+/**
+ * Convertit en JPEG la carte rendue par `ImageResponse` (toujours du PNG) : les
+ * routes `opengraph-image` qui recadrent une photo déclarent `image/jpeg`, la
+ * carte de repli doit donc en être un aussi, sans quoi le type annoncé dans les
+ * balises ne correspondrait pas à l'image servie.
+ */
+export async function carteEnJpeg(carte: Response, cache: string): Promise<Response> {
+  const png = Buffer.from(await carte.arrayBuffer());
+  const jpeg = await sharp(png).jpeg({ quality: 88 }).toBuffer();
+  return new Response(new Uint8Array(jpeg), { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': cache } });
 }

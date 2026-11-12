@@ -3086,6 +3086,63 @@ chaque page porte sa carte d'aperçu (`app/opengraph-image.tsx`,
   (`descriptionPartage`, `lib/blog-content.ts`). Un `openGraph` de page
   **remplace** celui du layout : `siteName` et `locale` y sont donc redonnés.
 
+## Cartes d'aperçu de partage (JEP-281)
+
+Ce qu'affichent Facebook, WhatsApp, Pinterest… quand on colle un lien : quatre
+cartes, chacune dans son `opengraph-image.tsx`. Toutes sont **rendues à la
+demande** (`dynamic = 'force-dynamic'`), jamais pendant la construction (la
+construction de l'aperçu de la PR #303 avait saturé la mémoire du nœud).
+
+| Page | Carte | Image |
+|---|---|---|
+| Site (`/`, et toute page sans carte propre) | `app/opengraph-image.tsx` | générée (`next/og`) : logo, slogan, 4 fonctionnalités, bouton, photo |
+| Carnet partagé | `app/carnet/partage/[jeton]/opengraph-image.tsx` | générée (mosaïque de photos publiques) |
+| Article du blog | `app/blog/[slug]/opengraph-image.tsx` | couverture recadrée par `sharp` |
+| Recette | `app/recette/[id]/opengraph-image.tsx` | photo recadrée par `sharp` |
+
+- **Recadrage serveur en 1,91:1 (1200×630, JPEG)** pour les articles et les
+  recettes : les couvertures d'article sont en 2,4:1 (imposé par la mise en page)
+  et Facebook en rognait les bords. Aucune colonne ni champ d'éditeur en plus :
+  la route lit la couverture existante, les articles déjà publiés sont couverts.
+  **La source est restreinte à notre stockage** (`articles/` et `recettes/` de
+  `jp-photos`, `cleSourceRecette`) — jamais une URL libre, le serveur la
+  téléchargerait (SSRF). Photo absente, externe ou illisible : carte de marque
+  avec le titre en Playfair, **jamais d'erreur**. Les cartes de repli sont
+  converties en JPEG (`carteEnJpeg`) pour correspondre au `contentType` déclaré.
+- **Rien d'une recette non indexable n'en sort** : `recetteIndexable` (la règle
+  du plan du site et du `noindex` de la fiche) décide. Brouillon, recette privée,
+  projet en cours → carte de marque sans titre ni photo, et `og:title` /
+  `og:description` restent ceux du site. Les balises de la fiche
+  (`generateMetadata`) donnent titre et description (`descriptionRecettePartage`,
+  `lib/recette-partage.ts`, ramenée à 125 caractères) seulement pour une recette
+  indexable. Redonner `siteName` et `locale` : un `openGraph` de page **remplace**
+  celui du layout.
+- **Carte du site : la photo se règle dans Admin → Photos du site**, bloc « Carte
+  de partage du site » (`SiteCoverPhotoManager`, `site_settings.og_site_cover`,
+  clé publique de `lib/data/reference.ts`). **JPEG ou PNG, cadrage vertical
+  500 × 630 px** : le moteur d'image ne lit ni le WebP ni l'AVIF, et une seule image
+  illisible ferait échouer toute la carte — `chargerImageOg` (`lib/og-image.ts`)
+  filtre sur le type réel, borne temps et taille, et laisse tomber la photo
+  plutôt que la carte (texte seul). C'est pourquoi on n'y reprend pas la photo par
+  défaut des recettes, souvent en WebP. Aucune migration.
+- **Polices : TTF statiques dans `app/fonts/og/`** — le moteur de `next/og` ne lit
+  ni le WOFF2 servi par `next/font` ni les polices variables. Playfair Display 700
+  (instance gras tirée de la police variable) pour les titres, Parisienne 400
+  (`parisienne-latin.woff2` reconverti) pour le « Je pâtisse ! » du logo. Lues une
+  fois par processus (`optionsPolice`) ; fichier absent → police par défaut du
+  générateur, sans erreur. Un seul texte par carte n'a pas sa propre police : le
+  moteur applique à tout texte sans `fontFamily` la première police déclarée
+  (Playfair), d'où `FAMILLE_TITRE` posée sur la colonne de la carte du site.
+- **Titre de partage du site** (`og:title`) : « Je pâtisse ! — Ton carnet de
+  recettes, de l'idée à la fournée », plus long que le titre de l'onglet (les
+  inspecteurs conseillent 50 à 60 caractères). Le même slogan sert la description
+  du site, le manifeste PWA et `MESSAGE_PARTAGE_SITE`. **Le changer, c'est le
+  changer partout** : `grep` sur l'ancien texte, il est répété dans cinq fichiers.
+- **Vérifier** : opengraph.xyz sur la racine, un lien de carnet, un article et une
+  recette publiée ; une recette privée ne doit montrer ni titre ni photo. Les
+  réseaux gardent une carte en cache plusieurs jours : forcer la relecture dans le
+  débogueur de partage Facebook.
+
 ## Installation (PWA)
 
 Le site est installable (icône sur l'écran d'accueil, mode `standalone`) via

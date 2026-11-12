@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getRecipeFull, getAllergensWithPicto, getIngredientConversions, getIngredientDensities, type AllergenRef } from '@/lib/recipes';
 import { DROIT_EXTRACTION } from '@/lib/extraction-etapes';
+import { descriptionRecettePartage } from '@/lib/recette-partage';
 import { isProjectDraft, isProjectRecipe } from '@/lib/projects';
 import { getRecipes } from '@/lib/recipes';
 import { ingredientConversionText } from '@/lib/ingredient-conversions';
@@ -80,6 +81,25 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     ...(indexable
       ? { alternates: { canonical: `${ORIGINE_CANONIQUE}/recette/${id}` } }
       : { robots: { index: false, follow: false } }),
+    // Carte de partage (JEP-281) : titre et description de la recette, la photo
+    // vient de `opengraph-image.tsx`. Seulement pour une recette indexable —
+    // sinon la carte reste celle du site, sans rien de la recette. Redonnés ici
+    // `siteName` et `locale` : un `openGraph` de page remplace celui du layout.
+    ...(indexable && r
+      ? (() => {
+          const description = descriptionRecettePartage(r.description);
+          return {
+            openGraph: {
+              type: 'article' as const,
+              siteName: 'Je pâtisse !',
+              locale: 'fr_FR',
+              title: r.title,
+              description,
+            },
+            twitter: { card: 'summary_large_image' as const, title: r.title, description },
+          };
+        })()
+      : {}),
   };
 }
 

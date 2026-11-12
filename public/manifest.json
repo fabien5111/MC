@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Je pâtisse !",
   "short_name": "Je pâtisse",
-  "description": "La haute pâtisserie à la maison — créez, partagez et maîtrisez vos recettes.",
+  "description": "Ton carnet de recettes, de l’idée à la fournée — créez, partagez et maîtrisez vos recettes.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
