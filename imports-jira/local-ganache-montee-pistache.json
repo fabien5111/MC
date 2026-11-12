@@ -21,7 +21,7 @@
     ],
     "etapes": [
       {
-        "nom_etape": "Ganache pistache montée",
+        "nom_etape": "Ganache montée pistache",
         "page": null,
         "temps_preparation_minutes": 30,
         "temps_attente_minutes": 720,
@@ -65,7 +65,7 @@
           "Monter la ganache au batteur avec le fouet, à vitesse moyenne, jusqu'à une texture de crème fouettée ferme, sans la laisser grainer.",
           "Utiliser aussitôt, pochée à la poche à douille ou coulée dans le moule à insert, puis congeler."
         ],
-        "conseils_etape": "Le repos de 12 h au froid est indispensable : la ganache cristallise et prend du corps, elle monte alors ferme et tient à la congélation. Monter sur une ganache bien froide (4 °C) et stopper dès que le fouet laisse une trace nette : trop montée, elle grainera."
+        "conseils_etape": "Le repos de 12 h au froid est indispensable : la ganache cristallise et prend du corps, elle monte alors ferme et tient à la congélation. Monter sur une ganache bien froide (4 °C) et stopper dès que le fouet laisse une trace nette : trop montée, elle grainera. Calcul fait à environ 0,64 g/cm³ de ganache montée : pour un autre format, multiplier le volume en cm³ par 0,64. Choisir une pâte de pistache pure, sans sucre ni arôme ajouté : elle donne un goût net et une couleur naturelle, sans colorant."
       }
     ],
     "astuces_recette": [
@@ -76,9 +76,7 @@
       "Utilisation — Individuels en cercles Ø 7 cm, 2 cm de haut : ≈ 50 g par pièce, soit 12 pièces avec la recette entière.",
       "Utilisation — Bûche en gouttière 20 x 7 cm, insert 20 x 4 cm de 2 cm de haut : ≈ 100 g de ganache, soit ×0,17 de la recette.",
       "Utilisation — Bûche en gouttière 30 x 8 cm, insert 30 x 5 cm de 2 cm de haut : ≈ 190 g de ganache, soit ×0,32 de la recette.",
-      "Utilisation — Cadre carré 18 x 18 cm, 2 cm de haut : ≈ 415 g de ganache, soit ×0,69 de la recette.",
-      "Astuce — Calcul fait à environ 0,64 g/cm³ de ganache montée : pour un autre format, multiplier le volume en cm³ par 0,64.",
-      "Astuce — Choisir une pâte de pistache pure, sans sucre ni arôme ajouté : elle donne un goût net et une couleur naturelle, sans colorant."
+      "Utilisation — Cadre carré 18 x 18 cm, 2 cm de haut : ≈ 415 g de ganache, soit ×0,69 de la recette."
     ],
     "conseils_conservation": "Avant montage : 48 h au réfrigérateur sous film au contact. Montée : à utiliser aussitôt. En insert, congeler à -18 °C jusqu'à 1 mois, filmé. Démouler l'insert congelé et l'intégrer à l'entremets encore congelé ; décongeler l'entremets assemblé 6 à 8 h au réfrigérateur. Entremets décongelé : à consommer sous 48 h au réfrigérateur."
   }
