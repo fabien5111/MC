@@ -1,0 +1,81 @@
+{
+  "ticket": "local-creme-brulee-tonka",
+  "recette": {
+    "titre": "Crème brûlée tonka",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème onctueuse et fondante, cuite à basse température sans caramélisation, au parfum chaud et vanillé de la fève tonka. Congelée en disque, elle forme un insert crémeux au cœur d'un entremets ou d'une bûche.",
+    "rendement": "1 cercle Ø 18 cm, 1,5 cm d'épaisseur — environ 385 g de crème utilisable (416 g d'ingrédients, perte ≈ 8 %)",
+    "ustensiles": [
+      "Casserole",
+      "Râpe microplane",
+      "Cul-de-poule",
+      "Fouet",
+      "Maryse",
+      "Chinois",
+      "Cuillère",
+      "Cercle à entremets Ø 18 cm",
+      "Film alimentaire",
+      "Plaque de cuisson"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crème brûlée tonka",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 295,
+        "temps_cuisson_minutes": 55,
+        "temperature_cuisson_celsius": 95,
+        "anticipation_jours": 1,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 2 mois au congélateur, décerclée et filmée au contact.",
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 280,
+            "unite": "g"
+          },
+          {
+            "nom": "Fève tonka",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 55,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Porter la crème à frémissement dans la casserole, râper la fève tonka à la microplane hors du feu, couvrir et laisser infuser 20 minutes.",
+          "Préchauffer le four à 95 °C en chaleur statique et filmer le dessous du cercle, film bien tendu et remonté sur les bords, puis le poser sur la plaque.",
+          "Mélanger les jaunes et le sucre au fouet dans le cul-de-poule, sans blanchir ni incorporer d'air.",
+          "Verser la crème tiède sur le mélange en remuant à la maryse, puis passer l'appareil au chinois.",
+          "Laisser reposer 5 minutes et retirer les bulles en surface à la cuillère.",
+          "Couler l'appareil dans le cercle filmé, sur environ 1,5 cm d'épaisseur.",
+          "Cuire 50 à 60 minutes à 95 °C : la crème est prise et tremble légèrement au centre, sans être liquide.",
+          "Laisser tiédir 30 minutes à température ambiante, puis congeler au moins 4 heures avant de décercler."
+        ],
+        "conseils_etape": "Travailler à la maryse et ne jamais fouetter vivement : l'air forme des bulles et une surface grêlée. Une cuisson sous 100 °C donne une texture lisse ; au-delà, la crème graine. Doser la tonka avec mesure (1 g, soit une demi-fève environ) : elle devient vite amère et entêtante."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets Ø 20 cm, insert Ø 18 cm de 1,5 cm : ≈ 385 g de crème, soit ×1 de la recette.",
+      "Utilisation — Entremets Ø 18 cm, insert Ø 16 cm de 1,5 cm : ≈ 305 g de crème, soit ×0,79 de la recette.",
+      "Utilisation — Entremets Ø 16 cm, insert Ø 14 cm de 1,5 cm : ≈ 235 g de crème, soit ×0,61 de la recette.",
+      "Utilisation — Entremets Ø 24 cm, insert Ø 22 cm de 1,5 cm : ≈ 575 g de crème, soit ×1,49 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, inserts Ø 5 cm de 1,5 cm en moule silicone : ≈ 30 g pièce, soit 12 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert de 28 x 4 cm sur 1,5 cm : ≈ 170 g de crème, soit ×0,44 de la recette.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert de 18 x 3,5 cm sur 1,5 cm : ≈ 95 g de crème, soit ×0,25 de la recette.",
+      "Utilisation — Entremets carré en cadre 18 x 18 cm, insert 16 x 16 cm de 1,5 cm : ≈ 385 g de crème, soit ×1 de la recette.",
+      "Variante — Vanille : remplacer la fève tonka par 1 gousse de vanille fendue et grattée, infusée de la même façon.",
+      "Variante — Insert plus tenu : ajouter 2 g de gélatine en feuilles réhydratée et essorée dans la crème chaude avant de la verser sur les jaunes."
+    ],
+    "conseils_conservation": "Non congelée, 48 heures au réfrigérateur filmée au contact. Congelée et décerclée, 2 mois au congélateur, filmée. L'insérer encore congelé dans le montage, puis laisser décongeler l'entremets entier au réfrigérateur 6 à 8 heures ; ne jamais recongeler une crème décongelée."
+  }
+}
