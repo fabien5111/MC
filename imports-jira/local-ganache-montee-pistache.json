@@ -1,0 +1,85 @@
+{
+  "ticket": "local-ganache-montee-pistache",
+  "recette": {
+    "titre": "Ganache montée pistache",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Ganache montée au chocolat blanc, parfumée à la pâte de pistache : texture aérienne, fondante, au goût net de pistache. Assez ferme pour être congelée en insert et rester nette à la découpe, elle apporte du fondant et de la fraîcheur dans un entremets ou une bûche.",
+    "rendement": "1 cercle Ø 20 cm, 3 cm de hauteur — environ 600 g de ganache crue",
+    "ustensiles": [
+      "Casserole",
+      "Thermomètre",
+      "Fouet",
+      "Mixeur plongeant",
+      "Spatule souple",
+      "Bol",
+      "Batteur avec fouet",
+      "Film alimentaire",
+      "Couteau",
+      "Poche à douille",
+      "Moule à insert"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache pistache montée",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 35 % (infusion)",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de pistache",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (complément)",
+            "quantite": 256,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en feuilles dans un grand volume d'eau très froide pendant 10 minutes.",
+          "Hacher le chocolat blanc au couteau et le placer dans un bol.",
+          "Chauffer la crème (infusion) avec la pâte de pistache à 85 °C en fouettant jusqu'à dissolution complète de la pâte.",
+          "Essorer la gélatine et la dissoudre hors du feu dans la crème chaude.",
+          "Verser la crème en trois fois sur le chocolat blanc en mixant au mixeur plongeant entre chaque ajout, jusqu'à obtenir une émulsion lisse et brillante.",
+          "Ajouter le complément de crème bien froid (4 °C) et mixer brièvement, puis filmer au contact et réserver à 4 °C pendant 12 heures.",
+          "Monter la ganache au batteur avec le fouet, à vitesse moyenne, jusqu'à une texture de crème fouettée ferme, sans la laisser grainer.",
+          "Utiliser aussitôt, pochée à la poche à douille ou coulée dans le moule à insert, puis congeler."
+        ],
+        "conseils_etape": "Le repos de 12 h au froid est indispensable : la ganache cristallise et prend du corps, elle monte alors ferme et tient à la congélation. Monter sur une ganache bien froide (4 °C) et stopper dès que le fouet laisse une trace nette : trop montée, elle grainera."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, couche de 2 cm de haut : ≈ 255 g de ganache, soit ×0,43 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, couche de 2 cm de haut : ≈ 400 g de ganache, soit ×0,67 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, couche de 2 cm de haut : ≈ 575 g de ganache, soit ×0,96 de la recette.",
+      "Utilisation — Insert congelé Ø 16 cm, 1,5 cm de haut, pour un entremets Ø 20 cm : ≈ 190 g de ganache, soit ×0,32 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 2 cm de haut : ≈ 50 g par pièce, soit 12 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert 20 x 4 cm de 2 cm de haut : ≈ 100 g de ganache, soit ×0,17 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert 30 x 5 cm de 2 cm de haut : ≈ 190 g de ganache, soit ×0,32 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 2 cm de haut : ≈ 415 g de ganache, soit ×0,69 de la recette.",
+      "Astuce — Calcul fait à environ 0,64 g/cm³ de ganache montée : pour un autre format, multiplier le volume en cm³ par 0,64.",
+      "Astuce — Choisir une pâte de pistache pure, sans sucre ni arôme ajouté : elle donne un goût net et une couleur naturelle, sans colorant."
+    ],
+    "conseils_conservation": "Avant montage : 48 h au réfrigérateur sous film au contact. Montée : à utiliser aussitôt. En insert, congeler à -18 °C jusqu'à 1 mois, filmé. Démouler l'insert congelé et l'intégrer à l'entremets encore congelé ; décongeler l'entremets assemblé 6 à 8 h au réfrigérateur. Entremets décongelé : à consommer sous 48 h au réfrigérateur."
+  }
+}
