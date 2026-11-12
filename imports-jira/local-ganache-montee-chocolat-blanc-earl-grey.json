@@ -1,0 +1,69 @@
+{
+  "ticket": "local-ganache-montee-chocolat-blanc-earl-grey",
+  "recette": {
+    "titre": "Ganache montée chocolat blanc earl grey",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Ganache montée (et non ganache prise) au chocolat blanc, légère et soyeuse, au parfum délicat de bergamote et de thé noir. Elle sert d'insert congelé ou de crème de garniture dans un entremets, car sa gélatine lui donne la tenue nécessaire à la congélation et à la découpe.",
+    "rendement": "1 cercle Ø 20 cm, 3,2 cm de hauteur (≈ 1 000 cm³ de ganache montée) — environ 610 g de ganache crue",
+    "ustensiles": ["Casserole", "Passoire fine", "Thermomètre de cuisine", "Mixeur plongeant", "Batteur avec fouet", "Spatule souple", "Poche à douille", "Film alimentaire", "Bol"],
+    "etapes": [
+      {
+        "nom_etape": "Ganache infusée (la veille)",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          { "nom": "Crème liquide 35 % (infusion)", "quantite": 250, "unite": "g" },
+          { "nom": "Thé Earl Grey en feuilles", "quantite": 6, "unite": "g" },
+          { "nom": "Chocolat blanc", "quantite": 100, "unite": "g" },
+          { "nom": "Gélatine en feuilles", "quantite": 4, "unite": "g" },
+          { "nom": "Crème liquide 35 % (montage)", "quantite": 250, "unite": "g" }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans un bol d'eau très froide pendant 10 minutes, puis l'essorer.",
+          "Hacher finement le chocolat blanc et le placer dans un bol haut.",
+          "Porter la crème d'infusion à frémissement dans la casserole, retirer du feu, ajouter le thé, couvrir et laisser infuser 10 minutes.",
+          "Filtrer à la passoire fine en pressant les feuilles, peser la crème infusée et la compléter à 250 g avec une partie de la crème de montage froide.",
+          "Réchauffer la crème infusée à 80 °C au thermomètre, puis y dissoudre la gélatine essorée.",
+          "Verser en trois fois sur le chocolat et émulsionner au mixeur plongeant, sans incorporer d'air, jusqu'à obtenir une texture lisse et brillante.",
+          "Ajouter le reste de la crème de montage froide et mixer de nouveau quelques secondes pour homogénéiser.",
+          "Filmer au contact et laisser reposer 12 heures au réfrigérateur (4 °C)."
+        ],
+        "conseils_etape": "Le repos de 12 h est indispensable : il permet la cristallisation du beurre de cacao et la prise de la gélatine, conditions d'un foisonnement stable. Ne pas dépasser 80 °C pour dissoudre la gélatine, et ne pas prolonger l'infusion au-delà de 10 minutes pour éviter l'amertume du thé."
+      },
+      {
+        "nom_etape": "Foisonnement",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Sortir la ganache infusée du réfrigérateur ; elle doit être à 4-6 °C.",
+          "Assouplir brièvement la ganache à la spatule, puis la verser dans la cuve du batteur.",
+          "Fouetter à vitesse moyenne jusqu'à une texture de chantilly ferme, en bec d'oiseau.",
+          "Utiliser aussitôt : couler à la spatule ou dresser à la poche à douille selon l'usage.",
+          "Pour un insert, congeler au moins 4 heures à -18 °C avant de démouler."
+        ],
+        "conseils_etape": "Arrêter de fouetter dès que la ganache tient : au-delà, elle grainera et ne pourra plus se lisser. Travailler avec des ustensiles bien froids."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert Ø 16 cm, 2,5 cm de hauteur : ≈ 305 g de ganache montée, soit ×0,50 de la recette.",
+      "Utilisation — Insert Ø 20 cm, 2 cm de hauteur : ≈ 385 g de ganache montée, soit ×0,63 de la recette.",
+      "Utilisation — Insert Ø 24 cm, 2 cm de hauteur : ≈ 550 g de ganache montée, soit ×0,90 de la recette.",
+      "Utilisation — Inserts individuels en cercles Ø 7 cm, 2 cm de hauteur : ≈ 45 g par pièce, soit environ 13 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert de 20 x 5 cm sur 2,5 cm de hauteur : ≈ 150 g de ganache montée, soit ×0,25 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert de 30 x 6 cm sur 2,5 cm de hauteur : ≈ 275 g de ganache montée, soit ×0,45 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 2 cm de hauteur : ≈ 395 g de ganache montée, soit ×0,65 de la recette.",
+      "Astuce — Cette fiche décrit la ganache montée ; la version prise (coulée sans foisonnement) est une autre recette, aux proportions différentes."
+    ],
+    "conseils_conservation": "Ganache infusée non montée : 48 h au réfrigérateur, filmée au contact. Ganache montée : à utiliser dans la journée. Insert congelé : 1 mois à -18 °C, sous film. Le placer encore congelé dans l'entremets, qui se décongèle ensuite 6 à 8 heures au réfrigérateur."
+  }
+}
