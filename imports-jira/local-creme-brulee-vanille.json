@@ -1,0 +1,80 @@
+{
+  "ticket": "local-creme-brulee-vanille",
+  "recette": {
+    "titre": "Crème brûlée vanille",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème onctueuse et fondante, parfumée à la vanille en gousse, cuite à basse température sans caramélisation. Congelée en disque, elle sert d'insert crémeux au cœur d'un entremets ou d'une bûche.",
+    "rendement": "1 insert Ø 18 cm, 1,5 cm de hauteur — environ 380 g de crème utilisable (424 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Cercle Ø 18 cm",
+      "Film étirable",
+      "Plaque de cuisson",
+      "Tapis de cuisson en silicone",
+      "Casserole",
+      "Cul-de-poule",
+      "Fouet",
+      "Maryse",
+      "Chinois étamine",
+      "Couteau d'office"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crème brûlée vanille",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 230,
+        "temps_cuisson_minutes": 50,
+        "temperature_cuisson_celsius": 95,
+        "anticipation_jours": 1,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 2 mois au congélateur, filmée au contact dans une boîte hermétique ; l'insérer encore congelée dans le montage.",
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 280,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Tendre plusieurs épaisseurs de film étirable sous le cercle Ø 18 cm en les remontant bien sur les côtés, puis le poser sur une plaque garnie d'un tapis de cuisson ; préchauffer le four à 95 °C.",
+          "Fendre la gousse de vanille, en gratter les graines et porter la crème à frémissement avec la gousse et les graines, puis couvrir et laisser infuser 20 minutes hors du feu.",
+          "Mélanger les jaunes d'œufs et le sucre au fouet jusqu'à dissolution du sucre, sans blanchir ni faire mousser.",
+          "Retirer la gousse et verser la crème tiède sur les jaunes en mélangeant à la maryse.",
+          "Passer l'appareil au chinois étamine et retirer la mousse en surface.",
+          "Couler l'appareil dans le cercle filmé et éclater les bulles restantes avec la pointe d'un couteau.",
+          "Cuire 45 à 55 minutes à 95 °C, jusqu'à ce que la crème soit prise sur les bords et que le centre tremblote légèrement comme une gelée.",
+          "Laisser tiédir 30 minutes à température ambiante, puis congeler au moins 3 heures à cœur avant de décercler."
+        ],
+        "conseils_etape": "Mélanger à la maryse et non au fouet après l'ajout de la crème : l'air incorporé forme des bulles en surface à la cuisson. La crème est cuite quand elle ne coule plus en inclinant la plaque mais reste tremblotante au centre ; trop cuite, elle grainera et se troublera. Bien serrer le film sous le cercle pour éviter toute fuite."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert pour entremets Ø 20 cm (cercle Ø 16 cm, 1,5 cm) : ≈ 300 g de crème, soit ×0,79 de la recette.",
+      "Utilisation — Insert pour entremets Ø 24 cm (cercle Ø 20 cm, 1,5 cm) : ≈ 470 g de crème, soit ×1,24 de la recette.",
+      "Utilisation — Insert pour entremets Ø 16 cm (cercle Ø 14 cm, 1 cm) : ≈ 155 g de crème, soit ×0,41 de la recette.",
+      "Utilisation — Inserts individuels Ø 5 cm, 1 cm (empreintes silicone), pour entremets Ø 7 ou 8 cm : ≈ 20 g par pièce, soit 19 pièces avec la recette entière.",
+      "Utilisation — Insert de bûche en gouttière 20 x 7 cm (bande 20 x 4 cm, 1,5 cm) : ≈ 120 g de crème, soit ×0,32 de la recette.",
+      "Utilisation — Insert de bûche en gouttière 30 x 8 cm (bande 30 x 5 cm, 1,5 cm) : ≈ 225 g de crème, soit ×0,59 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 1 cm, pour entremets carré ou petits gâteaux : ≈ 325 g de crème, soit ×0,86 de la recette.",
+      "Variante — Fève tonka : remplacer la gousse de vanille par 1 g de fève tonka râpée dans la crème chaude.",
+      "Variante — Pistache : ajouter 25 g de pâte de pistache pure aux jaunes et au sucre avant de verser la crème."
+    ],
+    "conseils_conservation": "Se conserve 2 mois au congélateur, filmé au contact dans une boîte hermétique. Toujours manipuler et insérer la crème encore congelée dans le montage, puis laisser décongeler l'entremets entier 6 à 8 heures au réfrigérateur ; consommer dans les 48 heures après décongélation."
+  }
+}
