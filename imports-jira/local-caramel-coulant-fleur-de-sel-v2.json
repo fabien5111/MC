@@ -1,0 +1,86 @@
+{
+  "ticket": "local-caramel-coulant-fleur-de-sel-v2",
+  "recette": {
+    "titre": "Caramel coulant fleur de sel",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Caramel à sec décuit à la crème, lié au beurre et relevé de fleur de sel, légèrement gélifié pour rester tendre et coulant en bouche sans s'écouler à la découpe. Il sert d'insert d'entremets ou de bûche, de fond de tartelette ou de cœur de dessert individuel.",
+    "rendement": "1 insert Ø 20 cm, 1 cm d'épaisseur — environ 315 g de caramel utilisable (371 g d'ingrédients, perte ≈ 15 %)",
+    "ustensiles": [
+      "Casserole à fond épais",
+      "Petite casserole",
+      "Bol",
+      "Maryse",
+      "Thermomètre de cuisson",
+      "Mixeur plongeant",
+      "Cercle Ø 20 cm",
+      "Plaque",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Caramel coulant fleur de sel",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 12,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 4 jours au frais, filmé au contact, ou 2 mois au congélateur une fois coulé en insert.",
+        "ingredients": [
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 170,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 55,
+            "unite": "g",
+            "commentaire": "froid, en dés"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 2,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en feuilles (2 feuilles) 10 min dans un bol d'eau très froide.",
+          "Chauffer la crème liquide jusqu'au frémissement dans la petite casserole et la garder au chaud.",
+          "Cuire le sucre semoule à sec dans la casserole à fond épais, en trois fois, jusqu'à un caramel ambré (175-180 °C au thermomètre).",
+          "Décuire hors du feu en versant la crème chaude en trois fois, en mélangeant à la maryse, à l'écart des projections.",
+          "Remettre sur feu moyen et cuire 1 à 2 min en remuant jusqu'à 106 °C, pour dissoudre tout morceau de sucre figé.",
+          "Laisser tiédir à 70 °C, puis incorporer la gélatine essorée et la fleur de sel.",
+          "Ajouter le beurre doux vers 45 °C et mixer au mixeur plongeant, tête immergée, jusqu'à une émulsion lisse et brillante.",
+          "Couler dans le cercle Ø 20 cm filmé posé sur la plaque, filmer au contact et laisser prendre 4 h au réfrigérateur (ou congeler pour un insert)."
+        ],
+        "conseils_etape": "Décuire avec une crème bien chaude : froide, elle fige le caramel en blocs et fait mousser violemment. Arrêter la cuisson au brun ambré, jamais au brun foncé, sous peine d'amertume. La gélatine s'ajoute sous 70 °C pour garder son pouvoir de prise, le beurre vers 45 °C et toujours mixé sans incorporer d'air pour une texture lisse."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert d'entremets Ø 16 cm, 1 cm d'épaisseur : ≈ 200 g de caramel, soit ×0,63 de la recette.",
+      "Utilisation — Entremets Ø 20 cm, insert de 1 cm : ≈ 315 g de caramel, soit la recette entière (×1).",
+      "Utilisation — Entremets Ø 24 cm, couche de 0,5 cm : ≈ 225 g de caramel, soit ×0,71 de la recette.",
+      "Utilisation — Individuels en inserts Ø 7 cm, 1 cm d'épaisseur : ≈ 40 g par pièce, soit 8 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert de 20 x 4 cm sur 1,5 cm : ≈ 120 g de caramel, soit ×0,38 de la recette.",
+      "Utilisation — Tartelettes Ø 8 cm, couche de 0,5 cm au fond : ≈ 25 g par tartelette, soit 12 tartelettes avec la recette entière.",
+      "Utilisation — Cadre 18 x 18 cm, couche de 0,5 cm : ≈ 160 g de caramel, soit ×0,51 de la recette.",
+      "Variante — Pectine NH à la place de la gélatine : mélanger 3 g de pectine NH à 20 g du sucre de la recette, verser en pluie dans la crème tiède et porter 1 min à ébullition avant de décuire ; la prise est plus nette et le caramel supporte un réchauffage.",
+      "Variante — Caramel vanille : infuser une gousse de vanille fendue et grattée dans la crème 20 min avant de la réchauffer.",
+      "Variante — Version nappage sans gélatine : supprimer la gélatine pour un caramel coulant à napper ou à garnir des bonbons et des tartelettes à couler."
+    ],
+    "conseils_conservation": "4 jours au réfrigérateur, filmé au contact. Se congèle 2 mois, idéalement déjà coulé en insert et démoulé congelé pour le montage ; décongélation 12 h au réfrigérateur dans le dessert monté. Sortir le dessert 15 à 20 min avant dégustation pour que le caramel retrouve sa texture coulante."
+  }
+}
