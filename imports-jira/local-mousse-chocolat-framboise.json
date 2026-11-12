@@ -1,0 +1,81 @@
+{
+  "ticket": "local-mousse-chocolat-framboise",
+  "recette": {
+    "titre": "Mousse chocolat-framboise",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse aérienne à base de ganache au chocolat noir dans laquelle une partie de la crème est remplacée par de la purée de framboise, pour une texture fondante et un fruité vif. Elle sert de mousse d'enveloppe dans un entremets, un individuel, une bûche ou une verrine.",
+    "rendement": "1 cercle Ø 20 cm, 4 cm de haut — environ 740 g de mousse",
+    "ustensiles": [
+      "Casserole",
+      "Thermomètre",
+      "Tamis",
+      "Saladier",
+      "Maryse",
+      "Mixeur plongeant",
+      "Batteur électrique avec fouet"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Mousse chocolat-framboise",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir 66 %",
+            "quantite": 220,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de framboise",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (ganache)",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sirop de glucose",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 % (mousse)",
+            "quantite": 300,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Tamiser la purée de framboise pour retirer les pépins, puis la chauffer avec le glucose et les 80 g de crème jusqu'à 80 °C, sans faire bouillir.",
+          "Verser un tiers du liquide chaud sur le chocolat haché et fondu à moitié au bain-marie à 45 °C, attendre 30 secondes, puis mélanger à la maryse en petits cercles jusqu'à obtenir un noyau lisse et élastique.",
+          "Ajouter le reste du liquide en deux fois, en mélangeant à chaque fois jusqu'à une ganache brillante.",
+          "Mixer la ganache au mixeur plongeant, lame immergée, sans incorporer d'air, jusqu'à une texture lisse et homogène, puis laisser redescendre à 35-40 °C.",
+          "Monter la crème bien froide au batteur en chantilly souple, à peine tenue, aux becs d'oiseau mous.",
+          "Incorporer un quart de la crème montée à la ganache en fouettant énergiquement pour l'assouplir.",
+          "Ajouter le reste de la crème montée en trois fois, délicatement à la maryse, jusqu'à une mousse homogène et lisse.",
+          "Utiliser immédiatement pour mouler, puis réserver au froid au moins 2 heures jusqu'à prise."
+        ],
+        "conseils_etape": "L'eau et l'acidité de la framboise fragilisent l'émulsion : verser le liquide en trois fois sur le chocolat à moitié fondu et mixer sans incorporer d'air. Une ganache granuleuse ou huileuse se rattrape au mixeur plongeant avec un filet de crème chaude."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, 4 cm de haut : ≈ 475 g de mousse, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, 4 cm de haut : ≈ 740 g de mousse, soit ×1 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 4 cm de haut : ≈ 1065 g de mousse, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 4 cm de haut : ≈ 90 g par pièce, soit 8 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, 5 cm de haut, en enveloppe : ≈ 410 g de mousse, soit ×0,56 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, 5 cm de haut, en enveloppe : ≈ 705 g de mousse, soit ×0,95 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 3 cm de haut : ≈ 570 g de mousse, soit ×0,77 de la recette.",
+      "Utilisation — Verrines (100 ml de mousse par verrine) : ≈ 60 g par verrine, soit 12 verrines avec la recette entière.",
+      "Astuce — Choisir une purée de framboise sucrée (environ 10 % de sucre) ; avec une purée non sucrée, ajouter 12 g de sucre semoule.",
+      "Astuce — Pour renforcer le goût du fruit sans ajouter d'eau, parfumer la crème montée de 5 g de framboise lyophilisée en poudre."
+    ],
+    "conseils_conservation": "La mousse prise se garde 48 heures au réfrigérateur, filmée au contact, et 1 mois au congélateur intégrée dans un entremets. Décongeler 6 à 8 heures au réfrigérateur. La mousse se travaille crue et fraîche : la mouler dès sa préparation, et monter les entremets le jour même ou la veille."
+  }
+}
