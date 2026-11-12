@@ -1,0 +1,84 @@
+{
+  "ticket": "local-compotee-de-fruits-poire",
+  "recette": {
+    "titre": "Compotée de fruits poire",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Compotée de poire à la texture ferme, qui garde de petits morceaux fondants dans une gelée parfumée et franche en goût de poire. Elle sert d'insert congelé au cœur d'un entremets, d'une bûche ou d'un individuel.",
+    "rendement": "1 cercle Ø 18 cm, 2 cm de hauteur — environ 510 g de compotée utilisable (580 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Économe",
+      "Couteau d'office",
+      "Casserole",
+      "Fouet",
+      "Maryse",
+      "Thermomètre",
+      "Film alimentaire",
+      "Cercle ou moule à insert",
+      "Plaque"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Compotée de fruits poire",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 270,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": 100,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Poires",
+            "quantite": 400,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de poire",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine NH",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron",
+            "quantite": 14,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Éplucher les poires avec l'économe, retirer le cœur et les pépins, puis peser 400 g de chair.",
+          "Tailler la chair en dés réguliers de 5 mm au couteau d'office et les arroser aussitôt du jus de citron.",
+          "Mélanger la pectine NH et le sucre semoule à sec.",
+          "Chauffer la purée de poire et les dés de poire dans la casserole jusqu'à 40 °C.",
+          "Verser le mélange sucre et pectine en pluie en fouettant, puis porter à pleine ébullition en remuant doucement à la maryse.",
+          "Cuire 2 minutes à gros bouillons, jusqu'à ce que la compotée soit brillante et épaisse, les dés restant entiers.",
+          "Verser aussitôt dans le cercle à insert posé sur une plaque filmée, lisser et filmer au contact.",
+          "Refroidir 30 minutes à température ambiante, puis congeler au moins 4 heures."
+        ],
+        "conseils_etape": "Mélanger la pectine NH au sucre avant de la verser, sinon elle fait des grumeaux ; elle n'agit qu'après une franche ébullition. Remuer doucement pour préserver les morceaux, et couler tout de suite : la pectine NH prend en refroidissant ; thermoréversible, elle peut être refondue doucement si on a coulé trop tard.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 3 jours au frais, filmée au contact, ou 3 mois congelée en insert."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, insert Ø 12 cm, 1,5 cm de hauteur : ≈ 170 g de compotée, soit ×0,33 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, insert Ø 16 cm, 2 cm de hauteur : ≈ 400 g de compotée, soit ×0,78 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, insert Ø 20 cm, 2 cm de hauteur : ≈ 630 g de compotée, soit ×1,24 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, insert Ø 5 cm, 1,5 cm de hauteur : ≈ 30 g par pièce, soit ×0,06 par pièce, environ 17 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, en insert de 16 x 4 cm et 1,5 cm de hauteur : ≈ 95 g de compotée, soit ×0,19 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, en insert de 26 x 4,5 cm et 1,5 cm de hauteur : ≈ 175 g de compotée, soit ×0,34 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 1,5 cm : ≈ 485 g de compotée, soit ×0,95 de la recette.",
+      "Variante — Poire-vanille : ajouter 1 g de vanille en poudre au mélange sucre et pectine.",
+      "Variante — Texture lisse : remplacer les dés de poire par 400 g de purée de poire, sans changer la pectine NH."
+    ],
+    "conseils_conservation": "Au réfrigérateur, 3 jours filmée au contact. Au congélateur, 3 mois en insert filmé. Utiliser l'insert congelé, démoulé directement dans le montage : il décongèle lentement au frais pendant que l'entremets prend (comptez 6 à 8 heures)."
+  }
+}
