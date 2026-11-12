@@ -1,0 +1,110 @@
+{
+  "ticket": "local-creme-brulee-cafe",
+  "recette": {
+    "titre": "Crème brûlée café",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème onctueuse et fondante, cuite doucement au four sans caramélisation, au goût franc de café torréfié. Congelée en insert, elle apporte un cœur crémeux aux entremets et aux bûches.",
+    "rendement": "1 cercle Ø 16 cm, 2 cm de hauteur — environ 410 g de crème utilisable (482 g d'ingrédients, perte ≈ 15 %)",
+    "ustensiles": [
+      "Casserole",
+      "Chinois",
+      "Cul-de-poule",
+      "Fouet",
+      "Maryse",
+      "Cercle Ø 16 cm",
+      "Film alimentaire",
+      "Plaque de cuisson",
+      "Thermomètre",
+      "Balance",
+      "Rouleau à pâtisserie"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Infusion au café",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Grains de café",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (réajustement)",
+            "quantite": 30,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Concasser grossièrement les grains de café au rouleau.",
+          "Porter la crème à frémissement dans la casserole.",
+          "Ajouter les grains concassés hors du feu, couvrir et laisser infuser 15 min.",
+          "Filtrer au chinois en pressant les grains avec la maryse.",
+          "Peser la crème infusée et la réajuster à 300 g avec la crème de réajustement."
+        ],
+        "conseils_etape": "Ne pas moudre le café en poudre : l'infusion deviendrait amère et trouble. Le réajustement compense la crème absorbée par les grains, sans quoi l'appareil manquerait de liquide et serait trop ferme."
+      },
+      {
+        "nom_etape": "Appareil et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 50,
+        "temperature_cuisson_celsius": 95,
+        "anticipation_jours": 1,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 1 mois au congélateur, filmé au contact dans son cercle ou démoulé en sachet.",
+        "ingredients": [
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Café soluble",
+            "quantite": 2,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 95 °C.",
+          "Filmer le fond du cercle en tendant bien le film, puis le poser sur une plaque.",
+          "Mélanger au fouet les jaunes, le sucre et le café soluble sans faire mousser.",
+          "Verser la crème infusée tiède en remuant à la maryse.",
+          "Laisser reposer 5 min, puis retirer la mousse en surface.",
+          "Couler l'appareil dans le cercle sur 2 cm de hauteur.",
+          "Cuire au four à 95 °C pendant 45 à 60 min, jusqu'à ce que la crème soit prise et tremble légèrement au centre.",
+          "Laisser refroidir à température ambiante, puis congeler au moins 4 h avant de démouler."
+        ],
+        "conseils_etape": "Mélanger sans incorporer d'air : les bulles remontent à la cuisson et marquent la surface. La crème est cuite quand le centre ne coule plus mais tremble comme une gelée ; trop cuite, elle graine et rend de l'eau."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert Ø 14 cm pour entremets Ø 16 cm, 1,5 cm de hauteur : ≈ 235 g de crème, soit ×0,57 de la recette.",
+      "Utilisation — Insert Ø 18 cm pour entremets Ø 20 cm, 1,5 cm de hauteur : ≈ 390 g de crème, soit ×0,95 de la recette.",
+      "Utilisation — Insert Ø 22 cm pour entremets Ø 24 cm, 1,5 cm de hauteur : ≈ 580 g de crème, soit ×1,41 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 ou 8 cm, inserts Ø 5 cm de 1,5 cm de hauteur (≈ 30 g chacun) : 13 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert de 18 x 4 cm sur 1,5 cm : ≈ 110 g de crème, soit ×0,27 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert de 28 x 5 cm sur 1,5 cm : ≈ 215 g de crème, soit ×0,52 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 1 cm de hauteur : ≈ 330 g de crème, soit ×0,80 de la recette.",
+      "Variante — Vanille : remplacer les grains de café par 1 gousse de vanille fendue et grattée, et supprimer le café soluble.",
+      "Variante — Café-tonka : ajouter 0,5 g de fève tonka râpée à l'infusion."
+    ],
+    "conseils_conservation": "Se conserve 2 jours au réfrigérateur filmée au contact, ou 1 mois au congélateur, filmée dans son cercle ou démoulée en sachet. Insérer dans le montage encore congelée, sans décongélation préalable ; une fois l'entremets monté, décongeler 6 h au réfrigérateur."
+  }
+}
