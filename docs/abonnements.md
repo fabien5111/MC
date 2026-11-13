@@ -146,9 +146,16 @@ pour la page publique et ne demandent aucun code. Les points à câbler (lot 5) 
 | `fournees_actives_max` | STOCK | trigger sur `batches` |
 | `listes_courses_max` | STOCK | trigger sur `shopping_lists` |
 | `partage_carnet_prive_max` | STOCK | trigger sur `book_shares` |
-| `import_ia_mensuel` | FLUX | `/api/import-url`, `/api/transcribe-photo` |
-| `ajustement_ia_mensuel` | FLUX | `/api/scale-recipe`, `BatchWidget` (JEP-77) |
-| `mode_projet_ia_mensuel` | FLUX | `/api/projet/structure`, `/api/projet/composant` |
+| `credits_ia_mensuel` | FLUX | Toutes les routes IA, `n` crédits par action (`lib/credits-ia.ts`, JEP-405) |
+| `import_ia_mensuel` | Accès (ex-FLUX, JEP-405) | `/api/import-url`, `/api/transcribe-photo` |
+| `ajustement_ia_mensuel` | Accès (ex-FLUX, JEP-405) | `/api/scale-recipe`, `BatchWidget` (JEP-77) |
+| `mode_projet_ia_mensuel` | Accès (ex-FLUX, JEP-405) | `/api/projet/structure`, `/api/projet/composant` |
+
+**JEP-405** : les trois quotas d'IA sont devenus de simples droits d'accès
+(`limit_type = NONE`, `YES` / `NO`), et la consommation passe par une dotation
+unique de crédits (`credits_ia_mensuel`), débitée de `n` unités selon l'action
+par `mc_debiter_credits`, qui écrit aussi le journal `ai_credit_movements`.
+Cf. CLAUDE.md « Crédits IA ».
 | `mode_projet` | binaire | `/projets/*`, `/api/projet`, portée « Projets » du carnet |
 | `ecran_relecture_import` | binaire | `/importer`, `/relecture` |
 | `remplacement_ingredient_par_recette` | binaire | `IngredientExpandDialog` |

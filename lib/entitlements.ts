@@ -487,40 +487,46 @@ function valeurEnPhrase(value: string): string {
 }
 
 /**
- * Message du quota d'imports par IA épuisé (JEP-76). Seul message écrit pour
- * UNE fonctionnalité : l'import est l'écran où le refus se rencontre le plus
- * souvent, et son issue dépend du cas — un essai ne se renouvelle pas, un
- * abonnement se recharge à date fixe. Le reste passe par `blockingMessage`.
+ * Message des crédits IA insuffisants (JEP-76, généralisé aux crédits par
+ * JEP-405). Seul message écrit pour UNE fonctionnalité : son issue dépend du
+ * cas — un essai ne se renouvelle pas, un abonnement se recharge à date fixe.
+ * Le reste passe par `blockingMessage`.
  *
+ * `utilises` / `cout` : quand le solde n'est pas nul mais ne couvre pas le
+ * coût de l'action (« il vous reste 2 crédits, cette action en demande 3 »).
  * `rechargeLe` : date déjà formatée, `null` quand elle est inconnue.
  */
-export function importEpuiseMessage(args: {
+export function creditsEpuisesMessage(args: {
   limite: number | null;
+  utilises?: number | null;
+  cout?: number | null;
   essai: boolean;
   rechargeLe: string | null;
   suggestion: UpgradeSuggestion | null;
 }): { titre: string; corps: string } {
-  const { limite, essai, rechargeLe, suggestion } = args;
+  const { limite, utilises = null, cout = null, essai, rechargeLe, suggestion } = args;
   const periode = essai ? "d'essai" : 'du mois';
+  const restants = limite != null && utilises != null ? Math.max(0, limite - utilises) : null;
+  const pluriel = (n: number) => (n > 1 ? 's' : '');
   const titre =
-    limite === null
-      ? `Vous avez utilisé vos imports ${periode}`
-      : limite === 1
-        ? `Vous avez utilisé votre import ${periode}`
-        : `Vous avez utilisé vos ${limite} imports ${periode}`;
+    restants != null && restants > 0 && cout != null && cout > restants
+      ? `Il vous reste ${restants} crédit${pluriel(restants)} IA, cette action en demande ${cout}`
+      : limite === null
+        ? `Vous avez utilisé vos crédits IA ${periode}`
+        : `Vous avez utilisé vos ${limite} crédit${pluriel(limite)} IA ${periode}`;
 
   const plus = suggestion ? `la formule ${suggestion.planLabel} : ${valeurEnPhrase(suggestion.value)}` : null;
   if (essai) {
     return {
       titre,
       corps: plus
-        ? `Pour continuer à importer des recettes par IA, passez à ${plus}.`
-        : "Votre crédit d'essai est épuisé.",
+        ? `Pour continuer à utiliser l'IA, passez à ${plus}.`
+        : "Vos crédits d'essai sont épuisés.",
     };
   }
   const recharge = rechargeLe
-    ? `Votre crédit se renouvelle le ${rechargeLe}.`
-    : 'Votre crédit se renouvelle à la prochaine échéance de votre abonnement.';
+    ? `Vos crédits se renouvellent le ${rechargeLe}.`
+    : 'Vos crédits se renouvellent à la prochaine échéance de votre abonnement.';
   return { titre, corps: plus ? `${recharge} Envie d'aller plus loin ? Avec ${plus}.` : recharge };
 }
 

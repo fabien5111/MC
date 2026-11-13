@@ -2134,7 +2134,7 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
 - **Ustensiles triés, difficulté en maryses** (`OrganisationEditor`) : la liste des ustensiles s'affiche et s'enregistre **par ordre alphabétique** (`trierUstensiles`, sans accents ni casse — lignes vides en fin de liste, tri appliqué à la sortie du champ pour ne pas faire sauter la ligne en cours de saisie ; la référence « modifié » est triée elle aussi). La difficulté se choisit en cinq `MaryseIcon` comme dans `/creer` (niveau le plus proche au référentiel, second clic sur le niveau atteint = effacer).
 - **Changer le format ne recalcule jamais les quantités — il le signale.** Un recalcul automatique écraserait les lignes modifiées à la main, les coefficients fixés par l'IA et les modes d'ajustement par étape. Chaque « Appliquer » d'un ajustement pose donc sur sa préparation l'**empreinte du format** pour lequel il a été calculé (`recipe_project_components.scale_format_key`, `projectFormatKey`, `lib/projects.ts` : type, moule, dimensions, nombre, parts). `quantitiesStale` compare au format enregistré : différent = « à recalculer » (volet « Ajustement des quantités » et encadré de `QuantitiesStep`, liste dans « Essais et validation », confirmation à « Valider »). **Sans empreinte** (ajustement antérieur à la colonne, ou migration pas jouée) on ne marque rien — se taire plutôt qu'alerter à tort — mais le message qui suit l'enregistrement du format (`signalerQuantites`) compte quand même les préparations dont le coefficient diffère de ×1. L'empreinte s'écrit **à part** de l'ajustement, en ignorant l'échec : colonne absente, l'ajustement réussit quand même, et la lecture (`select('*')`) ne casse pas. Cas à connaître : sans ce garde-fou, la recette validée annonce « pour le format X » alors que ses quantités sont celles d'un autre — une fournée dans un autre moule se calcule alors à partir du format déclaré et se trompe sans le dire. **Un coefficient réappliqué sans refaire « Proposer » perd la distinction surface / volume** (`moldCoefs` n'est pas stocké) : toujours enchaîner « Proposer » puis « Appliquer ».
 - **« Proposer d'après le format » refuse de comparer du poids à des parts** (`scaleIncompatibility`, `uniteMasseVolume`, `lib/projects.ts`) : une recette dont le rendement est en g / kg / ml / l, face à un format en parts ou en moule, donnait un rapport absurde (630 g → 8 parts = ×0,01), écrit ensuite dans les quantités. Aucun coefficient n'est proposé, le champ n'est pas rempli, et l'alerte explique et renvoie vers « Ajuster avec l'IA » ou la saisie. Le bouton ne peut pas être grisé d'avance : la recette source n'est lue qu'au clic. **Seules les unités connues de masse ou de volume sont refusées** ; une unité vide ou inattendue garde le rapport direct, faute de pouvoir trancher. Moule contre moule inchangé.
-- **Crédits d'« Ajuster avec l'IA » restants, à côté du bouton** (`QuantitiesStep`, prop `quotaAjustementIA`) : « Utilisation quota IA : 3/10 par mois » (consommé/limite), lu par les deux pages du mode projet (`checkQuota(…, 'ajustement_ia_mensuel')`, affichage seulement, seulement si le droit existe) — le même compteur que l'ajustement par IA d'une fournée, **distinct** de `mode_projet_ia_mensuel` (propositions de format et de préparations). Le bouton se grise quand il est épuisé (même infobulle que `BatchWidget`) ; la garde réelle reste `reserverQuota` dans `/api/scale-recipe`. La page ne relit le quota qu'à son rendu : le décompte monte localement après chaque ajustement réussi (`iaConsommes`, remis à zéro quand le serveur rend un `usage` à jour). Lecture absente ou en échec : rien d'affiché, bouton actif. Mise en page : rangée 1 = les deux boutons + ce texte ; rangée 2 dessous = PERTE (%) et COEFFICIENT (libellés `w-24`, champs `w-24`, donc alignés) + « Appliquer ».
+- **Crédits d'« Ajuster avec l'IA » restants, à côté du bouton** (`QuantitiesStep`, prop `quotaAjustementIA`) : « Il vous reste 90 crédits IA ce mois-ci » (JEP-405 : une dotation commune à l'import, à l'ajustement et au mode projet — plus de compteur par fonction), lu par les deux pages du mode projet (`checkQuota(…, CLE_CREDITS_IA)`, affichage seulement, seulement si le droit existe). Le bouton annonce son coût (« · 1 crédit IA ») et se grise quand le solde ne le couvre pas (même infobulle que `BatchWidget`) ; la garde réelle reste `reserverCredits` dans `/api/scale-recipe`. La page ne relit le quota qu'à son rendu : le décompte monte localement après chaque ajustement réussi (`iaConsommes`, remis à zéro quand le serveur rend un `usage` à jour). Lecture absente ou en échec : rien d'affiché, bouton actif. Mise en page : rangée 1 = les deux boutons + ce texte ; rangée 2 dessous = PERTE (%) et COEFFICIENT (libellés `w-24`, champs `w-24`, donc alignés) + « Appliquer ».
 - **Dessert visé et commentaires dans le volet d'ajustement** : `QuantitiesStep` rappelle, sur une ligne en tête du volet d'UNE préparation (`componentId` fourni), le dessert visé (nom, format, parts) — les coefficients en dépendent et la carte complète (`DessertVise`) est loin au-dessus. Les lignes d'ingrédients affichent leur commentaire (`ProjectLine.comment`, lu dans `ingredients.comment`) en italique après le nom : c'est ce qui distingue deux lignes du même ingrédient.
 - **Volet d'ajustement : justification au ras du coefficient, rendement d'origine en lignes.** Le cadre qui explique le calcul (`prop?.reason || c.scaleReason`) est posé juste au-dessus de la rangée PERTE / COEFFICIENT / « Appliquer » qu'il commente, non plus en tête du volet. Le rendement de la recette d'origine (`sourceYield`) est découpé par `lignesRendement` (`lib/projects.ts`) : une phrase par ligne, « Perte de réalisation » à part ; affichage seul, la valeur stockée n'est pas touchée.
 - **Planning : la même frise que la fiche recette** (`components/recipe/PlanningTimeline.tsx`, rendu pur partagé avec `app/recette/[id]`) : une colonne par jour, ronds numérotés reliés par un trait, titres d'étape en gras ; la v2 la montre dès qu'il y a plus d'un jour, avec la note « Le jour de chaque étape se règle dans « Modifier cette préparation » ». Ne pas recoder une seconde présentation.
@@ -2618,8 +2618,9 @@ envoie l'e-mail tout de suite ou le met en file de récapitulatif.
   (`RUBRIQUES`, `lib/notification-events.ts`) : 5 sous-catégories dans « Mes
   recettes » (publication ou refus, avis reçus, favoris, projets qui s'en
   inspirent, mise en avant), 3 dans « Communauté », 3 dans « Fournées », 3 dans
-  « Boîte à idées » ; les autres catégories ne sont pas découpées (rubrique
-  unique, de même clé que la catégorie). Chaque événement du catalogue porte sa
+  « Boîte à idées », 2 dans « Abonnement » (échéances, crédits IA — JEP-405) ; les
+  autres catégories ne sont pas découpées (rubrique unique, de même clé que la
+  catégorie). Chaque événement du catalogue porte sa
   `rubrique`. La clé de rubrique (`mes_recettes.favoris`) est stockée telle
   quelle dans `notification_preferences.category` — **aucune colonne ni
   migration pour ajouter une rubrique**. **Héritage** : une ligne au niveau de la
@@ -3346,6 +3347,85 @@ principales :
   (`.github/workflows/gen-types.yml`, tunnel SSH par le nœud applicatif,
   résultat en pull request), dont l'en-tête
   décrit le mode opératoire.
+
+## Crédits IA (JEP-405)
+
+**Les fonctions d'IA débitent une dotation mensuelle unique de crédits**, et
+non plus un quota par fonction : fonctionnalité FLOW `credits_ia_mensuel` de la
+grille (PLUS 120, PRO 300, PRO_ESSAI 40, FREE sans accès). Grille pure et
+testée : `lib/credits-ia.ts`, **seul endroit où un coût est écrit** —
+ajustement 1, structure de projet 1, préparation de projet 2, import texte ou
+PDF 3 / 6 / 9 selon la longueur du texte envoyé (seuils 8 000 et 20 000
+caractères, recalculés par la route), import photo 2 + 3 par page (8 pages au
+plus). Règle de chiffrage d'une nouvelle fonction : coût p90 ÷ 0,004 $, arrondi
+au-dessus (relevé `ai_usage` du 11/11/2026).
+
+- **L'accès reste porté par les clés d'origine** (`import_ia_mensuel`,
+  `ajustement_ia_mensuel`, `mode_projet_ia_mensuel`, passées en « oui / non ») :
+  le mode projet reste fermé au PLUS quel que soit son solde. `reserverCredits`
+  (`lib/quota-route.ts`) vérifie ce droit (`DROIT_ACTION`), puis débite.
+- **Débit et journal dans la même transaction** : `mc_debiter_credits`
+  (SECURITY DEFINER, `postgres`) appelle `mc_consume` puis écrit la ligne de
+  `ai_credit_movements` — l'historique ne peut pas diverger du solde. Elle tient
+  aussi, sous verrou, le plafond de pages d'un import photo. **Rendre** passe par
+  `mc_rendre_credits`, exécutable par la seule clé service_role : appelable par
+  un membre, elle lui rendrait ses crédits après un appel réussi. Elle rend sur
+  la période du débit et passe la ligne à `rendu`, une seule fois.
+- **Import photo** : le navigateur tire un `groupe` (UUID) par import ; chaque
+  page est débitée par `/api/transcribe-photo` (qui ne consommait rien jusque-là
+  et restait appelable sans limite une fois le quota épuisé). `/api/import-url`
+  n'applique le forfait de mise en forme (2) que si ce groupe porte des pages
+  payées par ce membre, sinon le tarif par longueur. L'écran vérifie le solde
+  avant la première page (`soldeCouvre`, `ImporterForm`).
+- **Fonction absente** (SQL pas joué) : l'action passe sans débit, journalisé
+  (« échouer en ouvert sur une erreur de configuration »). Mais sans la ligne
+  `credits_ia_mensuel` dans la grille, toutes les fonctions IA sont refusées :
+  **SQL avant déploiement**.
+- **Tarif affiché sur la page des plans** (`lignesCoutIA`, `lib/credits-ia.ts`,
+  rendu par `PlansPage`) : une fonction d'IA n'y montre plus un plafond mensuel
+  mais son **coût en crédits** — import déplié en trois lignes (texte collé, PDF,
+  photos), ajustement, mode projet —, avec une **fourchette** quand un calcul
+  précède l'imputation (« 3 à 9 crédits IA » selon la longueur du texte, « 5 à 26 »
+  pour 1 à 8 pages) et la précision en petit sous le chiffre (pas d'infobulle :
+  pas de survol au doigt). Textes **calculés depuis les constantes de la grille**,
+  jamais saisis en base : la page ne peut pas s'écarter de ce qui est facturé.
+  Les formules sans droit gardent « — ». Une nouvelle fonction d'IA se déclare
+  dans `lignesCoutIA`, avec son test.
+- **Journal `ai_credit_movements`** : lecture du propriétaire (RLS), aucune
+  policy d'écriture, purge à 13 mois (pg_cron). Dans `TABLES_A_VIDER` et
+  l'export (`historique_credits_ia`). Recharges payantes : plus tard, ticket
+  séparé.
+- **Historique dans `/reglages`** (lot 3, `CreditsIaHistorique`, bloc repliable
+  sous « Mon forfait ») : une ligne par ACTION — un import photo de 3 pages
+  n'est pas quatre lignes (`regrouperOperations`, `lib/credits-historique.ts`,
+  pur et testé : regroupement par `groupe`) —, rangée par **période de dotation**
+  (`periode_debut`, posée au débit), la plus récente dépliée. **Le total d'une
+  période égale la jauge** de « Mon forfait » : même période, lignes rendues
+  exclues. Un appel en échec reste visible, « rendu ». Lien vers le brouillon
+  seulement si l'import existe encore (`lienOperation`). Lecture
+  `getHistoriqueCredits` (`lib/credits-historique-data.ts`), table absente :
+  bloc masqué. La jauge « Crédits IA » de `UsageCard` vient de la grille
+  (fonctionnalité FLOW), sans code propre.
+- **Coût et solde avant le clic** : chaque bouton IA annonce son coût
+  (« Ajuster avec l'IA · 1 crédit IA », « Générer · 2 crédits IA », « Importer ·
+  6 crédits IA » — exact pour un texte et pour des photos, fourchette pour un PDF,
+  dont le texte n'est connu qu'après lecture) et le solde restant. **Un bouton se
+  grise quand le solde ne couvre pas SON coût** (`creditsRestants` /
+  `soldeSuffisant`), pas seulement à zéro : 1 crédit restant ne suffit pas à une
+  préparation de projet (2). La garde réelle reste `mc_debiter_credits`.
+- **Alerte à 80 %** (`credits_ia_80`, catégorie `abonnement`, rubrique
+  `abonnement.credits`) : émise par `reserverCredits` au débit qui FRANCHIT le
+  seuil (`seuilFranchi`, pur et testé), **une fois par période** — clé de
+  dédoublonnage = date de recharge, donc un remboursement suivi d'un nouveau débit
+  ne la renvoie pas. Cloche + téléphone par défaut, **e-mail désactivé** mais
+  réglable (rubrique propre). Best-effort absolu : une panne ne fait jamais échouer
+  l'action IA, déjà débitée. Aucune migration (`notification_dedupe` existe).
+  **La catégorie « Abonnement » compte deux rubriques depuis JEP-405** :
+  `abonnement.echeances` (les événements d'avant) et `abonnement.credits` ; une
+  préférence enregistrée au niveau de la catégorie vaut pour les deux — un e-mail
+  refusé ne redevient pas un e-mail reçu.
+- **Aide** : bloc `reglages.credits_ia` (« Comment marchent les crédits IA »,
+  contenu à saisir dans Admin → Blocs d'aide), à côté de l'historique.
 
 ## Routes IA (API Anthropic)
 

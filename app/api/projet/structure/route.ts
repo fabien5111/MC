@@ -12,8 +12,8 @@ import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildStructureContenu, normaliseStructure, INTENT_MAX } from '@/lib/ai/project-structure';
 import { MAX_COMPONENTS } from '@/lib/projects';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
-import { messageQuota } from '@/lib/quota-route';
-import { consumeQuota, refundQuota } from '@/lib/entitlements-data';
+import { estRefusCredits, reserverCredits } from '@/lib/quota-route';
+import { COUT_PROJET_STRUCTURE } from '@/lib/credits-ia';
 import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 30;
@@ -42,9 +42,11 @@ export async function POST(req: Request) {
   // (l'écran doit rester utilisable à la main), et son appelant traite tout
   // statut non-2xx comme « pas de proposition », sans rien afficher. Le
   // champ `erreur` est ce qui permet au dialogue de dire pourquoi.
-  const echec = await consumeQuota('mode_projet_ia_mensuel');
-  if (echec) {
-    return NextResponse.json({ ...VIDE, erreur: await messageQuota(user.id, 'mode_projet_ia_mensuel', echec) });
+  // Crédits IA (JEP-405) : 1 crédit, débité avant l'appel.
+  const quota = await reserverCredits(user.id, 'projet_structure', COUT_PROJET_STRUCTURE);
+  if (estRefusCredits(quota)) {
+    const corps = (await quota.refus.json().catch(() => ({}))) as { erreur?: string };
+    return NextResponse.json({ ...VIDE, erreur: corps.erreur ?? 'Proposition indisponible.' });
   }
 
   const { sink, appels } = collecteurAppelsIa();
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
     );
     return NextResponse.json(normaliseStructure(parseStrictJson(raw.text), MAX_COMPONENTS));
   } catch (e) {
-    await refundQuota('mode_projet_ia_mensuel');
+    await quota.rendre();
     console.error('projet/structure:', (e as Error).message);
     return NextResponse.json(VIDE);
   } finally {

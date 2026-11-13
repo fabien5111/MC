@@ -36,6 +36,14 @@ import { trackEvent } from '@/lib/analytics';
 import { PhotoOrderList, type PhotoChoisie } from '@/components/importer/PhotoOrderList';
 import { useDialog } from '@/components/Dialog';
 import { LockedHint } from '@/components/LockedAction';
+import {
+  PAGES_PHOTO_MAX,
+  coutImportPhoto,
+  coutImportTexte,
+  creditsRestants,
+  libelleCredits,
+  lignesCoutIA,
+} from '@/lib/credits-ia';
 
 type Result = {
   id: number;
@@ -51,7 +59,16 @@ type Onglet = 'texte' | 'pdf' | 'photo';
 
 const MAX_PDF_OCTETS = 30 * 1024 * 1024;
 // Doit rester aligné sur les plafonds de la route : c'est elle qui refuse.
-const MAX_PHOTOS = 8;
+// Plafond tenu aussi par la base (`mc_debiter_credits`, JEP-405) : l'écran
+// ne fait que l'annoncer.
+const MAX_PHOTOS = PAGES_PHOTO_MAX;
+
+// Coût annoncé avant l'envoi, depuis la grille (`lignesCoutIA`), jamais recopié :
+// un PDF se chiffre sur le texte qu'on en extrait (connu après lecture, donc
+// une fourchette ici), des photos sur leur nombre de pages (connu d'emblée).
+const COUTS_IMPORT = lignesCoutIA('import_ia_mensuel') ?? [];
+const COUT_PDF_AFFICHE = COUTS_IMPORT.find((l) => l.label === 'Import par PDF')?.texte ?? '3 à 9 crédits IA';
+const COUT_PHOTOS_AFFICHE = COUTS_IMPORT.find((l) => l.label === 'Import par photos')?.texte ?? '5 à 26 crédits IA';
 
 const tailleLisible = (octets: number): string =>
   octets < 1024 * 1024
@@ -61,8 +78,12 @@ const tailleLisible = (octets: number): string =>
 export function ImporterForm({
   quotaImport = null,
   quotaMessage: quotaMessageServeur = null,
+  compteur = null,
   helpBlocks = [],
 }: {
+  // « (il vous en reste N sur L crédits IA ce mois-ci) », posé à côté du bouton
+  // « Importer » de chaque onglet ; composé côté serveur.
+  compteur?: string | null;
   // État du quota `import_ia_mensuel` (`mc_check_quota`, affichage seulement
   // — le vrai refus reste porté par `mc_consume` dans /api/import-url) :
   // `null` si la lecture a échoué ou n'a pas eu lieu (best-effort, cf.
@@ -100,7 +121,21 @@ export function ImporterForm({
   // « quota » et non « plan » : le droit existe, seul le crédit du mois est
   // consommé — aucun renvoi vers /plans, il se renouvelle tout seul.
   const quotaMessage =
-    quotaMessageServeur ?? "Vous avez utilisé tous vos imports par IA. Votre crédit se renouvelle à la prochaine échéance de votre abonnement.";
+    quotaMessageServeur ?? 'Vous avez utilisé tous vos crédits IA. Ils se renouvellent à la prochaine échéance de votre abonnement.';
+
+  // Crédits IA (JEP-405) : le coût d'un import est connu avant l'envoi. S'il
+  // dépasse le solde connu, on le dit tout de suite — surtout pour un import
+  // photo, dont les pages sont débitées une à une : sans ce contrôle, un
+  // solde trop juste paierait des pages lues puis échouerait à la mise en
+  // forme. Solde inconnu : on laisse partir, la base tranche au débit.
+  function soldeCouvre(cout: number): boolean {
+    const restants = creditsRestants({ limite: quotaImport?.limit ?? null, utilises: quotaImport?.usage ?? null });
+    if (restants == null || restants >= cout) return true;
+    dialog.alert(
+      `Cet import demande ${libelleCredits(cout)} IA ; il vous en reste ${restants}. ${quotaMessage}`,
+    );
+    return false;
+  }
 
   // Écriture des photos extraites dans le brouillon, une fois celui-ci créé.
   // Elle passe par Supabase (RLS) plutôt que par la route : des data-URL
@@ -155,6 +190,7 @@ export function ImporterForm({
       fichiers?: string[];
       nb_photos?: number;
       usage_transcription?: { inputTokens: number; outputTokens: number };
+      groupe?: string;
     },
     images: { photos: PhotoPdf[]; ecartees: number; tronquee: boolean },
     clear: () => void,
@@ -211,6 +247,7 @@ export function ImporterForm({
       dialog.alert('Collez la recette complète (titre, ingrédients, étapes).');
       return;
     }
+    if (!soldeCouvre(coutImportTexte(texte.trim().length))) return;
     setBusy(true);
     void launch({ texte: texte.trim() }, { photos: [], ecartees: 0, tronquee: false }, () => setTexte('')).finally(() =>
       setBusy(false),
@@ -249,6 +286,7 @@ export function ImporterForm({
           "Ce PDF ne contient pas de texte exploitable : c'est probablement un scan ou une suite d'images. Copiez-collez la recette dans l'onglet « Texte collé ».",
         );
       }
+      if (!soldeCouvre(coutImportTexte(extraction.texte.trim().length))) return;
       await launch(
         { texte: extraction.texte, source: 'pdf', fichier: pdf.name },
         { photos: extraction.photos, ecartees: extraction.ecartees, tronquee: extraction.tronquee },
@@ -331,7 +369,7 @@ export function ImporterForm({
   // Passe 1 : chaque page part seule, toutes en parallèle. Une requête par
   // photo lui laisse la limite entière de corps de requête, donc une définition
   // où le texte reste lisible par l'IA.
-  async function transcrirePhotos(): Promise<{ texte: string; usage: { inputTokens: number; outputTokens: number } }> {
+  async function transcrirePhotos(groupe: string): Promise<{ texte: string; usage: { inputTokens: number; outputTokens: number } }> {
     let faites = 0;
     const total = photos.length;
     setEtape(`Lecture des photos… 0/${total}`);
@@ -341,7 +379,7 @@ export function ImporterForm({
         const r = await fetch('/api/transcribe-photo', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ image: p.url, page: i + 1 }),
+          body: JSON.stringify({ image: p.url, page: i + 1, groupe }),
         });
         const data = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(data.erreur || `Photo ${i + 1} : erreur ${r.status}`);
@@ -367,13 +405,17 @@ export function ImporterForm({
 
   async function submitPhotos() {
     if (!photos.length) return;
+    if (!soldeCouvre(coutImportPhoto(photos.length))) return;
+    // Identifiant de CET import : rassemble ses pages et sa mise en forme dans
+    // le journal des crédits, et porte le plafond de pages tenu par la base.
+    const groupe = crypto.randomUUID();
     setBusy(true);
     setError(null);
     setResult(null);
     try {
       // Une page illisible retirerait silencieusement des ingrédients de la
       // recette : l'échec d'une seule interrompt l'import.
-      const lu = await transcrirePhotos();
+      const lu = await transcrirePhotos(groupe);
       await launch(
         {
           source: 'photo',
@@ -381,6 +423,7 @@ export function ImporterForm({
           nb_photos: photos.length,
           usage_transcription: lu.usage,
           fichiers: photos.map((p) => p.nom),
+          groupe,
         },
         { photos: [], ecartees: 0, tronquee: false },
         () => setPhotos([]),
@@ -428,17 +471,20 @@ export function ImporterForm({
               className="border border-outline-variant rounded px-4 py-3 font-body-md bg-white focus:ring-1 focus:ring-primary focus:border-primary w-full"
             />
           </label>
-          <LockedHint message={quotaMessage} active={quotaEpuise}>
-            <button
-              type="button"
-              onClick={submitText}
-              disabled={busy || quotaEpuise}
-              className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
-              Importer
-            </button>
-          </LockedHint>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <LockedHint message={quotaMessage} active={quotaEpuise}>
+              <button
+                type="button"
+                onClick={submitText}
+                disabled={busy || quotaEpuise}
+                className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
+                Importer · {libelleCredits(coutImportTexte(texte.trim().length))} IA
+              </button>
+            </LockedHint>
+            {compteur && <span className="text-[13px] text-on-surface-variant">{compteur}</span>}
+          </div>
         </div>
       ) : onglet === 'pdf' ? (
         <div className="mb-4">
@@ -507,17 +553,20 @@ export function ImporterForm({
               e.target.value = '';
             }}
           />
-          <LockedHint message={quotaMessage} active={quotaEpuise}>
-            <button
-              type="button"
-              onClick={() => void submitPdf()}
-              disabled={busy || !pdf || quotaEpuise}
-              className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
-            >
-              <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
-              Importer
-            </button>
-          </LockedHint>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <LockedHint message={quotaMessage} active={quotaEpuise}>
+              <button
+                type="button"
+                onClick={() => void submitPdf()}
+                disabled={busy || !pdf || quotaEpuise}
+                className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
+              >
+                <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
+                Importer · {COUT_PDF_AFFICHE}
+              </button>
+            </LockedHint>
+            {compteur && <span className="text-[13px] text-on-surface-variant">{compteur}</span>}
+          </div>
         </div>
       ) : (
         <div className="mb-4">
@@ -618,17 +667,20 @@ export function ImporterForm({
             températures du brouillon obtenu.
           </p>
 
-          <LockedHint message={quotaMessage} active={quotaEpuise}>
-            <button
-              type="button"
-              onClick={() => void submitPhotos()}
-              disabled={busy || !photos.length || quotaEpuise}
-              className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
-            >
-              <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
-              Importer
-            </button>
-          </LockedHint>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <LockedHint message={quotaMessage} active={quotaEpuise}>
+              <button
+                type="button"
+                onClick={() => void submitPhotos()}
+                disabled={busy || !photos.length || quotaEpuise}
+                className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
+              >
+                <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
+                Importer · {photos.length ? `${libelleCredits(coutImportPhoto(photos.length))} IA` : COUT_PHOTOS_AFFICHE}
+              </button>
+            </LockedHint>
+            {compteur && <span className="text-[13px] text-on-surface-variant">{compteur}</span>}
+          </div>
         </div>
       )}
 

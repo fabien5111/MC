@@ -112,6 +112,7 @@ const TABLES_A_VIDER: [table: string, colonne: string][] = [
   ['ad_events', 'user_id'],
   ['ai_usage', 'user_id'],
   ['usage_counters', 'user_id'],
+  ['ai_credit_movements', 'user_id'],
   ['recipe_scale_costs', 'user_id'],
   ['planning', 'user_id'],
   ['executions_legacy', 'user_id'],

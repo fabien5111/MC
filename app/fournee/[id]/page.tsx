@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth';
 import { canAccess } from '@/lib/entitlements';
 import { DROIT_A_RACHETER, estListeARacheter } from '@/lib/a-racheter';
 import { getEntitlements, checkQuota } from '@/lib/entitlements-data';
+import { CLE_CREDITS_IA } from '@/lib/credits-ia';
 import { getMoldTypes } from '@/lib/admin';
 import { getBatch, getUnits, getShoppingLists } from '@/lib/profile';
 import { getIngredientConversions, getIngredientDensities, getAllergensWithPicto, getIngredientRefsList } from '@/lib/recipes';
@@ -119,7 +120,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
   // « Modifier l'ajustement » : mêmes données que le panneau de la fiche
   // recette. Quota lu seulement si le droit existe (affichage, cf. BatchWidget).
   const peutAjusterIA = canAccess(entitlements, 'ajustement_ia_mensuel');
-  const quotaIA = peutAjusterIA ? await checkQuota(user.id, 'ajustement_ia_mensuel') : null;
+  const quotaIA = peutAjusterIA ? await checkQuota(user.id, CLE_CREDITS_IA) : null;
   const unitTips: Record<string, string> = {};
   units.forEach((u) => {
     if (u.tooltip) unitTips[String(u.name).toLowerCase().trim()] = u.tooltip;

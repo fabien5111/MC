@@ -5,6 +5,7 @@ import { requireWritableSession } from '@/lib/impersonation';
 import { getProjectFull, getProjectTrials } from '@/lib/projects-data';
 import { canAccess } from '@/lib/entitlements';
 import { checkQuota, getCurrentPlan, getEntitlements } from '@/lib/entitlements-data';
+import { CLE_CREDITS_IA } from '@/lib/credits-ia';
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getIngredientDensities, getRecipeFull } from '@/lib/recipes';
@@ -87,11 +88,11 @@ export default async function ProjetPage({ params }: Params) {
       getIngredientDensities(),
     ]);
   const peutGenererIA = canAccess(droits, 'mode_projet_ia_mensuel');
-  const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, 'mode_projet_ia_mensuel') : null;
+  const quotaProjetIA = peutGenererIA ? await checkQuota(user.id, CLE_CREDITS_IA) : null;
   // Quota des ajustements par IA des quantités (`ajustement_ia_mensuel`),
   // lecture d'affichage seule : crédits restants à côté de « Ajuster avec l'IA ».
   const quotaAjustementIA = canAccess(droits, 'ajustement_ia_mensuel')
-    ? await checkQuota(user.id, 'ajustement_ia_mensuel')
+    ? await checkQuota(user.id, CLE_CREDITS_IA)
     : null;
   // Retours de mes fournées d'essai (JEP-381) : un essai est une fournée du
   // projet. Best-effort : un échec ne coûte que ces retours.

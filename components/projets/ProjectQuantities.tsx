@@ -37,6 +37,7 @@ import {
   type ScaleProposal,
 } from '@/lib/projects';
 import type { ProjectComponent, ProjectFull } from '@/lib/projects-data';
+import { COUT_AJUSTEMENT, libelleCredits } from '@/lib/credits-ia';
 
 const btnGhost =
   'rounded-pill border border-outline-variant px-4 py-2 font-label-md text-[12.5px] font-semibold text-primary transition-colors hover:bg-surface-container disabled:opacity-40';
@@ -226,7 +227,8 @@ export function QuantitiesStep({
     iaLimite != null && quotaAjustementIA?.usage != null
       ? Math.max(0, iaLimite - quotaAjustementIA.usage - iaConsommes)
       : null;
-  const iaEpuise = quotaAjustementIA != null && (!quotaAjustementIA.allowed || iaRestants === 0);
+  const iaEpuise =
+    quotaAjustementIA != null && (!quotaAjustementIA.allowed || (iaRestants != null && iaRestants < COUT_AJUSTEMENT));
   const [propositions, setPropositions] = useState<Record<number, ScaleProposal>>({});
   const [saisie, setSaisie] = useState<Record<number, string>>({});
   // Précisions libres pour l'ajustement par IA, par composant (JEP-254,
@@ -670,19 +672,19 @@ export function QuantitiesStep({
                     disabled={iaEpuise}
                     title={
                       iaEpuise
-                        ? `Quota d’ajustements par IA atteint ce mois-ci (${iaLimite ?? '?'}/${iaLimite ?? '?'}). Le crédit se renouvelle à la prochaine période.`
+                        ? `Crédits IA épuisés ce mois-ci (${iaLimite ?? '?'}/${iaLimite ?? '?'}). Ils se renouvellent à la prochaine période.`
                         : undefined
                     }
                     className={`${btnGhost} disabled:cursor-not-allowed disabled:opacity-50`}
                   >
-                    Ajuster avec l’IA
+                    Ajuster avec l’IA · {libelleCredits(COUT_AJUSTEMENT)} IA
                   </button>
                   {iaRestants != null && (
                     <span
                       className={`text-[12px] ${iaEpuise ? 'text-error' : 'text-on-surface-variant'}`}
-                      title="Ajustements par IA du mois (« Ajuster avec l’IA » des quantités). Les propositions de préparations du mode projet ont leur propre quota."
+                      title="Crédits IA du mois, communs à l’import, à l’ajustement et au mode projet."
                     >
-                      Utilisation quota IA : {(iaLimite ?? 0) - iaRestants}/{iaLimite} par mois
+                      (il vous en reste {iaRestants} ce mois-ci)
                     </span>
                   )}
                 </div>

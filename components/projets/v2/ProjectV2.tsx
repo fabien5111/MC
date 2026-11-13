@@ -84,6 +84,7 @@ import type { ProjectComponent, ProjectFull, ProjectTrial } from '@/lib/projects
 import type { ConversionRef, IngredientRefOption, UnitRef } from '@/lib/ingredient-conversions';
 import type { RecipeFull, RecipeStepView } from '@/lib/recipes';
 import { autoGrow, useAutoGrowOnResize } from '@/lib/auto-grow';
+import { COUT_PROJET_STRUCTURE, creditsRestants, libelleCredits } from '@/lib/credits-ia';
 
 const btnPrimary =
   'rounded-pill bg-primary px-6 py-3 font-label-md text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95 disabled:opacity-40';
@@ -280,9 +281,14 @@ export function ProjectV2({
   // ── Intention, et proposition de l'IA ─────────────────────────────────
   const [intent, setIntent] = useState(project.intent ?? '');
   const [thinking, setThinking] = useState(false);
-  const iaEpuise = peutGenererIA && quotaProjetIA != null && !quotaProjetIA.allowed;
+  // Crédits IA (JEP-405) : une proposition de structure coûte 1 crédit.
+  const soldeProjet = creditsRestants({ limite: quotaProjetIA?.limit ?? null, utilises: quotaProjetIA?.usage ?? null });
+  const iaEpuise =
+    peutGenererIA &&
+    quotaProjetIA != null &&
+    (!quotaProjetIA.allowed || (soldeProjet != null && soldeProjet < COUT_PROJET_STRUCTURE));
   const iaMessage = peutGenererIA
-    ? `Quota de générations par IA atteint ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Le crédit se renouvelle à la prochaine période.`
+    ? `Crédits IA épuisés ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Ils se renouvellent à la prochaine période.`
     : 'La proposition de format et de préparations par IA n’est pas incluse dans votre formule.';
 
   async function saveIntent(): Promise<boolean> {
@@ -304,7 +310,7 @@ export function ProjectV2({
   // Déjà une proposition (ou un format saisi) : le bouton devient « Redemander
   // une proposition » et prévient avant d'écraser le format.
   const dejaPropose = !!project.measure_type || project.components.length > 0;
-  const libelleIA = dejaPropose ? 'Redemander une proposition (IA)' : 'Proposer format et préparations (IA)';
+  const libelleIA = `${dejaPropose ? 'Redemander une proposition (IA)' : 'Proposer format et préparations (IA)'} · ${libelleCredits(COUT_PROJET_STRUCTURE)} IA`;
   async function proposerIA() {
     const texte = intent.trim().slice(0, INTENT_MAX);
     if (!texte) {
@@ -950,6 +956,11 @@ export function ProjectV2({
                     {libelleIA}
                   </button>
                 </LockedHint>
+              )}
+              {peutGenererIA && soldeProjet != null && (
+                <span className="self-center text-[12px] text-on-surface-variant">
+                  (il vous en reste {soldeProjet} ce mois-ci)
+                </span>
               )}
             </div>
             {project.components.length > 0 && (

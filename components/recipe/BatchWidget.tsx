@@ -28,6 +28,7 @@ import { useWriteGuard } from '@/components/ImpersonationProvider';
 import { useDialog } from '@/components/Dialog';
 import { useSeuilsArrondi } from '@/components/SeuilsArrondiProvider';
 import type { SeuilsArrondi } from '@/lib/arrondi-unite';
+import { COUT_AJUSTEMENT, creditsRestants, libelleCredits } from '@/lib/credits-ia';
 import { insertMaterializedBatch, recipeContentColumns } from '@/lib/batch-write';
 import { UNITS_LBL, moldMetrics, moldLbl, yieldInfo, MOLD_FORME_DIMS, DIM_LABELS } from '@/lib/recipe-view';
 import type { MergedIngredient } from '@/lib/recipe-view';
@@ -127,8 +128,19 @@ export function BatchWidget({
   // et surtout deux issues distinctes : sans le droit, /plans est la porte de
   // sortie ; crédit épuisé, il n'y en a pas à proposer (il se renouvelle),
   // doctrine JEP-77 conservée.
+  // Coût et solde annoncés AVANT le clic (JEP-405) : 1 crédit IA par ajustement.
+  const soldeIA = creditsRestants({ limite: quotaIA?.limit ?? null, utilises: quotaIA?.usage ?? null });
+  const libelleIA = (
+    <>
+      Ajuster les quantités par IA
+      <span className="font-normal text-on-surface-variant">
+        {' '}
+        ({libelleCredits(COUT_AJUSTEMENT)} IA{soldeIA != null ? `, il vous en reste ${soldeIA}` : ''})
+      </span>
+    </>
+  );
   const iaMessage = peutAjusterIA
-    ? `Quota d'ajustements par IA atteint ce mois-ci (${quotaIA?.usage ?? quotaIA?.limit}/${quotaIA?.limit}). Le crédit se renouvelle à la prochaine période.`
+    ? `Crédits IA épuisés ce mois-ci (${quotaIA?.usage ?? quotaIA?.limit}/${quotaIA?.limit}). Ils se renouvellent à la prochaine période.`
     : "L'ajustement des quantités par IA n'est pas inclus dans votre formule.";
 
   const yInfo = yieldInfo(recipe);
@@ -644,7 +656,7 @@ export function BatchWidget({
                       <span className={`material-symbols-outlined text-[18px]${iaEpuise ? '' : ' text-primary'}`}>
                         {iaEpuise ? 'block' : 'auto_awesome'}
                       </span>
-                      Ajuster les quantités par IA
+                      {libelleIA}
                     </span>
                   </label>
                 </LockedHint>
@@ -713,7 +725,7 @@ export function BatchWidget({
                       <span className={`material-symbols-outlined text-[18px]${iaEpuise ? '' : ' text-primary'}`}>
                         {iaEpuise ? 'block' : 'auto_awesome'}
                       </span>
-                      Ajuster les quantités par IA
+                      {libelleIA}
                     </span>
                   </label>
                 </LockedHint>
@@ -799,7 +811,7 @@ export function BatchWidget({
                 {!dimensionsIADispo && (
                   <p className="text-xs text-on-surface-variant">
                     {iaEpuise ? (
-                      <>Quota d&apos;ajustements par IA atteint ce mois-ci ({quotaIA?.usage ?? quotaIA?.limit}/{quotaIA?.limit}) — le crédit se renouvelle à la prochaine période.</>
+                      <>Crédits IA épuisés ce mois-ci ({quotaIA?.usage ?? quotaIA?.limit}/{quotaIA?.limit}) — ils se renouvellent à la prochaine période.</>
                     ) : (
                       <>
                         Ajustement automatique par IA non inclus dans votre formule —{' '}

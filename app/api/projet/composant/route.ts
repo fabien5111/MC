@@ -15,7 +15,8 @@ import { callClaude, parseStrictJson } from '@/lib/ai/claude';
 import { buildComponentContenu, draftToText, normaliseComponentRecipe } from '@/lib/ai/project-component';
 import type { ComponentStepDraft } from '@/lib/projects';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
-import { estRefus, reserverQuota } from '@/lib/quota-route';
+import { estRefusCredits, reserverCredits } from '@/lib/quota-route';
+import { COUT_PROJET_COMPOSANT } from '@/lib/credits-ia';
 import { refusSiCompteBloque } from '@/lib/moderation-route';
 
 export const maxDuration = 60;
@@ -78,8 +79,9 @@ export async function POST(req: Request) {
   // de `consignes` ci-dessus, qui corrige une proposition déjà vue.
   const contexteLibre = typeof body?.contexteLibre === 'string' ? body.contexteLibre.trim().slice(0, 500) || null : null;
 
-  const quota = await reserverQuota(user.id, 'mode_projet_ia_mensuel');
-  if (estRefus(quota)) return quota.refus;
+  // Crédits IA (JEP-405) : 2 crédits, débités avant l'appel, rendus s'il échoue.
+  const quota = await reserverCredits(user.id, 'projet_composant', COUT_PROJET_COMPOSANT);
+  if (estRefusCredits(quota)) return quota.refus;
 
   const { sink, appels } = collecteurAppelsIa();
   try {

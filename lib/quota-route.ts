@@ -12,14 +12,19 @@
 // dépense, ce qui est toute la raison d'être de ces quotas ; le crédit rendu
 // répare le seul cas défavorable, l'échec.
 import { NextResponse } from 'next/server';
-import { blockingMessage, type QuotaFailure, type Verdict } from '@/lib/entitlements';
+import { randomUUID } from 'node:crypto';
+import { blockingMessage, quotaFailure, type QuotaFailure, type Verdict } from '@/lib/entitlements';
+import { CLE_CREDITS_IA, DROIT_ACTION, PAGES_PHOTO_MAX, seuilFranchi, type ActionCredits } from '@/lib/credits-ia';
+import { notifier } from '@/lib/notifier';
+import { formatDate } from '@/lib/format';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import {
-  consumeQuota,
   getCurrentPlan,
   getEntitlements,
   getGrid,
-  messageImportEpuise,
-  refundQuota,
+  getUsageReport,
+  messageCreditsEpuises,
 } from '@/lib/entitlements-data';
 
 /**
@@ -32,11 +37,17 @@ import {
  * appelant traite tout statut non-2xx comme « pas de proposition » et
  * n'afficherait rien.
  */
-export async function messageQuota(userId: string, key: string, echec: QuotaFailure): Promise<string> {
-  // JEP-76 : le refus d'un import a son propre texte (essai ou abonnement, date
-  // de recharge) — seule exception au texte déduit de la grille.
-  if (key === 'import_ia_mensuel' && echec.code === 'EXCEEDED') {
-    const m = await messageImportEpuise(userId, echec.limit);
+export async function messageQuota(
+  userId: string,
+  key: string,
+  echec: QuotaFailure,
+  cout: number | null = null,
+): Promise<string> {
+  // JEP-76 / JEP-405 : les crédits IA insuffisants ont leur propre texte
+  // (essai ou abonnement, date de recharge, solde restant face au coût) —
+  // seule exception au texte déduit de la grille.
+  if (key === CLE_CREDITS_IA && echec.code === 'EXCEEDED') {
+    const m = await messageCreditsEpuises(userId, { limite: echec.limit, utilises: echec.usage, cout });
     return `${m.titre}. ${m.corps}`;
   }
 
@@ -51,8 +62,8 @@ export async function messageQuota(userId: string, key: string, echec: QuotaFail
   return message ? `${message.titre}. ${message.corps}` : 'Cette action n’est pas disponible sur votre formule.';
 }
 
-async function refus(userId: string, key: string, echec: QuotaFailure): Promise<NextResponse> {
-  const texte = await messageQuota(userId, key, echec);
+async function refus(userId: string, key: string, echec: QuotaFailure, cout: number | null = null): Promise<NextResponse> {
+  const texte = await messageQuota(userId, key, echec, cout);
 
   // 429 pour un quota épuisé (l'action redeviendra possible à la recharge),
   // 403 pour un droit que la formule n'ouvre pas (elle ne le redeviendra pas
@@ -78,19 +89,186 @@ export async function verifierAcces(userId: string, key: string): Promise<NextRe
   return refus(userId, key, { code: 'DENIED', featureKey: key, usage: null, limit: null });
 }
 
-export type Reservation = { refus: NextResponse } | { rendre: () => Promise<void> };
+// ── Crédits IA (JEP-405) ────────────────────────────────────
 
-/** `true` quand la réservation a échoué et que la route doit rendre `refus`. */
-export function estRefus(r: Reservation): r is { refus: NextResponse } {
+export type ReservationCredits =
+  | { refus: NextResponse }
+  | {
+      /** Ligne du journal `ai_credit_movements`, `null` si le journal manque. */
+      mouvementId: number | null;
+      /** Groupe de l'action : fourni par le navigateur (import photo) ou tiré ici. */
+      groupe: string;
+      /** Rend les crédits si l'action a finalement échoué (une seule fois). */
+      rendre: () => Promise<void>;
+    };
+
+export function estRefusCredits(r: ReservationCredits): r is { refus: NextResponse } {
   return 'refus' in r;
 }
 
+/** Fonction SQL absente (migration pas jouée) : PostgREST ne la trouve pas. */
+function fonctionAbsente(e: { code?: string; message?: string }): boolean {
+  return e.code === 'PGRST202' || e.code === '42883' || /could not find the function/i.test(e.message ?? '');
+}
+
 /**
- * Réserve un crédit. Rend soit la réponse de refus à retourner telle quelle,
- * soit un jeton dont `rendre()` restitue le crédit si l'action échoue.
+ * Débite `credits` crédits IA pour `action`, AVANT l'appel facturé (même
+ * doctrine « réserver plutôt que constater » que `reserverQuota`).
+ *
+ * 1. Droit d'ACCÈS de l'action (`DROIT_ACTION`) : le mode projet reste fermé
+ *    au PLUS, quel que soit son solde.
+ * 2. `mc_debiter_credits` (SECURITY DEFINER, propriétaire `postgres`) consomme
+ *    la dotation `credits_ia_mensuel` ET écrit la ligne du journal dans la même
+ *    transaction : l'historique ne peut pas diverger du solde. Elle tient aussi
+ *    le plafond de pages d'un import photo, sous verrou.
+ *
+ * Fonction absente (ordre de déploiement non respecté) : on laisse passer sans
+ * débit, journalisé — « échouer en ouvert sur une erreur de configuration »
+ * (docs/abonnements.md §1.5), le coût d'un appel IA étant de l'ordre du
+ * centime.
  */
-export async function reserverQuota(userId: string, key: string, n = 1): Promise<Reservation> {
-  const echec = await consumeQuota(key, n);
-  if (echec) return { refus: await refus(userId, key, echec) };
-  return { rendre: () => refundQuota(key, n) };
+export async function reserverCredits(
+  userId: string,
+  action: ActionCredits,
+  credits: number,
+  opts: { groupe?: string | null; detail?: Record<string, unknown> } = {},
+): Promise<ReservationCredits> {
+  const acces = await verifierAcces(userId, DROIT_ACTION[action]);
+  if (acces) return { refus: acces };
+
+  const groupe = opts.groupe ?? randomUUID();
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any).rpc('mc_debiter_credits', {
+    p_action: action,
+    p_credits: credits,
+    p_groupe: groupe,
+    p_detail: opts.detail ?? {},
+  });
+
+  if (error) {
+    if (fonctionAbsente(error)) {
+      console.error('credits-ia : mc_debiter_credits absente — action laissée passer sans débit.');
+      return { mouvementId: null, groupe, rendre: async () => {} };
+    }
+    if (String(error.message ?? '').startsWith('MC_CREDITS_PAGES_MAX')) {
+      return {
+        refus: NextResponse.json(
+          { erreur: `${PAGES_PHOTO_MAX} photos au maximum par import.` },
+          { status: 400 },
+        ),
+      };
+    }
+    const echec = quotaFailure(error);
+    if (echec) return { refus: await refus(userId, CLE_CREDITS_IA, echec, credits) };
+    console.error('credits-ia/debiter :', error.message);
+    return {
+      refus: NextResponse.json({ erreur: 'Crédits IA momentanément indisponibles, réessayez.' }, { status: 503 }),
+    };
+  }
+
+  const mouvementId = typeof data === 'number' ? data : Number(data) || null;
+  // Alerte à 80 % : après le débit, best-effort, jamais bloquante.
+  await alerterSeuilCredits(userId, credits);
+  let rendu = false;
+  return {
+    mouvementId,
+    groupe,
+    rendre: async () => {
+      if (rendu || mouvementId == null) return;
+      rendu = true;
+      await rendreCredits(mouvementId);
+    },
+  };
+}
+
+/**
+ * Prévient le membre (cloche + téléphone par défaut) quand CE débit franchit
+ * 80 % de sa dotation. Une seule fois par période : la clé de dédoublonnage
+ * porte la date de recharge, donc un remboursement suivi d'un nouveau débit ne
+ * la renvoie pas. Best-effort absolu : une panne ici ne doit jamais faire
+ * échouer l'action IA, déjà débitée.
+ *
+ * Le seuil se détecte sur `mc_check_quota` (une lecture après le débit) ;
+ * `mc_usage_report`, plus lourd, n'est lu que dans le cas, rare, où le seuil
+ * est franchi — pour la date de recharge.
+ */
+async function alerterSeuilCredits(userId: string, credits: number): Promise<void> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc('mc_check_quota', { p_user_id: userId, p_key: CLE_CREDITS_IA });
+    if (error) return;
+    const d = data as { limit?: number; usage?: number } | null;
+    if (!seuilFranchi(d?.usage, d?.limit, credits)) return;
+
+    const rapport = await getUsageReport(userId);
+    const fin = rapport.find((l) => l.featureKey === CLE_CREDITS_IA)?.periodEnd ?? null;
+    const limite = d?.limit ?? 0;
+    await notifier(createAdminClient(), {
+      userId,
+      evenement: 'credits_ia_80',
+      donnees: { restants: Math.max(0, limite - (d?.usage ?? 0)), limite, rechargeLe: fin ? formatDate(fin) : null },
+      cleDedoublonnage: `credits_ia_80:${fin ?? new Date().toISOString().slice(0, 7)}`,
+    });
+  } catch (e) {
+    console.error('credits-ia/alerte :', (e as Error).message);
+  }
+}
+
+/**
+ * Rend les crédits d'une ligne du journal (appel IA en échec). Passe par la clé
+ * service_role : `mc_rendre_credits` n'est PAS exécutable par un membre, sans
+ * quoi il suffirait de l'appeler depuis la console après un appel réussi pour
+ * récupérer ses crédits. Silencieuse : l'échec qu'elle compense a déjà été
+ * signalé à l'appelant.
+ */
+async function rendreCredits(mouvementId: number): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const { error } = await (admin as any).rpc('mc_rendre_credits', { p_mouvement: mouvementId });
+    if (error) console.error('credits-ia/rendre :', error.message);
+  } catch (e) {
+    console.error('credits-ia/rendre :', (e as Error).message);
+  }
+}
+
+/**
+ * Rattache les lignes d'un groupe à l'objet produit (l'import enregistré),
+ * pour le lien de l'historique. Best-effort : un lien manquant n'enlève rien
+ * au débit, déjà écrit.
+ */
+export async function lierCredits(
+  userId: string,
+  groupe: string,
+  ref: { table: string; id: string | number },
+): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const { error } = await (admin as any)
+      .from('ai_credit_movements')
+      .update({ ref_table: ref.table, ref_id: String(ref.id) })
+      .eq('user_id', userId)
+      .eq('groupe', groupe);
+    if (error) console.error('credits-ia/lier :', error.message);
+  } catch (e) {
+    console.error('credits-ia/lier :', (e as Error).message);
+  }
+}
+
+/**
+ * Pages d'un import photo déjà débitées (et non rendues) dans ce groupe, sous
+ * la session (RLS : ses propres lignes). Sert à n'appliquer le tarif de la
+ * mise en forme photo (2 crédits) qu'à un import dont les pages ont
+ * réellement été payées — sinon, un texte quelconque annoncé « photo »
+ * échapperait au tarif par longueur. Lecture en échec : 0, donc tarif texte.
+ */
+export async function pagesPhotoDebitees(groupe: string): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await (supabase as any)
+    .from('ai_credit_movements')
+    .select('id', { count: 'exact', head: true })
+    .eq('groupe', groupe)
+    .eq('action', 'import_photo_page')
+    .eq('statut', 'debite');
+  if (error) return 0;
+  return count ?? 0;
 }

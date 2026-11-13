@@ -54,12 +54,14 @@ describe('catalogue', () => {
   it('les clés de rubrique sont uniques', () => {
     expect(new Set(RUBRIQUES.map((r) => r.cle)).size).toBe(RUBRIQUES.length);
   });
-  it('le découpage demandé : 5 / 3 / 3 / 3 sous-catégories', () => {
+  it('le découpage demandé : 5 / 3 / 3 / 3 / 2 sous-catégories', () => {
     expect(rubriquesDeCategorie('mes_recettes')).toHaveLength(5);
     expect(rubriquesDeCategorie('communaute')).toHaveLength(3);
     expect(rubriquesDeCategorie('fournees')).toHaveLength(3);
     expect(rubriquesDeCategorie('idees')).toHaveLength(3);
-    for (const c of ['mes_avis', 'abonnement', 'support', 'moderation'] as const) {
+    // Abonnement : échéances et crédits IA (JEP-405).
+    expect(rubriquesDeCategorie('abonnement')).toHaveLength(2);
+    for (const c of ['mes_avis', 'support', 'moderation'] as const) {
       expect(rubriquesDeCategorie(c), c).toHaveLength(1);
     }
   });
@@ -246,5 +248,27 @@ describe('rappel de la veille (JEP-375)', () => {
     const g = composerNotification(def, { titre: 'Tarte', dejaCommencee: true });
     expect(g.titre).toBe('Jour J demain');
     expect(g.corps).not.toContain('commence');
+  });
+});
+
+describe('alerte des crédits IA (JEP-405)', () => {
+  it('cloche et téléphone par défaut, pas d’e-mail', () => {
+    expect(decisionCanaux(def('credits_ia_80'), {})).toEqual({ site: true, email: 'aucun' });
+    expect(pushEffectif({}, def('credits_ia_80').rubrique)).toBe(true);
+  });
+  it('l’e-mail reste réglable : coché, il part tout de suite', () => {
+    const prefs = { 'abonnement.credits': { site: true, email: true, rythme: 'immediat' as const } };
+    expect(decisionCanaux(def('credits_ia_80'), prefs).email).toBe('immediat');
+  });
+  it('un e-mail refusé au niveau de l’abonnement ne devient pas un e-mail reçu', () => {
+    const prefs = { abonnement: { site: true, email: false, rythme: 'immediat' as const } };
+    expect(decisionCanaux(def('SUB_J3'), prefs).email).toBe('aucun');
+    expect(decisionCanaux(def('credits_ia_80'), prefs).email).toBe('aucun');
+  });
+  it('le texte dit ce qu’il reste et quand ça revient', () => {
+    const g = composerNotification(def('credits_ia_80'), { restants: 24, limite: 120, rechargeLe: '21 novembre 2026' });
+    expect(g.titre).toBe('Vous avez utilisé 80 % de vos crédits IA');
+    expect(g.corps).toBe('Il vous reste 24 crédits IA sur 120 ce mois-ci. Ils se renouvellent le 21 novembre 2026.');
+    expect(lienNotification(def('credits_ia_80'), {})).toBe('/reglages');
   });
 });

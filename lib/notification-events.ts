@@ -218,14 +218,25 @@ export const RUBRIQUES: Rubrique[] = [
     rythmesPermis: RECAP,
   },
   // ── Non découpées ────────────────────────────────────────────────────
+  // Abonnement : deux rubriques depuis JEP-405. Une ligne enregistrée au niveau
+  // de la CATÉGORIE (`abonnement`) vaut pour les deux tant que rien n'est réglé
+  // individuellement : un e-mail refusé ne redevient pas un e-mail reçu.
   {
-    cle: 'abonnement',
+    cle: 'abonnement.echeances',
     categorie: 'abonnement',
-    libelle: null,
+    libelle: 'Échéances et paiement',
     description:
       'Fin d’essai et échéances qui approchent, expiration, échec de paiement, confirmation de souscription et de résiliation.',
     defaut: IMMEDIAT,
     rythmesPermis: ['immediat'],
+  },
+  {
+    cle: 'abonnement.credits',
+    categorie: 'abonnement',
+    libelle: 'Crédits IA',
+    description: 'Une alerte quand vous avez utilisé 80 % de vos crédits IA du mois. Par défaut : site et téléphone, sans e-mail.',
+    defaut: { site: true, email: false, rythme: 'immediat', push: true },
+    rythmesPermis: TOUS,
   },
   {
     cle: 'support',
@@ -333,14 +344,32 @@ export const EVENEMENTS = {
   // Les textes viennent de `composeNotification` (cron) et des messages du
   // webhook Stripe : ces événements reçoivent un `gabarit` pré-composé par
   // l'appelant via `detail`/`titre` (voir `gabaritPreCompose`).
-  TRIAL_J3: precompose('abonnement'),
-  TRIAL_J1: precompose('abonnement'),
-  SUB_J3: precompose('abonnement'),
-  SUB_J1: precompose('abonnement'),
-  EXPIRED_J1: precompose('abonnement'),
-  PAYMENT_FAILED: precompose('abonnement'),
-  SUBSCRIPTION_CONFIRMED: precompose('abonnement', { verrouille: true }),
-  SUBSCRIPTION_CANCELLED: precompose('abonnement', { verrouille: true }),
+  TRIAL_J3: precompose('abonnement', { rubrique: 'abonnement.echeances' }),
+  TRIAL_J1: precompose('abonnement', { rubrique: 'abonnement.echeances' }),
+  SUB_J3: precompose('abonnement', { rubrique: 'abonnement.echeances' }),
+  SUB_J1: precompose('abonnement', { rubrique: 'abonnement.echeances' }),
+  EXPIRED_J1: precompose('abonnement', { rubrique: 'abonnement.echeances' }),
+  PAYMENT_FAILED: precompose('abonnement', { rubrique: 'abonnement.echeances' }),
+  SUBSCRIPTION_CONFIRMED: precompose('abonnement', { verrouille: true, rubrique: 'abonnement.echeances' }),
+  SUBSCRIPTION_CANCELLED: precompose('abonnement', { verrouille: true, rubrique: 'abonnement.echeances' }),
+  // Crédits IA (JEP-405) : 80 % de la dotation du mois consommés. Émis une
+  // seule fois par période (clé de dédoublonnage), au débit qui franchit le seuil.
+  credits_ia_80: {
+    categorie: 'abonnement',
+    rubrique: 'abonnement.credits',
+    priorite: 2,
+    gabarit: (d) => {
+      const restants = typeof d.restants === 'number' ? d.restants : null;
+      const limite = typeof d.limite === 'number' ? d.limite : null;
+      const recharge = typeof d.rechargeLe === 'string' && d.rechargeLe ? ` Ils se renouvellent le ${d.rechargeLe}.` : '';
+      const reste =
+        restants != null && limite != null
+          ? `Il vous reste ${restants} crédit${restants > 1 ? 's' : ''} IA sur ${limite} ce mois-ci.`
+          : 'Il vous reste peu de crédits IA ce mois-ci.';
+      return { titre: 'Vous avez utilisé 80 % de vos crédits IA', corps: `${reste}${recharge}` };
+    },
+    lien: () => '/reglages',
+  },
 
   // ── Support et compte ──────────────────────────────────────────────────
   contact_deploye: precompose('support', { verrouille: true }),
@@ -593,10 +622,10 @@ export type NomEvenement = keyof typeof EVENEMENTS;
  * Stripe) : ces messages existaient avant le moteur et doivent partir À
  * L'IDENTIQUE. Le gabarit se contente de relayer `titre` et `detail`.
  */
-function precompose(categorie: Categorie, opts: { verrouille?: boolean } = {}): DefinitionEvenement {
+function precompose(categorie: Categorie, opts: { verrouille?: boolean; rubrique?: string } = {}): DefinitionEvenement {
   return {
     categorie,
-    rubrique: categorie,
+    rubrique: opts.rubrique ?? categorie,
     verrouille: opts.verrouille,
     priorite: opts.verrouille ? PRIORITE_VERROUILLE : 1,
     gabarit: (d) => ({ titre: t(d.titre, ''), corps: t(d.detail, '') }),

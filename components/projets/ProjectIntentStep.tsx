@@ -12,6 +12,7 @@
 import { useState } from 'react';
 import { LockedAction } from '@/components/LockedAction';
 import { INTENT_MAX } from '@/lib/ai/project-structure';
+import { COUT_PROJET_STRUCTURE, creditsRestants, libelleCredits } from '@/lib/credits-ia';
 
 export type ProjectStartMode = 'ai' | 'manual';
 
@@ -40,14 +41,18 @@ export function ProjectIntentStep({
   disabled?: boolean;
   onSubmit: (mode: ProjectStartMode, intent: string) => void;
 }) {
-  const iaEpuise = peutGenererIA && quotaProjetIA != null && !quotaProjetIA.allowed;
+  const soldeProjet = creditsRestants({ limite: quotaProjetIA?.limit ?? null, utilises: quotaProjetIA?.usage ?? null });
+  const iaEpuise =
+    peutGenererIA &&
+    quotaProjetIA != null &&
+    (!quotaProjetIA.allowed || (soldeProjet != null && soldeProjet < COUT_PROJET_STRUCTURE));
   const iaDisponible = peutGenererIA && !iaEpuise;
   const [mode, setMode] = useState<ProjectStartMode | null>(null);
   const [intent, setIntent] = useState(initialIntent);
   const [erreur, setErreur] = useState<string | null>(null);
 
   const iaMessage = peutGenererIA
-    ? `Quota de générations par IA atteint ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Le crédit se renouvelle à la prochaine période.`
+    ? `Crédits IA épuisés ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Ils se renouvellent à la prochaine période.`
     : "L'aide de l'IA pour composer un projet n'est pas incluse dans votre formule.";
 
   function continuer() {
@@ -150,7 +155,7 @@ export function ProjectIntentStep({
 
       {mode && (
         <button type="button" onClick={continuer} disabled={disabled} className={btnPrimary}>
-          {mode === 'ai' ? 'Proposer avec l’IA' : 'Continuer'}
+          {mode === 'ai' ? `Proposer avec l’IA · ${libelleCredits(COUT_PROJET_STRUCTURE)} IA` : 'Continuer'}
         </button>
       )}
     </section>
