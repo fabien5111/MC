@@ -135,7 +135,7 @@ export function BatchWidget({
       Ajuster les quantités par IA
       <span className="font-normal text-on-surface-variant">
         {' '}
-        · {libelleCredits(COUT_AJUSTEMENT)} IA{soldeIA != null ? `, il vous reste ${soldeIA}` : ''}
+        ({libelleCredits(COUT_AJUSTEMENT)} IA{soldeIA != null ? `, il vous en reste ${soldeIA}` : ''})
       </span>
     </>
   );

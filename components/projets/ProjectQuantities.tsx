@@ -684,7 +684,7 @@ export function QuantitiesStep({
                       className={`text-[12px] ${iaEpuise ? 'text-error' : 'text-on-surface-variant'}`}
                       title="Crédits IA du mois, communs à l’import, à l’ajustement et au mode projet."
                     >
-                      Il vous reste {libelleCredits(iaRestants)} IA ce mois-ci
+                      (il vous en reste {iaRestants} ce mois-ci)
                     </span>
                   )}
                 </div>

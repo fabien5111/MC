@@ -71,9 +71,9 @@ export default async function ImporterPage() {
   // dit si l'import qu'on s'apprête à lancer passera.
   const compteurImports =
     quotaImport && quotaImport.usage != null && quotaImport.limit != null
-      ? `Il vous reste ${Math.max(0, quotaImport.limit - quotaImport.usage)} crédit${
-          quotaImport.limit - quotaImport.usage > 1 ? 's' : ''
-        } IA sur ${quotaImport.limit} ${essai ? "pour l'essai" : 'ce mois-ci'}`
+      ? `(il vous en reste ${Math.max(0, quotaImport.limit - quotaImport.usage)} sur ${quotaImport.limit} crédits IA ${
+          essai ? "pour l'essai" : 'ce mois-ci'
+        })`
       : null;
 
   return (

@@ -959,7 +959,7 @@ export function ProjectV2({
               )}
               {peutGenererIA && soldeProjet != null && (
                 <span className="self-center text-[12px] text-on-surface-variant">
-                  Il vous reste {libelleCredits(soldeProjet)} IA ce mois-ci
+                  (il vous en reste {soldeProjet} ce mois-ci)
                 </span>
               )}
             </div>
