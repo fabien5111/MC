@@ -43,7 +43,7 @@ export function CreditsIaHistorique({
   return (
     <SettingsCard icon="toll" title="Historique des crédits IA" count={enCours?.operations.length ?? 0} id="credits-ia">
       <p className="mb-2 text-sm text-on-surface-variant">
-        Chaque action d’IA consomme des crédits de votre dotation du mois. Un appel qui échoue vous est rendu.{' '}
+        Chaque action d’IA consomme des crédits de votre dotation du mois. Un appel qui échoue ne vous est pas crédité.{' '}
         <HelpBlockSlot blockKey="reglages.credits_ia" help={help} className="ml-1 align-middle" />
       </p>
       <p className="mb-6 text-[13px] text-on-surface-variant">
