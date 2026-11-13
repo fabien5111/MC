@@ -576,7 +576,7 @@ canal que toute autre exception commerciale : contacter l'administrateur.
 
 ### Actions dupliquées vers `/plans`, pas réimplémentées
 
-« Essayer une formule payante » et « Passer à une formule supérieure »
+« Essayer gratuitement la formule PRO » et « Passer à une formule supérieure »
 renvoient vers `/plans` plutôt que d'agir sur place : la page publique porte
 déjà l'intégralité de cette logique (comparaison, tarifs, confirmation de
 rétrogradation, file de demandes). Dupliquer une version simplifiée ici

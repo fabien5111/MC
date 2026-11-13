@@ -166,7 +166,7 @@ export function UsageCard({
                 href="/plans"
                 className="rounded-pill border border-primary px-4 py-2 font-label-md text-label-md text-primary transition-colors hover:bg-primary hover:text-white"
               >
-                Essayer une formule payante
+                Essayer gratuitement la formule PRO
               </Link>
             )}
             {hasHigherPlan && (
