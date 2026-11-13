@@ -729,6 +729,9 @@ export function ComponentResolver({
             </SearchResultsBusy>
 
             <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
+              <button type="button" onClick={saisirAMain} className={btnGhost}>
+                Saisir à la main
+              </button>
               {!peutGenererIA ? (
                 // Sans le droit, le bouton désactivé n'offrait aucune issue :
                 // le repère le remplace et mène aux formules.
@@ -756,9 +759,6 @@ export function ComponentResolver({
                   </button>
                 </LockedHint>
               )}
-              <button type="button" onClick={saisirAMain} className={btnGhost}>
-                Saisir à la main
-              </button>
               {peutGenererIA && soldeProjet != null && (
                 <span className="self-center text-[12px] text-on-surface-variant">(il vous en reste {soldeProjet} ce mois-ci)</span>
               )}
