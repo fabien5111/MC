@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { canAccess } from '@/lib/entitlements';
 import { getCurrentPlan, getEntitlements, checkQuota, messageCreditsEpuises } from '@/lib/entitlements-data';
 import { CLE_CREDITS_IA } from '@/lib/credits-ia';
+import { getCreditsParImport } from '@/lib/credits-historique-data';
 
 export const metadata: Metadata = { title: 'Importer une recette | Je pâtisse !' };
 
@@ -26,6 +27,11 @@ export default async function ImporterPage() {
     getCurrentPlan(user.id),
     getVisibleHelpBlocks('importer', user.id),
   ]);
+  // Crédits IA consommés par chaque import (JEP-405), affichés à tout membre.
+  const creditsParImport = await getCreditsParImport(
+    user.id,
+    imports.map((i) => i.id),
+  );
   // Droit d'abonnement : l'historique des imports reste visible quoi qu'il
   // arrive (§7.4, l'existant est préservé) — seul le formulaire de NOUVEL
   // import est bridé.
@@ -84,9 +90,6 @@ export default async function ImporterPage() {
           <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">
             Importer une recette
           </h1>
-          {compteurImports && (
-            <span className="font-label-md text-label-md text-on-surface-variant">{compteurImports}</span>
-          )}
         </div>
         <p className="text-on-surface-variant mb-8">
           Collez le texte complet d&apos;une recette : elle est analysée, convertie au format du site
@@ -96,6 +99,7 @@ export default async function ImporterPage() {
         {peutImporter ? (
           <ImporterForm
             quotaImport={quotaImport}
+            compteur={compteurImports}
             helpBlocks={helpBlocks}
             quotaMessage={messageQuotaImport ? `${messageQuotaImport.titre}. ${messageQuotaImport.corps}` : null}
           />
@@ -127,7 +131,7 @@ export default async function ImporterPage() {
         )}
 
         <h2 className="font-headline-md text-headline-md text-primary mb-4 mt-12">Mes imports</h2>
-        <ImporterList imports={imports} isAdmin={admin} />
+        <ImporterList imports={imports} isAdmin={admin} credits={creditsParImport} />
       </main>
       <Footer />
       <MobileNav current="carnet" />

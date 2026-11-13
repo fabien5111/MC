@@ -78,8 +78,12 @@ const tailleLisible = (octets: number): string =>
 export function ImporterForm({
   quotaImport = null,
   quotaMessage: quotaMessageServeur = null,
+  compteur = null,
   helpBlocks = [],
 }: {
+  // « (il vous en reste N sur L crédits IA ce mois-ci) », posé à côté du bouton
+  // « Importer » de chaque onglet ; composé côté serveur.
+  compteur?: string | null;
   // État du quota `import_ia_mensuel` (`mc_check_quota`, affichage seulement
   // — le vrai refus reste porté par `mc_consume` dans /api/import-url) :
   // `null` si la lecture a échoué ou n'a pas eu lieu (best-effort, cf.
@@ -467,17 +471,20 @@ export function ImporterForm({
               className="border border-outline-variant rounded px-4 py-3 font-body-md bg-white focus:ring-1 focus:ring-primary focus:border-primary w-full"
             />
           </label>
-          <LockedHint message={quotaMessage} active={quotaEpuise}>
-            <button
-              type="button"
-              onClick={submitText}
-              disabled={busy || quotaEpuise}
-              className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
-              Importer · {libelleCredits(coutImportTexte(texte.trim().length))} IA
-            </button>
-          </LockedHint>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <LockedHint message={quotaMessage} active={quotaEpuise}>
+              <button
+                type="button"
+                onClick={submitText}
+                disabled={busy || quotaEpuise}
+                className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
+                Importer · {libelleCredits(coutImportTexte(texte.trim().length))} IA
+              </button>
+            </LockedHint>
+            {compteur && <span className="text-[13px] text-on-surface-variant">{compteur}</span>}
+          </div>
         </div>
       ) : onglet === 'pdf' ? (
         <div className="mb-4">
@@ -546,17 +553,20 @@ export function ImporterForm({
               e.target.value = '';
             }}
           />
-          <LockedHint message={quotaMessage} active={quotaEpuise}>
-            <button
-              type="button"
-              onClick={() => void submitPdf()}
-              disabled={busy || !pdf || quotaEpuise}
-              className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
-            >
-              <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
-              Importer · {COUT_PDF_AFFICHE} IA
-            </button>
-          </LockedHint>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <LockedHint message={quotaMessage} active={quotaEpuise}>
+              <button
+                type="button"
+                onClick={() => void submitPdf()}
+                disabled={busy || !pdf || quotaEpuise}
+                className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
+              >
+                <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
+                Importer · {COUT_PDF_AFFICHE}
+              </button>
+            </LockedHint>
+            {compteur && <span className="text-[13px] text-on-surface-variant">{compteur}</span>}
+          </div>
         </div>
       ) : (
         <div className="mb-4">
@@ -657,17 +667,20 @@ export function ImporterForm({
             températures du brouillon obtenu.
           </p>
 
-          <LockedHint message={quotaMessage} active={quotaEpuise}>
-            <button
-              type="button"
-              onClick={() => void submitPhotos()}
-              disabled={busy || !photos.length || quotaEpuise}
-              className="mt-3 bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
-            >
-              <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
-              Importer · {photos.length ? `${libelleCredits(coutImportPhoto(photos.length))} IA` : COUT_PHOTOS_AFFICHE}
-            </button>
-          </LockedHint>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <LockedHint message={quotaMessage} active={quotaEpuise}>
+              <button
+                type="button"
+                onClick={() => void submitPhotos()}
+                disabled={busy || !photos.length || quotaEpuise}
+                className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:active:scale-100"
+              >
+                <span className="material-symbols-outlined text-[18px]">{quotaEpuise ? 'block' : 'content_paste_go'}</span>{' '}
+                Importer · {photos.length ? `${libelleCredits(coutImportPhoto(photos.length))} IA` : COUT_PHOTOS_AFFICHE}
+              </button>
+            </LockedHint>
+            {compteur && <span className="text-[13px] text-on-surface-variant">{compteur}</span>}
+          </div>
         </div>
       )}
 

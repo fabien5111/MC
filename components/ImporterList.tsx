@@ -25,10 +25,20 @@ const STATUT_LBL: Record<string, [string, string]> = {
 
 // Grille alignant les colonnes entre les lignes (colonne coût en plus pour un
 // admin) : titre | source | alertes | [coût] | date | action | chevron.
-const SM_COLS = 'sm:grid-cols-[minmax(0,1fr)_110px_44px_72px_28px_20px]';
-const SM_COLS_ADMIN = 'sm:grid-cols-[minmax(0,1fr)_110px_44px_80px_72px_28px_20px]';
+// Colonne « crédits IA » pour tous (JEP-405), coût en dollars en plus pour un admin.
+const SM_COLS = 'sm:grid-cols-[minmax(0,1fr)_110px_44px_96px_72px_28px_20px]';
+const SM_COLS_ADMIN = 'sm:grid-cols-[minmax(0,1fr)_110px_44px_96px_80px_72px_28px_20px]';
 
-export function ImporterList({ imports, isAdmin }: { imports: ImportRow[]; isAdmin: boolean }) {
+export function ImporterList({
+  imports,
+  isAdmin,
+  credits = {},
+}: {
+  imports: ImportRow[];
+  isAdmin: boolean;
+  /** Crédits IA consommés par import (id → crédits) ; absent = « — ». */
+  credits?: Record<number, number>;
+}) {
   const { mutate, busy } = useMutation();
   // Suppression optimiste locale : le spinner doit rester affiché jusqu'à ce
   // que l'import disparaisse effectivement de la liste, sans attendre le
@@ -102,6 +112,12 @@ export function ImporterList({ imports, isAdmin }: { imports: ImportRow[]; isAdm
               <span className="min-w-0 max-w-[55%] truncate text-xs text-on-surface-variant sm:max-w-none sm:text-sm">{host}</span>
               <span className="text-xs text-error sm:text-sm">
                 {alertes.length > 0 && <span title={alertes.join('\n')}>⚠ {alertes.length}</span>}
+              </span>
+              <span
+                className="text-xs text-on-surface-variant sm:text-sm"
+                title="Crédits IA consommés par cet import (un appel en échec vous est rendu)"
+              >
+                {credits[i.id] != null ? `${credits[i.id]} crédit${credits[i.id] > 1 ? 's' : ''} IA` : '—'}
               </span>
               {isAdmin && (
                 <span className="text-xs text-on-surface-variant sm:text-sm" title="Coût IA de cet import (admin uniquement)">
