@@ -154,9 +154,14 @@ export function ProjectIntentStep({
       {erreur && <p className="text-[13px] text-error">{erreur}</p>}
 
       {mode && (
-        <button type="button" onClick={continuer} disabled={disabled} className={btnPrimary}>
-          {mode === 'ai' ? `Proposer avec l’IA · ${libelleCredits(COUT_PROJET_STRUCTURE)} IA` : 'Continuer'}
-        </button>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <button type="button" onClick={continuer} disabled={disabled} className={btnPrimary}>
+            {mode === 'ai' ? `Proposer avec l’IA · ${libelleCredits(COUT_PROJET_STRUCTURE)} IA` : 'Continuer'}
+          </button>
+          {mode === 'ai' && soldeProjet != null && (
+            <span className="text-[12px] text-on-surface-variant">(il vous en reste {soldeProjet} ce mois-ci)</span>
+          )}
+        </div>
       )}
     </section>
   );

@@ -115,7 +115,7 @@ export function ImporterList({
               </span>
               <span
                 className="text-xs text-on-surface-variant sm:text-sm"
-                title="Crédits IA consommés par cet import (un appel en échec vous est rendu)"
+                title="Crédits IA consommés par cet import (un appel qui échoue ne vous est pas débité)"
               >
                 {credits[i.id] != null ? `${credits[i.id]} crédit${credits[i.id] > 1 ? 's' : ''} IA` : '—'}
               </span>

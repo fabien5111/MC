@@ -729,6 +729,9 @@ export function ComponentResolver({
             </SearchResultsBusy>
 
             <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
+              <button type="button" onClick={saisirAMain} className={btnGhost}>
+                Saisir à la main
+              </button>
               {!peutGenererIA ? (
                 // Sans le droit, le bouton désactivé n'offrait aucune issue :
                 // le repère le remplace et mène aux formules.
@@ -756,9 +759,9 @@ export function ComponentResolver({
                   </button>
                 </LockedHint>
               )}
-              <button type="button" onClick={saisirAMain} className={btnGhost}>
-                Saisir à la main
-              </button>
+              {peutGenererIA && soldeProjet != null && (
+                <span className="self-center text-[12px] text-on-surface-variant">(il vous en reste {soldeProjet} ce mois-ci)</span>
+              )}
             </div>
             <p className="mt-2 text-[12px] text-on-surface-variant">
               La recette choisie est copiée dans le projet : la modifier ensuite chez son auteur ne changera rien ici.
@@ -858,6 +861,9 @@ export function ComponentResolver({
               <button type="button" onClick={() => void demanderIA()} className={btnPrimary}>
                 Générer · {libelleCredits(COUT_PROJET_COMPOSANT)} IA
               </button>
+              {soldeProjet != null && (
+                <span className="self-center text-[12px] text-on-surface-variant">(il vous en reste {soldeProjet} ce mois-ci)</span>
+              )}
             </div>
           </>
         ) : (
@@ -897,9 +903,12 @@ export function ComponentResolver({
                     disabled={iaEpuise || !consignes.trim()}
                     className={`${btnGhost} mt-3 disabled:cursor-not-allowed`}
                   >
-                    Demander une nouvelle proposition
+                    Demander une nouvelle proposition · {libelleCredits(COUT_PROJET_COMPOSANT)} IA
                   </button>
                 </LockedHint>
+                {soldeProjet != null && (
+                  <span className="ml-3 text-[12px] text-on-surface-variant">(il vous en reste {soldeProjet} ce mois-ci)</span>
+                )}
               </div>
             )}
 
