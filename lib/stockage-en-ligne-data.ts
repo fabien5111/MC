@@ -23,10 +23,11 @@ export function configStockage(): ConfigStockage {
   if (googleClient && googleCle && googleApp) {
     config.google = { clientId: googleClient, apiKey: googleCle, appId: googleApp };
   }
-  // Google Photos se règle à part (`GOOGLE_PHOTOS_ACTIF`) : son API demande
+  // Google Photos se règle à part (`GOOGLE_PHOTOS_ACTIF`, `true` quelle que soit
+  // la casse : le panneau Virtuozzo la propose parfois en majuscules) : son API demande
   // d'être activée dans la console et sa portée validée par Google — Drive
   // peut être en service avant.
-  if (googleClient && env('GOOGLE_PHOTOS_ACTIF') === 'true') {
+  if (googleClient && env('GOOGLE_PHOTOS_ACTIF')?.toLowerCase() === 'true') {
     config.googlePhotos = { clientId: googleClient };
   }
   const dropbox = env('DROPBOX_APP_KEY');
