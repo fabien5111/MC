@@ -52,6 +52,7 @@ import { PrintButton } from '@/components/recipe/PrintButton';
 import { ShoppingWidget } from '@/components/recipe/ShoppingWidget';
 import { BatchWidget } from '@/components/recipe/BatchWidget';
 import { PlanProvider } from '@/components/recipe/PlanContext';
+import { LancerFourneeButton } from '@/components/recipe/LancerFourneeButton';
 import { ShareButton } from '@/components/recipe/ShareButton';
 import { RecipeStep } from '@/components/recipe/RecipeStep';
 import { type TocSections } from '@/components/recipe/RecipeToc';
@@ -461,6 +462,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 />
               )}
               <span className="flex items-center gap-2 text-secondary ml-auto">
+                <LancerFourneeButton />
                 <FavoriteButton recipeId={recipe.id} initialFav={favIds.has(recipe.id)} />
                 {user && <AddToListButton recipeId={recipe.id} />}
                 <ShareButton title={recipe.title} recipeId={recipe.id} ownerId={recipe.author_id} isOwner={isOwner} shareInfo={shareInfo} />
