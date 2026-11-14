@@ -18,8 +18,8 @@ export async function Footer() {
               Je pâtisse !
             </Link>
             <p className="font-body-md text-body-md text-on-surface-variant max-w-sm leading-relaxed">
-              L&apos;excellence de la pâtisserie française partagée avec passion. Rejoignez notre
-              communauté de gourmets et apprenez les techniques des chefs.
+              Votre carnet de pâtisserie, de l&apos;idée à la fournée : des recettes qui s&apos;adaptent à vos
+              moules, se planifient sur plusieurs jours et gardent la mémoire de chaque essai.
             </p>
             {liensSociaux.length > 0 && <SocialRondsFooter liens={liensSociaux} />}
           </div>

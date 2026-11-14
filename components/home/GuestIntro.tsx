@@ -17,7 +17,7 @@ export function GuestIntro() {
           préparations sur plusieurs jours et gardez la trace de chaque essai.
         </p>
       </div>
-      <div className="grid grid-cols-1 rail:grid-cols-3 gap-8 mt-12">
+      <div className="grid grid-cols-1 rail:grid-cols-3 gap-x-8 gap-y-12 mt-12">
         {POINTS.map((p) => (
           <div key={p.title} className="text-center px-4">
             <span className="material-symbols-outlined text-primary text-[32px] mb-3">{p.icon}</span>
@@ -45,5 +45,20 @@ const POINTS = [
     icon: 'history_edu',
     title: 'Se souvenir',
     text: "Vos commentaires d'une fois sur l'autre, pour ne pas refaire la même erreur.",
+  },
+  {
+    icon: 'upload_file',
+    title: 'Importer vos recettes',
+    text: 'Prenez en photo votre carnet de recettes, un PDF ou un texte collé : l’IA en fait une recette structurée, étape par étape.',
+  },
+  {
+    icon: 'architecture',
+    title: 'Créer votre dessert',
+    text: 'Un outil pour accompagner votre créativité : assemblez une pâte, un insert, un glaçage : le mode projet ajuste les quantités et suit vos essais jusqu’à la recette finale.',
+  },
+  {
+    icon: 'share',
+    title: 'Partager votre carnet',
+    text: 'Un lien suffit : vos proches découvrent vos recettes publiées et les retrouvent dans leur propre carnet.',
   },
 ];
