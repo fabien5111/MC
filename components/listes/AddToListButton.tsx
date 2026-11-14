@@ -69,7 +69,7 @@ export function AddToListButton({ recipeId }: { recipeId: string }) {
         onClick={ouvrir}
         aria-label="Ajouter à une liste"
         title="Ajouter à une liste"
-        className="flex h-7 items-center gap-1 rounded-full border border-secondary px-2 text-secondary transition-colors hover:bg-secondary-container"
+        className="flex h-10 sm:h-7 items-center gap-1 rounded-full border border-secondary px-2 text-secondary transition-colors hover:bg-secondary-container"
       >
         <span className="material-symbols-outlined text-[16px]" aria-hidden>playlist_add</span>
         <span className="text-[11px] font-semibold">Listes</span>
