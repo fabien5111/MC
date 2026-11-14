@@ -165,8 +165,18 @@ export async function choisirDansDrive(
         else if (action === g.picker.Action.CANCEL) resoudre(null);
       });
     if (max > 1) constructeur = constructeur.enableFeature(g.picker.Feature.MULTISELECT_ENABLED).setMaxItems(max);
+    // Le sélecteur de Google s'ajoute à la fin de la page et lui donne le
+    // focus : le navigateur fait alors défiler la page jusqu'en bas. La
+    // position d'origine est rétablie (JEP-408, relevé sur l'aperçu).
+    const x = window.scrollX;
+    const y = window.scrollY;
     etapes.avantAffichage();
     constructeur.build().setVisible(true);
+    const retablir = () => window.scrollTo(x, y);
+    window.requestAnimationFrame(() => {
+      retablir();
+      window.setTimeout(retablir, 150);
+    });
   });
   if (!docs?.length) return null;
   etapes.avantTelechargement();
