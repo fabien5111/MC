@@ -166,6 +166,7 @@ Cf. CLAUDE.md « Crédits IA ».
 | `navigation_sans_pub` | binaire | `PartnerSlot` hors accueil |
 | `extraction_etapes` | binaire | `/api/recette/extraire`, rail de la fiche recette (`RecetteToc`) — JEP-258, plan Pro |
 | `liste_a_racheter` | binaire | `/api/courses/a-racheter`, picto du mode Pâtisser (`ARacheterButton`) — JEP-379, plans Plus et Pro |
+| `stockage_en_ligne` | binaire | bouton « Depuis… » (`DepuisStockage`, `ImageSlot`, import, photos de fournée) et routes `/api/stockage/en-ligne/*` — JEP-408, plans Plus et Pro (essai Pro compris) |
 
 **Correctif JEP-77** : `BatchWidget` gardait son troisième mode d'ajustement
 (« Ajuster les quantités par IA ») derrière `isAdmin`, un reliquat du

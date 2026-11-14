@@ -1244,3 +1244,24 @@ body[data-impersonation] {
     display: none;
   }
 }
+
+/* Sélecteur Google Drive (Picker, JEP-408). Google le pose en `position:
+   absolute` à l'endroit où se trouvait la page au moment de l'ouverture, et
+   voile tout le document : si la page défile ensuite (le navigateur la
+   descend en bas au focus), le sélecteur reste hors de l'écran, sous un voile
+   quasi invisible qui bloque la page. On le fixe à la fenêtre, centré. Les
+   `!important` sont nécessaires : Google écrit sa position en style en ligne. */
+.picker-dialog-bg {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+.picker-dialog {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%);
+  max-width: 96vw;
+  max-height: 96vh;
+}

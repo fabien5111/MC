@@ -1,3 +1,5 @@
+import { StockageEnLigneProvider } from '@/components/stockage/StockageEnLigneProvider';
+import { stockageEnLigne } from '@/lib/stockage-en-ligne-data';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireUser, isAdmin } from '@/lib/auth';
@@ -79,6 +81,7 @@ export default async function RelecturePage({ params }: Params) {
       <div className="relecture-page">
       {/* `pb-24` : réserve du bouton flottant du sommaire (52 px + marges) —
           la barre d'actions fixe qu'il remplace a disparu. */}
+      <StockageEnLigneProvider valeur={stockageEnLigne(droits)}>
       <main className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-24">
         <Link
           href="/importer"
@@ -143,6 +146,7 @@ export default async function RelecturePage({ params }: Params) {
           </>
         )}
       </main>
+      </StockageEnLigneProvider>
       </div>
       <Footer />
       <MobileNav current="carnet" />

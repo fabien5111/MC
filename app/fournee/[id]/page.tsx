@@ -1,3 +1,5 @@
+import { StockageEnLigneProvider } from '@/components/stockage/StockageEnLigneProvider';
+import { stockageEnLigne } from '@/lib/stockage-en-ligne-data';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
@@ -144,6 +146,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
           elle, le rail — en `position: fixed` — se superpose au texte et aux
           cases à cocher entre 701px et 1024px, où rien d'autre ne dégage la
           place qu'il occupe. */}
+      <StockageEnLigneProvider valeur={stockageEnLigne(entitlements)}>
       <main className="batch-page">
         <BatchView
           batch={batch}
@@ -167,6 +170,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
           photosFournee={photosFournee}
         />
       </main>
+      </StockageEnLigneProvider>
       <div className="no-print">
         <Footer />
       </div>

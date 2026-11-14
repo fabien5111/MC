@@ -22,7 +22,7 @@
 // croustillant et pour une mousse) y perd sa répartition, et pousse l'IA à
 // deviner un partage silencieusement faux. Le texte collé, qui garde la
 // structure de la page telle que lue, n'a pas ce problème.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -31,6 +31,9 @@ import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { affecterPhotos, extrairePdf, type PhotoPdf } from '@/lib/pdf';
+import { DepuisStockage } from '@/components/stockage/DepuisStockage';
+import { BoutonColler } from '@/components/BoutonColler';
+import { cibleEditable, imagesDuPressePapiers } from '@/lib/presse-papiers';
 import { resizePhotoForAi } from '@/lib/images';
 import { trackEvent } from '@/lib/analytics';
 import { PhotoOrderList, type PhotoChoisie } from '@/components/importer/PhotoOrderList';
@@ -114,6 +117,9 @@ export function ImporterForm({
   // Champ dédié à l'appareil photo (mobile, tablette) : `capture` ouvre
   // directement la caméra arrière, une page par prise.
   const cameraRef = useRef<HTMLInputElement>(null);
+  // Référence stable vers le dernier `ajouterPhotos` : le collage ci-dessous
+  // ne se réabonne pas à chaque rendu.
+  const ajouterPhotosRef = useRef<(fs: File[]) => Promise<void>>(async () => {});
 
   const quotaEpuise = quotaImport != null && !quotaImport.allowed;
   // JEP-130 : le motif passe de `title` natif (jamais affiché au doigt, et
@@ -301,6 +307,21 @@ export function ImporterForm({
 
   // ── Photos ──
 
+  // Coller une image (JEP-408) sur l'onglet Photo : une capture d'écran ou une
+  // photo copiée devient une page de l'import. Ouvert à tous les plans.
+  useEffect(() => {
+    if (onglet !== 'photo') return;
+    const coller = (e: ClipboardEvent) => {
+      if (cibleEditable(e.target)) return;
+      const images = imagesDuPressePapiers(e.clipboardData);
+      if (!images.length) return;
+      e.preventDefault();
+      void ajouterPhotosRef.current(images);
+    };
+    document.addEventListener('paste', coller);
+    return () => document.removeEventListener('paste', coller);
+  }, [onglet]);
+
   async function ajouterPhotos(fichiers: File[]) {
     // L'ordre d'un `FileList` ne reflète pas l'ordre de sélection : selon le
     // système, le sélecteur renvoie les fichiers dans l'ordre du dossier ou à
@@ -403,6 +424,8 @@ export function ImporterForm({
     };
   }
 
+  ajouterPhotosRef.current = ajouterPhotos;
+
   async function submitPhotos() {
     if (!photos.length) return;
     if (!soldeCouvre(coutImportPhoto(photos.length))) return;
@@ -483,6 +506,22 @@ export function ImporterForm({
                 Importer · {libelleCredits(coutImportTexte(texte.trim().length))} IA
               </button>
             </LockedHint>
+            <DepuisStockage
+              usage="texte"
+              disabled={busy}
+              onTexte={(t) => {
+                // Un texte déjà saisi n'est remplacé qu'avec l'accord du membre.
+                if (!texte.trim()) {
+                  setTexte(t);
+                  return;
+                }
+                void dialog
+                  .confirm('Remplacer le texte déjà saisi par celui du document choisi ?')
+                  .then((ok) => {
+                    if (ok) setTexte(t);
+                  });
+              }}
+            />
             {compteur && <span className="text-[13px] text-on-surface-variant">{compteur}</span>}
           </div>
         </div>
@@ -553,6 +592,11 @@ export function ImporterForm({
               e.target.value = '';
             }}
           />
+          {!pdf && (
+            <div className="mt-3">
+              <DepuisStockage usage="pdf" disabled={busy} onFichiers={(fs) => fs[0] && choisirPdf(fs[0])} />
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
             <LockedHint message={quotaMessage} active={quotaEpuise}>
               <button
@@ -618,6 +662,7 @@ export function ImporterForm({
               )}
               <p className="text-xs text-on-surface-variant/80">
                 {MAX_PHOTOS} photos au maximum{photos.length ? ` — ${photos.length} ajoutée${photos.length > 1 ? 's' : ''}` : ''}
+                <span className="hidden [@media(pointer:fine)]:inline"> · ou collez une image (Ctrl+V)</span>
               </p>
             </div>
           )}
@@ -634,6 +679,18 @@ export function ImporterForm({
               <span className="material-symbols-outlined text-[20px]">photo_camera</span>
               {photos.length ? 'Photographier la page suivante' : 'Prendre une photo'}
             </button>
+          )}
+
+          {photos.length < MAX_PHOTOS && (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <BoutonColler disabled={busy} onFichiers={(fs) => void ajouterPhotos(fs)} />
+              <DepuisStockage
+                usage="image"
+                max={MAX_PHOTOS - photos.length}
+                disabled={busy}
+                onFichiers={(fs) => void ajouterPhotos(fs)}
+              />
+            </div>
           )}
 
           <input

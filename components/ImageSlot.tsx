@@ -5,12 +5,16 @@
 // ici, en production, l'utilisateur dépose/choisit une image, on la compresse
 // en data-URL et on la remonte via onChange — au parent de la persister
 // (profiles.avatar_url, recipes.hero_image_url…).
-import { useCallback, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { isAcceptedImage, resizeImageToDataUrl } from '@/lib/images';
 import { PHOTO_REORDER_DND_TYPE } from '@/lib/photo-reorder';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { PhotoEditorModal } from '@/components/PhotoEditorModal';
 import { useDialog } from '@/components/Dialog';
+import { DepuisStockage } from '@/components/stockage/DepuisStockage';
+import { BoutonColler } from '@/components/BoutonColler';
+import { rafraichirPressePapiers } from '@/lib/presse-papiers-client';
+import { imagesDuPressePapiers, cibleEditable } from '@/lib/presse-papiers';
 
 type Shape = 'rect' | 'rounded' | 'circle' | 'pill';
 
@@ -124,6 +128,8 @@ export function ImageSlot({
   const [dragOver, setDragOver] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState(false);
   const readOnly = !onChange;
+  const racineRef = useRef<HTMLDivElement>(null);
+  const survole = useRef(false);
 
   const ingest = useCallback(
     async (file: File) => {
@@ -149,10 +155,66 @@ export function ImageSlot({
     [maxWidth, mime, onChange, onOriginalChange, aspectRatio],
   );
 
+  // Plusieurs fichiers reçus d'un coup (sélection multiple, stockage en ligne,
+  // collage) : même règle que le sélecteur de l'appareil.
+  const recevoir = useCallback(
+    (files: File[]) => {
+      if (files.length > 1 && onFilesAdded) {
+        onFilesAdded(files);
+        return;
+      }
+      const file = files[0];
+      if (file) void ingest(file);
+    },
+    [ingest, onFilesAdded],
+  );
+
+  // Coller une image (Ctrl+V / Cmd+V, JEP-408) dans l'emplacement survolé ou
+  // qui a le focus. Ouvert à tous les plans : ce n'est pas un stockage en
+  // ligne. Ignoré quand on colle dans un champ de saisie, et quand le
+  // presse-papiers ne porte pas d'image (le collage suit alors son cours).
+  useEffect(() => {
+    if (readOnly) return;
+    const coller = (e: ClipboardEvent) => {
+      const racine = racineRef.current;
+      if (!racine || cibleEditable(e.target)) return;
+      const actif = racine.contains(document.activeElement);
+      if (!actif && !survole.current) return;
+      const images = imagesDuPressePapiers(e.clipboardData);
+      if (!images.length) return;
+      e.preventDefault();
+      recevoir(images);
+    };
+    document.addEventListener('paste', coller);
+    return () => document.removeEventListener('paste', coller);
+  }, [readOnly, recevoir]);
+
   const radius = SHAPE_RADIUS[shape];
 
   return (
     <div
+      ref={racineRef}
+      tabIndex={readOnly ? undefined : 0}
+      onPointerEnter={() => {
+        survole.current = true;
+        // Un survol relit le presse-papiers : le bouton « Coller » se met à
+        // jour si une image vient d'être copiée (cf. lib/presse-papiers-client).
+        void rafraichirPressePapiers();
+      }}
+      onPointerLeave={() => {
+        survole.current = false;
+      }}
+      onKeyDown={
+        readOnly
+          ? undefined
+          : (e) => {
+              if (e.target !== e.currentTarget) return;
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                inputRef.current?.click();
+              }
+            }
+      }
       className={`relative block overflow-hidden bg-surface-container ${
         readOnly ? '' : 'cursor-pointer'
       } ${dragOver ? 'ring-2 ring-primary' : ''} ${className}`}
@@ -186,13 +248,7 @@ export function ImageSlot({
                 if (aspectRatio) setEditingPhoto(true);
                 return;
               }
-              const files = Array.from(e.dataTransfer.files || []);
-              if (files.length > 1 && onFilesAdded) {
-                onFilesAdded(files);
-                return;
-              }
-              const file = files[0];
-              if (file) void ingest(file);
+              recevoir(Array.from(e.dataTransfer.files || []));
             }
       }
       role={readOnly ? undefined : 'button'}
@@ -238,6 +294,23 @@ export function ImageSlot({
         >
           <span className="material-symbols-outlined text-[18px]">edit</span>
         </button>
+      )}
+
+      {!readOnly && !busy && shape !== 'circle' && shape !== 'pill' && (
+        // Coller (ouvert à tous) et stockage en ligne (Plus et Pro) : deux
+        // pastilles côte à côte, en haut à gauche. Pas sur les emplacements
+        // ronds (avatar) : deux pastilles y recouvriraient la photo. Chacune
+        // s'efface d'elle-même quand elle n'a pas lieu d'être (pas d'image
+        // copiée, pas de source configurée, pas de fournisseur de contexte).
+        <div className="absolute top-2 left-2 z-20 flex gap-2">
+          <BoutonColler variante="pastille" onFichiers={recevoir} />
+          <DepuisStockage
+            usage="image"
+            max={onFilesAdded ? 8 : 1}
+            variante="pastille"
+            onFichiers={recevoir}
+          />
+        </div>
       )}
 
       {!readOnly && aspectRatio && src && (
@@ -309,12 +382,7 @@ export function ImageSlot({
           onChange={(e) => {
             const files = Array.from(e.target.files || []);
             e.target.value = '';
-            if (files.length > 1 && onFilesAdded) {
-              onFilesAdded(files);
-              return;
-            }
-            const file = files[0];
-            if (file) void ingest(file);
+            recevoir(files);
           }}
         />
       )}

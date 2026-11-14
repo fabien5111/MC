@@ -1754,6 +1754,109 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   objets Swift sont effacés **sauf** ceux qu'un avis conservé reprend
   (`photosRealisationASupprimer`). Export : rubrique `photos_de_realisation`.
 
+## Stockages en ligne (JEP-408)
+
+Bouton **« Depuis… »** (`components/stockage/DepuisStockage.tsx`) : choisir une
+photo, un PDF ou un texte dans **Google Drive, Google Photos, Dropbox, OneDrive,
+OneNote ou Notion**. Droit **`stockage_en_ligne`** (binaire, plans Plus et Pro,
+essai Pro compris). Logique pure et testée : `lib/stockage-en-ligne.ts` ;
+configuration et droit côté serveur : `lib/stockage-en-ligne-data.ts` ;
+adaptateurs du navigateur : `components/stockage/sources/`.
+
+- **État des sources (14/11/2026)** : **Google Drive, Google Photos et Dropbox sont
+  validés** sur l'aperçu de la PR et activés par leurs variables. **OneDrive, OneNote
+  et Notion sont écrits mais NON TESTÉS et NON ACTIVÉS** : arbitrage du 14/11/2026, la
+  création des applications chez Microsoft (inscription Entra, annuaire) a achoppé et
+  Notion a été laissé de côté. Ils restent dormants — sans `MICROSOFT_CLIENT_ID` ni
+  `NOTION_CLIENT_ID` / `NOTION_CLIENT_SECRET`, `configStockage` ne les expose pas et
+  rien ne les affiche. **Avant de les activer** : créer l'application, tester de bout
+  en bout sur l'aperçu, puis les remettre dans la page Confidentialité (§ 6, « Stockages
+  en ligne ») — elle ne cite aujourd'hui que les trois sources validées.
+  Limite connue : le sélecteur de Google Drive n'affiche pas les miniatures des
+  fichiers (cadre de Google, sans lien avec le site) ; Google Photos et Dropbox ont
+  leurs propres vignettes.
+- **Le fichier suit le chemin d'un fichier local.** L'adaptateur rend des `File`
+  (ou un texte) au composant appelant, qui les traite exactement comme un fichier
+  de l'appareil : compression (`lib/images.ts`) puis dépôt signé Swift pour une
+  photo, `choisirPdf` / `ajouterPhotos` / champ texte pour l'import. **Rien n'est
+  redéposé ni stocké autrement.**
+- **Aucun jeton conservé** : ni en base, ni dans le stockage du navigateur. Il
+  vit dans l'état de la fenêtre le temps du choix. Portées minimales :
+  `drive.file` (Drive n'ouvre que les fichiers choisis), `photospicker.mediaitems.readonly`
+  (seule API Google Photos encore ouverte depuis 2025), `Files.Read` / `Notes.Read`
+  (Microsoft) ; Notion : le membre coche lui-même les pages partagées à la connexion.
+- **Où** : `ImageSlot` (pastille en haut à gauche — d'où photo d'en-tête, étapes de
+  `/creer`, relecture, mode projet, avis), photos de réalisation d'une fournée
+  (`BoutonsPhoto`), et les trois onglets de `/importer` (texte : Google Docs,
+  OneNote, Notion ; PDF : Drive, Dropbox, OneDrive — un document **Word** de
+  OneDrive est converti en PDF par Graph ; photos : Drive, Google Photos, Dropbox,
+  OneDrive). **Le bouton n'existe que sous un `StockageEnLigneProvider`**, monté
+  par les pages concernées (`/creer`, `/relecture/[id]`, `/fournee/[id]`,
+  `/projets/[id]`, `/importer`) avec `stockageEnLigne(droits)` : sans fournisseur
+  (back-office, avatar, contact), rien n'apparaît. Sans le droit : `LockedAction`.
+  Une source dont les clés manquent n'est pas proposée ; aucune source configurée :
+  pas de bouton.
+- **Trois mécaniques** : sélecteur officiel par-dessus la page (Google Drive
+  Picker, Dropbox Chooser — la fenêtre du site s'efface pendant ce temps) ;
+  Google Photos en deux clics (connexion + session, puis « Ouvrir Google Photos »
+  dans un onglet : ouvert après deux appels réseau, il serait bloqué) ;
+  **explorateur maison** dans la fenêtre pour OneDrive, OneNote et Notion
+  (`NavigateurElements`). OneDrive n'utilise pas le sélecteur v8 : son adresse
+  diffère entre compte personnel et professionnel et n'est connue qu'après la
+  connexion ; Graph rend la même chose aux deux, et le même explorateur sert OneNote.
+- **Fenêtres de connexion (Microsoft, Notion)** : ouvertes VIDES dans le geste du
+  clic (`ouvrirFenetreVide`), adresse posée ensuite — ouvertes après un `await`,
+  elles seraient bloquées. Retour sur **`/stockage/retour`**, qui rend `code` +
+  `state` par un `BroadcastChannel` (et non `window.opener`, que l'en-tête COOP du
+  fournisseur peut couper). `state` vérifié par la page d'origine. Microsoft :
+  code + PKCE échangé par le navigateur (application « monopage », sans secret).
+  Les scripts des sélecteurs sont chargés **à l'ouverture de la fenêtre « Depuis… »**,
+  pour que le clic ouvre la fenêtre du fournisseur sans attente.
+- **Passages par le serveur, et eux seuls** (`/api/stockage/en-ligne/*`, garde
+  `membreStockage` : connecté, `refusSiCompteBloque`, refus en lecture seule, droit
+  revérifié) :
+  - **Google Photos** (`google-photos`) : le navigateur télécharge d'abord seul ;
+    s'il en est empêché (CORS), la route relaie, **restreinte aux hôtes
+    `lhN.googleusercontent.com`** (`hotePhotosAutorise`, nom d'hôte exact, https,
+    sans port), sans suivre de redirection, réponse plafonnée (30 Mo, images
+    seules). Jamais une adresse libre : SSRF.
+  - **Notion** (`notion/jeton`, `notion/pages`, `notion/page`, `lib/notion-data.ts`) :
+    l'API Notion ne répond pas aux navigateurs et l'échange du code exige le
+    secret. Le jeton fait l'aller-retour dans `Authorization`, jamais journalisé ni
+    gardé. Identifiant de page contrôlé (UUID). Texte rendu par `notionBlocsEnTexte`
+    (titres, listes, cases, citations, tableaux ; sous-pages non déroulées).
+- **Coller une image (Ctrl+V) et bouton « Coller »** : dans l'emplacement `ImageSlot`
+  survolé ou qui a le focus, et sur l'onglet Photo de l'import (`lib/presse-papiers.ts`).
+  **Ouvert à tous les plans** (ce n'est pas un stockage en ligne), ignoré quand on
+  colle dans un champ de saisie. `ImageSlot` est désormais focalisable (Entrée /
+  Espace ouvre le sélecteur de l'appareil). Ctrl+V ne se devine pas : un bouton
+  **« Coller »** (`components/BoutonColler.tsx`, picto `content_paste`) le rend
+  visible — pastille à côté du nuage sur les emplacements de photo (pas sur les
+  ronds : avatar), bouton dans les photos de fournée et l'onglet Photo de l'import.
+  **Règle d'affichage** (`lib/presse-papiers-client.ts`, état unique par page lu par
+  `useSyncExternalStore`, relu au retour de focus et au survol d'un emplacement) :
+  le navigateur ne laisse lire le presse-papiers qu'avec la permission
+  `clipboard-read`, qu'il demande à la première lecture. **Tant qu'elle n'est pas
+  accordée, le bouton reste visible** (impossible de savoir si une image est
+  copiée) ; un clic lit le presse-papiers et déclenche la demande. **Une fois
+  accordée**, il n'apparaît que si une image est copiée. **Refusée, ou lecture
+  impossible** (page non sécurisée…) : pas de bouton, Ctrl+V reste là. Firefox et
+  Safari ne connaissent pas cette permission : état « inconnu », bouton toujours
+  visible.
+- **Mêmes contrôles qu'un fichier local** : formats (`TYPES_IMAGE`, HEIC refusé —
+  Google Photos est demandé en JPEG borné, jamais l'original), 30 Mo par fichier,
+  nombre de photos (`max` = places restantes), pages de l'import.
+- **Clés lues à l'exécution, pas au build** (`configStockage`) : identifiants
+  publics transmis au navigateur par le rendu — un redémarrage du nœud suffit.
+  Domaines à déclarer chez chaque fournisseur (origines JavaScript Google, domaines
+  Dropbox, adresses de retour Microsoft et Notion : `https://<domaine>/stockage/retour`),
+  pour `dev`, `www` et l'aperçu de PR. Pas de CSP sur le site : rien à ouvrir.
+- **Crédits IA inchangés** : un import depuis le cloud coûte ce que coûte l'import
+  local équivalent.
+- **Non vérifiable sans les clés** : le comportement réel de chaque fournisseur
+  (CORS de Google Photos, conversion Word → PDF de OneDrive, écran de consentement
+  Google) se teste sur l'aperçu une fois les applications déclarées.
+
 ## Avis sur une recette (note + commentaire)
 
 Une fournée **terminée** (`batches.status = 'terminee'`) propose de noter et
@@ -3559,6 +3662,11 @@ par texte collé lui donne depuis toujours : du texte déjà linéarisé.
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Clés de signature Web Push (notifications sur le téléphone). La publique est transmise au navigateur par le rendu serveur — pas de `NEXT_PUBLIC_`, donc un redémarrage suffit, sans reconstruction. Absentes : canal masqué, rien ne casse. **Les changer coupe tous les appareils abonnés** | Serveur uniquement |
 | `VAPID_SUBJECT` | Contact déclaré aux services de push (`mailto:…`, optionnel, défaut `mailto:noreply@jepatisse.com`) | Serveur uniquement |
 | `OUTBOX_BOUCLE` | `true` démarre, au lancement du processus, la boucle interne qui vide la file de notifications chaque minute (`instrumentation.ts`, `lib/outbox-boucle.ts`). **Opt-in strict, à poser sur le seul nœud de production** : sur l'aperçu de PR (même base), la file serait vidée en double. Lue à l'exécution : un redémarrage du nœud suffit, sans reconstruction. Absente : seul le cron GitHub vide la file, avec ses retards | Serveur uniquement |
+| `GOOGLE_PICKER_CLIENT_ID` / `GOOGLE_PICKER_API_KEY` / `GOOGLE_PICKER_APP_ID` | Google Drive (JEP-408) : identifiant OAuth web, clé API restreinte (référents du site), numéro du projet Google Cloud. Transmis au navigateur par le rendu : un redémarrage suffit. Les trois requis | Serveur (identifiants publics, rendus au navigateur) |
+| `GOOGLE_PHOTOS_ACTIF` | `true` propose Google Photos (même identifiant OAuth que Drive), une fois l'API Photos Picker activée et la portée validée par Google | Serveur uniquement |
+| `DROPBOX_APP_KEY` | Clé de l'application Dropbox (Chooser, JEP-408) | Serveur (publique, rendue au navigateur) |
+| `MICROSOFT_CLIENT_ID` | Application Microsoft « monopage » : OneDrive et OneNote (JEP-408) | Serveur (public, rendu au navigateur) |
+| `NOTION_CLIENT_ID` / `NOTION_CLIENT_SECRET` | Intégration publique Notion (JEP-408). Le secret ne quitte jamais le serveur ; les deux requis | Serveur uniquement |
 | `NEXT_PUBLIC_STRIPE_PORTAIL_CONNEXION_URL` | Page de connexion au portail client Stripe, proposée aux comptes suspendus ou désactivés (JEP-272). Optionnelle ; URL `test_` en test, à remplacer en production | Publique (inlinée au build) |
 | `UNCONFIRMED_ACCOUNT_TTL_DAYS` | Âge (en jours) à partir duquel un compte jamais confirmé est candidat à la purge (JEP-262, lot 4). Optionnelle : défaut 30, plancher 7, valeur illisible = défaut. Lue à l'exécution. La suppression elle-même n'est armée que par la variable de **dépôt GitHub** `PURGE_COMPTES_ACTIVE` | Serveur uniquement |
 | `PWA_DISABLE_SERVICE_WORKER` | `true` fait servir par `app/sw.js/route.ts` un worker auto-destructeur (se désenregistre, purge les caches) plutôt que le worker actif — interrupteur d'arrêt de la PWA, cf. « Installation (PWA) » ci-dessous. Variable lue côté serveur à l'exécution, pas au build : un changement prend effet au redémarrage du nœud, sans reconstruction. | Serveur uniquement |

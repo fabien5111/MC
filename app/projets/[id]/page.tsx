@@ -1,3 +1,5 @@
+import { StockageEnLigneProvider } from '@/components/stockage/StockageEnLigneProvider';
+import { stockageEnLigne } from '@/lib/stockage-en-ligne-data';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { isAdmin, requireUser } from '@/lib/auth';
@@ -105,6 +107,7 @@ export default async function ProjetPage({ params }: Params) {
   return (
     <>
       <Header />
+      <StockageEnLigneProvider valeur={stockageEnLigne(droits)}>
       <main className="mx-auto mb-24 max-w-container-max px-margin-mobile py-12 md:px-margin-desktop">
         <ProjectV2
           project={project}
@@ -131,6 +134,7 @@ export default async function ProjetPage({ params }: Params) {
           helpBlocks={helpBlocks}
         />
       </main>
+      </StockageEnLigneProvider>
       <Footer />
       <MobileNav />
     </>
