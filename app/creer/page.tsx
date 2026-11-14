@@ -1,3 +1,6 @@
+import { StockageEnLigneProvider } from '@/components/stockage/StockageEnLigneProvider';
+import { stockageEnLigne } from '@/lib/stockage-en-ligne-data';
+import { getEntitlements } from '@/lib/entitlements-data';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { requireUser, isAdmin } from '@/lib/auth';
@@ -97,6 +100,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
       <div className="creer-page">
       {/* `pb-24` : réserve du bouton flottant du sommaire (52 px + marges) —
           la barre d'actions fixe qui imposait `pb-40` a disparu. */}
+      <StockageEnLigneProvider valeur={stockageEnLigne(await getEntitlements(user.id))}>
       <main id="sec-haut" className="scroll-mt-28 max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-24 md:pb-32">
         <CreerForm
           tags={tags}
@@ -120,6 +124,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           userId={user.id}
         />
       </main>
+      </StockageEnLigneProvider>
       </div>
       <Footer />
       <MobileNav />

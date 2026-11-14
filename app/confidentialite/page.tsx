@@ -123,7 +123,7 @@ export default function ConfidentialitePage() {
         <h1 className="font-headline-lg text-headline-lg-mobile text-primary md:text-headline-lg mb-2">
           Politique de confidentialité
         </h1>
-        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 7 novembre 2026.</p>
+        <p className="mb-10 text-[13px] text-on-surface-variant">Dernière mise à jour : 14 novembre 2026.</p>
 
         <Section title="1. Responsable du traitement">
           <p>
@@ -414,6 +414,31 @@ export default function ConfidentialitePage() {
             <li>
               <Fort>Google</Fort> — uniquement si vous choisissez de vous connecter avec votre compte Google, selon
               sa propre politique de confidentialité.
+            </li>
+          </Liste>
+          <SousTitre>Stockages en ligne que vous choisissez d&apos;utiliser</SousTitre>
+          <p>
+            Pour ajouter une photo ou importer une recette, vous pouvez choisir un fichier dans{' '}
+            <Fort>Google Drive, Google Photos, Dropbox, OneDrive, OneNote ou Notion</Fort>. Vous vous connectez alors
+            directement chez ce service, qui reste responsable de vos données selon sa propre politique de
+            confidentialité :
+          </p>
+          <Liste>
+            <li>
+              seuls les fichiers ou les pages que <Fort>vous sélectionnez</Fort> sont lus — pour Google Drive et
+              Notion, l&apos;accès accordé est d&apos;ailleurs limité à ces seuls éléments ;
+            </li>
+            <li>
+              l&apos;accès accordé n&apos;est <Fort>jamais conservé</Fort> : ni en base de données, ni dans votre
+              navigateur. Il sert le temps du choix, puis disparaît ;
+            </li>
+            <li>
+              une photo choisie est traitée exactement comme une photo de votre appareil (compressée puis hébergée
+              chez Infomaniak) ; un texte ou un PDF suit l&apos;import habituel (voir § 4) ;
+            </li>
+            <li>
+              pour Notion, et pour Google Photos quand votre navigateur ne peut pas récupérer la photo lui-même, la
+              demande transite par nos serveurs, sans qu&apos;aucune copie n&apos;y soit gardée.
             </li>
           </Liste>
         </Section>

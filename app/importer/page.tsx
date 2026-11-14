@@ -1,3 +1,5 @@
+import { StockageEnLigneProvider } from '@/components/stockage/StockageEnLigneProvider';
+import { stockageEnLigne } from '@/lib/stockage-en-ligne-data';
 import type { Metadata } from 'next';
 import { isAdmin, requireUser } from '@/lib/auth';
 import { requireWritableSession } from '@/lib/impersonation';
@@ -85,6 +87,7 @@ export default async function ImporterPage() {
   return (
     <>
       <Header current="carnet" />
+      <StockageEnLigneProvider valeur={stockageEnLigne(droits)}>
       <main className="max-w-[900px] mx-auto px-margin-mobile md:px-margin-desktop py-12 pb-28 lg:pb-12">
         <div className="flex items-baseline justify-between flex-wrap gap-4 mb-2">
           <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">
@@ -133,6 +136,7 @@ export default async function ImporterPage() {
         <h2 className="font-headline-md text-headline-md text-primary mb-4 mt-12">Mes imports</h2>
         <ImporterList imports={imports} isAdmin={admin} credits={creditsParImport} />
       </main>
+      </StockageEnLigneProvider>
       <Footer />
       <MobileNav current="carnet" />
     </>
