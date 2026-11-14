@@ -12,6 +12,8 @@ import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 import { PhotoEditorModal } from '@/components/PhotoEditorModal';
 import { useDialog } from '@/components/Dialog';
 import { DepuisStockage } from '@/components/stockage/DepuisStockage';
+import { BoutonColler } from '@/components/BoutonColler';
+import { rafraichirPressePapiers } from '@/lib/presse-papiers-client';
 import { imagesDuPressePapiers, cibleEditable } from '@/lib/presse-papiers';
 
 type Shape = 'rect' | 'rounded' | 'circle' | 'pill';
@@ -195,6 +197,9 @@ export function ImageSlot({
       tabIndex={readOnly ? undefined : 0}
       onPointerEnter={() => {
         survole.current = true;
+        // Un survol relit le presse-papiers : le bouton « Coller » se met à
+        // jour si une image vient d'être copiée (cf. lib/presse-papiers-client).
+        void rafraichirPressePapiers();
       }}
       onPointerLeave={() => {
         survole.current = false;
@@ -291,16 +296,21 @@ export function ImageSlot({
         </button>
       )}
 
-      {!readOnly && !busy && (
-        // Stockage en ligne (JEP-408) : absent sans fournisseur de contexte
-        // (back-office, avatar) ou sans source configurée.
-        <DepuisStockage
-          usage="image"
-          max={onFilesAdded ? 8 : 1}
-          variante="pastille"
-          className="absolute top-2 left-2 z-20"
-          onFichiers={recevoir}
-        />
+      {!readOnly && !busy && shape !== 'circle' && shape !== 'pill' && (
+        // Coller (ouvert à tous) et stockage en ligne (Plus et Pro) : deux
+        // pastilles côte à côte, en haut à gauche. Pas sur les emplacements
+        // ronds (avatar) : deux pastilles y recouvriraient la photo. Chacune
+        // s'efface d'elle-même quand elle n'a pas lieu d'être (pas d'image
+        // copiée, pas de source configurée, pas de fournisseur de contexte).
+        <div className="absolute top-2 left-2 z-20 flex gap-2">
+          <BoutonColler variante="pastille" onFichiers={recevoir} />
+          <DepuisStockage
+            usage="image"
+            max={onFilesAdded ? 8 : 1}
+            variante="pastille"
+            onFichiers={recevoir}
+          />
+        </div>
       )}
 
       {!readOnly && aspectRatio && src && (

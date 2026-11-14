@@ -1825,11 +1825,24 @@ adaptateurs du navigateur : `components/stockage/sources/`.
     secret. Le jeton fait l'aller-retour dans `Authorization`, jamais journalisé ni
     gardé. Identifiant de page contrôlé (UUID). Texte rendu par `notionBlocsEnTexte`
     (titres, listes, cases, citations, tableaux ; sous-pages non déroulées).
-- **Coller une image (Ctrl+V)** : dans l'emplacement `ImageSlot` survolé ou qui a
-  le focus, et sur l'onglet Photo de l'import (`lib/presse-papiers.ts`). **Ouvert à
-  tous les plans** (ce n'est pas un stockage en ligne), ignoré quand on colle dans
-  un champ de saisie. `ImageSlot` est désormais focalisable (Entrée / Espace ouvre
-  le sélecteur de l'appareil).
+- **Coller une image (Ctrl+V) et bouton « Coller »** : dans l'emplacement `ImageSlot`
+  survolé ou qui a le focus, et sur l'onglet Photo de l'import (`lib/presse-papiers.ts`).
+  **Ouvert à tous les plans** (ce n'est pas un stockage en ligne), ignoré quand on
+  colle dans un champ de saisie. `ImageSlot` est désormais focalisable (Entrée /
+  Espace ouvre le sélecteur de l'appareil). Ctrl+V ne se devine pas : un bouton
+  **« Coller »** (`components/BoutonColler.tsx`, picto `content_paste`) le rend
+  visible — pastille à côté du nuage sur les emplacements de photo (pas sur les
+  ronds : avatar), bouton dans les photos de fournée et l'onglet Photo de l'import.
+  **Règle d'affichage** (`lib/presse-papiers-client.ts`, état unique par page lu par
+  `useSyncExternalStore`, relu au retour de focus et au survol d'un emplacement) :
+  le navigateur ne laisse lire le presse-papiers qu'avec la permission
+  `clipboard-read`, qu'il demande à la première lecture. **Tant qu'elle n'est pas
+  accordée, le bouton reste visible** (impossible de savoir si une image est
+  copiée) ; un clic lit le presse-papiers et déclenche la demande. **Une fois
+  accordée**, il n'apparaît que si une image est copiée. **Refusée, ou lecture
+  impossible** (page non sécurisée…) : pas de bouton, Ctrl+V reste là. Firefox et
+  Safari ne connaissent pas cette permission : état « inconnu », bouton toujours
+  visible.
 - **Mêmes contrôles qu'un fichier local** : formats (`TYPES_IMAGE`, HEIC refusé —
   Google Photos est demandé en JPEG borné, jamais l'original), 30 Mo par fichier,
   nombre de photos (`max` = places restantes), pages de l'import.

@@ -17,6 +17,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
 import { DepuisStockage } from '@/components/stockage/DepuisStockage';
+import { BoutonColler } from '@/components/BoutonColler';
 import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { trackEvent } from '@/lib/analytics';
@@ -231,6 +232,11 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
           <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
           Ajouter des photos
         </button>
+      )}
+      {!compact && !plein && (
+        // Coller l'image copiée (JEP-408) : ouvert à tous, visible seulement si
+        // une image est copiée.
+        <BoutonColler className="!px-4 !py-2" onFichiers={(fs) => void ctx.ajouter(fs, stepId)} />
       )}
       {!compact && !plein && (
         // Stockage en ligne (JEP-408) : absent sans source configurée.

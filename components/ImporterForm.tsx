@@ -32,6 +32,7 @@ import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { affecterPhotos, extrairePdf, type PhotoPdf } from '@/lib/pdf';
 import { DepuisStockage } from '@/components/stockage/DepuisStockage';
+import { BoutonColler } from '@/components/BoutonColler';
 import { cibleEditable, imagesDuPressePapiers } from '@/lib/presse-papiers';
 import { resizePhotoForAi } from '@/lib/images';
 import { trackEvent } from '@/lib/analytics';
@@ -681,7 +682,8 @@ export function ImporterForm({
           )}
 
           {photos.length < MAX_PHOTOS && (
-            <div className="mt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <BoutonColler disabled={busy} onFichiers={(fs) => void ajouterPhotos(fs)} />
               <DepuisStockage
                 usage="image"
                 max={MAX_PHOTOS - photos.length}
