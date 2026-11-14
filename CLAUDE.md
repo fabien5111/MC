@@ -1763,6 +1763,18 @@ essai Pro compris). Logique pure et testée : `lib/stockage-en-ligne.ts` ;
 configuration et droit côté serveur : `lib/stockage-en-ligne-data.ts` ;
 adaptateurs du navigateur : `components/stockage/sources/`.
 
+- **État des sources (14/11/2026)** : **Google Drive, Google Photos et Dropbox sont
+  validés** sur l'aperçu de la PR et activés par leurs variables. **OneDrive, OneNote
+  et Notion sont écrits mais NON TESTÉS et NON ACTIVÉS** : arbitrage du 14/11/2026, la
+  création des applications chez Microsoft (inscription Entra, annuaire) a achoppé et
+  Notion a été laissé de côté. Ils restent dormants — sans `MICROSOFT_CLIENT_ID` ni
+  `NOTION_CLIENT_ID` / `NOTION_CLIENT_SECRET`, `configStockage` ne les expose pas et
+  rien ne les affiche. **Avant de les activer** : créer l'application, tester de bout
+  en bout sur l'aperçu, puis les remettre dans la page Confidentialité (§ 6, « Stockages
+  en ligne ») — elle ne cite aujourd'hui que les trois sources validées.
+  Limite connue : le sélecteur de Google Drive n'affiche pas les miniatures des
+  fichiers (cadre de Google, sans lien avec le site) ; Google Photos et Dropbox ont
+  leurs propres vignettes.
 - **Le fichier suit le chemin d'un fichier local.** L'adaptateur rend des `File`
   (ou un texte) au composant appelant, qui les traite exactement comme un fichier
   de l'appareil : compression (`lib/images.ts`) puis dépôt signé Swift pour une

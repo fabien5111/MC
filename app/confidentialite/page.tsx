@@ -419,14 +419,14 @@ export default function ConfidentialitePage() {
           <SousTitre>Stockages en ligne que vous choisissez d&apos;utiliser</SousTitre>
           <p>
             Pour ajouter une photo ou importer une recette, vous pouvez choisir un fichier dans{' '}
-            <Fort>Google Drive, Google Photos, Dropbox, OneDrive, OneNote ou Notion</Fort>. Vous vous connectez alors
+            <Fort>Google Drive, Google Photos ou Dropbox</Fort>. Vous vous connectez alors
             directement chez ce service, qui reste responsable de vos données selon sa propre politique de
             confidentialité :
           </p>
           <Liste>
             <li>
-              seuls les fichiers ou les pages que <Fort>vous sélectionnez</Fort> sont lus — pour Google Drive et
-              Notion, l&apos;accès accordé est d&apos;ailleurs limité à ces seuls éléments ;
+              seuls les fichiers que <Fort>vous sélectionnez</Fort> sont lus — pour Google Drive, l&apos;accès
+              accordé est d&apos;ailleurs limité à ces seuls fichiers ;
             </li>
             <li>
               l&apos;accès accordé n&apos;est <Fort>jamais conservé</Fort> : ni en base de données, ni dans votre
@@ -437,8 +437,8 @@ export default function ConfidentialitePage() {
               chez Infomaniak) ; un texte ou un PDF suit l&apos;import habituel (voir § 4) ;
             </li>
             <li>
-              pour Notion, et pour Google Photos quand votre navigateur ne peut pas récupérer la photo lui-même, la
-              demande transite par nos serveurs, sans qu&apos;aucune copie n&apos;y soit gardée.
+              pour Google Photos, quand votre navigateur ne peut pas récupérer la photo lui-même, la demande
+              transite par nos serveurs, sans qu&apos;aucune copie n&apos;y soit gardée.
             </li>
           </Liste>
         </Section>
