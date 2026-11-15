@@ -23,6 +23,7 @@ export function RecipeStep({
   last,
   action,
   ajustement,
+  note,
   retoursEtape,
   retoursIngredient,
   retoursSousEtape,
@@ -41,6 +42,9 @@ export function RecipeStep({
   // Réglage facultatif posé sous le titre (mode projet : « Ajustement des
   // quantités de cette étape »). Absent, l'étape se rend comme sur la fiche.
   ajustement?: ReactNode;
+  // Note facultative sous le titre (mode projet : « points à vérifier »,
+  // JEP-403). Absente, l'étape se rend comme sur la fiche.
+  note?: ReactNode;
   // Retours de mes fournées (JEP-381) : posés sous la ligne qu'ils concernent.
   // Absents, l'étape se rend comme sur la fiche recette.
   retoursEtape?: ReactNode;
@@ -93,6 +97,7 @@ export function RecipeStep({
       {/* JEP-19 : précisions de l'auteur, seulement si l'étape peut se faire à
           l'avance (une note laissée sur une étape décochée reste masquée). */}
       {ajustement}
+      {note}
       {retoursEtape}
       {s.can_prepare_ahead && s.advance_note && (
         <p className="font-body-md text-body-md text-on-surface-variant -mt-2 flex items-start gap-2">

@@ -309,6 +309,9 @@ export const COMPONENT_ROLES = [
 export const ROLE_ASSEMBLAGE = 'Assemblage';
 
 // À quoi sert le rôle : affiché en infobulle à côté de la liste (JEP-403).
+// Longueur maximale d'une note « points à vérifier » (JEP-403).
+export const NOTE_VERIF_MAX = 500;
+
 export const ROLE_AIDE =
   'Facultatif. Le rôle aide l’IA à proposer une recette de base et à ajuster les quantités (un insert, une garniture ne se dosent pas comme un fond). Il n’a pas d’autre effet.';
 
@@ -463,6 +466,10 @@ export type ComponentStepDraft = {
   // relues par `readComponentDraft` pour qu'une modification du composant
   // ne les efface pas (ses étapes sont supprimées puis réécrites).
   photos?: ComponentStepPhoto[];
+  // Note « points à vérifier » de l'étape (JEP-403, mode projet seulement) :
+  // relue et réécrite pour survivre à la réécriture des étapes d'une
+  // préparation. Colonne posée à la main : lue et écrite à part, échec ignoré.
+  points_a_verifier?: string | null;
   // Étape du projet relue par `readComponentDraft` : sert à rattacher les
   // retours des fournées d'essai dans la fenêtre d'édition (JEP-381).
   // Jamais écrit (les étapes sont supprimées puis réinsérées).
@@ -967,6 +974,9 @@ export function projectTodo(input: {
     cleQuantites: string;
     // Aucun ingrédient (étape d'assemblage, JEP-403) : pas de quantités à vérifier.
     sansIngredient?: boolean;
+    // Étapes portant une note « points à vérifier » (JEP-403) : chacune est un
+    // point à faire, jusqu'à ce que la note soit effacée.
+    notes?: { stepId: number; titre: string }[];
   }[];
 }): TodoItem[] {
   const out: TodoItem[] = [];
@@ -999,6 +1009,15 @@ export function projectTodo(input: {
     ancre: 'bloc-structure',
   });
   for (const c of input.components) {
+    for (const n of c.notes ?? []) {
+      out.push({
+        id: `note-${n.stepId}`,
+        groupe: c.name,
+        libelle: `Point à vérifier — ${n.titre}`,
+        etat: 'afaire',
+        ancre: `etape-${n.stepId}`,
+      });
+    }
     out.push({
       id: `recette-${c.id}`,
       groupe: c.name,

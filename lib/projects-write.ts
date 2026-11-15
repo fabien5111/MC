@@ -153,6 +153,17 @@ export async function readComponentDraft(
     ingByGroup.set(it.group_id, l);
   }
 
+  // Notes « points à vérifier » (JEP-403) : colonne posée à la main, lue à
+  // part pour qu'une base sans elle continue de fonctionner.
+  const notes = new Map<number, string | null>();
+  const { data: noteRows, error: noteErr } = await supabase
+    .from('recipe_steps')
+    .select('id, points_a_verifier' as never)
+    .in('id', mine.map((s) => s.id));
+  if (!noteErr) {
+    for (const n of (noteRows ?? []) as unknown as { id: number; points_a_verifier: string | null }[]) notes.set(n.id, n.points_a_verifier);
+  }
+
   return mine.map((s) => {
     const d = details.get(s.id);
     const groupe = groupByOrder.get(s.order_index ?? -1);
@@ -188,6 +199,7 @@ export async function readComponentDraft(
       photos: [...(d?.step_photos ?? [])]
         .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
         .map((p) => ({ url: p.url, original_url: p.original_url, ai_retouched: p.ai_retouched })),
+      points_a_verifier: notes.get(s.id) ?? null,
       etape_id: s.id,
     };
   });
@@ -240,6 +252,16 @@ export async function writeComponentContent(
       .select('id')
       .single();
     if (stepErr || !stepRow) throw stepErr ?? new Error('Étape refusée');
+
+    // Note « points à vérifier » (JEP-403) : à part, échec ignoré (colonne
+    // posée à la main, peut manquer).
+    const note = (st.points_a_verifier ?? '').trim();
+    if (note) {
+      await supabase
+        .from('recipe_steps')
+        .update({ points_a_verifier: note } as never)
+        .eq('id', (stepRow as { id: number }).id);
+    }
 
     // Photos : déjà déposées sur le stockage par l'écran appelant — ce module
     // sert aussi côté serveur, il n'a pas à téléverser quoi que ce soit.

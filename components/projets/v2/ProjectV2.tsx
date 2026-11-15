@@ -72,6 +72,7 @@ import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { ProjectTodo, allerA } from '@/components/projets/v2/ProjectTodo';
 import { VerifCase } from '@/components/projets/v2/VerifCase';
+import { PointsAVerifier } from '@/components/projets/v2/PointsAVerifier';
 import { mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
@@ -573,6 +574,11 @@ export function ProjectV2({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signatureEtapes]);
 
+  // Note « points à vérifier » d'une étape (JEP-403). La colonne, posée à la
+  // main, arrive par `recipe_steps(*)` : absente, la note n'est pas proposée.
+  const noteDe = (st: RecipeStepView) => (st as RecipeStepView & { points_a_verifier?: string | null }).points_a_verifier ?? null;
+  const notesDisponibles = steps.some((st) => 'points_a_verifier' in st);
+
   // ── Reste à faire ─────────────────────────────────────────────────────
   const todo = projectTodo({
     intent: project.intent,
@@ -591,6 +597,9 @@ export function ProjectV2({
       cleEtapes: empreinteEtapes(steps.filter((s) => componentOf(s) === c.id)),
       cleQuantites: empreinteQuantites(c.lines, c.scaleFactor),
       sansIngredient: c.resolved && c.lines.length === 0,
+      notes: steps
+        .filter((st) => componentOf(st) === c.id && (noteDe(st) ?? '').trim())
+        .map((st) => ({ stepId: st.id, titre: st.title || `Étape ${steps.indexOf(st) + 1}` })),
     })),
   });
 
@@ -818,6 +827,21 @@ export function ProjectV2({
           ) : undefined
         }
         ajustement={comp ? selecteurAjustement(s) : undefined}
+        note={
+          comp && notesDisponibles ? (
+            <PointsAVerifier
+              key={`${s.id}-${noteDe(s) ?? ''}`}
+              valeur={noteDe(s)}
+              busy={busy}
+              onSave={(texte) =>
+                mutate(
+                  () => createClient().from('recipe_steps').update({ points_a_verifier: texte } as never).eq('id', s.id),
+                  { errorLabel: 'Points à vérifier' },
+                )
+              }
+            />
+          ) : undefined
+        }
         retoursEtape={<RetoursEtape stepId={s.id} ajustement={comp ? ajustementEcart(comp, s) : undefined} />}
         retoursIngredient={(it) => <RetoursIngredient stepId={s.id} ingredientId={it.id} />}
         retoursSousEtape={(t) => <RetoursSousEtape stepId={s.id} texte={t} />}
