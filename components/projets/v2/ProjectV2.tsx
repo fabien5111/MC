@@ -551,6 +551,27 @@ export function ProjectV2({
   });
   const days = planningDays(steps);
 
+  // Retour sur l'étape modifiée (JEP-403). « Modifier » réécrit toutes les
+  // étapes de la préparation (supprimées puis réinsérées : nouveaux id) : on
+  // retient donc la préparation et le RANG de l'étape cliquée, puis, une fois
+  // le rendu serveur revenu (les id ont changé), on défile jusqu'à elle.
+  const retourEtape = useRef<{ componentId: number; rang: number; attente: string | null } | null>(null);
+  const signatureEtapes = steps.map((st) => st.id).join(',');
+  useEffect(() => {
+    const r = retourEtape.current;
+    if (!r?.attente || r.attente === signatureEtapes) return;
+    retourEtape.current = null;
+    const siens = steps.filter((st) => componentOf(st) === r.componentId);
+    const cible = siens.length
+      ? document.getElementById(`etape-${(siens[Math.min(Math.max(r.rang, 0), siens.length - 1)]).id}`)
+      : document.getElementById(`prep-${r.componentId}-etapes`);
+    if (!cible) return;
+    for (let d = cible.closest('details'); d; d = d.parentElement?.closest('details') ?? null) d.open = true;
+    cible.scrollIntoView({ block: 'start' });
+    // `steps` est recalculé à chaque rendu : seule la signature des id compte.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signatureEtapes]);
+
   // ── Reste à faire ─────────────────────────────────────────────────────
   const todo = projectTodo({
     intent: project.intent,
@@ -620,20 +641,40 @@ export function ProjectV2({
     if (!comp) return;
     const courant = v.type === 'etapes' ? comp.checkedStepsKey : comp.checkedQuantitiesKey;
     const colonne = v.type === 'etapes' ? 'checked_steps_key' : 'checked_quantities_key';
-    await mutate(
+    const coche = courant !== v.cle;
+    // Volet concerné, et si la case cochée est la sienne (au bas du volet)
+    // plutôt que celle du « Reste à faire » : lu AVANT l'écriture, la case
+    // perdant le focus pendant qu'elle est désactivée.
+    const volet = document.getElementById(`prep-${v.componentId}-${v.type}`);
+    const depuisVolet = !!volet && !!document.activeElement && volet.contains(document.activeElement);
+    const ok = await mutate(
       () =>
         createClient()
           .from('recipe_project_components')
-          .update({ [colonne]: courant === v.cle ? null : v.cle } as never)
+          .update({ [colonne]: coche ? v.cle : null } as never)
           .eq('id', v.componentId),
       { errorLabel: 'Vérification' },
     );
+    // Vérifié : le volet se replie (JEP-403), et si on l'a coché depuis son
+    // pied, la page revient sur son en-tête plutôt que de sauter plus bas.
+    if (ok && coche && volet instanceof HTMLDetailsElement && volet.open) {
+      volet.open = false;
+      if (depuisVolet) volet.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
   }
 
   function boutonRecette(c: ProjectComponent) {
     return (
       <span className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => void ouvrirComposant(c, c.resolved)} className={btnGhost}>
+        <button
+          type="button"
+          onClick={() => {
+            // Préparation entière : au retour, la page revient sur sa première étape.
+            retourEtape.current = c.resolved ? { componentId: c.id, rang: 0, attente: null } : null;
+            void ouvrirComposant(c, c.resolved);
+          }}
+          className={btnGhost}
+        >
           {c.resolved ? 'Modifier cette préparation' : 'Choisir une recette'}
         </button>
         {c.resolved && (
@@ -757,7 +798,14 @@ export function ProjectV2({
           comp ? (
             <button
               type="button"
-              onClick={() => void ouvrirComposant(comp, true)}
+              onClick={() => {
+                retourEtape.current = {
+                  componentId: comp.id,
+                  rang: steps.filter((st) => componentOf(st) === comp.id).findIndex((st) => st.id === s.id),
+                  attente: null,
+                };
+                void ouvrirComposant(comp, true);
+              }}
               disabled={busy}
               title={`Modifier cette préparation (« ${comp.name} », toutes ses étapes)`}
               aria-label={`Modifier la préparation ${comp.name}`}
@@ -1127,6 +1175,7 @@ export function ProjectV2({
                           <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
                             Ajustement des quantités · ×{String(Math.round((c.scaleFactor ?? 1) * 100) / 100).replace('.', ',')}
                             {quantitiesStale(c, cleFormat) && <span className="text-error"> · à recalculer (format modifié)</span>}
+                            {verifDe(c.id, 'quantites')?.etat === 'fait' && <span className="text-green-700"> · Vérifié</span>}
                           </span>
                           {c.id === ordered.find((o) => o.resolved)?.id && (
                             <span className="mr-auto">{<HelpBlockSlot blockKey="projet.ajustement" help={help} />}</span>
@@ -1360,10 +1409,17 @@ export function ProjectV2({
           initialDraft={resolvingInit?.draft}
           initialDraftKind={resolvingInit?.kind}
           initialSource={resolvingInit?.source}
-          onClose={fermerResolution}
+          etapesRelues={verifDe(resolving.id, 'etapes')?.etat === 'fait'}
+          onClose={() => {
+            retourEtape.current = null;
+            fermerResolution();
+          }}
           // La modale n'emporte pas sa propre resynchronisation : elle écrit,
           // ce parent-ci rafraîchit (il reste monté), puis elle se ferme.
           onDone={() => {
+            // Le retour sur l'étape attend le rendu serveur (id renouvelés).
+            if (retourEtape.current?.componentId === resolving.id) retourEtape.current.attente = signatureEtapes;
+            else retourEtape.current = null;
             refresh();
             fermerResolution();
           }}

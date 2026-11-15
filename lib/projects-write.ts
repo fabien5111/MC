@@ -19,7 +19,7 @@
 //     rattachement : seul un déplacement ou une suppression de composant
 //     redistribue les blocs (`resequenceProjectSteps`).
 import type { createClient } from '@/lib/supabase/client';
-import { baseDeLigne, utensilsToAdd, type ComponentStepDraft, type ComponentUtensil } from '@/lib/projects';
+import { baseDeLigne, empreinteEtapes, utensilsToAdd, type ComponentStepDraft, type ComponentUtensil } from '@/lib/projects';
 import { fixOeufLigature } from '@/lib/text';
 import { noteAvance } from '@/lib/recipe-view';
 
@@ -586,4 +586,20 @@ export async function resetComponent(supabase: Supabase, recipeId: string, compo
     ({ error } = await supabase.from('recipe_project_components').update(base as never).eq('id', componentId));
   }
   if (error) throw error;
+}
+
+// Empreinte des étapes d'une préparation TELLES QU'ENREGISTRÉES (JEP-403) :
+// relue en base après l'écriture, pour qu'elle soit exactement celle que la
+// page calcule (`empreinteEtapes` sur `recipe_steps`), sans dépendre des
+// normalisations faites à l'écriture. Sert à garder « Étapes relues » après
+// une modification, quand le membre le demande.
+export async function cleEtapesComposant(supabase: Supabase, recipeId: string, componentId: number): Promise<string> {
+  const { data, error } = await supabase
+    .from('recipe_steps')
+    .select('order_index, title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset')
+    .eq('recipe_id', recipeId)
+    .eq('component_id', componentId)
+    .order('order_index', { ascending: true });
+  if (error) throw error;
+  return empreinteEtapes((data ?? []) as unknown as Parameters<typeof empreinteEtapes>[0]);
 }
