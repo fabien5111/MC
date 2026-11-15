@@ -692,6 +692,30 @@ export function baseDeLigne(l: { quantity?: string | null; baseQuantity: number 
   return isFinite(actuelle) ? actuelle : null;
 }
 
+// Lignes « retouchées à la main » d'une préparation (JEP-403) : celles qu'un
+// nouveau coefficient ne doit pas écraser sans demander. Deux sources :
+// - le drapeau `quantity_manual` (la base est conservée : l'origine reste
+//   affichable) ;
+// - l'ancien marquage, sans drapeau : base effacée alors que la préparation a
+//   été ajustée et que `manually_adjusted` est posé (sans la dernière condition,
+//   une préparation jamais ajustée marquerait toutes ses lignes). Ces lignes-là
+//   ont perdu leur origine.
+// Une ligne non chiffrée (« 1 pincée ») n'est jamais « manuelle ».
+export function lignesManuelles<L extends { quantity?: string | null; baseQuantity: number | null; quantityManual?: boolean }>(
+  c: { manuallyAdjusted: boolean; lines: L[] },
+): L[] {
+  const chiffree = (l: L) => {
+    const t = String(l.quantity ?? '').trim().replace(',', '.');
+    return t !== '' && isFinite(Number(t));
+  };
+  const preparationAjustee = c.lines.some((x) => x.baseQuantity != null);
+  return c.lines.filter(
+    (l) =>
+      chiffree(l) &&
+      (l.quantityManual === true || (c.manuallyAdjusted && preparationAjustee && l.baseQuantity == null)),
+  );
+}
+
 // Coefficient effectif d'une ligne quand on applique le coefficient d'UNE
 // préparation du mode projet. Même calcul que `scalingCoef`
 // (`lib/recipe-plan.ts`), sauf pour « aucun » : ici, le coefficient est un

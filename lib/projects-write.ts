@@ -418,13 +418,24 @@ export async function resequenceProjectSteps(supabase: Supabase, recipeId: strin
 // de la gélatine comme de la crème.
 export async function applyComponentScale(
   supabase: Supabase,
-  lines: { id: number; quantity?: string | null; baseQuantity: number | null; scalingMode: string | null; unit?: string | null }[],
+  lines: {
+    id: number;
+    quantity?: string | null;
+    baseQuantity: number | null;
+    scalingMode: string | null;
+    unit?: string | null;
+    quantityManual?: boolean;
+  }[],
   factor: number,
   moldCoefs: { surface: number; volume: number } | null,
   coefPourMode: (mode: string | null, factor: number, moldCoefs: { surface: number; volume: number } | null) => number,
   texte: (base: number | null, coef: number, unit?: string | null) => string | null,
+  // Lignes retouchées à la main que le membre a choisi de ne PAS recalculer
+  // (JEP-403) : elles gardent leur quantité, leur base et leur drapeau.
+  ignorer: ReadonlySet<number> = new Set(),
 ) {
   for (const l of lines) {
+    if (ignorer.has(l.id)) continue;
     // Ligne sans base (retouchée à la main, ou préparation copiée avant que
     // `base_quantity` soit écrite) : on en prend la quantité affichée comme base — sans quoi « Appliquer » enregistrait le
     // coefficient sans rien changer, en silence. La ligne suit ensuite les
@@ -433,23 +444,45 @@ export async function applyComponentScale(
     if (base == null) continue;
     const coef = coefPourMode(l.scalingMode, factor, moldCoefs);
     const q = texte(base, coef, l.unit);
+    // Une ligne marquée manuelle que le membre inclut redevient une ligne
+    // ordinaire. Le drapeau n'est écrit que si elle le portait : la colonne
+    // existe alors forcément (migration pas jouée = jamais de drapeau).
+    const maj: Record<string, unknown> = { quantity: q, base_quantity: base };
+    if (l.quantityManual) maj.quantity_manual = false;
     const { error } = await supabase
       .from('ingredients')
-      .update({ quantity: q, base_quantity: base } as never)
+      .update(maj as never)
       .eq('id', l.id);
     if (error) throw error;
   }
 }
 
 // Modification d'UNE ligne à la main (spec §6.3) : les autres ne bougent pas,
-// et cette ligne sort du recalcul global — `base_quantity` est effacée, ce qui
-// la rend invisible à `applyComponentScale`. Sans ça, le prochain changement
-// de coefficient écraserait silencieusement la valeur voulue par
-// l'utilisateur.
-export async function setLineQuantity(supabase: Supabase, lineId: number, quantity: string | null) {
+// et cette ligne sort du recalcul global. Depuis JEP-403 la quantité de BASE est
+// conservée (on veut garder l'origine sous les yeux) et la ligne est marquée par
+// `quantity_manual` ; `applyComponentScale` ne la touche que si le membre
+// l'inclut explicitement. Sans le marquage, le prochain changement de
+// coefficient écraserait silencieusement la valeur voulue.
+//
+// `baseSiAbsente` : origine à enregistrer quand la ligne n'en a pas encore (une
+// préparation jamais ajustée : la quantité d'avant la retouche EST l'origine).
+//
+// Colonne `quantity_manual` absente (migration pas jouée) : repli sur l'ancien
+// mécanisme, base effacée — rien ne casse.
+export async function setLineQuantity(
+  supabase: Supabase,
+  lineId: number,
+  quantity: string | null,
+  baseSiAbsente: number | null = null,
+) {
+  const q = quantity && quantity.trim() ? quantity.trim() : null;
+  const maj: Record<string, unknown> = { quantity: q, quantity_manual: true };
+  if (baseSiAbsente != null) maj.base_quantity = baseSiAbsente;
+  const avecDrapeau = await supabase.from('ingredients').update(maj as never).eq('id', lineId);
+  if (!avecDrapeau.error) return;
   const { error } = await supabase
     .from('ingredients')
-    .update({ quantity: quantity && quantity.trim() ? quantity.trim() : null, base_quantity: null } as never)
+    .update({ quantity: q, base_quantity: null } as never)
     .eq('id', lineId);
   if (error) throw error;
 }

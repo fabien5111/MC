@@ -19,6 +19,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
+import ChoixLignesManuelles, { type LigneManuelleChoix } from '@/components/projets/ChoixLignesManuelles';
 import { useLecons } from '@/components/batch/DerniereFois';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { moldMetrics } from '@/lib/recipe-view';
@@ -26,6 +27,8 @@ import { applyComponentScale, setLineQuantity } from '@/lib/projects-write';
 import {
   COMPONENT_SOURCE_LABELS,
   coefPreparation,
+  baseDeLigne,
+  lignesManuelles,
   componentScaleProposal,
   scaleIncompatibility,
   projectFormatKey,
@@ -238,6 +241,13 @@ export function QuantitiesStep({
   // Complément d'informations de la recette d'origine : replié par défaut, une
   // seule ligne visible (JEP-403). Réglage d'affichage, jamais enregistré.
   const [complementOuvert, setComplementOuvert] = useState<Record<number, boolean>>({});
+  // Fenêtre « appliquer aussi aux lignes manuelles ? » : la promesse de
+  // `appliquer` attend le choix du membre (lignes retenues, ou null = annulé).
+  const [choixManuel, setChoixManuel] = useState<{
+    coefficient: string;
+    lignes: LigneManuelleChoix[];
+    resoudre: (incluses: Set<number> | null) => void;
+  } | null>(null);
   // Perte en cuisine par composant (ce qui reste sur le fouet, les bols, les
   // cuillères) : un pourcentage qui vient gonfler le coefficient proposé,
   // quelle que soit sa source — géométrique, IA, ou plan de montage. Défaut
@@ -511,12 +521,42 @@ export function QuantitiesStep({
     const moldCoefs = prop && Math.abs(prop.factor - factor) < 1e-9 ? prop.moldCoefs : null;
     const reason =
       prop && Math.abs(prop.factor - factor) < 1e-9 ? prop.reason : `Coefficient ×${fr(factor)} saisi à la main.`;
+    const texteQte = (b: number | null, c2: number, u?: string | null) => scaledQuantityText(b, c2, u, seuils);
+
+    // Lignes retouchées à la main : le membre choisit celles qui suivent aussi
+    // le nouveau coefficient (toutes cochées d'office). Celles qu'il décoche
+    // gardent leur quantité.
+    const manuelles = lignesManuelles(c);
+    const ignorer = new Set<number>();
+    if (manuelles.length > 0) {
+      const choix: LigneManuelleChoix[] = manuelles.map((l) => {
+        const base = baseDeLigne(l);
+        const coef = coefPreparation(l.scalingMode, factor, moldCoefs);
+        const unite = l.unit ? ` ${l.unit}` : '';
+        return {
+          id: l.id,
+          nom: l.name,
+          commentaire: l.comment,
+          actuelle: `${l.quantity ?? ''}${unite}`,
+          proposee: `${texteQte(base, coef, l.unit) ?? ''}${unite}`,
+          origineConnue: l.baseQuantity != null,
+        };
+      });
+      const incluses = await new Promise<Set<number> | null>((resoudre) =>
+        setChoixManuel({ coefficient: fr(factor), lignes: choix, resoudre }),
+      );
+      setChoixManuel(null);
+      if (incluses === null) return;
+      manuelles.forEach((l) => {
+        if (!incluses.has(l.id)) ignorer.add(l.id);
+      });
+    }
 
     await mutate(
       async () => {
         const supabase = createClient();
         try {
-          await applyComponentScale(supabase, c.lines, factor, moldCoefs, coefPreparation, (b, c2, u) => scaledQuantityText(b, c2, u, seuils));
+          await applyComponentScale(supabase, c.lines, factor, moldCoefs, coefPreparation, texteQte, ignorer);
         } catch (e) {
           return { error: { message: (e as Error).message } };
         }
@@ -525,10 +565,9 @@ export function QuantitiesStep({
           .update({
             scale_factor: factor,
             scale_reason: reason,
-            // L'ajustement global reprend la main : les lignes touchées à la
-            // main gardent malgré tout leur valeur (leur `base_quantity` est
-            // vide, `applyComponentScale` en déduit une de la quantité actuelle).
-            manually_adjusted: false,
+            // Les lignes retouchées à la main que le membre a laissées telles
+            // quelles restent signalées ; sinon l'ajustement global reprend la main.
+            manually_adjusted: ignorer.size > 0,
           } as never)
           .eq('id', c.id);
         if (res.error) return res;
@@ -547,11 +586,16 @@ export function QuantitiesStep({
   }
 
   async function editerLigne(c: ProjectComponent, lineId: number, valeur: string) {
+    // Préparation jamais ajustée (×1) et ligne sans base : la quantité d'avant la
+    // retouche EST l'origine, on la garde sous les yeux.
+    const ligne = c.lines.find((x) => x.id === lineId);
+    const avant = parseFloat(String(ligne?.quantity ?? '').replace(',', '.'));
+    const baseSiAbsente = ligne && ligne.baseQuantity == null && (c.scaleFactor ?? 1) === 1 && isFinite(avant) ? avant : null;
     await mutate(
       async () => {
         const supabase = createClient();
         try {
-          await setLineQuantity(supabase, lineId, valeur);
+          await setLineQuantity(supabase, lineId, valeur, baseSiAbsente);
         } catch (e) {
           return { error: { message: (e as Error).message } };
         }
@@ -586,6 +630,7 @@ export function QuantitiesStep({
         const masseOrigine = masseGrammes(c.lines, true, estimerMasse);
         const masseActuelle = masseGrammes(c.lines, false, estimerMasse);
         const perime = quantitiesStale(c, cleFormat);
+        const manuellesIds = new Set(lignesManuelles(c).map((x) => x.id));
         return (
           <div key={c.id} className={componentId == null ? 'rounded-xl border border-outline-variant p-4' : ''}>
             {perime && (
@@ -811,13 +856,9 @@ export function QuantitiesStep({
                     {c.lines.map((l) => {
                       const texteQte = String(l.quantity ?? '').trim().replace(',', '.');
                       const actuelle = texteQte === '' ? NaN : Number(texteQte);
-                      // Une ligne « manuelle » : retouchée à la main, donc sans
-                      // quantité de base (`base_quantity` effacée) alors que
-                      // d'autres lignes de la préparation en ont une. Sans cette
-                      // condition, une préparation jamais ajustée (aucune base
-                      // nulle part) marquerait toutes ses lignes.
-                      const preparationAjustee = c.lines.some((x) => x.baseQuantity != null);
-                      const manuelle = c.manuallyAdjusted && preparationAjustee && l.baseQuantity == null && isFinite(actuelle);
+                      // Une ligne « manuelle » : voir `lignesManuelles` (drapeau
+                      // `quantity_manual`, ou ancien marquage sans origine).
+                      const manuelle = manuellesIds.has(l.id);
                       // Origine : la base enregistrée ; sans base, la quantité
                       // elle-même tant que la ligne n'est pas manuelle (rien n'a
                       // encore changé) ; vide pour une ligne manuelle ou non chiffrée.
@@ -885,6 +926,14 @@ export function QuantitiesStep({
           </div>
         );
       })}
+      {choixManuel && (
+        <ChoixLignesManuelles
+          coefficient={choixManuel.coefficient}
+          lignes={choixManuel.lignes}
+          onConfirm={(incluses) => choixManuel.resoudre(incluses)}
+          onCancel={() => choixManuel.resoudre(null)}
+        />
+      )}
     </section>
   );
 }
