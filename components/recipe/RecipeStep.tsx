@@ -24,6 +24,8 @@ export function RecipeStep({
   action,
   ajustement,
   note,
+  piedIngredients,
+  photosEdition,
   retoursEtape,
   retoursIngredient,
   retoursSousEtape,
@@ -45,6 +47,11 @@ export function RecipeStep({
   // Note facultative sous le titre (mode projet : « points à vérifier »,
   // JEP-403). Absente, l'étape se rend comme sur la fiche.
   note?: ReactNode;
+  // Contenu facultatif sous la liste des ingrédients de l'étape (mode projet :
+  // case et ligne « Total de l'étape », JEP-403).
+  piedIngredients?: ReactNode;
+  // Photos éditables à la place de la galerie (mode projet, JEP-403).
+  photosEdition?: ReactNode;
   // Retours de mes fournées (JEP-381) : posés sous la ligne qu'ils concernent.
   // Absents, l'étape se rend comme sur la fiche recette.
   retoursEtape?: ReactNode;
@@ -136,10 +143,11 @@ export function RecipeStep({
                 </li>
               ))}
             </ul>
+            {piedIngredients}
           </div>
         </details>
       )}
-      <StepPhotoGallery photos={photos} />
+      {photosEdition ?? <StepPhotoGallery photos={photos} />}
       {s.video_url && <StepVideoPlayer url={s.video_url} />}
       {Array.isArray(s.sous_etapes) && s.sous_etapes.length > 0 ? (
         <ul className="flex flex-col gap-3 font-body-lg text-body-md leading-relaxed text-on-surface">

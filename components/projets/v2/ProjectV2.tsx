@@ -73,6 +73,9 @@ import type { VisibleHelpBlock } from '@/lib/help';
 import { ProjectTodo, allerA } from '@/components/projets/v2/ProjectTodo';
 import { VerifCase } from '@/components/projets/v2/VerifCase';
 import { PointsAVerifier } from '@/components/projets/v2/PointsAVerifier';
+import { PhotosEtapeProjet } from '@/components/projets/v2/PhotosEtapeProjet';
+import { useTotalEtape } from '@/lib/use-total-etape';
+import { formatMasse, totalEtape } from '@/lib/total-etape';
 import { mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
@@ -189,6 +192,9 @@ export function ProjectV2({
   // Seuils d'arrondi à l'unité des quantités calculées (JEP-389).
   const seuils = useSeuilsArrondi();
   const { mutate, busy, refresh } = useMutation();
+  // Case « Afficher le total des ingrédients » des étapes (JEP-403) : même
+  // réglage, mémorisé dans le navigateur, que dans le mode Préparer d'une fournée.
+  const [totalVoulu, setTotalVoulu] = useTotalEtape();
   // Sections modifiées et non enregistrées (cf. sections.ts) : alimente les
   // boutons « Enregistrer le brouillon » / « Quitter » / « Valider » du rail.
   const { registry: sectionRegistry, dirtyLabels, saveAll } = useSectionRegistry();
@@ -794,6 +800,57 @@ export function ProjectV2({
     );
   }
 
+  // Case et ligne « Total de l'étape » sous les ingrédients (JEP-403) : masse
+  // estimée par le référentiel (`totalEtape`, comme en fournée) ; une ligne
+  // sans conversion est nommée, jamais passée sous silence.
+  function piedTotal(s: RecipeStepView) {
+    const ings = groupByOrder.get(s.order_index ?? -1)?.ingredients ?? [];
+    if (!ings.length) return undefined;
+    const t = totalVoulu
+      ? totalEtape(
+          ings.map((it) => {
+            const q = it.quantity == null ? NaN : parseFloat(String(it.quantity).replace(',', '.'));
+            return {
+              name: it.name,
+              quantity: isFinite(q) ? q : null,
+              base_quantity: null,
+              unit: it.unit,
+              ref_id: it.ref_id ?? null,
+              removed: false,
+              expanded_into_recipe_id: null,
+            };
+          }),
+          conversions,
+          unitRefs,
+          ingredientDensities,
+        )
+      : null;
+    return (
+      <div className="no-print mt-3 space-y-2">
+        {t && (
+          <p className="flex flex-wrap items-baseline justify-between gap-2 border-t border-outline-variant pt-2 font-label-md text-label-md text-primary">
+            <span>Total de l’étape</span>
+            <span>{formatMasse(t.ajuste)}</span>
+            {t.horsTotal.length > 0 && (
+              <span className="block w-full font-body-md text-[12px] font-normal text-on-surface-variant">
+                Hors total (conversion inconnue) : {t.horsTotal.join(', ')}
+              </span>
+            )}
+          </p>
+        )}
+        <label className="flex cursor-pointer items-center gap-2 text-[13px] text-on-surface-variant">
+          <input
+            type="checkbox"
+            checked={totalVoulu}
+            onChange={(e) => setTotalVoulu(e.target.checked)}
+            className="h-4 w-4 rounded border-outline accent-primary"
+          />
+          <span>Afficher le total des ingrédients</span>
+        </label>
+      </div>
+    );
+  }
+
   // Même présentation que la fiche recette (`RecipeStep`, partagé). `dernier`
   // : pas de filet sous la dernière étape d'un groupe.
   function etape(s: RecipeStepView, i: number, dernier: boolean) {
@@ -845,6 +902,19 @@ export function ProjectV2({
         retoursEtape={<RetoursEtape stepId={s.id} ajustement={comp ? ajustementEcart(comp, s) : undefined} />}
         retoursIngredient={(it) => <RetoursIngredient stepId={s.id} ingredientId={it.id} />}
         retoursSousEtape={(t) => <RetoursSousEtape stepId={s.id} texte={t} />}
+        piedIngredients={comp ? piedTotal(s) : undefined}
+        photosEdition={
+          comp ? (
+            <PhotosEtapeProjet
+              key={`${s.id}-${(s.step_photos ?? []).map((p) => p.url).join('|')}`}
+              stepId={s.id}
+              photos={[...(s.step_photos ?? [])]
+                .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+                .map((p) => ({ url: p.url, original_url: p.original_url ?? null, ai_retouched: !!p.ai_retouched }))}
+              mutate={mutate}
+            />
+          ) : undefined
+        }
         index={i}
         anchorId={stepAnchorId(i)}
         ingredients={groupByOrder.get(s.order_index ?? -1)?.ingredients ?? []}

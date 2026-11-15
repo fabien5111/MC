@@ -21,6 +21,10 @@ import { ImageSlot } from '@/components/ImageSlot';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { DureeInput } from '@/components/DureeInput';
 import { formatTime } from '@/lib/format';
+
+// Une durée en minutes, suivie de son équivalent en heures dès 1 h (JEP-403) :
+// « 962 min (16h02) ».
+const avecHeures = (n: number) => (n >= 60 ? `${n} min (${formatTime(n)})` : `${n} min`);
 import { resizeDataUrlToThumb } from '@/lib/images';
 import { televerserImage } from '@/lib/storage-client';
 import { estDataUrlImage } from '@/lib/storage';
@@ -539,10 +543,10 @@ export function OrganisationEditor({
             Somme des temps des étapes
           </span>
           <div className="grid grid-cols-2 gap-3 text-[14px] text-on-surface sm:grid-cols-4">
-            <span>Préparation : {sommes.prep} min</span>
-            <span>Cuisson : {sommes.cook} min</span>
-            <span>Repos : {sommes.wait >= 60 ? formatTime(sommes.wait) : `${sommes.wait} min`}</span>
-            <span>Total : {sommes.total} min</span>
+            <span>Préparation : {avecHeures(sommes.prep)}</span>
+            <span>Cuisson : {avecHeures(sommes.cook)}</span>
+            <span>Repos : {avecHeures(sommes.wait)}</span>
+            <span>Total : {avecHeures(sommes.total)}</span>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -578,13 +582,17 @@ export function OrganisationEditor({
                     className={champ}
                   />
                 )}
+                {/* Équivalent en heures de la valeur saisie (JEP-403). */}
+                {libelle !== 'Repos' && Number(valeur) >= 60 && (
+                  <span className="mt-0.5 block text-[11.5px] text-on-surface-variant">soit {formatTime(Number(valeur))}</span>
+                )}
                 {corrige && (
                   <button
                     type="button"
                     onClick={() => maj('')}
                     className="mt-0.5 text-left text-[11.5px] text-primary underline underline-offset-2"
                   >
-                    corrigé à la main · revenir à {libelle === 'Repos' && somme >= 60 ? formatTime(somme) : `${somme} min`}
+                    corrigé à la main · revenir à {avecHeures(somme)}
                   </button>
                 )}
               </div>
