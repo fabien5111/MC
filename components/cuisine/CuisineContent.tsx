@@ -41,6 +41,7 @@ import { useRefaireFournee } from '@/components/batch/RefaireFournee';
 import { LockedAction } from '@/components/LockedAction';
 import { findMergeTarget } from '@/lib/shopping-merge';
 import { NOM_A_RACHETER, rangerListes } from '@/lib/a-racheter';
+import { RecipeToc, type TocAction, type TocSections } from '@/components/recipe/RecipeToc';
 
 type PlanningView = 'jours' | 'recettes';
 
@@ -52,6 +53,8 @@ export function CuisineContent({
   droits,
   conversions,
   units,
+  userId,
+  nbRealisations,
 }: {
   planning: BatchListRow[];
   // Fournées closes (terminées ou abandonnées) — écran dédié plutôt qu'un
@@ -67,6 +70,12 @@ export function CuisineContent({
   // les unités d'un même ingrédient, comme le récapitulatif d'une fiche recette.
   conversions: ConversionRef[];
   units: UnitRef[];
+  // Propriétaire d'une liste créée à la main (« Nouvelle liste de courses ») :
+  // connu du rendu serveur, ce qui évite un `getUser()` de plus.
+  userId: string;
+  // Photos de « Mes réalisations » (section rendue par la page, sous ce
+  // contenu) : seulement pour l'entrée du sommaire.
+  nbRealisations: number;
 }) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
@@ -149,6 +158,37 @@ export function CuisineContent({
     history.replaceState(null, '', v === 'jours' ? '#planning-jours' : '#planning');
   }
 
+  // « Nouvelle liste de courses » : une liste vide, nommée à la main, que l'on
+  // remplit ensuite sur sa page (saisie d'articles, unité obligatoire). Jusque-
+  // là une liste ne naissait que d'une fournée ou d'une recette. Plafond
+  // `listes_courses_max` tenu par le trigger de la base (message traduit par
+  // `useMutation`).
+  const [ouvertureListe, setOuvertureListe] = useState(false);
+  async function creerListeVide() {
+    const nom = (
+      await dialog.prompt('Nom de la nouvelle liste de courses', {
+        singleLine: true,
+        required: true,
+        placeholder: 'Ex. Courses du week-end',
+        maxLength: 80,
+      })
+    )?.trim();
+    if (!nom) return;
+    let id: number | null = null;
+    const ok = await mutate(
+      async () => {
+        const res = await createClient().from('shopping_lists').insert({ user_id: userId, name: nom }).select('id').single();
+        if (res.data) id = res.data.id;
+        return res;
+      },
+      // Pas de resynchronisation : on quitte l'écran pour la liste créée.
+      { errorLabel: 'Création impossible', refresh: false },
+    );
+    if (!ok || id === null) return;
+    setOuvertureListe(true);
+    router.push(`/courses/${id}`);
+  }
+
   async function delShoppingList(id: number, name: string) {
     const ok = await mutate(() => createClient().from('shopping_lists').delete().eq('id', id), {
       confirm: `Supprimer la liste « ${name} » ?`,
@@ -217,12 +257,86 @@ export function CuisineContent({
   // « Refaire cette fournée » : fenêtre et duplication partagées avec la fiche recette.
   const { refaire: refaireBatch, refaisant, element: refaireElement } = useRefaireFournee({ overlay: false });
 
+  // ── Sommaire (panneau gauche sous 1024 px, rail au-dessus) ──────────────
+  // Proposition C de la refonte d'« En cuisine » (15/11/2026) : les listes de
+  // courses et les archives étaient introuvables sous le planning. Chaque
+  // entrée porte son compteur ; une section absente n'a pas d'entrée.
+  const nbCourses = activeShoppingLists.length + (aRacheter ? 1 : 0);
+  const aDesArchives = terminees.length > 0 || archivedShoppingLists.length > 0;
+  const sommaire: TocSections = {
+    before: [
+      ...(activeBatches.length > 0
+        ? [{ id: 'sec-en-cours', label: `Fournées en cours (${activeBatches.length})`, icon: 'local_fire_department', level: 1 as const }]
+        : []),
+      { id: 'sec-fournees', label: `Mes fournées (${planningList.length})`, icon: 'event', level: 1 },
+      { id: 'sec-courses', label: `Listes de courses (${nbCourses})`, icon: 'shopping_bag', level: 1 },
+      ...(aDesArchives ? [{ id: 'sec-archives', label: 'Archives', icon: 'inventory_2', level: 1 as const }] : []),
+      ...(terminees.length > 0
+        ? [{ id: 'sec-archives-fournees', label: `Fournées terminées (${terminees.length}${hasMoreTerminees ? '+' : ''})`, icon: 'history', level: 2 as const }]
+        : []),
+      ...(archivedShoppingLists.length > 0
+        ? [{ id: 'sec-archives-listes', label: `Listes terminées (${archivedShoppingLists.length})`, icon: 'receipt_long', level: 2 as const }]
+        : []),
+      ...(nbRealisations > 0
+        ? [{ id: 'mes-realisations', label: `Mes réalisations (${nbRealisations})`, icon: 'photo_library', level: 1 as const }]
+        : []),
+    ],
+    after: [],
+  };
+  // Une entrée qui vise un volet replié (archives, réalisations) l'ouvre avant
+  // le défilement : sans cela, on n'atteindrait que son titre.
+  const ouvrirSection = (id: string) => {
+    const el = document.getElementById(id);
+    const volet = el instanceof HTMLDetailsElement ? el : el?.querySelector<HTMLDetailsElement>(':scope > details');
+    if (volet) volet.open = true;
+  };
+  // Actions : bouton central de la barre basse sous 1024 px, pied du rail au-dessus.
+  const actions: TocAction[] = [
+    {
+      id: 'nouvelle-liste',
+      icon: 'playlist_add',
+      label: 'Nouvelle liste de courses',
+      variant: 'filled',
+      role: 'principale',
+      onClick: creerListeVide,
+    },
+    ...(aRacheter
+      ? [
+          {
+            id: 'a-racheter',
+            icon: 'add_shopping_cart',
+            label: `Ouvrir « ${NOM_A_RACHETER} »`,
+            variant: 'outline' as const,
+            onClick: () => router.push(`/courses/${aRacheter.id}`),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <>
       {refaireElement}
+      <RecipeToc
+        sections={sommaire}
+        steps={[]}
+        onNavigateToSection={ouvrirSection}
+        actions={actions}
+        mobile="drawer"
+        mobileInset="nav"
+        bascule="lg"
+        libelle="Sommaire d'En cuisine"
+      />
       <LoadingOverlay
-        visible={busy || refaisant !== null || showRefreshSpinner}
-        label={refaisant !== null ? 'Recréation de la fournée…' : showRefreshSpinner ? 'Actualisation…' : 'Traitement en cours…'}
+        visible={busy || refaisant !== null || showRefreshSpinner || ouvertureListe}
+        label={
+          refaisant !== null
+            ? 'Recréation de la fournée…'
+            : ouvertureListe
+              ? 'Ouverture de la liste…'
+              : showRefreshSpinner
+                ? 'Actualisation…'
+                : 'Traitement en cours…'
+        }
       />
 
       {/* ── Fournées en cours de cuisson ──────────────────────────────────
@@ -230,7 +344,7 @@ export function CuisineContent({
           pendant qu'un entremets se monte). Quand aucune ne tourne, la section
           disparaît entièrement et le planning remonte : pas de bloc vide. */}
       {activeBatches.length > 0 && (
-        <section className="mt-10">
+        <section id="sec-en-cours" className="mt-10 scroll-mt-28">
           <div className="mb-4 flex items-center gap-2.5">
             <h2 className="font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
               Fournées en cours
@@ -257,7 +371,7 @@ export function CuisineContent({
           elle naît de ce qui est planifié juste à côté. */}
       <div className="mt-12 lg:grid lg:grid-cols-12 lg:gap-x-16">
       {/* ── Mes fournées ──────────────────────────────────────────────── */}
-      <section className="lg:col-span-7">
+      <section id="sec-fournees" className="scroll-mt-28 lg:col-span-7">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <h2 className="flex items-center gap-3 font-headline-md text-primary">
             <PlanningIcon size={24} discFill={DISC.surface} /> Mes fournées
@@ -369,83 +483,23 @@ export function CuisineContent({
             Aucune fournée pour le moment. Ouvrez une recette et cliquez sur « Lancer une fournée ».
           </p>
         )}
-        {terminees.length > 0 && (
-          <details className="group mt-10 border-t border-outline-variant/60 pt-8">
-            <summary className="flex cursor-pointer list-none items-center gap-2 font-headline-md text-primary">
-              Fournées terminées ({terminees.length}{hasMoreTerminees ? '+' : ''})
-              <span className="material-symbols-outlined text-[24px] transition-transform group-open:rotate-180">expand_more</span>
-            </summary>
-            <div className="mt-4 max-w-3xl space-y-4">
-              {terminees.map((p) => {
-                const timeTxt = p.recipes?.total_time || p.recipes?.prep_time ? formatTime(p.recipes.total_time || p.recipes.prep_time) : '';
-                return (
-                  <div key={p.id} className="flex items-center gap-4 rounded-lg border border-outline-variant bg-white p-6 opacity-70 transition-opacity hover:opacity-100">
-                    <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="flex flex-1 items-center gap-4 min-w-0">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                        {p.recipes?.hero_thumb_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                          <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <span className="material-symbols-outlined text-on-surface-variant">cake</span>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-label-md text-primary">{p.recipe_title || p.recipes?.title || ''}</p>
-                        <p className="font-body-md text-[12px] text-on-surface-variant">
-                          {[p.planned_date ? 'Prévu pour ' + formatDate(p.planned_date) : '', timeTxt].filter(Boolean).join(' · ')}
-                        </p>
-                        {p.refaisable && (
-                          <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-label-md text-green-700">
-                            <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                            Fournée validée
-                          </p>
-                        )}
-                      </div>
-                    </Link>
-                    <span className={`shrink-0 font-label-md text-[11px] px-2.5 py-1 rounded-full text-white ${BATCH_STATUS_LBL[p.status]?.cls || 'bg-secondary'}`}>
-                      {BATCH_STATUS_LBL[p.status]?.label || p.status}
-                    </span>
-                    <button
-                      type="button"
-                      title="Refaire cette fournée"
-                      onClick={() => refaireBatch(p)}
-                      className="shrink-0 rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">restart_alt</span>
-                    </button>
-                    <button
-                      type="button"
-                      title="Supprimer définitivement"
-                      onClick={() => delPlan(p, true)}
-                      className="shrink-0 rounded p-1.5 text-error transition-colors hover:bg-error/10"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">delete</span>
-                    </button>
-                  </div>
-                );
-              })}
-              {hasMoreTerminees && (
-                <div className="pt-2 text-center">
-                  <button
-                    type="button"
-                    onClick={loadMoreTerminees}
-                    disabled={loadingMoreTerminees}
-                    className="rounded-pill border border-primary px-6 py-2 font-label-md text-[12px] text-primary transition-colors hover:bg-primary hover:text-white disabled:opacity-60"
-                  >
-                    {loadingMoreTerminees ? 'Chargement…' : 'Voir plus'}
-                  </button>
-                </div>
-              )}
-            </div>
-          </details>
-        )}
       </section>
 
       {/* ── Listes de courses ──────────────────────────────────────────── */}
-      <section className="mt-14 lg:col-span-5 lg:mt-0">
-        <h2 className="mb-6 flex items-center gap-3 font-headline-md text-primary">
-          <span className="material-symbols-outlined">shopping_bag</span> Listes de courses
-        </h2>
+      <section id="sec-courses" className="mt-14 scroll-mt-28 lg:col-span-5 lg:mt-0">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="flex items-center gap-3 font-headline-md text-primary">
+            <span className="material-symbols-outlined">shopping_bag</span> Listes de courses
+          </h2>
+          <button
+            type="button"
+            onClick={creerListeVide}
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary px-3 py-1.5 font-label-md text-[12px] text-primary transition-colors hover:bg-primary hover:text-white"
+          >
+            <span className="material-symbols-outlined text-[16px]">playlist_add</span>
+            Nouvelle liste
+          </button>
+        </div>
         {aRacheter && <ARacheterCard liste={aRacheter} />}
         {activeShoppingLists.length > 0 ? (
           <div className="space-y-4">
@@ -523,25 +577,110 @@ export function CuisineContent({
           </div>
         ) : aRacheter ? null : (
           <p className="text-sm italic text-on-surface-variant">
-            Aucune liste de courses active. Depuis une fournée, cliquez sur « Liste de courses » dans la liste
-            complète des ingrédients.
+            Aucune liste de courses active. Créez-en une avec « Nouvelle liste », ou depuis une fournée avec
+            « Liste de courses » dans la liste complète des ingrédients.
           </p>
-        )}
-        {archivedShoppingLists.length > 0 && (
-          <details className="group mt-10 border-t border-outline-variant/60 pt-8">
-            <summary className="flex cursor-pointer list-none items-center gap-2 font-headline-md text-primary">
-              Listes archivées ({archivedShoppingLists.length})
-              <span className="material-symbols-outlined text-[24px] transition-transform group-open:rotate-180">
-                expand_more
-              </span>
-            </summary>
-            <div className="mt-4">
-              <ArchivedShoppingLists lists={archivedShoppingLists} />
-            </div>
-          </details>
         )}
       </section>
       </div>
+
+      {/* ── Archives ─────────────────────────────────────────────────────
+          Fournées terminées et listes de courses terminées réunies sous un même
+          titre, pleine largeur sous la grille (elles étaient chacune au pied de
+          sa colonne, introuvables sur téléphone). Volets repliés : le sommaire
+          les ouvre (`ouvrirSection`). */}
+      {aDesArchives && (
+        <section id="sec-archives" className="mt-14 scroll-mt-28 border-t border-outline-variant/60 pt-8">
+          <h2 className="mb-6 flex items-center gap-3 font-headline-md text-primary">
+            <span className="material-symbols-outlined">inventory_2</span> Archives
+          </h2>
+          <div className="space-y-8">
+            {terminees.length > 0 && (
+              <details id="sec-archives-fournees" className="group scroll-mt-28">
+                <summary className="flex cursor-pointer list-none items-center gap-2 font-headline-md text-[20px] leading-tight text-primary">
+                  Fournées terminées ({terminees.length}{hasMoreTerminees ? '+' : ''})
+                  <span className="material-symbols-outlined text-[24px] transition-transform group-open:rotate-180">expand_more</span>
+                </summary>
+                <div className="mt-4 max-w-3xl space-y-4">
+                  {terminees.map((p) => {
+                    const timeTxt = p.recipes?.total_time || p.recipes?.prep_time ? formatTime(p.recipes.total_time || p.recipes.prep_time) : '';
+                    return (
+                      <div key={p.id} className="flex items-center gap-4 rounded-lg border border-outline-variant bg-white p-6 opacity-70 transition-opacity hover:opacity-100">
+                        <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="flex flex-1 items-center gap-4 min-w-0">
+                          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
+                            {p.recipes?.hero_thumb_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                              <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="material-symbols-outlined text-on-surface-variant">cake</span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-label-md text-primary">{p.recipe_title || p.recipes?.title || ''}</p>
+                            <p className="font-body-md text-[12px] text-on-surface-variant">
+                              {[p.planned_date ? 'Prévu pour ' + formatDate(p.planned_date) : '', timeTxt].filter(Boolean).join(' · ')}
+                            </p>
+                            {p.refaisable && (
+                              <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-label-md text-green-700">
+                                <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                Fournée validée
+                              </p>
+                            )}
+                          </div>
+                        </Link>
+                        <span className={`shrink-0 font-label-md text-[11px] px-2.5 py-1 rounded-full text-white ${BATCH_STATUS_LBL[p.status]?.cls || 'bg-secondary'}`}>
+                          {BATCH_STATUS_LBL[p.status]?.label || p.status}
+                        </span>
+                        <button
+                          type="button"
+                          title="Refaire cette fournée"
+                          onClick={() => refaireBatch(p)}
+                          className="shrink-0 rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+                        </button>
+                        <button
+                          type="button"
+                          title="Supprimer définitivement"
+                          onClick={() => delPlan(p, true)}
+                          className="shrink-0 rounded p-1.5 text-error transition-colors hover:bg-error/10"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {hasMoreTerminees && (
+                    <div className="pt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={loadMoreTerminees}
+                        disabled={loadingMoreTerminees}
+                        className="rounded-pill border border-primary px-6 py-2 font-label-md text-[12px] text-primary transition-colors hover:bg-primary hover:text-white disabled:opacity-60"
+                      >
+                        {loadingMoreTerminees ? 'Chargement…' : 'Voir plus'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
+            {archivedShoppingLists.length > 0 && (
+              <details id="sec-archives-listes" className="group scroll-mt-28">
+                <summary className="flex cursor-pointer list-none items-center gap-2 font-headline-md text-[20px] leading-tight text-primary">
+                  Listes de courses terminées ({archivedShoppingLists.length})
+                  <span className="material-symbols-outlined text-[24px] transition-transform group-open:rotate-180">
+                    expand_more
+                  </span>
+                </summary>
+                <div className="mt-4">
+                  <ArchivedShoppingLists lists={archivedShoppingLists} />
+                </div>
+              </details>
+            )}
+          </div>
+        </section>
+      )}
     </>
   );
 }

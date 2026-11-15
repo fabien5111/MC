@@ -1062,6 +1062,21 @@ actions (Lancer une fournée, Éditer, Dupliquer…) n'arrivant qu'en dessous.
   les mêmes actions — doublon assumé, sans danger.
 - **Filtres du carnet sous 1024 px** : même languette (`data-bp="lg"`) et même
   panneau latéral, cf. « Carnet : réglages sous 1024 px ».
+- **« En cuisine » (15/11/2026, proposition C)** : sommaire + actions par
+  `RecipeToc` monté dans `CuisineContent`, avec **`bascule="lg"`** — languette et
+  panneau gauche sous **1024 px** (seuil de la grille fournées | courses), rail
+  au-dessus (`.recipe-toc[data-bp='lg']`, `globals.css`). Entrées à compteur :
+  Fournées en cours, Mes fournées, Listes de courses, Archives (Fournées
+  terminées, Listes terminées), Mes réalisations ; une section absente n'a pas
+  d'entrée, et une entrée qui vise un volet replié l'ouvre (`ouvrirSection`).
+  Les archives sont regroupées dans une section `#sec-archives` pleine largeur
+  sous la grille (elles étaient au pied de chaque colonne). Actions :
+  « Nouvelle liste de courses » (principale — **liste vide nommée à la main**,
+  insérée sous la session avec `user_id` passé par la page, plafond tenu par la
+  base, puis ouverture de `/courses/<id>`) et « Ouvrir « À racheter » » si la
+  liste existe ; un bouton « Nouvelle liste » double l'action en tête de la
+  section des courses. `MobileNav centre="actions"` sur la page. La fusion de
+  deux listes reste sur les cartes (elle se choisit liste par liste).
 - **Masquage par `globals.css`, pas par une classe Tailwind** (`rail:hidden`) :
   les règles de la languette et de la pastille sont déclarées après
   `@tailwind utilities`, à spécificité égale leur `display: flex` l'emporterait.

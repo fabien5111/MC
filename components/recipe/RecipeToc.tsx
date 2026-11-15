@@ -154,6 +154,13 @@ type Props = {
   // `.recipe-toc-fab[data-inset]` — l'appelant nomme ce qu'il a en bas de
   // page, il n'a pas à en connaître les pixels.
   mobileInset?: 'none' | 'nav' | 'action-bar';
+  // Largeur à laquelle le rail cède la place à la languette et au panneau.
+  // `'rail'` (défaut) : 701 px, comme la fiche recette et les éditeurs.
+  // `'lg'` : 1024 px — « En cuisine », dont la grille à deux colonnes ne
+  // commence qu'à cette largeur (même seuil que les réglages du carnet).
+  bascule?: 'rail' | 'lg';
+  // Nom du sommaire pour les lecteurs d'écran.
+  libelle?: string;
 };
 
 export function RecipeToc({
@@ -165,6 +172,8 @@ export function RecipeToc({
   actions,
   mobile = 'none',
   mobileInset = 'none',
+  bascule = 'rail',
+  libelle = 'Sommaire de la recette',
 }: Props) {
   const items = useMemo<TocItem[]>(
     () => [
@@ -257,7 +266,7 @@ export function RecipeToc({
 
   return (
     <>
-    <nav className={classes.join(' ')} aria-label="Sommaire de la recette">
+    <nav className={classes.join(' ')} aria-label={libelle} data-bp={bascule}>
       <ul>
         {items.map((it) => (
           <li key={it.id} className={it.level === 2 ? 'sub' : undefined}>
@@ -328,6 +337,7 @@ export function RecipeToc({
         <button
           type="button"
           className="recipe-toc-tab no-print"
+          data-bp={bascule}
           data-hidden={sheetOpen}
           aria-label="Ouvrir le sommaire"
           title="Sommaire"
@@ -342,7 +352,7 @@ export function RecipeToc({
         <BottomSheet
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
-          breakpoint="rail"
+          breakpoint={bascule}
           side="left"
           id={sheetId}
           label="Sommaire"
@@ -397,6 +407,7 @@ export function RecipeToc({
               type="button"
               className="recipe-toc-fab is-pill no-print"
               data-inset={mobileInset}
+              data-bp={bascule}
               // La pastille s'efface quand la feuille est ouverte : la feuille
               // porte déjà tout ce qu'elle propose, et la laisser flotter
               // au-dessus du voile la ferait passer pour une commande active.
@@ -414,7 +425,7 @@ export function RecipeToc({
               id={`${sheetId}-actions`}
               open={actionsOpen}
               onClose={() => setActionsOpen(false)}
-              breakpoint="rail"
+              breakpoint={bascule}
               actions={actionList}
             />
           </>
