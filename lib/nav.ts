@@ -7,9 +7,12 @@
 // n'a pas.
 //
 // Ce qui n'est **pas** une destination :
-//  - « Créer » est une **action** (bouton plein dans l'en-tête, jamais une
-//    fente de menu) ;
-//  - « Compte » est un tiroir (avatar au bureau, cinquième fente mobile).
+//  - « Créer » est une **action** (bouton du carnet au bureau, bouton central
+//    de la barre basse sous 1024 px), jamais une destination ;
+//  - « Compte » est un tiroir, ouvert par l'avatar de l'en-tête (menu au bureau,
+//    feuille remontante sous 1024 px) ;
+//  - la fente centrale de la barre basse est un bouton d'action
+//    (`BoutonCentral` : « Actions » ou « Créer »), pas une destination.
 
 // Point de bascule entre les deux chromes. Au-dessus, l'en-tête porte les
 // destinations ; en dessous, c'est la barre basse. Écrit ici sous ses deux

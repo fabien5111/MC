@@ -136,7 +136,7 @@ export default async function ProjetPage({ params }: Params) {
       </main>
       </StockageEnLigneProvider>
       <Footer />
-      <MobileNav />
+      <MobileNav centre="actions" />
     </>
   );
 }

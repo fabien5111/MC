@@ -67,6 +67,7 @@ export function AddToListButton({ recipeId }: { recipeId: string }) {
       <button
         type="button"
         onClick={ouvrir}
+        data-action-rapide="listes"
         aria-label="Ajouter à une liste"
         title="Ajouter à une liste"
         className="flex h-10 sm:h-7 items-center gap-1 rounded-full border border-secondary px-2 text-secondary transition-colors hover:bg-secondary-container"

@@ -2,7 +2,7 @@
 
 // Contenu du tiroir Compte — un seul jeu d'entrées, deux contenants : un
 // panneau sous l'avatar au bureau (`AccountMenuButton`), une feuille remontante
-// depuis la cinquième fente de la barre basse (`AccountSheetButton`). Le geste
+// depuis l'avatar de l'en-tête sous 1024 px (`AccountSheetButton`). Le geste
 // change, la liste ne change pas ; l'écrire deux fois, c'est se garantir qu'un
 // jour l'une des deux aura une entrée que l'autre n'a pas.
 //

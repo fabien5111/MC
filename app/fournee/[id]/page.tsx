@@ -174,7 +174,7 @@ export default async function FourneePage({ params, searchParams }: Params) {
       <div className="no-print">
         <Footer />
       </div>
-      <MobileNav current="cuisine" />
+      <MobileNav current="cuisine" centre="actions" />
     </>
   );
 }

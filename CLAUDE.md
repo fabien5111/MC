@@ -998,15 +998,77 @@ recherche et tri à droite de la ligne des statuts (affichée aussi sur les
 portées sans statut, pour que la recherche garde sa place). **En dessous**
 (mobile et tablette, là où la barre basse est visible), tout passe par
 `components/carnet/CarnetFiltersSheet.tsx` : un rappel des réglages actifs sous
-le titre, un bouton flottant (`.recipe-toc-fab`, pastille = nombre de réglages
-actifs) et une feuille remontante qui porte partage, recherche, tri, portée et
-statut. **Brouillon local, appliqué par « Afficher les résultats »** (une
+le titre, une languette au bord gauche (`.recipe-toc-tab`, `data-bp="lg"`,
+point clair = au moins un réglage actif) et un panneau latéral « Filtrer mon
+carnet » (`BottomSheet side="left"`) qui porte partage, recherche, tri, portée et
+statut — même motif que le sommaire d'une recette (cf. « Navigation mobile »). **Brouillon local, appliqué par « Afficher les résultats »** (une
 navigation, un voile) ; fermer par le voile ou Échap annule. Pas de compteur de
-résultats sur ce bouton : les compteurs de portée et de statut ignorent la
+résultats sur la languette : les compteurs de portée et de statut ignorent la
 recherche libre. **Le partage ne s'ouvre pas dans la feuille** (sa fenêtre
-`fixed` serait piégée dans le repère de la feuille translatée) : la ligne
+`fixed` serait piégée dans le repère du panneau translaté) : la ligne
 ferme la feuille et déclenche le `ShareBookButton` monté hors d'elle dans
 `CarnetToolbar`. Le bouton « Créer » (`CreateMenuButton`) reste en tête de page.
+
+## Navigation mobile : panneau gauche et pastille « Actions »
+
+Proposition D de la refonte de l'ergonomie mobile (maquettes du 15/11/2026) :
+**le bord gauche sert à se repérer, le bas de l'écran à agir.** Les testeurs ne
+trouvaient pas les actions d'une fiche recette : un seul bouton rond à picto
+« liste » ouvrait une feuille « Aller à… » qui commençait par le sommaire, les
+actions (Lancer une fournée, Éditer, Dupliquer…) n'arrivant qu'en dessous.
+
+- **Sommaire sous 701 px** (`RecipeToc`, `mobile="drawer"` : fiche recette,
+  `/creer`, relecture, page projet, fournée dans ses deux modes) : une
+  **languette** collée au bord gauche (`.recipe-toc-tab`, 22 × 38 px, zone de
+  toucher élargie par `::before`) ouvre un **panneau latéral** pleine hauteur
+  (`BottomSheet side="left"`) avec le sommaire, la section en cours et une jauge
+  d'avancement dans la page (mesurée à l'ouverture : la page est verrouillée
+  ensuite). **Jamais d'ouverture au glissé** : le glissé depuis le bord gauche
+  est le geste « retour » d'Android et d'iOS.
+- **Bouton central de la barre basse** (étape 2, `components/BoutonCentral.tsx`) :
+  la barre basse devient Accueil · Carnet · **bouton central** · En cuisine ·
+  Le blog, et le **profil passe en avatar dans l'en-tête** (`AccountSheetButton
+  variante="entete"`, même tiroir Compte). Le bouton central affiche
+  **« Actions »** quand l'écran en déclare, **« Créer »** ailleurs (entrées
+  `Entrees` de `CreateMenuButton` : recette, import, projet), **« Se
+  connecter »** pour un visiteur ; son libellé est toujours écrit sous le rond.
+- **Déclaration des actions** (`lib/actions-ecran.ts`, magasin de module lu par
+  `useSyncExternalStore`) : `RecipeToc` y pose ses actions quand l'écran monte
+  la barre basse (`mobile="drawer"` + `mobileInset="nav"`), les y redéclare à
+  chaque rendu et les retire au démontage — seul le déclarant peut retirer sa
+  déclaration. Sans barre basse, une pastille « Actions » (`.recipe-toc-fab
+  .is-pill`) ouvre la même feuille (`FeuilleActions`). Les pages à sommaire
+  passent `centre="actions"` à `MobileNav` : sans cet indice serveur, le bouton
+  s'afficherait « Créer » jusqu'à l'hydratation. **Un nouvel écran à actions
+  doit faire les deux** (actions à `RecipeToc`, indice à `MobileNav`).
+- **Feuille « Que voulez-vous faire ? » façon maquette D** (`FeuilleActions`,
+  `RecipeToc.tsx`) : une action marquée `role: 'principale'` devient un grand
+  bouton plein en tête, les actions `role: 'rapide'` des tuiles en grille, le
+  reste une liste en bordeaux. Écran qui ne marque rien : liste simple, comme
+  avant. Les tuiles n'apparaissent jamais dans le rail du bureau. **Fiche
+  recette** : « Lancer une fournée » principale, tuiles Favori · Listes (membre
+  connecté) · Partager · Imprimer. **Les tuiles actionnent les boutons du titre**
+  (`lib/actions-rapides.ts`, repères `data-action-rapide` sur `FavoriteButton`,
+  `AddToListButton`, `ShareButton`, `PrintButton`) plutôt que d'en recoder le
+  comportement ; la page remonte jusqu'au bouton (menu d'impression ancré sous
+  lui), sauf pour le favori qui bascule sur place (état lu sur `aria-pressed`).
+  **Renommer ou retirer l'un de ces repères rend sa tuile muette.**
+- **Droit `mode_projet` lu à l'ouverture du menu « Créer »**
+  (`GET /api/droits/mode-projet`), jamais dans la barre basse : ce serait un
+  appel à `mc_effective_rights` sur chaque page de chaque membre. « Créer un
+  projet » reste grisé le temps de la lecture ; la garde réelle reste celle de
+  `/projets/nouveau` et de `POST /api/projet`.
+- **Tablette (701 à 1023 px)** : rail du bureau ET bouton « Actions » proposent
+  les mêmes actions — doublon assumé, sans danger.
+- **Filtres du carnet sous 1024 px** : même languette (`data-bp="lg"`) et même
+  panneau latéral, cf. « Carnet : réglages sous 1024 px ».
+- **Masquage par `globals.css`, pas par une classe Tailwind** (`rail:hidden`) :
+  les règles de la languette et de la pastille sont déclarées après
+  `@tailwind utilities`, à spécificité égale leur `display: flex` l'emporterait.
+  Un `@media (min-width: …)` dédié les masque au-dessus de leur seuil.
+- `BottomSheet` garde une seule mécanique (voile, verrou de défilement, piège à
+  focus, Échap, `inert`) pour les deux orientations ; le panneau gauche ajoute
+  un en-tête avec titre et croix (`title`, défaut `label`).
 
 ## Recherche textuelle sans accents
 
