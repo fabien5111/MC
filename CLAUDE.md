@@ -1073,7 +1073,10 @@ actions (Lancer une fournée, Éditer, Dupliquer…) n'arrivant qu'en dessous.
   sous la grille (elles étaient au pied de chaque colonne). Actions :
   « Nouvelle liste de courses » (principale — **liste vide nommée à la main**,
   insérée sous la session avec `user_id` passé par la page, plafond tenu par la
-  base, puis ouverture de `/courses/<id>`) et « Ouvrir « À racheter » » si la
+  base, puis ouverture de `/courses/<id>`), « Voir mes fournées en cours »
+  (défile vers `#sec-en-cours`, à défaut bascule sur « Par fournée »), « Voir mon
+  planning de fournées » (bascule sur la vue « Par jour » puis défile vers
+  `#sec-fournees`) et « Ouvrir « À racheter » » si la
   liste existe ; un bouton « Nouvelle liste » double l'action en tête de la
   section des courses. `MobileNav centre="actions"` sur la page. La fusion de
   deux listes reste sur les cartes (elle se choisit liste par liste).

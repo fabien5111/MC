@@ -298,6 +298,14 @@ export function CuisineContent({
     if (volet) volet.open = true;
   };
   // Actions : bouton central de la barre basse sous 1024 px, pied du rail au-dessus.
+  // Défilement vers une section après la fermeture de la feuille : on attend deux
+  // images pour que le verrou de défilement de la page soit levé (même raison que
+  // `goTo` de RecipeToc) et, pour le changement de vue, que le rendu soit appliqué.
+  const allerA = (id: string) => {
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })),
+    );
+  };
   const actions: TocAction[] = [
     {
       id: 'nouvelle-liste',
@@ -306,6 +314,33 @@ export function CuisineContent({
       variant: 'filled',
       role: 'principale',
       onClick: creerListeVide,
+    },
+    // Fournées en cours de cuisson ; à défaut (aucune ne tourne), la liste « Par
+    // fournée » des fournées planifiées.
+    {
+      id: 'voir-en-cours',
+      icon: 'local_fire_department',
+      label: 'Voir mes fournées en cours',
+      variant: 'outline',
+      onClick: () => {
+        if (activeBatches.length > 0) {
+          allerA('sec-en-cours');
+        } else {
+          switchPlanningView('recettes');
+          allerA('sec-fournees');
+        }
+      },
+    },
+    // Le planning = la vue « Par jour » (étapes cochables, toutes fournées confondues).
+    {
+      id: 'voir-planning',
+      icon: 'calendar_month',
+      label: 'Voir mon planning de fournées',
+      variant: 'outline',
+      onClick: () => {
+        switchPlanningView('jours');
+        allerA('sec-fournees');
+      },
     },
     ...(aRacheter
       ? [
