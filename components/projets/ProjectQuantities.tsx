@@ -20,6 +20,8 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import ChoixLignesManuelles, { type LigneManuelleChoix } from '@/components/projets/ChoixLignesManuelles';
+import { formatMasse } from '@/lib/total-etape';
+import { useTotalEtape } from '@/lib/use-total-etape';
 import { useLecons } from '@/components/batch/DerniereFois';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { moldMetrics } from '@/lib/recipe-view';
@@ -48,6 +50,35 @@ const btnPrimary =
   'rounded-pill bg-primary px-5 py-2.5 font-label-md text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95 disabled:opacity-40';
 const champ =
   'rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-body-md text-[14px] outline-none focus:border-primary';
+
+// Quantité d'origine d'une ligne, telle que la colonne « Origine » l'affiche :
+// la base enregistrée ; sans base, la quantité elle-même tant que la ligne n'a
+// pas été retouchée ; rien pour une ligne manuelle d'origine inconnue ou non chiffrée.
+function origineDe(l: ProjectComponent['lines'][number], manuelle: boolean): number | null {
+  if (l.baseQuantity != null) return l.baseQuantity;
+  const t = String(l.quantity ?? '').trim().replace(',', '.');
+  const a = t === '' ? NaN : Number(t);
+  return manuelle || !isFinite(a) ? null : a;
+}
+
+// Masse (g) d'une série de valeurs : par le référentiel quand l'écran le fournit
+// (un lait en ml compte), sinon les seules lignes en g / kg.
+function masseDeValeurs(
+  valeurs: { name: string; quantity: number; unit: string | null }[],
+  estimer?: EstimerMasse,
+): { grammes: number; horsTotal: string[] } {
+  if (estimer) {
+    const e = estimer(valeurs);
+    return { grammes: e.grammes, horsTotal: e.nonConvertis };
+  }
+  let total = 0;
+  for (const v of valeurs) {
+    const u = (v.unit || '').trim().toLowerCase();
+    const mult = u === 'g' ? 1 : u === 'kg' ? 1000 : null;
+    if (mult != null) total += v.quantity * mult;
+  }
+  return { grammes: Math.round(total), horsTotal: [] };
+}
 
 const fr = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
 
@@ -241,6 +272,8 @@ export function QuantitiesStep({
   // Complément d'informations de la recette d'origine : replié par défaut, une
   // seule ligne visible (JEP-403). Réglage d'affichage, jamais enregistré.
   const [complementOuvert, setComplementOuvert] = useState<Record<number, boolean>>({});
+  // Même réglage que le mode Préparer et la vue des étapes (navigateur, rien en base).
+  const [totalVoulu, setTotalVoulu] = useTotalEtape();
   // Fenêtre « appliquer aussi aux lignes manuelles ? » : la promesse de
   // `appliquer` attend le choix du membre (lignes retenues, ou null = annulé).
   const [choixManuel, setChoixManuel] = useState<{
@@ -631,6 +664,31 @@ export function QuantitiesStep({
         const masseActuelle = masseGrammes(c.lines, false, estimerMasse);
         const perime = quantitiesStale(c, cleFormat);
         const manuellesIds = new Set(lignesManuelles(c).map((x) => x.id));
+        // Totaux sous les colonnes « Origine » et « Ce dessert » (case « Afficher le
+        // total des ingrédients », même réglage que le mode Préparer).
+        let totaux: { origine: number; actuel: number; horsTotal: string[]; sansOrigine: string[] } | null = null;
+        if (totalVoulu) {
+          const actuelles: { name: string; quantity: number; unit: string | null }[] = [];
+          const origines: { name: string; quantity: number; unit: string | null }[] = [];
+          const sansOrigine: string[] = [];
+          for (const l of c.lines) {
+            const t = String(l.quantity ?? '').trim().replace(',', '.');
+            const a = t === '' ? NaN : Number(t);
+            if (!isFinite(a)) continue;
+            actuelles.push({ name: l.name, quantity: a, unit: l.unit });
+            const o = origineDe(l, manuellesIds.has(l.id));
+            if (o == null) sansOrigine.push(l.name);
+            else origines.push({ name: l.name, quantity: o, unit: l.unit });
+          }
+          const ma = masseDeValeurs(actuelles, estimerMasse);
+          const mo = masseDeValeurs(origines, estimerMasse);
+          totaux = {
+            actuel: ma.grammes,
+            origine: mo.grammes,
+            horsTotal: [...new Set([...ma.horsTotal, ...mo.horsTotal])],
+            sansOrigine,
+          };
+        }
         return (
           <div key={c.id} className={componentId == null ? 'rounded-xl border border-outline-variant p-4' : ''}>
             {perime && (
@@ -841,6 +899,7 @@ export function QuantitiesStep({
                 </div>
 
                 {c.lines.length > 0 && (
+                  <>
                   <div className="overflow-x-auto">
                   <ul className="min-w-[440px] space-y-1">
                     {/* En-têtes (JEP-403) : « Origine » calé à droite au-dessus des
@@ -859,10 +918,8 @@ export function QuantitiesStep({
                       // Une ligne « manuelle » : voir `lignesManuelles` (drapeau
                       // `quantity_manual`, ou ancien marquage sans origine).
                       const manuelle = manuellesIds.has(l.id);
-                      // Origine : la base enregistrée ; sans base, la quantité
-                      // elle-même tant que la ligne n'est pas manuelle (rien n'a
-                      // encore changé) ; vide pour une ligne manuelle ou non chiffrée.
-                      const origine = l.baseQuantity != null ? l.baseQuantity : manuelle || !isFinite(actuelle) ? null : actuelle;
+                      // Origine : voir `origineDe`.
+                      const origine = origineDe(l, manuelle);
                       const inchangee = origine != null && isFinite(actuelle) && Math.abs(origine - actuelle) < 1e-9;
                       // Coefficient de la ligne : calculé à l'affichage, jamais stocké.
                       const coefLigne = origine != null && origine !== 0 && isFinite(actuelle) ? actuelle / origine : null;
@@ -917,8 +974,37 @@ export function QuantitiesStep({
                         </li>
                       );
                     })}
+                    {totalVoulu && totaux && (
+                      <li className="flex items-center gap-2 border-t border-outline-variant pt-1.5 text-[13.5px] font-semibold text-primary">
+                        <span className="min-w-0 flex-1">Total</span>
+                        <span className="w-20 shrink-0 text-right text-[12px] tabular-nums">
+                          {totaux.origine > 0 ? formatMasse(totaux.origine) : ''}
+                        </span>
+                        <span className="w-16 shrink-0" />
+                        <span className="w-24 shrink-0 pr-3 text-right tabular-nums">{formatMasse(totaux.actuel)}</span>
+                        <span className="w-14 shrink-0" />
+                      </li>
+                    )}
                   </ul>
                   </div>
+                  {totalVoulu && totaux && (totaux.horsTotal.length > 0 || totaux.sansOrigine.length > 0) && (
+                    <p className="mt-1 text-[12px] text-on-surface-variant">
+                      {totaux.horsTotal.length > 0 && <>Hors total (conversion inconnue) : {totaux.horsTotal.join(', ')}. </>}
+                      {totaux.sansOrigine.length > 0 && (
+                        <>Origine inconnue, non comptée dans le total d’origine : {totaux.sansOrigine.join(', ')}.</>
+                      )}
+                    </p>
+                  )}
+                  <label className="mt-2 flex cursor-pointer items-center gap-2 text-[13px] text-on-surface-variant">
+                    <input
+                      type="checkbox"
+                      checked={totalVoulu}
+                      onChange={(e) => setTotalVoulu(e.target.checked)}
+                      className="h-4 w-4 rounded border-outline accent-primary"
+                    />
+                    <span>Afficher le total des ingrédients</span>
+                  </label>
+                  </>
                 )}
                 {pied}
               </>
