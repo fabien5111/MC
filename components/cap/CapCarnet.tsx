@@ -61,20 +61,8 @@ export function CapCarnet({ fiches, titreEcran, retour, carnet = false, aide }: 
           <h1 className="font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[32px]">{titreEcran}</h1>
           {aide}
         </div>
-        <div className="space-y-2 rounded-lg border border-outline-variant bg-surface-container-low p-4 text-[14px] text-on-surface">
-          <p>
-            Au CAP Pâtissier (EP1 / EP2), le carnet de recettes papier ne doit contenir{' '}
-            <strong>que les ingrédients et leurs quantités</strong> : aucune technique, aucun procédé, aucune température.
-            Cette feuille n’imprime que cela, chaque quantité une seule fois.
-          </p>
-          <p>
-            Les noms des préparations viennent des titres de vos étapes : relisez-les et corrigez ceux qui décrivent un
-            geste (« Monter les blancs » → « Meringue »). La correction ne sert qu’à cette impression.
-          </p>
-          <p className="text-[12px] text-on-surface-variant">
-            Le jury reste seul juge de la conformité de votre carnet.
-          </p>
-        </div>
+        {/* L'explication de la règle du CAP vit dans le bloc d'aide (picto « ? » du titre). */}
+        <p className="text-[12px] text-on-surface-variant">Le jury reste seul juge de la conformité de votre carnet.</p>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[14px]">
           <label className="inline-flex cursor-pointer items-center gap-2">
             <input type="checkbox" checked={poidsTotal} onChange={(e) => setPoidsTotal(e.target.checked)} className="accent-primary" />

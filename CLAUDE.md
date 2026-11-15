@@ -2542,7 +2542,8 @@ même quantité ne doit y figurer qu'une fois.
   toutes ses lignes sont des masses chiffrées (`poidsTotalCap`) — un total
   faux est pire qu'absent.
 - Aucun auteur, logo ni adresse du site sur la feuille : le carnet doit être
-  « personnel ». Le jury reste seul juge ; l'écran le dit.
+  « personnel ». Le jury reste seul juge ; l'écran le dit (seule phrase
+  affichée : l'explication de la règle vit dans le bloc d'aide du titre).
 
 ## Liste de courses « À racheter » (JEP-379)
 
