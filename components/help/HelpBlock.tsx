@@ -90,7 +90,7 @@ export function HelpBlock({ block }: { block: VisibleHelpBlock }) {
               </div>
               <div className="flex flex-col gap-5">
                 {block.text && (
-                  <p className="whitespace-pre-line font-body-md text-body-md text-on-surface">{block.text}</p>
+                  <p className="whitespace-pre-line text-justify hyphens-auto font-body-md text-body-md text-on-surface">{block.text}</p>
                 )}
                 {block.videoUrl && <StepVideoPlayer url={block.videoUrl} />}
               </div>

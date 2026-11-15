@@ -112,7 +112,7 @@ export function AideSections({ sections }: { sections: AideSection[] }) {
                         {aideOuverte && (
                           <div id={`aide-${b.key}`} className="flex flex-col items-start gap-6 px-4 pb-5 md:flex-row md:px-6">
                             {b.text && (
-                              <p className="min-w-0 flex-1 whitespace-pre-line font-body-md text-body-md text-on-surface">{b.text}</p>
+                              <p className="min-w-0 flex-1 whitespace-pre-line text-justify hyphens-auto font-body-md text-body-md text-on-surface">{b.text}</p>
                             )}
                             {b.videoUrl && (
                               <div className="w-full shrink-0 md:w-64">
