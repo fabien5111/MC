@@ -104,7 +104,6 @@ export function ProjectV2Block({
             </div>
             {resume && (
               <div className="mt-3 flex items-start gap-3 group-open:hidden">
-                <div className="min-w-0 flex-1">{resume}</div>
                 <button
                   type="button"
                   title="Modifier"
@@ -121,6 +120,7 @@ export function ProjectV2Block({
                 >
                   <span className="material-symbols-outlined text-[20px]">edit</span>
                 </button>
+                <div className="min-w-0 flex-1">{resume}</div>
               </div>
             )}
           </summary>
