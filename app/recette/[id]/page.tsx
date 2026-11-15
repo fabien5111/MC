@@ -1,3 +1,4 @@
+import ComplementQuantites from '@/components/recipe/ComplementQuantites'
 import type { Metadata } from 'next';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
 import Link from 'next/link';
@@ -639,14 +640,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                 )}
               </div>
             </div>
-            {recipe.yield_notes && (
-              <div className="pt-2 border-t border-outline-variant/40 text-left sm:text-center print:text-center">
-                <span className="print-fs-11 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[10px] block mb-1">
-                  Complément d&apos;informations sur les quantités
-                </span>
-                <p className="print-fs-11 font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{recipe.yield_notes}</p>
-              </div>
-            )}
+            {recipe.yield_notes && <ComplementQuantites texte={recipe.yield_notes} />}
             <div className={`print-times grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 ${recipe.yield_notes ? 'pt-2 border-t border-outline-variant/40' : ''}`}>
               {(
                 [
