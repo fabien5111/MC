@@ -1069,7 +1069,7 @@ actions (Lancer une fournée, Éditer, Dupliquer…) n'arrivant qu'en dessous.
   Fournées en cours, Mes fournées, Listes de courses, Archives (Fournées
   terminées, Listes terminées), Mes réalisations ; une section absente n'a pas
   d'entrée, et une entrée qui vise un volet replié l'ouvre (`ouvrirSection`).
-  Les archives sont regroupées dans une section `#sec-archives` pleine largeur
+  Sous « Mes fournées », deux entrées de niveau 2 (« Mon planning (par jour) », « Par fournée ») basculent la vue (`ouvrirSection`) puis défilent vers les ancres `sec-vue-jours` / `sec-vue-recettes`. Les archives sont regroupées dans une section `#sec-archives` pleine largeur
   sous la grille (elles étaient au pied de chaque colonne). Actions :
   « Nouvelle liste de courses » (principale — **liste vide nommée à la main**,
   insérée sous la session avec `user_id` passé par la page, plafond tenu par la

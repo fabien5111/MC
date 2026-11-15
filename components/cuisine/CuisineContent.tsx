@@ -276,6 +276,14 @@ export function CuisineContent({
         ? [{ id: 'sec-en-cours', label: `Fournées en cours (${activeBatches.length})`, icon: 'local_fire_department', level: 1 as const }]
         : []),
       { id: 'sec-fournees', label: `Mes fournées (${planningList.length})`, icon: 'event', level: 1 },
+      // Les deux vues de « Mes fournées » : l'entrée bascule la vue (`ouvrirSection`)
+      // puis défile vers l'ancre posée en tête de la section.
+      ...(planningList.length > 0
+        ? [
+            { id: 'sec-vue-jours', label: 'Mon planning (par jour)', icon: 'calendar_month', level: 2 as const },
+            { id: 'sec-vue-recettes', label: 'Par fournée', icon: 'list_alt', level: 2 as const },
+          ]
+        : []),
       { id: 'sec-courses', label: `Listes de courses (${nbCourses})`, icon: 'shopping_bag', level: 1 },
       ...(aDesArchives ? [{ id: 'sec-archives', label: 'Archives', icon: 'inventory_2', level: 1 as const }] : []),
       ...(terminees.length > 0
@@ -293,6 +301,8 @@ export function CuisineContent({
   // Une entrée qui vise un volet replié (archives, réalisations) l'ouvre avant
   // le défilement : sans cela, on n'atteindrait que son titre.
   const ouvrirSection = (id: string) => {
+    if (id === 'sec-vue-jours') switchPlanningView('jours');
+    if (id === 'sec-vue-recettes') switchPlanningView('recettes');
     const el = document.getElementById(id);
     const volet = el instanceof HTMLDetailsElement ? el : el?.querySelector<HTMLDetailsElement>(':scope > details');
     if (volet) volet.open = true;
@@ -414,6 +424,9 @@ export function CuisineContent({
       <div className="mt-12 lg:grid lg:grid-cols-12 lg:gap-x-16">
       {/* ── Mes fournées ──────────────────────────────────────────────── */}
       <section id="sec-fournees" className="scroll-mt-28 lg:col-span-7">
+        {/* Ancres des deux vues (entrées du sommaire) : même position, le clic bascule la vue. */}
+        <span id="sec-vue-jours" className="block scroll-mt-28" />
+        <span id="sec-vue-recettes" className="block scroll-mt-28" />
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <h2 className="flex items-center gap-3 font-headline-md text-primary">
             <PlanningIcon size={24} discFill={DISC.surface} /> Mes fournées
