@@ -20,6 +20,7 @@
 // `refresh: false` puis rend la main au parent, qui reste monté. Une
 // transition déclarée ici mourrait avec la modale, le spinner s'éteindrait
 // avant le retour du rendu serveur (cf. CLAUDE.md).
+import { useVoile } from '@/lib/use-voile';
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -625,12 +626,21 @@ export function ComponentResolver({
     );
   }
 
+  // Clic sur le voile = croix : retour à la liste pendant un aperçu ; en édition,
+  // même chemin que « Annuler » (confirmation si le brouillon a changé).
+  const voile = useVoile(() => {
+    if (mode === 'apercu') fermerApercu();
+    else if (mode === 'edit') void annulerEdition();
+    else onClose();
+  }, busy || chargement);
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={`Choisir une recette pour ${component.name}`}
       className="fixed inset-0 z-[95] flex items-start justify-center overflow-y-auto bg-background/60 p-4 backdrop-blur-[2px]"
+      {...voile}
     >
       <LoadingOverlay visible={busy || chargement} />
       <div

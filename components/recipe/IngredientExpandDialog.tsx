@@ -17,6 +17,7 @@
 // contenu inséré est une copie, comme le reste de la fournée — la
 // sous-recette peut évoluer ou disparaître ensuite sans rien changer ici
 // (cf. CLAUDE.md « Fournées »).
+import { useVoile } from '@/lib/use-voile';
 import { PickerStatusBadge, pickerRatingText } from '@/components/recipe/PickerStatusBadge';
 import { SearchResultsBusy } from '@/components/SearchResultsBusy';
 import { PICKER_SCOPES, PICKER_SCOPE_LABELS, type PickerScope } from '@/lib/projects';
@@ -488,12 +489,15 @@ export function IngredientExpandDialog({
     .map((r) => sortedBatchSteps.find((s) => s.id === r.batch_step_id))
     .filter((s): s is NonNullable<typeof s> => !!s);
 
+  const voile = useVoile(onClose, busy || loading);
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Remplacer un ingrédient par une recette"
       className="fixed inset-0 z-[95] flex items-start justify-center bg-background/60 backdrop-blur-[2px] p-4 overflow-y-auto"
+      {...voile}
     >
       {/* Le spinner « Le Fouet » est monté au-dessus (z-100) : il couvre le
           chargement initial de la liste (avant la première recherche
