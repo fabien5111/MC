@@ -29,6 +29,8 @@ import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
+import { HelpSlotClient } from '@/components/help/HelpSlotClient';
+import type { VisibleHelpBlock } from '@/lib/help';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatDate, formatTime } from '@/lib/format';
 import { PlanningDayView } from '@/components/profile/PlanningDayView';
@@ -63,6 +65,7 @@ export function CuisineContent({
   units,
   userId,
   nbRealisations,
+  helpBlocks,
 }: {
   planning: BatchListRow[];
   // Fournées closes (terminées ou abandonnées) — écran dédié plutôt qu'un
@@ -84,6 +87,8 @@ export function CuisineContent({
   // Photos de « Mes réalisations » (section rendue par la page, sous ce
   // contenu) : seulement pour l'entrée du sommaire.
   nbRealisations: number;
+  // Blocs d'aide de la page « courses » (picto « ? » du titre des listes).
+  helpBlocks: VisibleHelpBlock[];
 }) {
   const { mutate, busy } = useMutation();
   const dialog = useDialog();
@@ -583,6 +588,7 @@ export function CuisineContent({
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-3 font-headline-md text-primary">
             <span className="material-symbols-outlined">shopping_bag</span> Listes de courses
+            <HelpSlotClient blockKey="courses.listes" blocks={helpBlocks} />
           </h2>
           <button
             type="button"

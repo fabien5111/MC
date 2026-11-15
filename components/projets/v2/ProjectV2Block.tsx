@@ -17,6 +17,8 @@ export function ProjectV2Block({
   state,
   replie,
   aide,
+  resume,
+  lienVerrou,
   children,
 }: {
   id: string;
@@ -32,6 +34,13 @@ export function ProjectV2Block({
   replie?: boolean;
   // Picto d'aide (JEP-391), à côté du titre.
   aide?: ReactNode;
+  // Rappel de ce qui a été saisi, visible SEULEMENT quand le volet est replié
+  // (`group-open:hidden`, purement CSS : aucun état) et accompagné d'un picto
+  // « modifier » qui ouvre le volet. Sans effet sur un bloc non repliable.
+  resume?: ReactNode;
+  // Lien sous la phrase de verrouillage : mène à ce qui débloque le bloc.
+  // Sans effet quand le bloc est ouvert.
+  lienVerrou?: { texte: string; onClick: () => void };
   children?: ReactNode;
 }) {
   const cadre = atelier
@@ -47,6 +56,15 @@ export function ProjectV2Block({
           lock
         </span>
         {state.lockedReason}
+        {lienVerrou && (
+          <button
+            type="button"
+            onClick={lienVerrou.onClick}
+            className="ml-1 font-semibold not-italic text-primary underline underline-offset-2 hover:text-secondary"
+          >
+            {lienVerrou.texte}
+          </button>
+        )}
       </p>
     </div>
   );
@@ -81,6 +99,25 @@ export function ProjectV2Block({
             </span>
             <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
           </summary>
+          {resume && (
+            <div className="mt-3 flex items-start gap-3 group-open:hidden">
+              <div className="min-w-0 flex-1">{resume}</div>
+              <button
+                type="button"
+                title="Modifier"
+                aria-label={`Modifier : ${titre}`}
+                // Ouvre le <details> natif, comme le chevron : sa valeur `open`
+                // ne change pas côté React, rien ne se referme au re-rendu.
+                onClick={(e) => {
+                  const d = e.currentTarget.closest('details');
+                  if (d) d.open = true;
+                }}
+                className="shrink-0 rounded p-1 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+              >
+                <span className="material-symbols-outlined text-[20px]">edit</span>
+              </button>
+            </div>
+          )}
           <div className="mt-4">{corps}</div>
         </details>
       )}

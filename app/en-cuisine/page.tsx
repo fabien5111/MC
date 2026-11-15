@@ -11,6 +11,7 @@ import { CuisineContent } from '@/components/cuisine/CuisineContent';
 import { InvitationScreen } from '@/components/invitation/InvitationScreen';
 import { MesRealisationsCuisine } from '@/components/batch/MesRealisations';
 import { getRealisations } from '@/lib/batch-photos-data';
+import { getVisibleHelpBlocks } from '@/lib/help';
 
 export const metadata: Metadata = { title: 'En cuisine | Je pâtisse !' };
 export const dynamic = 'force-dynamic';
@@ -33,7 +34,7 @@ export default async function EnCuisinePage() {
     );
   }
 
-  const [planning, batchesTerminees, activeBatches, shoppingLists, entitlements, conversions, units, realisations] = await Promise.all([
+  const [planning, batchesTerminees, activeBatches, shoppingLists, entitlements, conversions, units, realisations, helpBlocks] = await Promise.all([
     getBatches(user.id, 'actives'),
     getBatches(user.id, 'terminees'),
     getActiveBatches(user.id),
@@ -43,6 +44,8 @@ export default async function EnCuisinePage() {
     getUnits(),
     // « Mes réalisations » (JEP-382) : photos de toutes mes fournées.
     getRealisations(user.id),
+    // Aide contextuelle des listes de courses (bloc `courses.listes`).
+    getVisibleHelpBlocks('courses', user.id),
   ]);
   // Droits d'abonnement (§4) : calculés une fois ici, jamais recalculés plus
   // bas dans l'arbre de composants.
@@ -75,6 +78,7 @@ export default async function EnCuisinePage() {
           units={units}
           userId={user.id}
           nbRealisations={realisations.length}
+          helpBlocks={helpBlocks}
         />
         <MesRealisationsCuisine realisations={realisations} />
       </main>

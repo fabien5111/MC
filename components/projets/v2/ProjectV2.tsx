@@ -933,7 +933,20 @@ export function ProjectV2({
     );
   }
 
-  const bloc = (key: BlockKey, children: ReactNode, aide?: ReactNode) => (
+  // Blocs verrouillés tant qu'aucune préparation n'a sa recette : le lien mène à
+  // la première préparation « À résoudre » du bloc « Structure », à défaut au
+  // bloc lui-même. Aucun lien si « Structure » est lui-même verrouillé.
+  const BLOCS_APRES_RECETTE: ReadonlySet<BlockKey> = new Set(['etapes', 'ingredients', 'organisation', 'conseils']);
+  const lienVersRecette = (key: BlockKey) => {
+    if (!BLOCS_APRES_RECETTE.has(key) || !states.structure.unlocked) return undefined;
+    const cible = project.components.find((c) => !c.resolved);
+    return {
+      texte: 'Choisir une recette →',
+      onClick: () => allerA(cible ? `prep-${cible.id}-recette` : 'bloc-structure'),
+    };
+  };
+
+  const bloc = (key: BlockKey, children: ReactNode, aide?: ReactNode, resume?: ReactNode) => (
     <ProjectV2Block
       key={key}
       id={`bloc-${key}`}
@@ -942,6 +955,8 @@ export function ProjectV2({
       apercu={BLOCS[key].apercu}
       state={states[key]}
       aide={aide}
+      resume={resume}
+      lienVerrou={lienVersRecette(key)}
       replie={
         key === 'intention'
           ? replies.intention
@@ -1117,6 +1132,13 @@ export function ProjectV2({
             )}
           </div>,
           <HelpBlockSlot blockKey="projet.intention" help={help} />,
+          // Volet replié : rappel de l'intention enregistrée (4 lignes au plus,
+          // texte entier en infobulle) ; le picto « modifier » rouvre le volet.
+          project.intent?.trim() ? (
+            <p className="line-clamp-4 whitespace-pre-line text-sm text-on-surface" title={project.intent.trim()}>
+              {project.intent.trim()}
+            </p>
+          ) : undefined,
         )}
 
         {bloc(
