@@ -429,7 +429,7 @@ export function CuisineContent({
               return (
                 <div key={p.id} className="rounded-lg border border-outline-variant bg-white p-5 transition-colors hover:bg-surface-container">
                   <Link href={`/fournee/${p.id}`} className="flex items-center gap-4">
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
+                    <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
                       {p.recipes?.hero_thumb_url ? (
                         // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
                         <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
@@ -438,7 +438,7 @@ export function CuisineContent({
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-label-md text-primary" title={titre}>{titre}</p>
+                      <p className="line-clamp-2 font-label-md text-primary" title={titre}>{titre}</p>
                       {dateTxt && <p className="font-body-md text-[12px] text-on-surface-variant">{dateTxt}</p>}
                       {coefTxt && <p className="font-body-md text-[12px] font-semibold text-on-surface-variant">{coefTxt}</p>}
                       {p.notes && <p className="truncate font-body-md text-[12px] italic text-on-surface-variant">{p.notes}</p>}
@@ -618,7 +618,7 @@ export function CuisineContent({
                     return (
                       <div key={p.id} className="rounded-lg border border-outline-variant bg-white p-5 opacity-80 transition-opacity hover:opacity-100">
                         <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="flex min-w-0 items-center gap-4">
-                          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
+                          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
                             {p.recipes?.hero_thumb_url ? (
                               // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
                               <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
@@ -627,15 +627,12 @@ export function CuisineContent({
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate font-label-md text-primary" title={titre}>{titre}</p>
+                            <p className="line-clamp-2 font-label-md text-primary" title={titre}>{titre}</p>
                             {dateTxt && <p className="font-body-md text-[12px] text-on-surface-variant">{dateTxt}</p>}
                             {coefTxt && <p className="font-body-md text-[12px] font-semibold text-on-surface-variant">{coefTxt}</p>}
                           </div>
                         </Link>
                         <div className="mt-4 flex flex-wrap items-center gap-2">
-                          <span className={`shrink-0 rounded-full px-2.5 py-1 font-label-md text-[11px] text-white ${BATCH_STATUS_LBL[p.status]?.cls || 'bg-secondary'}`}>
-                            {BATCH_STATUS_LBL[p.status]?.label || p.status}
-                          </span>
                           {p.refaisable && (
                             <span className="inline-flex items-center gap-1 text-[11px] font-label-md text-green-700">
                               <span className="material-symbols-outlined text-[14px]">check_circle</span>
@@ -659,6 +656,10 @@ export function CuisineContent({
                             >
                               <span className="material-symbols-outlined text-[18px]">delete</span>
                             </button>
+                            {/* Étiquette de statut à droite, après les gestes (15/11/2026). */}
+                            <span className={`shrink-0 rounded-full px-2.5 py-1 font-label-md text-[11px] text-white ${BATCH_STATUS_LBL[p.status]?.cls || 'bg-secondary'}`}>
+                              {BATCH_STATUS_LBL[p.status]?.label || p.status}
+                            </span>
                           </div>
                         </div>
                       </div>

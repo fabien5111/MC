@@ -1078,10 +1078,10 @@ actions (Lancer une fournée, Éditer, Dupliquer…) n'arrivant qu'en dessous.
   section des courses. `MobileNav centre="actions"` sur la page. La fusion de
   deux listes reste sur les cartes (elle se choisit liste par liste).
   **Cartes de fournée** (« Par fournée » et « Fournées terminées », 15/11/2026) :
-  titre sur une ligne (tronqué, infobulle), date, « Coefficient ×N » (masqué à
+  titre (2 lignes au plus, infobulle), photo de 96 px, date, « Coefficient ×N » (masqué à
   ×1, `coefficientTexte`, suivi du libellé d'ajustement), puis la rangée
   d'actions dessous, **toujours visible** (Préparer / Pâtisser, Refaire,
-  Supprimer ; statut et « Fournée validée » pour une fournée close) — au survol
+  Supprimer ; « Fournée validée » à gauche et pastille de statut à droite, après les gestes, pour une fournée close) — au survol
   seul, elle était introuvable au doigt.
 - **Masquage par `globals.css`, pas par une classe Tailwind** (`rail:hidden`) :
   les règles de la languette et de la pastille sont déclarées après
