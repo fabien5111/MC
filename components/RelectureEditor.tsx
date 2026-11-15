@@ -34,6 +34,7 @@ import { demanderVignettes, televerserImage } from '@/lib/storage-client';
 import { connexionHref } from '@/lib/nav';
 import { autoGrow, useAutoGrowOnResize } from '@/lib/auto-grow';
 import { PictoAvance } from '@/components/recipe/PictoAvance';
+import { allergeneDeReference, estIngredientConnu, ingredientsConnus } from '@/lib/ingredient-ref-lookup';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 
@@ -198,7 +199,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
       // (cas où l'IA recopie le libellé dans la note).
       const noteRaw = ligatureOeuf(String(g.note || '')).trim();
       const note = noteRaw && noteRaw.toLowerCase() === nom.toLowerCase() ? '' : noteRaw;
-      const refKey = nom.toLowerCase();
+      const allergeneRef = allergeneDeReference(refAllergens, nom);
       const imported = g.texte_original || [g.quantite, g.unite, g.nom].filter(Boolean).join(' ') || null;
       return {
         key: nextKey(),
@@ -208,7 +209,7 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
         unite: g.unite || '',
         note,
         // Allergène pré-rempli depuis le référentiel si l'ingrédient y figure.
-        allergen: Object.prototype.hasOwnProperty.call(refAllergens, refKey) ? parseAllergens(refAllergens[refKey]) : [],
+        allergen: allergeneRef !== undefined ? parseAllergens(allergeneRef) : [],
       };
     }),
     etapes: (sp.etapes || []).map((e: any) => {
@@ -490,7 +491,9 @@ export function RelectureEditor({
   const allIngredientRefs = useMemo(() => [...new Set([...ingredientRefs, ...extraIngredientRefs])], [ingredientRefs, extraIngredientRefs]);
   const allUtensilRefs = useMemo(() => [...new Set([...utensilRefs, ...extraUtensilRefs])], [utensilRefs, extraUtensilRefs]);
   const allAllergens = useMemo(() => [...allergens, ...extraAllergens], [allergens, extraAllergens]);
-  const knownIngredients = useMemo(() => new Set(allIngredientRefs.map((n) => n.trim().toLowerCase())), [allIngredientRefs]);
+  // Libellé exact OU même `ingredientKey` (« Œuf » ↔ « Œufs ») : même règle
+  // que le rattachement réel, cf. `lib/ingredient-ref-lookup.ts`.
+  const knownIngredients = useMemo(() => ingredientsConnus(allIngredientRefs), [allIngredientRefs]);
   const knownUtensils = useMemo(() => new Set(allUtensilRefs.map((n) => n.trim().toLowerCase())), [allUtensilRefs]);
   const refAllergenMap = useMemo(() => ({ ...refAllergens, ...extraRefAllergens }), [refAllergens, extraRefAllergens]);
 
@@ -1894,7 +1897,7 @@ export function RelectureEditor({
                   <p className="text-sm italic text-on-surface-variant py-1">Aucun ingrédient importé (montage ?)</p>
                 ) : (
                   sp.ings.map((g, ii) => {
-                    const known = knownIngredients.has(g.nom.trim().toLowerCase());
+                    const known = estIngredientConnu(knownIngredients, g.nom);
                     const uniteKo = uniteInvalide(g);
                     return (
                     <div key={g.key} className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-x-6 gap-y-1 items-start py-1.5 border-b border-outline-variant/20">
@@ -1912,9 +1915,9 @@ export function RelectureEditor({
                               // Ingrédient choisi dans le référentiel → allergène pré-rempli
                               // (chaîne vide si le référentiel n'en a pas). Sinon, saisie libre.
                               const nom = saisieIngredient(e.target);
-                              const refKey = nom.trim().toLowerCase();
-                              if (Object.prototype.hasOwnProperty.call(refAllergenMap, refKey)) {
-                                patchIng(si, ii, { nom, allergen: parseAllergens(refAllergenMap[refKey]) });
+                              const allergeneRef = allergeneDeReference(refAllergenMap, nom);
+                              if (allergeneRef !== undefined) {
+                                patchIng(si, ii, { nom, allergen: parseAllergens(allergeneRef) });
                               } else {
                                 patchIng(si, ii, { nom });
                               }

@@ -54,6 +54,7 @@ import { translateQuotaError } from '@/lib/quota-message-client';
 import { connexionHref } from '@/lib/nav';
 import { autoGrow, useAutoGrowOnResize } from '@/lib/auto-grow';
 import { PictoAvance } from '@/components/recipe/PictoAvance';
+import { allergeneDeReference, estIngredientConnu, ingredientsConnus } from '@/lib/ingredient-ref-lookup';
 
 type MeasureType = 'units' | 'mold' | 'dimensions';
 // `allergen` : jusqu'à 3 allergènes, choisis uniquement dans la table de
@@ -409,7 +410,10 @@ export function CreerForm({
   const allIngredientRefs = useMemo(() => [...new Set([...ingredientRefs, ...extraIngredientRefs])], [ingredientRefs, extraIngredientRefs]);
   const allUtensilRefs = useMemo(() => [...new Set([...utensilRefs, ...extraUtensilRefs])], [utensilRefs, extraUtensilRefs]);
   const allAllergens = useMemo(() => [...allergens, ...extraAllergens], [allergens, extraAllergens]);
-  const knownIngredients = useMemo(() => new Set(allIngredientRefs.map((n) => n.trim().toLowerCase())), [allIngredientRefs]);
+  // Libellé exact OU même `ingredientKey` (« Œuf » ↔ « Œufs ») : même règle
+  // que le rattachement réel, cf. `lib/ingredient-ref-lookup.ts`.
+  const knownIngredients = useMemo(() => ingredientsConnus(allIngredientRefs), [allIngredientRefs]);
+  const ingredientConnu = (name: string) => estIngredientConnu(knownIngredients, name);
   const knownUtensils = useMemo(() => new Set(allUtensilRefs.map((n) => n.trim().toLowerCase())), [allUtensilRefs]);
   const refAllergenMap = useMemo(() => ({ ...refAllergens, ...extraRefAllergens }), [refAllergens, extraRefAllergens]);
 
@@ -417,8 +421,12 @@ export function CreerForm({
   // correspondance dans la table de référence — même définition qu'Admin →
   // Éléments inconnus, pour repérer le rattachement manquant dès la saisie
   // plutôt qu'après coup sur cet écran séparé.
-  const unknownRefClass = (known: Set<string>, name: string) =>
-    highlightUnknownRefs && name.trim() && !known.has(name.trim().toLowerCase()) ? ' border-2 border-error' : '';
+  const unknownRefClass = (known: Set<string> | ((name: string) => boolean), name: string) =>
+    highlightUnknownRefs &&
+    name.trim() &&
+    !(typeof known === 'function' ? known(name) : known.has(name.trim().toLowerCase()))
+      ? ' border-2 border-error'
+      : '';
 
   // Ajout à la volée d'un libellé dans une table de référence (réservé aux
   // administrateurs — bouton affiché uniquement si `isAdmin`). L'insertion passe
@@ -2152,14 +2160,14 @@ export function CreerForm({
                                 // Ingrédient choisi dans le référentiel → allergène pré-rempli
                                 // (chaîne vide si le référentiel n'en a pas). Sinon, on ne touche
                                 // pas au champ : il reste en saisie libre.
-                                const refKey = name.trim().toLowerCase();
-                                if (Object.prototype.hasOwnProperty.call(refAllergenMap, refKey)) {
-                                  patchIng(si, ii, { name, allergen: parseAllergens(refAllergenMap[refKey]) });
+                                const allergeneRef = allergeneDeReference(refAllergenMap, name);
+                                if (allergeneRef !== undefined) {
+                                  patchIng(si, ii, { name, allergen: parseAllergens(allergeneRef) });
                                 } else {
                                   patchIng(si, ii, { name });
                                 }
                               }}
-                              className={`editorial-input text-on-surface w-full${unknownRefClass(knownIngredients, g.name)}`}
+                              className={`editorial-input text-on-surface w-full${unknownRefClass(ingredientConnu, g.name)}`}
                               type="text"
                               placeholder="Ingrédient"
                               autoComplete="off"
@@ -2291,7 +2299,7 @@ export function CreerForm({
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>
-                        {isAdmin && g.name.trim() && !knownIngredients.has(g.name.trim().toLowerCase()) && (
+                        {isAdmin && g.name.trim() && !ingredientConnu(g.name) && (
                           <button
                             type="button"
                             onClick={() => addIngredientRef(g.name, g.allergen)}

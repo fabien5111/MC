@@ -1137,6 +1137,11 @@ par mot). C'est la **seule** règle pour rapprocher deux noms d'ingrédients :
 préféré, clé en repli), `mergeIngredients` (liste totale), le récapitulatif
 de projet, les fusions de fournée (`mergeIngredientRows`, `expandableGroup` /
 `expandedGroup`) et l'ajout à une liste de courses existante.
+**Éditeurs (`/creer`, relecture d'import) : même règle pour le cadre rouge
+et les allergènes** (`lib/ingredient-ref-lookup.ts`, 15/11/2026) — libellé exact,
+puis clé en repli. Comparés au seul libellé exact, « Œuf » restait rouge et sans
+allergène face à « Œufs » ; l'ajouter au référentiel créait un doublon
+qu'Éléments inconnus proposait aussitôt de refusionner.
 
 **Courses : fusion automatique avec conversion, comme la fiche recette.** Tout
 article qui entre dans une liste — ajout depuis une recette ou une fournée
