@@ -45,6 +45,13 @@ import { RecipeToc, type TocAction, type TocSections } from '@/components/recipe
 
 type PlanningView = 'jours' | 'recettes';
 
+// « Coefficient ×1,5 » — masqué à ×1 (fournée non ajustée : rien à signaler).
+function coefficientTexte(factor: number | string | null | undefined): string {
+  const n = Number(factor);
+  if (!factor || !Number.isFinite(n) || n === 1) return '';
+  return 'Coefficient ×' + String(n).replace('.', ',');
+}
+
 export function CuisineContent({
   planning,
   batchesTerminees,
@@ -406,17 +413,21 @@ export function CuisineContent({
               const daysCount = new Set([0, ...p.batch_steps.map((s) => Math.max(0, s.day_offset || 0))]).size;
               const daysTxt = daysCount > 1 ? `${daysCount} jours` : '';
               const durationTxt = [timeTxt, daysTxt].filter(Boolean).join(' · ');
-              const meta = [
+              const titre = p.recipe_title || p.recipes?.title || '';
+              // Cartes de fournée (15/11/2026) : titre sur une ligne, date, coefficient,
+              // puis la rangée d'actions dessous — toujours visible (au survol seul,
+              // elle était introuvable au doigt).
+              const dateTxt = [
                 p.planned_date
                   ? 'Prévu pour ' + new Date(p.planned_date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
                   : '',
-                [libelleAjustement(p.adjust_label) || '', durationTxt].filter(Boolean).join(' — '),
-                p.factor && Number(p.factor) !== 1 ? '× ' + String(Number(p.factor)).replace('.', ',') : '',
+                durationTxt,
               ]
                 .filter(Boolean)
                 .join(' · ');
+              const coefTxt = [coefficientTexte(p.factor), libelleAjustement(p.adjust_label) || ''].filter(Boolean).join(' · ');
               return (
-                <div key={p.id} className="group flex items-center justify-between rounded-lg border border-outline-variant bg-white p-6 transition-colors hover:bg-surface-container">
+                <div key={p.id} className="rounded-lg border border-outline-variant bg-white p-5 transition-colors hover:bg-surface-container">
                   <Link href={`/fournee/${p.id}`} className="flex items-center gap-4">
                     <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
                       {p.recipes?.hero_thumb_url ? (
@@ -426,51 +437,48 @@ export function CuisineContent({
                         <span className="material-symbols-outlined text-on-surface-variant">cake</span>
                       )}
                     </div>
-                    <div>
-                      <p className="font-label-md text-primary">{p.recipe_title || p.recipes?.title || ''}</p>
-                      <p className="font-body-md text-[12px] text-on-surface-variant">{meta}</p>
-                      {p.notes && <p className="font-body-md text-[12px] italic text-on-surface-variant">{p.notes}</p>}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-label-md text-primary" title={titre}>{titre}</p>
+                      {dateTxt && <p className="font-body-md text-[12px] text-on-surface-variant">{dateTxt}</p>}
+                      {coefTxt && <p className="font-body-md text-[12px] font-semibold text-on-surface-variant">{coefTxt}</p>}
+                      {p.notes && <p className="truncate font-body-md text-[12px] italic text-on-surface-variant">{p.notes}</p>}
                     </div>
                   </Link>
-                  <div className="flex shrink-0 flex-col items-end gap-2">
-                    {/* Deux entrées, comme sur une fournée en cours et dans la
-                        vue « Par jour » : Préparer (ajuster, cocher ce qui est
-                        déjà fait) reste accessible sans passer par Pâtisser,
-                        qui pose `date_debut` au premier affichage. */}
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/fournee/${p.id}?mode=preparer`}
-                        title="Préparer"
-                        className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-outline-variant px-3 py-1.5 font-label-md text-[11px] text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">tune</span>
-                        <span className="hidden sm:inline">Préparer</span>
-                      </Link>
-                      <Link
-                        href={`/fournee/${p.id}`}
-                        title="Pâtisser"
-                        className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary px-3 py-1.5 font-label-md text-[11px] text-primary transition-colors hover:bg-primary hover:text-white"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">play_arrow</span>
-                        <span className="hidden sm:inline">Pâtisser</span>
-                      </Link>
-                    </div>
-                    <div className="flex items-center gap-1">
+                  {/* Deux entrées, comme sur une fournée en cours et dans la
+                      vue « Par jour » : Préparer (ajuster, cocher ce qui est
+                      déjà fait) reste accessible sans passer par Pâtisser,
+                      qui pose `date_debut` au premier affichage. */}
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/fournee/${p.id}?mode=preparer`}
+                      className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-outline-variant px-3 py-1.5 font-label-md text-[12px] text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">tune</span>
+                      Préparer
+                    </Link>
+                    <Link
+                      href={`/fournee/${p.id}`}
+                      className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary px-3 py-1.5 font-label-md text-[12px] text-primary transition-colors hover:bg-primary hover:text-white"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">play_arrow</span>
+                      Pâtisser
+                    </Link>
+                    <div className="ml-auto flex items-center gap-1">
                       <button
                         type="button"
                         title="Refaire cette fournée"
                         onClick={() => refaireBatch(p)}
-                        className="rounded p-1.5 text-on-surface-variant opacity-0 transition-opacity hover:bg-surface-container hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
+                        className="rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
                       >
-                        <span className="material-symbols-outlined">restart_alt</span>
+                        <span className="material-symbols-outlined text-[18px]">restart_alt</span>
                       </button>
                       <button
                         type="button"
                         title="Supprimer"
                         onClick={() => delPlan(p, false)}
-                        className="rounded p-1.5 text-error opacity-0 transition-opacity hover:bg-error/10 focus-visible:opacity-100 group-hover:opacity-100"
+                        className="rounded p-1.5 text-error transition-colors hover:bg-error/10"
                       >
-                        <span className="material-symbols-outlined">delete</span>
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
                       </button>
                     </div>
                   </div>
@@ -604,9 +612,12 @@ export function CuisineContent({
                 <div className="mt-4 max-w-3xl space-y-4">
                   {terminees.map((p) => {
                     const timeTxt = p.recipes?.total_time || p.recipes?.prep_time ? formatTime(p.recipes.total_time || p.recipes.prep_time) : '';
+                    const titre = p.recipe_title || p.recipes?.title || '';
+                    const dateTxt = [p.planned_date ? 'Prévu pour ' + formatDate(p.planned_date) : '', timeTxt].filter(Boolean).join(' · ');
+                    const coefTxt = coefficientTexte(p.factor);
                     return (
-                      <div key={p.id} className="flex items-center gap-4 rounded-lg border border-outline-variant bg-white p-6 opacity-70 transition-opacity hover:opacity-100">
-                        <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="flex flex-1 items-center gap-4 min-w-0">
+                      <div key={p.id} className="rounded-lg border border-outline-variant bg-white p-5 opacity-80 transition-opacity hover:opacity-100">
+                        <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="flex min-w-0 items-center gap-4">
                           <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
                             {p.recipes?.hero_thumb_url ? (
                               // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
@@ -616,37 +627,40 @@ export function CuisineContent({
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="font-label-md text-primary">{p.recipe_title || p.recipes?.title || ''}</p>
-                            <p className="font-body-md text-[12px] text-on-surface-variant">
-                              {[p.planned_date ? 'Prévu pour ' + formatDate(p.planned_date) : '', timeTxt].filter(Boolean).join(' · ')}
-                            </p>
-                            {p.refaisable && (
-                              <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-label-md text-green-700">
-                                <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                                Fournée validée
-                              </p>
-                            )}
+                            <p className="truncate font-label-md text-primary" title={titre}>{titre}</p>
+                            {dateTxt && <p className="font-body-md text-[12px] text-on-surface-variant">{dateTxt}</p>}
+                            {coefTxt && <p className="font-body-md text-[12px] font-semibold text-on-surface-variant">{coefTxt}</p>}
                           </div>
                         </Link>
-                        <span className={`shrink-0 font-label-md text-[11px] px-2.5 py-1 rounded-full text-white ${BATCH_STATUS_LBL[p.status]?.cls || 'bg-secondary'}`}>
-                          {BATCH_STATUS_LBL[p.status]?.label || p.status}
-                        </span>
-                        <button
-                          type="button"
-                          title="Refaire cette fournée"
-                          onClick={() => refaireBatch(p)}
-                          className="shrink-0 rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">restart_alt</span>
-                        </button>
-                        <button
-                          type="button"
-                          title="Supprimer définitivement"
-                          onClick={() => delPlan(p, true)}
-                          className="shrink-0 rounded p-1.5 text-error transition-colors hover:bg-error/10"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                          <span className={`shrink-0 rounded-full px-2.5 py-1 font-label-md text-[11px] text-white ${BATCH_STATUS_LBL[p.status]?.cls || 'bg-secondary'}`}>
+                            {BATCH_STATUS_LBL[p.status]?.label || p.status}
+                          </span>
+                          {p.refaisable && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-label-md text-green-700">
+                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                              Fournée validée
+                            </span>
+                          )}
+                          <div className="ml-auto flex items-center gap-1">
+                            <button
+                              type="button"
+                              title="Refaire cette fournée"
+                              onClick={() => refaireBatch(p)}
+                              className="shrink-0 rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+                            </button>
+                            <button
+                              type="button"
+                              title="Supprimer définitivement"
+                              onClick={() => delPlan(p, true)}
+                              className="shrink-0 rounded p-1.5 text-error transition-colors hover:bg-error/10"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
