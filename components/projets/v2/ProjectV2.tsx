@@ -703,6 +703,28 @@ export function ProjectV2({
     }
   }
 
+  // Ouvre « Modifier cette préparation » depuis une étape (crayon d'étape, de
+  // sous-étape, bandeau collant) : le rang retenu sert à ouvrir l'éditeur sur
+  // cette étape, puis à revenir sur elle après l'enregistrement (JEP-403).
+  function modifierPreparation(c: ProjectComponent, rang: number) {
+    retourEtape.current = { componentId: c.id, rang: Math.max(rang, 0), attente: null };
+    void ouvrirComposant(c, true);
+  }
+
+  // Étape de la préparation que l'on est en train de lire : la dernière dont le
+  // haut est passé sous l'en-tête du site et le bandeau collant.
+  function rangEnVue(c: ProjectComponent): number {
+    const seuil = 72 + 64 + 40;
+    let rang = 0;
+    steps
+      .filter((st) => componentOf(st) === c.id)
+      .forEach((st, k) => {
+        const el = document.getElementById(`etape-${st.id}`);
+        if (el && el.getBoundingClientRect().top <= seuil) rang = k;
+      });
+    return rang;
+  }
+
   function boutonRecette(c: ProjectComponent) {
     return (
       <span className="flex flex-wrap items-center gap-2">
@@ -882,21 +904,42 @@ export function ProjectV2({
     // l'assemblage, qui n'appartient à aucune préparation.
     const comp = ordered.find((c) => c.id === componentOf(s));
     return (
-      <div key={s.id} id={`etape-${s.id}`} className="scroll-mt-28">
+      <div key={s.id} id={`etape-${s.id}`} className="scroll-mt-40">
       <RecipeStep
         step={s}
+        decalage="scroll-mt-40"
+        crayon={
+          comp
+            ? (zone) => (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    // Dans un <summary> (conseils, ingrédients) : ne pas replier le volet.
+                    e.preventDefault();
+                    e.stopPropagation();
+                    modifierPreparation(comp, steps.filter((st) => componentOf(st) === comp.id).findIndex((st) => st.id === s.id));
+                  }}
+                  disabled={busy}
+                  title={
+                    zone === 'sous-etape'
+                      ? `Modifier cette étape (ouvre « ${comp.name} » sur cette étape)`
+                      : `Modifier ${zone === 'conseil' ? 'les conseils' : 'les ingrédients'} de cette étape (ouvre « ${comp.name} »)`
+                  }
+                  aria-label={`Modifier l’étape ${s.title || ''} de ${comp.name}`}
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-primary/60 hover:bg-surface-variant hover:text-primary focus-visible:text-primary disabled:opacity-40"
+                >
+                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                </button>
+              )
+            : undefined
+        }
         action={
           comp ? (
             <button
               type="button"
-              onClick={() => {
-                retourEtape.current = {
-                  componentId: comp.id,
-                  rang: steps.filter((st) => componentOf(st) === comp.id).findIndex((st) => st.id === s.id),
-                  attente: null,
-                };
-                void ouvrirComposant(comp, true);
-              }}
+              onClick={() =>
+                modifierPreparation(comp, steps.filter((st) => componentOf(st) === comp.id).findIndex((st) => st.id === s.id))
+              }
               disabled={busy}
               title={`Modifier cette préparation (« ${comp.name} », toutes ses étapes)`}
               aria-label={`Modifier la préparation ${comp.name}`}
@@ -1350,8 +1393,12 @@ export function ProjectV2({
                         {/* Un seul cadre autour de l'en-tête ET des étapes (comme le
                             volet « Ajustement des quantités ») : ouvert, on voit que
                             les étapes dessous appartiennent à ce bandeau. */}
-                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl bg-surface-container-lowest px-4 py-3 group-open:rounded-b-none group-open:border-b group-open:border-dashed group-open:border-secondary/40">
-                          <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
+                        {/* Bandeau collant (JEP-403) : sous l'en-tête du site, il reste
+                            à l'écran tant qu'on lit les étapes de cette préparation,
+                            avec son nom et le crayon — plus besoin de remonter. */}
+                        <summary className="sticky top-[var(--site-header-h,72px)] z-30 flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl bg-surface-container-lowest px-4 py-3 group-open:rounded-b-none group-open:border-b group-open:border-dashed group-open:border-secondary/40">
+                          <span className="min-w-0 flex-1 font-label-md text-[12px] uppercase tracking-widest text-secondary">
+                            <b className="mr-2 truncate font-body-md text-[14px] font-semibold normal-case tracking-normal text-primary">{c.name}</b>
                             Étapes · {own.length}
                             {verifDe(c.id, 'etapes')?.etat === 'fait' && <span className="text-green-700"> · relues</span>}
                             <NombreRetours
@@ -1363,6 +1410,20 @@ export function ProjectV2({
                               }))}
                             />
                           </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              modifierPreparation(c, rangEnVue(c));
+                            }}
+                            disabled={busy}
+                            title={`Modifier cette préparation (« ${c.name} »), à l’étape en cours de lecture`}
+                            aria-label={`Modifier la préparation ${c.name}`}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">edit</span>
+                          </button>
                           <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                         </summary>
                         <div className="px-4 py-6 md:px-6">
@@ -1559,6 +1620,7 @@ export function ProjectV2({
           initialDraftKind={resolvingInit?.kind}
           initialSource={resolvingInit?.source}
           etapesRelues={verifDe(resolving.id, 'etapes')?.etat === 'fait'}
+          rangInitial={retourEtape.current?.componentId === resolving.id ? retourEtape.current.rang : undefined}
           onClose={() => {
             retourEtape.current = null;
             fermerResolution();

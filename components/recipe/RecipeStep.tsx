@@ -29,6 +29,8 @@ export function RecipeStep({
   retoursEtape,
   retoursIngredient,
   retoursSousEtape,
+  crayon,
+  decalage = 'scroll-mt-28',
 }: {
   step: RecipeStepView;
   index: number;
@@ -57,6 +59,13 @@ export function RecipeStep({
   retoursEtape?: ReactNode;
   retoursIngredient?: (it: IngredientView) => ReactNode;
   retoursSousEtape?: (texte: string) => ReactNode;
+  // Crayon « modifier » posé sur la ligne qu'on est en train de lire (mode
+  // projet, JEP-403) : sous-étape ou description, conseils, ingrédients. Absent,
+  // l'étape se rend comme sur la fiche recette.
+  crayon?: (zone: 'sous-etape' | 'conseil' | 'ingredients') => ReactNode;
+  // Décalage de défilement de l'ancre (le mode projet porte un bandeau collant
+  // sous l'en-tête du site).
+  decalage?: string;
 }) {
   const ings = [...ingredients].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -74,7 +83,7 @@ export function RecipeStep({
   return (
     <div
       id={anchorId}
-      className={`scroll-mt-28 flex flex-col gap-6${last ? '' : ' pb-14 border-b-2 border-outline-variant'}`}
+      className={`${decalage} flex flex-col gap-6${last ? '' : ' pb-14 border-b-2 border-outline-variant'}`}
     >
       <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">
         <h4 className="font-headline-md text-headline-md text-primary">
@@ -121,6 +130,7 @@ export function RecipeStep({
         <details className="group border border-outline-variant mb-2" open>
           <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
             <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
+            {crayon?.('ingredients')}
             <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
           </summary>
           <div className="p-4 bg-white">
@@ -155,19 +165,24 @@ export function RecipeStep({
             <li key={k} className="flex flex-col">
               <div className="flex gap-3">
                 <span className="text-primary shrink-0">–</span>
-                <span>{t}</span>
+                <span className="min-w-0 flex-1">{t}</span>
+                {crayon?.('sous-etape')}
               </div>
               {retoursSousEtape?.(t)}
             </li>
           ))}
         </ul>
       ) : s.description ? (
-        <div className="font-body-lg text-body-md leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1 font-body-lg text-body-md leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
+          {crayon?.('sous-etape')}
+        </div>
       ) : null}
       {s.tips && (
         <details className="group border border-outline-variant" open>
           <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
             <span className="font-label-md text-label-md text-primary">Conseils &amp; Astuces de l&apos;étape</span>
+            {crayon?.('conseil')}
             <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
           </summary>
           <div className="p-4 bg-white font-body-md text-body-md italic whitespace-pre-line">{s.tips}</div>

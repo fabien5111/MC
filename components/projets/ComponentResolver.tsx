@@ -126,6 +126,7 @@ export function ComponentResolver({
   onDone,
   onReset,
   etapesRelues = false,
+  rangInitial,
 }: {
   projectId: string;
   projectTitle: string;
@@ -180,6 +181,9 @@ export function ComponentResolver({
   // Les étapes de cette préparation étaient « relues » à l'ouverture (JEP-403) :
   // si l'enregistrement les modifie, on demande s'il faut les garder relues.
   etapesRelues?: boolean;
+  // Rang de l'étape d'où l'on vient (crayon d'une sous-étape, bandeau collant,
+  // JEP-403) : l'éditeur s'ouvre défilé jusqu'à sa carte. 0 / absent : en haut.
+  rangInitial?: number;
 }) {
   useAutoGrowOnResize();
   const dialog = useDialog();
@@ -311,6 +315,18 @@ export function ComponentResolver({
     // setters stables : seul le terme doit relancer la recherche.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terme, portees, tagsChoisis]);
+
+  // Ouverture sur l'étape cliquée : une seule fois, la carte étant déjà montée.
+  const rangInitialFait = useRef(false);
+  useEffect(() => {
+    if (mode !== 'edit' || !rangInitial || rangInitial < 1 || rangInitialFait.current) return;
+    const t = setTimeout(() => {
+      const carte = document.getElementById(`projet-etape-${rangInitial}`);
+      if (carte) carte.scrollIntoView({ block: 'start' });
+      rangInitialFait.current = true;
+    }, 60);
+    return () => clearTimeout(t);
+  }, [mode, rangInitial]);
 
   // Retour de l'aperçu à la liste (bouton « Annuler » ET croix de l'en-tête) :
   // recherche et cases cochées sont conservées.
