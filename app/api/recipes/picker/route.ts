@@ -24,21 +24,9 @@ import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth';
 import { isProjectDraft } from '@/lib/projects';
 import { withNormColumn } from '@/lib/text-search';
+import { motsRecherche } from '@/lib/recherche-mots';
 
 const MAX_LIMIT = 30;
-
-// Variantes singulier/pluriel du terme cherché (JEP-254) : « amandes » ne
-// contient pas « amande », donc une recette « Crème d'amande » restait
-// invisible à qui tapait le pluriel — et inversement. Heuristique du
-// français courant (un « s » ou un « x » final), pas une vraie analyse
-// linguistique : elle élargit la recherche, elle ne la restreint jamais, un
-// faux positif occasionnel (ex. un terme qui se termine légitimement par
-// « s ») coûte moins qu'un « aucune recette trouvée » sur une faute d'accord.
-function pluralVariants(motif: string): string[] {
-  const dernier = motif.slice(-1);
-  const variante = dernier === 's' || dernier === 'x' ? motif.slice(0, -1) : `${motif}s`;
-  return variante && variante !== motif ? [motif, variante] : [motif];
-}
 
 const SELECT =
   'id, title, status, is_public, author_id, kind, project_stage, measure_type, yield_qty, yield_unit, yield_desc, ' +
@@ -111,6 +99,11 @@ export async function GET(req: Request) {
   }
   if (!filtres.length) return NextResponse.json({ items: [] });
 
+  // Mots cherchés : découpés une fois par motif (normalisé, ou brut en repli).
+  const mots = (motif: string) => {
+    const m = motsRecherche(motif);
+    return m.length ? m : [motif];
+  };
   const requete = async (colonne: string, motif: string) => {
     const resultats = await Promise.all(
       filtres.map((f) => {
@@ -120,8 +113,11 @@ export async function GET(req: Request) {
         });
         // Le titre est un filtre supplémentaire (ET) : il restreint la portée
         // choisie, il ne l'élargit pas. Colonne normalisée `title_norm`
-        // (JEP-254) ; les deux variantes tolèrent le singulier/pluriel.
-        if (term) q = q.or(pluralVariants(motif).map((v) => `${colonne}.ilike.%${v}%`).join(','));
+        // (JEP-254). Mot à mot (JEP-403) : chaque mot significatif doit
+        // figurer dans le titre, dans n'importe quel ordre — « tarte chocolat »
+        // trouve « Tarte au chocolat ». Le radical (sans s/x final) tolère le
+        // singulier et le pluriel.
+        for (const mot of mots(motif)) q = q.ilike(colonne, `%${mot}%`);
         return term ? q.order('title', { ascending: true }) : q.order('created_at', { ascending: false });
       }),
     );
