@@ -37,6 +37,10 @@ export function ProjectStructureList({
             {ordered.map((c, i) => (
               <li
                 key={c.id}
+                // Ancre de la préparation : le lien d'un bloc verrouillé et le
+                // « Reste à faire » arrivent en haut de sa carte (JEP-403), avec
+                // le nom de la préparation sous les yeux.
+                id={`prep-${c.id}-recette`}
                 onDragOver={(e) => {
                   if (dragIndex === null) return;
                   e.preventDefault();
@@ -48,7 +52,7 @@ export function ProjectStructureList({
                   void reorder(dragIndex, i);
                   setDragIndex(null);
                 }}
-                className={`rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3${
+                className={`scroll-mt-28 rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3${
                   dragIndex === i ? ' opacity-50' : ''
                 }`}
               >

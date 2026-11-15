@@ -1151,7 +1151,7 @@ export function ProjectV2({
             <ProjectStructureList
               components={composants}
               extra={(c) => (
-                <div id={`prep-${c.id}-recette`} className="mt-2 flex scroll-mt-28 flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-2">
+                <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-2">
                   <span className={`flex min-w-0 flex-1 items-center gap-1.5 text-[12.5px] ${c.resolved ? 'text-green-700' : 'text-secondary'}`}>
                     {c.resolved
                       ? [
