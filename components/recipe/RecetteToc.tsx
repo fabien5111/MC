@@ -19,6 +19,7 @@ import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { ExtractStepsDialog, type EtapeAExtraire } from '@/components/recipe/ExtractStepsDialog';
+import { actionRapideActive, declencherActionRapide } from '@/lib/actions-rapides';
 import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
 
 // Même seuil que `SPY_THRESHOLD` dans lib/use-toc.ts : on veut retrouver la
@@ -49,8 +50,12 @@ export function RecetteToc({
   isPublic,
   isAdmin,
   extraction,
+  connecte = false,
   helpBlocks = [],
 }: {
+  // Membre connecté : la tuile « Listes » n'existe que pour lui (le bouton
+  // « Listes » sous le titre n'est rendu qu'à un membre connecté).
+  connecte?: boolean;
   recipeId: string;
   isOwner: boolean;
   sections: TocSections;
@@ -200,6 +205,9 @@ export function RecetteToc({
       icon: <PlanningIcon size={20} discFill={DISC.surface} />,
       label: 'Lancer une fournée',
       variant: 'outline' as const,
+      // Le geste principal d'une fiche recette : grand bouton plein en tête de
+      // la feuille mobile (maquette D).
+      role: 'principale' as const,
       onClick: () => (open && !editMode ? close() : openCreate()),
       disabled: pending !== null,
     },
@@ -222,6 +230,51 @@ export function RecetteToc({
       : []),
   ];
 
+  // Gestes rapides de la feuille mobile : ils actionnent les boutons déjà
+  // présents sous le titre (`lib/actions-rapides.ts`). Jamais dans le rail du
+  // bureau, où ces boutons sont visibles.
+  const rapides = [
+    {
+      id: 'favori',
+      icon: 'favorite',
+      label: 'Favori',
+      variant: 'outline' as const,
+      role: 'rapide' as const,
+      actif: () => actionRapideActive('favori'),
+      onClick: () => declencherActionRapide('favori'),
+    },
+    ...(connecte
+      ? [
+          {
+            id: 'listes',
+            icon: 'playlist_add',
+            label: 'Listes',
+            variant: 'outline' as const,
+            role: 'rapide' as const,
+            onClick: () => declencherActionRapide('listes'),
+          },
+        ]
+      : []),
+    {
+      id: 'partager',
+      icon: 'share',
+      label: 'Partager',
+      variant: 'outline' as const,
+      role: 'rapide' as const,
+      onClick: () => declencherActionRapide('partager'),
+    },
+    {
+      id: 'imprimer',
+      icon: 'print',
+      label: 'Imprimer',
+      variant: 'outline' as const,
+      role: 'rapide' as const,
+      onClick: () => declencherActionRapide('imprimer'),
+    },
+  ];
+  // La principale en tête, puis les gestes rapides, puis le reste dans l'ordre.
+  const toutes = [...actions.filter((a) => a.role === 'principale'), ...rapides, ...actions.filter((a) => a.role !== 'principale')];
+
   return (
     <>
       {/* `mobile="drawer"` : sous 700 px le rail disparaît, et avec lui la
@@ -232,7 +285,7 @@ export function RecetteToc({
       <RecipeToc
         sections={sections}
         steps={steps}
-        actions={actions}
+        actions={toutes}
         mobile="drawer"
         mobileInset="nav"
         // Ustensiles et ingrédients sont repliés : on ouvre le bloc visé avant de défiler.

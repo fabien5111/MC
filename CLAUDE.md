@@ -1041,6 +1041,18 @@ actions (Lancer une fournée, Éditer, Dupliquer…) n'arrivant qu'en dessous.
   passent `centre="actions"` à `MobileNav` : sans cet indice serveur, le bouton
   s'afficherait « Créer » jusqu'à l'hydratation. **Un nouvel écran à actions
   doit faire les deux** (actions à `RecipeToc`, indice à `MobileNav`).
+- **Feuille « Que voulez-vous faire ? » façon maquette D** (`FeuilleActions`,
+  `RecipeToc.tsx`) : une action marquée `role: 'principale'` devient un grand
+  bouton plein en tête, les actions `role: 'rapide'` des tuiles en grille, le
+  reste une liste en bordeaux. Écran qui ne marque rien : liste simple, comme
+  avant. Les tuiles n'apparaissent jamais dans le rail du bureau. **Fiche
+  recette** : « Lancer une fournée » principale, tuiles Favori · Listes (membre
+  connecté) · Partager · Imprimer. **Les tuiles actionnent les boutons du titre**
+  (`lib/actions-rapides.ts`, repères `data-action-rapide` sur `FavoriteButton`,
+  `AddToListButton`, `ShareButton`, `PrintButton`) plutôt que d'en recoder le
+  comportement ; la page remonte jusqu'au bouton (menu d'impression ancré sous
+  lui), sauf pour le favori qui bascule sur place (état lu sur `aria-pressed`).
+  **Renommer ou retirer l'un de ces repères rend sa tuile muette.**
 - **Droit `mode_projet` lu à l'ouverture du menu « Créer »**
   (`GET /api/droits/mode-projet`), jamais dans la barre basse : ce serait un
   appel à `mc_effective_rights` sur chaque page de chaque membre. « Créer un

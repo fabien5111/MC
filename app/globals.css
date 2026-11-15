@@ -738,6 +738,68 @@ body {
   border-top: none;
   margin-top: 0;
 }
+/* Feuille « Que voulez-vous faire ? » façon maquette D : action principale en
+   grand bouton plein, gestes rapides en tuiles, autres actions en liste
+   lisible. N'agit que si l'écran marque ses actions (`TocAction.role`). */
+.recipe-toc-sheet .feuille-principale {
+  margin: 4px 16px 12px;
+  width: calc(100% - 32px);
+  height: 48px;
+  border: none;
+  border-radius: 999px;
+  background: #300a12; /* primary */
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font:
+    600 15px/1 'Work Sans',
+    sans-serif;
+  cursor: pointer;
+}
+.recipe-toc-sheet .feuille-principale:disabled {
+  opacity: 0.5;
+}
+.recipe-toc-sheet .feuille-principale .material-symbols-outlined {
+  font-size: 21px;
+}
+.recipe-toc-sheet .feuille-rapides {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+.recipe-toc-sheet .feuille-rapides button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 2px 8px;
+  border: 1px solid #d6c2c3; /* outline-variant */
+  border-radius: 14px;
+  background: #fff;
+  color: #300a12; /* primary */
+  font:
+    500 12px/1.2 'Work Sans',
+    sans-serif;
+  cursor: pointer;
+}
+.recipe-toc-sheet .feuille-rapides .material-symbols-outlined {
+  font-size: 22px;
+}
+/* Liste sous le bouton principal et les tuiles : un filet la sépare, et le
+   libellé passe en bordeaux, plus lisible que le gris du pied du rail. */
+.recipe-toc-sheet .actions.feuille-liste {
+  border-top: 1px solid #efdfde; /* surface-container-highest */
+  padding-top: 4px;
+}
+.recipe-toc-sheet .actions.feuille-liste .item {
+  color: #300a12; /* primary */
+  font-size: 15px;
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
 .recipe-toc-sheet .actions button:disabled {
   opacity: 0.5;
   cursor: default;

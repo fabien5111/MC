@@ -403,6 +403,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
           status={recipe.status || 'draft'}
           isPublic={recipe.is_public !== false}
           isAdmin={userIsAdmin}
+          connecte={!!user}
           helpBlocks={helpPages.recette ?? []}
           extraction={
             user

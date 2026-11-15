@@ -115,6 +115,14 @@ export type TocAction = {
   variant: TocActionVariant;
   onClick: () => void;
   disabled?: boolean;
+  // Place dans la feuille « Que voulez-vous faire ? » (mobile) : `principale`
+  // = grand bouton plein en tête (une seule par écran), `rapide` = tuile de la
+  // grille sous lui (gestes déjà visibles sous le titre au bureau : jamais dans
+  // le rail). Absent : une ligne de la liste, comme avant.
+  role?: 'principale' | 'rapide';
+  // Tuile « rapide » à deux états (favori) : lu à chaque ouverture de la
+  // feuille, pour remplir le picto quand l'état est actif.
+  actif?: () => boolean;
 };
 
 type Props = {
@@ -274,7 +282,7 @@ export function RecipeToc({
       </ul>
       {hasActions && (
         <div className="actions">
-          {actionList.map((a) => (
+          {actionList.filter((a) => a.role !== 'rapide').map((a) => (
             <button
               key={a.id}
               type="button"
@@ -434,30 +442,59 @@ export function FeuilleActions({
   breakpoint: 'rail' | 'lg';
   actions: TocAction[];
 }) {
+  const principale = actions.find((a) => a.role === 'principale');
+  const rapides = actions.filter((a) => a.role === 'rapide');
+  const autres = actions.filter((a) => a !== principale && a.role !== 'rapide');
+  const lancer = (a: TocAction) => {
+    onClose();
+    a.onClick();
+  };
   return (
     <BottomSheet open={open} onClose={onClose} breakpoint={breakpoint} id={id} label="Actions" sheetClassName="recipe-toc-sheet">
       <h2 className="shrink-0">Que voulez-vous faire ?</h2>
-      <div className="actions is-sheet min-h-0 overflow-y-auto" role="group" aria-label="Actions">
-        {actions.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            className="item"
-            onClick={() => {
-              onClose();
-              a.onClick();
-            }}
-            disabled={a.disabled}
-          >
-            <span
-              className={`badge variant-${a.variant}${typeof a.icon === 'string' ? ' material-symbols-outlined' : ''}`}
-              aria-hidden="true"
-            >
-              {a.icon}
+      <div className="min-h-0 overflow-y-auto">
+        {principale && (
+          <button type="button" className="feuille-principale" onClick={() => lancer(principale)} disabled={principale.disabled}>
+            <span className={typeof principale.icon === 'string' ? 'material-symbols-outlined' : undefined} aria-hidden="true">
+              {principale.icon}
             </span>
-            <span className="lbl">{a.label}</span>
+            {principale.label}
           </button>
-        ))}
+        )}
+        {rapides.length > 0 && (
+          <div className="feuille-rapides" role="group" aria-label="Gestes rapides">
+            {rapides.map((a) => {
+              const actif = a.actif?.() ?? false;
+              return (
+                <button key={a.id} type="button" onClick={() => lancer(a)} disabled={a.disabled} aria-pressed={a.actif ? actif : undefined}>
+                  <span
+                    className={typeof a.icon === 'string' ? 'material-symbols-outlined' : undefined}
+                    style={actif ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                    aria-hidden="true"
+                  >
+                    {a.icon}
+                  </span>
+                  {a.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {autres.length > 0 && (
+          <div className={`actions is-sheet${principale || rapides.length ? ' feuille-liste' : ''}`} role="group" aria-label="Autres actions">
+            {autres.map((a) => (
+              <button key={a.id} type="button" className="item" onClick={() => lancer(a)} disabled={a.disabled}>
+                <span
+                  className={`badge variant-${a.variant}${typeof a.icon === 'string' ? ' material-symbols-outlined' : ''}`}
+                  aria-hidden="true"
+                >
+                  {a.icon}
+                </span>
+                <span className="lbl">{a.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </BottomSheet>
   );
