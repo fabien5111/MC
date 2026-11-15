@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { usePlanCtx } from '@/components/recipe/PlanContext';
+import { EVENEMENT_OUVRIR_SECTION } from '@/components/recipe/RepliableListe';
 import { RecipeToc, stepAnchorId, type TocSections, type TocStep } from '@/components/recipe/RecipeToc';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
@@ -228,7 +229,15 @@ export function RecetteToc({
           n'a pas de déclencheur propre. Le tiroir reprend les sections *et*
           ces actions. `mobileInset="nav"` pour la barre de navigation basse,
           que la fiche recette monte. */}
-      <RecipeToc sections={sections} steps={steps} actions={actions} mobile="drawer" mobileInset="nav" />
+      <RecipeToc
+        sections={sections}
+        steps={steps}
+        actions={actions}
+        mobile="drawer"
+        mobileInset="nav"
+        // Ustensiles et ingrédients sont repliés : on ouvre le bloc visé avant de défiler.
+        onNavigateToSection={(id) => window.dispatchEvent(new CustomEvent(EVENEMENT_OUVRIR_SECTION, { detail: id }))}
+      />
       <LoadingOverlay visible={pending !== null} label={pending === 'duplicate' ? 'Duplication de la recette…' : 'Ouverture de l’éditeur…'} />
       <LoadingOverlay visible={statusBusy} label="Mise à jour du statut…" />
       {extracting && extraction && (

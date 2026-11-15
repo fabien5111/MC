@@ -12,6 +12,7 @@ import { ingredientConversionText } from '@/lib/ingredient-conversions';
 import { ingredientKey } from '@/lib/ingredient-name';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { IngredientTotalList } from '@/components/IngredientTotalList';
+import RepliableListe from '@/components/recipe/RepliableListe';
 import { getFavoriteIds } from '@/lib/favorites';
 import { getRecipeShareInfo } from '@/lib/shares-data';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
@@ -745,11 +746,12 @@ export default async function RecettePage({ params, searchParams }: Params) {
           {utensils.length > 0 && (
             <div id="sec-ustensiles" className="scroll-mt-28 mb-12">
               <h3 className="font-headline-md text-headline-md text-primary mb-6">Ustensiles nécessaires</h3>
+              <RepliableListe sectionId="sec-ustensiles">
               <ul className="grid grid-cols-1 gap-y-2 list-none">
                 {utensils.map((u) => {
                   const url = u.utensils?.url || u.url;
                   return (
-                    <li key={u.id} className="py-2 border-b border-outline-variant/30 font-body-md text-body-md">
+                    <li key={u.id} data-repli-debut="" className="py-2 border-b border-outline-variant/30 font-body-md text-body-md">
                       {url ? (
                         <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-secondary">
                           {u.name}
@@ -762,6 +764,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   );
                 })}
               </ul>
+              </RepliableListe>
             </div>
           )}
 
@@ -779,6 +782,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   levure fraîche ») élargissait la grille au-delà du viewport
                   et mettait toute la page en défilement horizontal sur
                   mobile. */}
+              <RepliableListe sectionId="sec-ingredients">
               <IngredientTotalList
                 groups={ingredientGroups.map((g) => {
                   // Allergènes de l'ingrédient : ceux de toutes ses lignes, sans doublon.
@@ -827,6 +831,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
                   };
                 })}
               />
+              </RepliableListe>
 
               <div className="no-print">
                 <ShoppingWidget

@@ -63,7 +63,7 @@ export function IngredientTotalList({ groups }: { groups: IngredientTotalGroup[]
         if (g.lines.length === 1) {
           const l = g.lines[0];
           return (
-            <li key={g.key} className="border-b border-outline-variant/30 py-2" style={ROW_STYLE}>
+            <li key={g.key} data-repli-debut="" className="border-b border-outline-variant/30 py-2" style={ROW_STYLE}>
               {actionCell(l.action)}
               <span className={`font-label-md text-label-md ${l.barre ? 'text-error line-through' : l.added ? 'text-green-700' : 'text-primary'}`}>{l.qty}</span>
               <span className={`font-body-md text-body-md break-words ${l.added && !l.barre ? 'text-green-700' : ''}`}>
@@ -77,7 +77,7 @@ export function IngredientTotalList({ groups }: { groups: IngredientTotalGroup[]
         }
         return (
           <Fragment key={g.key}>
-              <li className="pt-2" style={ROW_STYLE}>
+              <li data-repli-debut="" className="pt-2" style={ROW_STYLE}>
                 {actionCell(g.totalAction)}
                 <span className="font-label-md text-label-md text-primary font-bold">{g.total}</span>
                 <span className="font-body-md text-body-md font-semibold break-words">
