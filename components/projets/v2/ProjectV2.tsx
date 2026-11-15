@@ -102,19 +102,20 @@ const sousTitre = 'mb-3 font-label-md text-[13px] uppercase tracking-widest text
 
 // Ordre et libellés des blocs. `apercu` est ce que l'on voit d'un bloc encore
 // verrouillé : la recette à venir se lit dès l'ouverture du projet.
-// `icone` et `court` servent au sommaire (rail de gauche, `RecipeToc`) : les
-// icônes de la recette reprennent celles de la fiche et de l'éditeur, les
-// blocs « Atelier projet » partagent le même picto de chantier.
-const BLOCS: Record<BlockKey, { titre: string; apercu: string; court: string; icone: string }> = {
-  intention: { titre: 'Votre intention', apercu: 'Ce que vous voulez réaliser, en quelques phrases.', court: 'Intention', icone: 'construction' },
-  identite: { titre: 'Le dessert', apercu: 'Nom, photo, description et catégories.', court: 'Le dessert', icone: 'edit_note' },
-  format: { titre: 'Format et rendement', apercu: 'Moule, dimensions, nombre de parts (estimé d’après le moule si vous le laissez vide).', court: 'Format', icone: 'straighten' },
-  structure: { titre: 'Structure', apercu: 'Les préparations qui composent le dessert, du bas vers le haut.', court: 'Structure', icone: 'construction' },
-  etapes: { titre: 'Étapes', apercu: 'Le déroulé de chaque préparation, avec ses ingrédients et l’ajustement de ses quantités.', court: 'Étapes', icone: 'format_list_numbered' },
-  ingredients: { titre: 'Liste complète des ingrédients', apercu: 'Tous les ingrédients du dessert, totalisés.', court: 'Ingrédients', icone: 'egg_alt' },
-  organisation: { titre: 'Ustensiles, difficulté et temps', apercu: 'Le matériel, le niveau et le planning.', court: 'Ustensiles et temps', icone: 'blender' },
-  conseils: { titre: 'Conseils et source', apercu: 'Astuces, conseils de service, provenance.', court: 'Conseils', icone: 'lightbulb' },
-  validation: { titre: 'Essais et validation', apercu: 'Les fournées d’essai, puis le passage en recette.', court: 'Essais et validation', icone: 'construction' },
+// `icon` et `court` servent au sommaire (rail de gauche, `RecipeToc`) : les
+// icônes de la recette reprennent celles de la fiche et de l'éditeur ; le champ
+// se nomme `icon` pour que `scripts/material-symbols.mjs` l'ajoute à la police.
+// Structure garde le picto de chantier des blocs « Atelier projet ».
+const BLOCS: Record<BlockKey, { titre: string; apercu: string; court: string; icon: string }> = {
+  intention: { titre: 'Votre intention', apercu: 'Ce que vous voulez réaliser, en quelques phrases.', court: 'Intention', icon: 'target' },
+  identite: { titre: 'Le dessert', apercu: 'Nom, photo, description et catégories.', court: 'Le dessert', icon: 'edit_note' },
+  format: { titre: 'Format et rendement', apercu: 'Moule, dimensions, nombre de parts (estimé d’après le moule si vous le laissez vide).', court: 'Format', icon: 'straighten' },
+  structure: { titre: 'Structure', apercu: 'Les préparations qui composent le dessert, du bas vers le haut.', court: 'Structure', icon: 'construction' },
+  etapes: { titre: 'Étapes', apercu: 'Le déroulé de chaque préparation, avec ses ingrédients et l’ajustement de ses quantités.', court: 'Étapes', icon: 'format_list_numbered' },
+  ingredients: { titre: 'Liste complète des ingrédients', apercu: 'Tous les ingrédients du dessert, totalisés.', court: 'Ingrédients', icon: 'egg_alt' },
+  organisation: { titre: 'Ustensiles, difficulté et temps', apercu: 'Le matériel, le niveau et le planning.', court: 'Ustensiles et temps', icon: 'blender' },
+  conseils: { titre: 'Conseils et source', apercu: 'Astuces, conseils de service, provenance.', court: 'Conseils', icon: 'lightbulb' },
+  validation: { titre: 'Essais et validation', apercu: 'Les fournées d’essai, puis le passage en recette.', court: 'Essais et validation', icon: 'science' },
 };
 // Format juste après l'intention (JEP-403) : les quantités de chaque
 // préparation en dépendent, on le pose avant de composer la structure.
@@ -982,7 +983,7 @@ export function ProjectV2({
   // verrouillé) et il ne ferait qu'empiler une liste de points d'emblée ouverts.
   const afficherResteAFaire = states.etapes.unlocked;
   const avantEtapes = ORDRE_BLOCS.indexOf('etapes') + 1;
-  const entree = (k: BlockKey) => ({ id: `bloc-${k}`, label: BLOCS[k].court, icon: BLOCS[k].icone, level: 1 as const });
+  const entree = (k: BlockKey) => ({ id: `bloc-${k}`, label: BLOCS[k].court, icon: BLOCS[k].icon, level: 1 as const });
   const tocSections: TocSections = {
     before: [
       ...(afficherResteAFaire
