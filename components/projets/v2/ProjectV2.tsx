@@ -610,6 +610,28 @@ export function ProjectV2({
     })),
   });
 
+  // Filet de « cocher replie le volet » (JEP-403) : `basculerVerif` ferme le
+  // volet tout de suite, mais ce geste porte sur un élément du DOM que la
+  // resynchronisation peut remplacer ou rouvrir. Quand un point passe à « fait »
+  // (n'importe quelle porte : panneau du haut, du bas, pied du volet), on referme
+  // donc son volet APRÈS le rendu, sur l'élément alors présent. Un point déjà
+  // « fait » au chargement ne replie rien (pas d'état précédent).
+  const etatsVerifPrecedents = useRef<Map<string, string> | null>(null);
+  useEffect(() => {
+    const courants = new Map<string, string>();
+    for (const i of todo) if (i.verif) courants.set(`${i.verif.componentId}|${i.verif.type}`, i.etat);
+    const avant = etatsVerifPrecedents.current;
+    etatsVerifPrecedents.current = courants;
+    if (!avant) return;
+    courants.forEach((etat, k) => {
+      const ancien = avant.get(k);
+      if (etat !== 'fait' || !ancien || ancien === 'fait') return;
+      const [id, type] = k.split('|');
+      const volet = document.getElementById(`prep-${id}-${type}`);
+      if (volet instanceof HTMLDetailsElement && volet.open) volet.open = false;
+    });
+  });
+
   const verifDe = (componentId: number, type: 'etapes' | 'quantites') =>
     todo.find((i) => i.verif?.componentId === componentId && i.verif.type === type);
 
