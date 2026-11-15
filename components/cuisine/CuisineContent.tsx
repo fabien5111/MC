@@ -21,6 +21,7 @@
 // que je fais aujourd'hui, toutes fournées confondues ? » — la vue par
 // fournée reste à un clic.
 import { libelleAjustement } from '@/lib/batch-ai';
+import { isProjectDraft } from '@/lib/projects';
 import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -515,13 +516,8 @@ export function CuisineContent({
               const coefTxt = [coefficientTexte(p.factor), libelleAjustement(p.adjust_label) || ''].filter(Boolean).join(' · ');
               return (
                 <div key={p.id} className="flex items-start gap-4 rounded-lg border border-outline-variant bg-white p-4 transition-colors hover:bg-surface-container">
-                  <Link href={`/fournee/${p.id}`} className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                    {p.recipes?.hero_thumb_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                      <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="material-symbols-outlined text-on-surface-variant">cake</span>
-                    )}
+                  <Link href={`/fournee/${p.id}`} className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
+                    <VignetteFournee recette={p.recipes} />
                   </Link>
                   {/* Colonne de droite : titre au niveau du haut de la photo, infos
                       serrées, gestes dessous — la carte ne dépasse guère la photo. */}
@@ -707,13 +703,8 @@ export function CuisineContent({
                     const coefTxt = coefficientTexte(p.factor);
                     return (
                       <div key={p.id} className="flex items-start gap-4 rounded-lg border border-outline-variant bg-white p-4 opacity-80 transition-opacity hover:opacity-100">
-                        <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                          {p.recipes?.hero_thumb_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                            <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
-                          ) : (
-                            <span className="material-symbols-outlined text-on-surface-variant">cake</span>
-                          )}
+                        <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
+                          <VignetteFournee recette={p.recipes} />
                         </Link>
                         <div className="min-w-0 flex-1">
                           <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="block">
@@ -790,6 +781,41 @@ export function CuisineContent({
   );
 }
 
+// Vignette d'une carte de fournée. Une fournée d'ESSAI d'un projet en cours se
+// distingue (JEP-403) : picto de chantier au lieu du gâteau quand le projet n'a
+// pas de photo, et pastille « Essai » posée sur la photo quand il en a une.
+function VignetteFournee({
+  recette,
+  compacte = false,
+}: {
+  recette: { hero_thumb_url: string | null; kind?: string | null; project_stage?: string | null } | null;
+  compacte?: boolean;
+}) {
+  const essai = isProjectDraft(recette);
+  return (
+    <>
+      {recette?.hero_thumb_url ? (
+        // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+        <img src={recette.hero_thumb_url} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <span className={`material-symbols-outlined ${essai ? 'text-secondary' : 'text-on-surface-variant'}`}>
+          {essai ? 'construction' : 'cake'}
+        </span>
+      )}
+      {essai && (
+        <span
+          title="Fournée d’essai d’un projet"
+          className={`absolute inset-x-0 bottom-0 bg-secondary text-center font-label-md uppercase tracking-widest text-white ${
+            compacte ? 'hidden py-0.5 text-[9px] md:block' : 'py-0.5 text-[10px]'
+          }`}
+        >
+          Essai
+        </span>
+      )}
+    </>
+  );
+}
+
 // Carte de fournée en cours de cuisson. L'avancement est dit en étapes —
 // « Étape 2 sur 5 · Crème Chiboust » — et non en décompte (« dans 12 min ») :
 // le modèle ne porte aucun ancrage horaire par étape, un décompte serait une
@@ -797,20 +823,14 @@ export function CuisineContent({
 function ActiveBatchCard({ batch }: { batch: ActiveBatchRow }) {
   const { done, total, currentTitle } = batch.progress;
   const etape = total > 0 ? `Étape ${Math.min(done + 1, total)} sur ${total}` : null;
-  const image = batch.recipes?.hero_thumb_url;
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-outline-variant bg-surface-container-low p-5 md:flex-row md:items-center">
       {/* Sur mobile, la vignette se réduit à une pastille : sur un téléphone
           tenu au-dessus d'un plan de travail, c'est l'avancement qui sert,
           pas l'illustration. */}
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-container md:h-20 md:w-20">
-        {image ? (
-          // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-          <img src={image} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <span className="material-symbols-outlined text-on-surface-variant">cake</span>
-        )}
+      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-container md:h-20 md:w-20">
+        <VignetteFournee recette={batch.recipes} compacte />
       </div>
 
       <div className="min-w-0 flex-1">

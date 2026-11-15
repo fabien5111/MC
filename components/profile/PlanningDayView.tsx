@@ -28,6 +28,7 @@ import type { BatchListRow } from '@/lib/profile';
 import { trackEvent } from '@/lib/analytics';
 import { useDemanderBilan, useDemanderRefaisable } from '@/lib/batch-lecons-client';
 import { isProjectDraft, type ProjectMarks } from '@/lib/projects';
+import { useClotureEssai } from '@/components/batch/ClotureEssai';
 
 const dateLabel = (iso: string): string =>
   new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -50,6 +51,7 @@ export function PlanningDayView({
   const dialog = useDialog();
   const demanderBilan = useDemanderBilan();
   const demanderRefaisable = useDemanderRefaisable();
+  const clotureEssai = useClotureEssai();
   const router = useRouter();
   // Distinct de `busy` (qui ne couvre que les écritures de `mutate`) : le
   // renvoi vers la fiche fournée après « je veux laisser un avis » est un
@@ -171,8 +173,17 @@ export function PlanningDayView({
     // Bilan de la fournée (JEP-381) — même question que
     // `BatchView.finishBatch`, facultative.
     await demanderBilan(batchRow.id);
+    // Fournée d'essai d'un projet en cours (JEP-403) : verdict de l'essai et
+    // retour au projet, à la place de « Fournée validée » et de l'avis.
+    if (batchRow.recipe_id && (await essaiProjetEnCours(batchRow.recipe_id))) {
+      if (await clotureEssai(batchRow.id)) {
+        setNavigating(true);
+        router.push(`/projets/${batchRow.recipe_id}`);
+      }
+      return;
+    }
     await demanderRefaisable(batchRow.id);
-    if (!batchRow.recipe_id || (await essaiProjetEnCours(batchRow.recipe_id)) || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
+    if (!batchRow.recipe_id || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
     const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un avis sur cette recette ?\n\nVous pourrez aussi le faire plus tard depuis cette fournée.', { okLabel: 'Oui', cancelLabel: 'Non' });
     if (wantsReview) {
       setNavigating(true);

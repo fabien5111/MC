@@ -62,6 +62,7 @@ import { ValidationFournee } from '@/components/batch/ValidationFournee';
 import { arrondiQuantite, cleRemarque, libelleEcartProduit, normaliserEcartProduit, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import { colonneRefaisableAbsente, enregistrerRefaisable, useDemanderBilan, useDemanderRefaisable } from '@/lib/batch-lecons-client';
+import { useClotureEssai } from '@/components/batch/ClotureEssai';
 import {
   fmtNum,
   BATCH_STATUS_LBL,
@@ -290,6 +291,7 @@ export function BatchView({
   useEffect(() => setBatch(initialBatch), [initialBatch]);
   const demanderBilan = useDemanderBilan();
   const demanderRefaisable = useDemanderRefaisable();
+  const clotureEssai = useClotureEssai();
   // Écran « Fournée validée » ouvert par la clôture (la promesse rend la main à `finishBatch`).
   const [validation, setValidation] = useState<{ fermer: () => void } | null>(null);
   const [mode, setMode] = useState<'preparer' | 'patisser'>(() => initialMode ?? defaultMode(initialBatch));
@@ -396,6 +398,17 @@ export function BatchView({
     // modifiable ensuite depuis le résumé.
     const bilan = await demanderBilan(batch.id, batch.commentaire_global);
     if (bilan !== undefined) setBatch((b) => ({ ...b, commentaire_global: bilan }));
+    // Fournée d'essai d'un projet (JEP-403) : pas de « Fournée validée » ni
+    // d'avis, mais le verdict de l'essai (celui du bloc « Essais » du projet),
+    // puis le retour au projet, où l'on corrige la recette d'après l'essai.
+    if (essaiProjet) {
+      if (batch.recipe_id && (await clotureEssai(batch.id))) {
+        router.push(`/projets/${batch.recipe_id}`);
+        return true;
+      }
+      router.refresh();
+      return true;
+    }
     if (!(batch as { refaisable?: boolean }).refaisable && (await demanderRefaisable(batch.id))) {
       setBatch((b) => ({ ...b, refaisable: true }) as BatchFull);
       // Fournée validée : tri des retours à garder pour les « Refaire » suivants.
