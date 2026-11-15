@@ -40,7 +40,7 @@ import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
 import { useRefaireFournee } from '@/components/batch/RefaireFournee';
 import { LockedAction } from '@/components/LockedAction';
 import { findMergeTarget } from '@/lib/shopping-merge';
-import { NOM_A_RACHETER, rangerListes } from '@/lib/a-racheter';
+import { NOM_A_RACHETER, estListeARacheter, rangerListes } from '@/lib/a-racheter';
 import { RecipeToc, type TocAction, type TocSections } from '@/components/recipe/RecipeToc';
 
 type PlanningView = 'jours' | 'recettes';
@@ -72,7 +72,7 @@ export function CuisineContent({
   shoppingLists: ShoppingListSummary[];
   // Droits d'abonnement (§4) : fusion de listes de courses, réordonnancement
   // des étapes dans le planning du jour.
-  droits: { fusionListes: boolean; reordonnancement: boolean };
+  droits: { fusionListes: boolean; reordonnancement: boolean; aRacheter: boolean };
   // Référentiels de conversion (JEP-249) : la fusion de deux listes convertit
   // les unités d'un même ingrédient, comme le récapitulatif d'une fiche recette.
   conversions: ConversionRef[];
@@ -143,6 +143,34 @@ export function CuisineContent({
     actives: activeShoppingLists,
     archivees: archivedShoppingLists,
   } = rangerListes(shoppingList);
+  // « À racheter » absente ou vide, et formule qui l'autorise : on propose de
+  // la créer (ou de l'ouvrir si elle existe déjà, vide). Elle ne naît que par
+  // la route (clé service_role), jamais depuis le navigateur.
+  const listeSysteme = shoppingList.find(estListeARacheter) ?? null;
+  const proposerARacheter = droits.aRacheter && !aRacheter;
+  const [creationARacheter, setCreationARacheter] = useState(false);
+  async function ouvrirARacheter() {
+    if (!writeGuard('Créer la liste « À racheter »')) return;
+    if (listeSysteme) {
+      setCreationARacheter(true);
+      router.push(`/courses/${listeSysteme.id}`);
+      return;
+    }
+    setCreationARacheter(true);
+    try {
+      const res = await fetch('/api/courses/a-racheter', { method: 'PUT' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || typeof json.id !== 'number') {
+        setCreationARacheter(false);
+        await dialog.alert(json.erreur || 'Création impossible pour le moment.');
+        return;
+      }
+      router.push(`/courses/${json.id}`);
+    } catch {
+      setCreationARacheter(false);
+      await dialog.alert('Création impossible pour le moment.');
+    }
+  }
   const [mergingListId, setMergingListId] = useState<number | null>(null);
   // La vue par jour est la vue par défaut (décision produit) : c'est elle
   // qui rend le planning actionnable sans ouvrir chaque fournée une à une.
@@ -352,6 +380,17 @@ export function CuisineContent({
         allerA('sec-fournees');
       },
     },
+    ...(proposerARacheter
+      ? [
+          {
+            id: 'a-racheter',
+            icon: 'add_shopping_cart',
+            label: listeSysteme ? `Ouvrir « ${NOM_A_RACHETER} »` : `Créer la liste « ${NOM_A_RACHETER} »`,
+            variant: 'outline' as const,
+            onClick: ouvrirARacheter,
+          },
+        ]
+      : []),
     ...(aRacheter
       ? [
           {
@@ -379,11 +418,11 @@ export function CuisineContent({
         libelle="Sommaire d'En cuisine"
       />
       <LoadingOverlay
-        visible={busy || refaisant !== null || showRefreshSpinner || ouvertureListe}
+        visible={busy || refaisant !== null || showRefreshSpinner || ouvertureListe || creationARacheter}
         label={
           refaisant !== null
             ? 'Recréation de la fournée…'
-            : ouvertureListe
+            : ouvertureListe || creationARacheter
               ? 'Ouverture de la liste…'
               : showRefreshSpinner
                 ? 'Actualisation…'
@@ -559,6 +598,7 @@ export function CuisineContent({
           </button>
         </div>
         {aRacheter && <ARacheterCard liste={aRacheter} />}
+        {proposerARacheter && <ARacheterVide existe={!!listeSysteme} onClick={ouvrirARacheter} />}
         {activeShoppingLists.length > 0 ? (
           <div className="space-y-4">
             {activeShoppingLists.map((l) => {
@@ -895,5 +935,30 @@ function ARacheterCard({ liste }: { liste: ShoppingListSummary }) {
         Les ingrédients finis pendant une fournée, ajoutés depuis le mode Pâtisser.
       </p>
     </Link>
+  );
+}
+
+// Invitation à créer (ou ouvrir, si elle existe déjà mais vide) la liste
+// « À racheter » — seulement pour une formule qui y a droit.
+function ARacheterVide({ existe, onClick }: { existe: boolean; onClick: () => void }) {
+  return (
+    <div className="mb-4 rounded-lg border-2 border-dashed border-secondary/40 p-5">
+      <div className="flex items-start justify-between gap-3">
+        <span className="flex items-center gap-2 font-label-md text-[15px] text-primary">
+          <span className="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+          {NOM_A_RACHETER}
+        </span>
+        <button
+          type="button"
+          onClick={onClick}
+          className="shrink-0 whitespace-nowrap rounded-pill border border-primary px-3 py-1.5 font-label-md text-[12px] text-primary transition-colors hover:bg-primary hover:text-white"
+        >
+          {existe ? 'Ouvrir' : 'Créer la liste'}
+        </button>
+      </div>
+      <p className="mt-2 text-[12px] text-on-surface-variant">
+        Les ingrédients à racheter : ajoutez-les à la main, ou depuis le mode Pâtisser d'une fournée.
+      </p>
+    </div>
   );
 }

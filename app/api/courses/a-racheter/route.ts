@@ -13,7 +13,7 @@ import { getIngredientRefsList } from '@/lib/data/reference';
 import { resolveIngredientRefId } from '@/lib/ingredient-conversions';
 import { fixOeufLigature } from '@/lib/text';
 import { A_RACHETER_NOM_MAX, DROIT_A_RACHETER, messageAjout } from '@/lib/a-racheter';
-import { ARacheterIndisponible, ajouterARacheter } from '@/lib/a-racheter-data';
+import { ARacheterIndisponible, ajouterARacheter, creerListeARacheter } from '@/lib/a-racheter-data';
 import { MissingServiceKeyError } from '@/lib/supabase/admin';
 
 export async function POST(req: Request) {
@@ -43,5 +43,25 @@ export async function POST(req: Request) {
     }
     console.error('a-racheter:', (e as Error).message);
     return NextResponse.json({ erreur: 'Ajout impossible pour le moment.' }, { status: 500 });
+  }
+}
+
+// « Créer la liste » depuis l'écran des courses : même gardes que l'ajout
+// (membre, compte, lecture seule, droit), puis la liste est créée si elle
+// manque — idempotent : une liste déjà là est simplement renvoyée.
+export async function PUT() {
+  const membre = await membreEcrivain();
+  if ('refus' in membre) return membre.refus;
+  const refus = await verifierAcces(membre.userId, DROIT_A_RACHETER);
+  if (refus) return refus;
+  try {
+    const id = await creerListeARacheter(membre.userId);
+    return NextResponse.json({ id });
+  } catch (e) {
+    if (e instanceof ARacheterIndisponible || e instanceof MissingServiceKeyError) {
+      return NextResponse.json({ erreur: e.message }, { status: 503 });
+    }
+    console.error('a-racheter (création):', (e as Error).message);
+    return NextResponse.json({ erreur: 'Création impossible pour le moment.' }, { status: 500 });
   }
 }

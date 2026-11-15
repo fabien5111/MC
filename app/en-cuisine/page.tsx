@@ -49,6 +49,7 @@ export default async function EnCuisinePage() {
   const droits = {
     fusionListes: canAccess(entitlements, 'fusion_listes_courses'),
     reordonnancement: canAccess(entitlements, 'reordonnancement_etapes'),
+    aRacheter: canAccess(entitlements, 'liste_a_racheter'),
   };
 
   return (
