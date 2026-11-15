@@ -11,7 +11,7 @@ import type { TodoItem } from '@/lib/projects';
 const ICONE: Record<TodoItem['etat'], { icon: string; cls: string }> = {
   fait: { icon: 'check_circle', cls: 'text-green-700' },
   afaire: { icon: 'radio_button_unchecked', cls: 'text-outline' },
-  arefaire: { icon: 'history', cls: 'text-error' },
+  arefaire: { icon: 'radio_button_unchecked', cls: 'text-error' },
 };
 
 export function VerifCase({
@@ -34,7 +34,7 @@ export function VerifCase({
       className="mt-4 flex items-center gap-2 text-left text-[14px] text-on-surface disabled:opacity-60"
     >
       <span className={`material-symbols-outlined text-[22px] ${ic.cls}`}>{ic.icon}</span>
-      {item.libelle}
+      <span className={item.etat === 'arefaire' ? 'text-error' : undefined}>{item.libelle}</span>
     </button>
   );
 }

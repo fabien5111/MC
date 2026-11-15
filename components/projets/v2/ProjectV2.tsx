@@ -977,16 +977,24 @@ export function ProjectV2({
   // Tous les blocs y figurent, verrouillés compris : ils sont visibles dans la
   // page. Les étapes s'intercalent après « Étapes » (entrées de niveau 2),
   // seulement quand le bloc est ouvert — sinon leurs ancres n'existent pas.
+  // Le panneau du haut n'apparaît qu'une fois le travail engagé : à la création
+  // du projet, aucune préparation n'a encore sa recette (bloc « Étapes »
+  // verrouillé) et il ne ferait qu'empiler une liste de points d'emblée ouverts.
+  const afficherResteAFaire = states.etapes.unlocked;
   const avantEtapes = ORDRE_BLOCS.indexOf('etapes') + 1;
   const entree = (k: BlockKey) => ({ id: `bloc-${k}`, label: BLOCS[k].court, icon: BLOCS[k].icone, level: 1 as const });
   const tocSections: TocSections = {
     before: [
-      {
-        id: 'reste-a-faire',
-        label: `Reste à faire (${todo.filter((i) => i.etat === 'fait').length}/${todo.length})`,
-        icon: 'checklist',
-        level: 1 as const,
-      },
+      ...(afficherResteAFaire
+        ? [
+            {
+              id: 'reste-a-faire',
+              label: `Reste à faire (${todo.filter((i) => i.etat === 'fait').length}/${todo.length})`,
+              icon: 'checklist',
+              level: 1 as const,
+            },
+          ]
+        : []),
       ...ORDRE_BLOCS.slice(0, avantEtapes).map(entree),
     ],
     after: ORDRE_BLOCS.slice(avantEtapes).map(entree),
@@ -1081,7 +1089,7 @@ export function ProjectV2({
         </div>
       </header>
 
-      <ProjectTodo id="reste-a-faire" aide={<HelpBlockSlot blockKey="projet.reste_a_faire" help={help} />} ouvert={!replies.todo} items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
+      {afficherResteAFaire && <ProjectTodo id="reste-a-faire" aide={<HelpBlockSlot blockKey="projet.reste_a_faire" help={help} />} ouvert={!replies.todo} items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />}
 
       <div className="space-y-6">
         {bloc(
