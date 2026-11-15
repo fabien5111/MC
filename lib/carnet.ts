@@ -55,6 +55,8 @@ export type CarnetData = {
   counts: Record<'all' | 'mine' | 'fav' | 'sub' | 'shared' | 'proj', number>;
   // Comptes de la barre de statut, calculés sur l'ensemble de mes recettes.
   statusCounts: Record<'all' | 'published' | 'draft' | 'pending' | 'rejected', number>;
+  // Barre de statut de « Tout » : mes recettes et mes projets en cours (JEP-403).
+  statusCountsTout: Record<'all' | 'published' | 'draft' | 'pending' | 'rejected', number>;
   // Idem, mais sur ce qui m'est partagé — la barre de statut du scope
   // « Partagées avec moi » ne doit pas montrer les compteurs de mes propres
   // recettes.
@@ -134,12 +136,12 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
   }
   const otherItems: CarnetItem[] = [...othersById.values()].map((o) => ({ kind: 'other', ...o }));
 
-  // Les projets voyagent dans `items` (la portée « Projets » doit pouvoir les
-  // afficher) mais jamais dans `counts.all` : la pastille « Tout » annonce ce
-  // qu'elle montre, et elle ne les montre pas.
+  // Les projets en cours voyagent dans `items` : la portée « Projets » les
+  // affiche, et « Tout » aussi depuis JEP-403 (« Tout » redevient tout). Ils
+  // restent hors de « Mes recettes » et des autres portées.
   const items = [...mineItems, ...otherItems, ...projectItems];
   const counts = {
-    all: mineItems.length + otherItems.length,
+    all: mineItems.length + otherItems.length + projectItems.length,
     mine: mineItems.length,
     // Les deux paniers portent chacun leur propre marque `favorite` (JEP-131) :
     // une recette d'un autre auteur mise en favori, et une recette dont je
@@ -159,6 +161,16 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
     pending: byStatus('pending'),
     rejected: byStatus('rejected'),
   };
+  // Barre de statut de « Tout » : mes recettes ET mes projets en cours (JEP-403).
+  const byStatusTout = (s: string) =>
+    byStatus(s) + projectItems.filter((i) => i.kind === 'mine' && (i.recipe.status || 'draft') === s).length;
+  const statusCountsTout = {
+    all: mineItems.length + projectItems.length,
+    published: byStatusTout('published'),
+    draft: byStatusTout('draft'),
+    pending: byStatusTout('pending'),
+    rejected: byStatusTout('rejected'),
+  };
 
   const sharedItems = otherItems.filter((i) => i.kind === 'other' && i.shared);
   const sharedByStatus = (s: string) => sharedItems.filter((i) => i.kind === 'other' && (i.status || 'draft') === s).length;
@@ -170,7 +182,7 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
     rejected: sharedByStatus('rejected'),
   };
 
-  return { items, counts, statusCounts, sharedStatusCounts };
+  return { items, counts, statusCounts, statusCountsTout, sharedStatusCounts };
 }
 
 // Filtrage + tri appliqués au jeu déjà chargé (cf. en-tête de fichier) —
@@ -202,10 +214,11 @@ export function applyCarnetFilters(items: CarnetItem[], params: CarnetParams): C
     // affiche, et elle n'affiche qu'eux. Testé avant tout le reste — un
     // projet ne doit pouvoir ressortir ni par un statut, ni par une
     // recherche par titre.
+    // « Tout » les montre aussi (JEP-403) ; les autres portées, jamais.
     const projet = item.kind === 'mine' && isProjectDraft(item.recipe);
     if (params.scope === 'proj') {
       if (!projet) return false;
-    } else if (projet) {
+    } else if (projet && params.scope !== 'all') {
       return false;
     }
     if (params.scope === 'mine' && item.kind !== 'mine') return false;
