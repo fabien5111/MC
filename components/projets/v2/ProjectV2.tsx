@@ -787,7 +787,7 @@ export function ProjectV2({
     );
   }
 
-  const bloc = (key: BlockKey, children: ReactNode, aide?: ReactNode) => (
+  const bloc = (key: BlockKey, children: ReactNode, aide?: ReactNode, resume?: ReactNode) => (
     <ProjectV2Block
       key={key}
       id={`bloc-${key}`}
@@ -796,6 +796,7 @@ export function ProjectV2({
       apercu={BLOCS[key].apercu}
       state={states[key]}
       aide={aide}
+      resume={resume}
       replie={
         key === 'intention'
           ? replies.intention
@@ -971,6 +972,13 @@ export function ProjectV2({
             )}
           </div>,
           <HelpBlockSlot blockKey="projet.intention" help={help} />,
+          // Volet replié : rappel de l'intention enregistrée (4 lignes au plus,
+          // texte entier en infobulle) ; le picto « modifier » rouvre le volet.
+          project.intent?.trim() ? (
+            <p className="line-clamp-4 whitespace-pre-line text-sm text-on-surface" title={project.intent.trim()}>
+              {project.intent.trim()}
+            </p>
+          ) : undefined,
         )}
 
         {bloc(
