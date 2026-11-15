@@ -235,6 +235,9 @@ export function QuantitiesStep({
   // point 15) — « la recette d'origine est pour 2 fonds », « je veux une
   // couche plus épaisse »…
   const [contexteIA, setContexteIA] = useState<Record<number, string>>({});
+  // Complément d'informations de la recette d'origine : replié par défaut, une
+  // seule ligne visible (JEP-403). Réglage d'affichage, jamais enregistré.
+  const [complementOuvert, setComplementOuvert] = useState<Record<number, boolean>>({});
   // Perte en cuisine par composant (ce qui reste sur le fouet, les bols, les
   // cuillères) : un pourcentage qui vient gonfler le coefficient proposé,
   // quelle que soit sa source — géométrique, IA, ou plan de montage. Défaut
@@ -592,34 +595,17 @@ export function QuantitiesStep({
                 « Proposer », puis « Appliquer ».
               </p>
             )}
-            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-              <div>
-                {componentId == null && <h3 className="font-body-md text-[16px] font-semibold text-on-surface">{c.name}</h3>}
-                <p className="text-[12px] text-on-surface-variant">
-                  {COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind}
-                  {c.source_title && c.source_recipe_id ? (
-                    <>
-                      {' · '}
-                      <a
-                        href={`/recette/${c.source_recipe_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
-                      >
-                        {c.source_title}
-                      </a>
-                    </>
-                  ) : c.source_title ? (
-                    ` · ${c.source_title}`
-                  ) : (
-                    ''
-                  )}
-                  {c.manuallyAdjusted ? ' · ajusté à la main' : ''}
-                </p>
+            {/* Le nom de la recette d'origine vit dans « Recette d'origine » ; le
+                coefficient est déjà dans le titre du volet (préparation seule). */}
+            {(componentId == null || c.manuallyAdjusted) && (
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  {componentId == null && <h3 className="font-body-md text-[16px] font-semibold text-on-surface">{c.name}</h3>}
+                  {c.manuallyAdjusted && <p className="text-[12px] text-on-surface-variant">Ajusté à la main</p>}
+                </div>
+                {componentId == null && <span className="font-label-md text-[12.5px] text-primary">×{fr(facteur)}</span>}
               </div>
-              <span className="font-label-md text-[12.5px] text-primary">×{fr(facteur)}</span>
-            </div>
-
+            )}
 
             {!c.resolved ? (
               <p className="text-[13px] italic text-on-surface-variant">
@@ -630,50 +616,83 @@ export function QuantitiesStep({
                 {/* Ce que produit la recette choisie (JEP-254, point 13) :
                     son rendement d'origine, et le poids de la préparation
                     avant / après ajustement. */}
-                <dl className="mb-3 grid grid-cols-1 gap-x-4 gap-y-1 text-[12.5px] sm:grid-cols-[auto_1fr]">
-                  <dt className="text-outline">Recette d’origine</dt>
-                  <dd className="flex items-center gap-1.5 text-on-surface">
-                    <span>
-                      {c.sourceYield
-                        ? lignesRendement(c.sourceYield).map((l, i) => (
-                            <span key={i} className="block">
-                              {l}
-                            </span>
-                          ))
-                        : 'rendement non précisé'}
-                    </span>
-                    {/* Recette d'origine dans un nouvel onglet (préparation copiée seulement). */}
-                    {c.source_recipe_id && (
-                      <a
-                        href={`/recette/${c.source_recipe_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Voir la recette d'origine"
-                        aria-label={`Voir la recette d'origine de ${c.name}`}
-                        className="relative top-px shrink-0 self-center text-on-surface-variant transition-colors hover:text-primary"
-                      >
-                        <span className="material-symbols-outlined block" style={{ fontSize: 14, lineHeight: 1 }}>
-                          visibility
-                        </span>
-                      </a>
-                    )}
-                  </dd>
-                  {masseActuelle != null && (
-                    <>
-                      <dt className="text-outline">Ingrédients pesés</dt>
+                {(() => {
+                  const lignes = c.sourceYield ? lignesRendement(c.sourceYield) : [];
+                  const reste = lignes.slice(1);
+                  const ecart = masseActuelle != null && masseOrigine != null && Math.abs(masseOrigine.grammes - masseActuelle.grammes) > 0.5;
+                  const poids = masseOrigine ?? masseActuelle;
+                  const plus = reste.length > 0 || poids != null;
+                  const ouvert = !!complementOuvert[c.id];
+                  const sourceLabel = COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind;
+                  return (
+                    <dl className="mb-3 grid grid-cols-1 gap-x-4 gap-y-1 text-[12.5px] sm:grid-cols-[auto_1fr]">
+                      <dt className="text-outline">Recette d’origine</dt>
                       <dd className="text-on-surface">
-                        {masseOrigine != null && Math.abs(masseOrigine.grammes - masseActuelle.grammes) > 0.5
-                          ? `${masseTexte(masseOrigine.grammes)} dans la recette d’origine → ${masseTexte(masseActuelle.grammes)} pour ce dessert`
-                          : masseTexte(masseActuelle.grammes)}
-                        {masseActuelle.horsTotal.length > 0 && (
-                          <span className="block text-[12px] text-outline">
-                            Hors total (conversion inconnue) : {masseActuelle.horsTotal.join(', ')}
+                        {/* Première ligne : d'où vient la recette (lien vers elle). */}
+                        <span className="block">
+                          {sourceLabel}
+                          {c.source_title && c.source_recipe_id ? (
+                            <>
+                              {' · '}
+                              <a
+                                href={`/recette/${c.source_recipe_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Voir la recette d'origine"
+                                className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                              >
+                                {c.source_title}
+                              </a>
+                            </>
+                          ) : c.source_title ? (
+                            ` · ${c.source_title}`
+                          ) : (
+                            ''
+                          )}
+                        </span>
+                        {/* Complément d'informations : première ligne seule, le reste se déplie. */}
+                        <span className="flex items-start gap-1.5">
+                          <span className="block">{lignes[0] ?? 'rendement non précisé'}</span>
+                          {plus && (
+                            <button
+                              type="button"
+                              onClick={() => setComplementOuvert((p) => ({ ...p, [c.id]: !ouvert }))}
+                              aria-expanded={ouvert}
+                              title={ouvert ? 'Voir moins' : 'Voir plus'}
+                              aria-label={ouvert ? 'Voir moins' : 'Voir plus'}
+                              className="shrink-0 text-on-surface-variant transition-colors hover:text-primary"
+                            >
+                              <span className="material-symbols-outlined block text-[18px] leading-none">
+                                {ouvert ? 'expand_less' : 'expand_more'}
+                              </span>
+                            </button>
+                          )}
+                        </span>
+                        {plus && ouvert && (
+                          <span className="mt-1 block">
+                            {reste.map((l, i) => (
+                              <span key={i} className="block">
+                                {l}
+                              </span>
+                            ))}
+                            {poids != null && (
+                              <span className="mt-1 block">
+                                <span className="text-outline">Poids des ingrédients de la recette d’origine : </span>
+                                {masseTexte(poids.grammes)}
+                                {ecart && masseActuelle != null ? ` → ${masseTexte(masseActuelle.grammes)} pour ce dessert` : ''}
+                                {poids.horsTotal.length > 0 && (
+                                  <span className="block text-[12px] text-outline">
+                                    Hors total (conversion inconnue) : {poids.horsTotal.join(', ')}
+                                  </span>
+                                )}
+                              </span>
+                            )}
                           </span>
                         )}
                       </dd>
-                    </>
-                  )}
-                </dl>
+                    </dl>
+                  );
+                })()}
 
                 <div className="mb-3">
                   <label className="mb-1 block font-label-md text-[11.5px] text-outline">
