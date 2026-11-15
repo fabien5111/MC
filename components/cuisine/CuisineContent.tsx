@@ -427,59 +427,61 @@ export function CuisineContent({
                 .join(' · ');
               const coefTxt = [coefficientTexte(p.factor), libelleAjustement(p.adjust_label) || ''].filter(Boolean).join(' · ');
               return (
-                <div key={p.id} className="rounded-lg border border-outline-variant bg-white p-5 transition-colors hover:bg-surface-container">
-                  <Link href={`/fournee/${p.id}`} className="flex items-center gap-4">
-                    <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                      {p.recipes?.hero_thumb_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                        <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="material-symbols-outlined text-on-surface-variant">cake</span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 font-label-md text-primary" title={titre}>{titre}</p>
-                      {dateTxt && <p className="font-body-md text-[12px] text-on-surface-variant">{dateTxt}</p>}
-                      {coefTxt && <p className="font-body-md text-[12px] font-semibold text-on-surface-variant">{coefTxt}</p>}
-                      {p.notes && <p className="truncate font-body-md text-[12px] italic text-on-surface-variant">{p.notes}</p>}
-                    </div>
+                <div key={p.id} className="flex items-start gap-4 rounded-lg border border-outline-variant bg-white p-4 transition-colors hover:bg-surface-container">
+                  <Link href={`/fournee/${p.id}`} className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
+                    {p.recipes?.hero_thumb_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                      <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="material-symbols-outlined text-on-surface-variant">cake</span>
+                    )}
                   </Link>
-                  {/* Deux entrées, comme sur une fournée en cours et dans la
-                      vue « Par jour » : Préparer (ajuster, cocher ce qui est
-                      déjà fait) reste accessible sans passer par Pâtisser,
-                      qui pose `date_debut` au premier affichage. */}
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <Link
-                      href={`/fournee/${p.id}?mode=preparer`}
-                      className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-outline-variant px-3 py-1.5 font-label-md text-[12px] text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">tune</span>
-                      Préparer
+                  {/* Colonne de droite : titre au niveau du haut de la photo, infos
+                      serrées, gestes dessous — la carte ne dépasse guère la photo. */}
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/fournee/${p.id}`} className="block">
+                      <p className="line-clamp-2 font-label-md leading-snug text-primary" title={titre}>{titre}</p>
+                      {dateTxt && <p className="font-body-md text-[12px] leading-snug text-on-surface-variant">{dateTxt}</p>}
+                      {coefTxt && <p className="font-body-md text-[12px] font-semibold leading-snug text-on-surface-variant">{coefTxt}</p>}
+                      {p.notes && <p className="truncate font-body-md text-[12px] italic leading-snug text-on-surface-variant">{p.notes}</p>}
                     </Link>
-                    <Link
-                      href={`/fournee/${p.id}`}
-                      className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary px-3 py-1.5 font-label-md text-[12px] text-primary transition-colors hover:bg-primary hover:text-white"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">play_arrow</span>
-                      Pâtisser
-                    </Link>
-                    <div className="ml-auto flex items-center gap-1">
-                      <button
-                        type="button"
-                        title="Refaire cette fournée"
-                        onClick={() => refaireBatch(p)}
-                        className="rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                    {/* Deux entrées, comme sur une fournée en cours et dans la
+                        vue « Par jour » : Préparer (ajuster, cocher ce qui est
+                        déjà fait) reste accessible sans passer par Pâtisser,
+                        qui pose `date_debut` au premier affichage. */}
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/fournee/${p.id}?mode=preparer`}
+                        className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-outline-variant px-3 py-1 font-label-md text-[12px] text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
                       >
-                        <span className="material-symbols-outlined text-[18px]">restart_alt</span>
-                      </button>
-                      <button
-                        type="button"
-                        title="Supprimer"
-                        onClick={() => delPlan(p, false)}
-                        className="rounded p-1.5 text-error transition-colors hover:bg-error/10"
+                        <span className="material-symbols-outlined text-[16px]">tune</span>
+                        Préparer
+                      </Link>
+                      <Link
+                        href={`/fournee/${p.id}`}
+                        className="flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-primary px-3 py-1 font-label-md text-[12px] text-primary transition-colors hover:bg-primary hover:text-white"
                       >
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
+                        <span className="material-symbols-outlined text-[16px]">play_arrow</span>
+                        Pâtisser
+                      </Link>
+                      <div className="ml-auto flex items-center gap-1">
+                        <button
+                          type="button"
+                          title="Refaire cette fournée"
+                          onClick={() => refaireBatch(p)}
+                          className="rounded p-1 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+                        </button>
+                        <button
+                          type="button"
+                          title="Supprimer"
+                          onClick={() => delPlan(p, false)}
+                          className="rounded p-1 text-error transition-colors hover:bg-error/10"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -616,50 +618,50 @@ export function CuisineContent({
                     const dateTxt = [p.planned_date ? 'Prévu pour ' + formatDate(p.planned_date) : '', timeTxt].filter(Boolean).join(' · ');
                     const coefTxt = coefficientTexte(p.factor);
                     return (
-                      <div key={p.id} className="rounded-lg border border-outline-variant bg-white p-5 opacity-80 transition-opacity hover:opacity-100">
-                        <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="flex min-w-0 items-center gap-4">
-                          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                            {p.recipes?.hero_thumb_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
-                              <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                              <span className="material-symbols-outlined text-on-surface-variant">cake</span>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="line-clamp-2 font-label-md text-primary" title={titre}>{titre}</p>
-                            {dateTxt && <p className="font-body-md text-[12px] text-on-surface-variant">{dateTxt}</p>}
-                            {coefTxt && <p className="font-body-md text-[12px] font-semibold text-on-surface-variant">{coefTxt}</p>}
-                          </div>
-                        </Link>
-                        <div className="mt-4 flex flex-wrap items-center gap-2">
-                          {p.refaisable && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-label-md text-green-700">
-                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                              Fournée validée
-                            </span>
+                      <div key={p.id} className="flex items-start gap-4 rounded-lg border border-outline-variant bg-white p-4 opacity-80 transition-opacity hover:opacity-100">
+                        <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
+                          {p.recipes?.hero_thumb_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin
+                            <img src={p.recipes.hero_thumb_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="material-symbols-outlined text-on-surface-variant">cake</span>
                           )}
-                          <div className="ml-auto flex items-center gap-1">
-                            <button
-                              type="button"
-                              title="Refaire cette fournée"
-                              onClick={() => refaireBatch(p)}
-                              className="shrink-0 rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">restart_alt</span>
-                            </button>
-                            <button
-                              type="button"
-                              title="Supprimer définitivement"
-                              onClick={() => delPlan(p, true)}
-                              className="shrink-0 rounded p-1.5 text-error transition-colors hover:bg-error/10"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
-                            {/* Étiquette de statut à droite, après les gestes (15/11/2026). */}
-                            <span className={`shrink-0 rounded-full px-2.5 py-1 font-label-md text-[11px] text-white ${BATCH_STATUS_LBL[p.status]?.cls || 'bg-secondary'}`}>
-                              {BATCH_STATUS_LBL[p.status]?.label || p.status}
-                            </span>
+                        </Link>
+                        <div className="min-w-0 flex-1">
+                          <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="block">
+                            <p className="line-clamp-2 font-label-md leading-snug text-primary" title={titre}>{titre}</p>
+                            {dateTxt && <p className="font-body-md text-[12px] leading-snug text-on-surface-variant">{dateTxt}</p>}
+                            {coefTxt && <p className="font-body-md text-[12px] font-semibold leading-snug text-on-surface-variant">{coefTxt}</p>}
+                          </Link>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            {p.refaisable && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-label-md text-green-700">
+                                <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                Fournée validée
+                              </span>
+                            )}
+                            <div className="ml-auto flex items-center gap-1">
+                              <button
+                                type="button"
+                                title="Refaire cette fournée"
+                                onClick={() => refaireBatch(p)}
+                                className="shrink-0 rounded p-1 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+                              </button>
+                              <button
+                                type="button"
+                                title="Supprimer définitivement"
+                                onClick={() => delPlan(p, true)}
+                                className="shrink-0 rounded p-1 text-error transition-colors hover:bg-error/10"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                              </button>
+                              {/* Étiquette de statut à droite, après les gestes (15/11/2026). */}
+                              <span className={`shrink-0 rounded-full px-2.5 py-1 font-label-md text-[11px] text-white ${BATCH_STATUS_LBL[p.status]?.cls || 'bg-secondary'}`}>
+                                {BATCH_STATUS_LBL[p.status]?.label || p.status}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>

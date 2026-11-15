@@ -1078,7 +1078,7 @@ actions (Lancer une fournée, Éditer, Dupliquer…) n'arrivant qu'en dessous.
   section des courses. `MobileNav centre="actions"` sur la page. La fusion de
   deux listes reste sur les cartes (elle se choisit liste par liste).
   **Cartes de fournée** (« Par fournée » et « Fournées terminées », 15/11/2026) :
-  titre (2 lignes au plus, infobulle), photo de 96 px, date, « Coefficient ×N » (masqué à
+  photo de 96 px à gauche, colonne de droite alignée sur le haut de la photo (titre sur 2 lignes au plus, infobulle), date, « Coefficient ×N » (masqué à
   ×1, `coefficientTexte`, suivi du libellé d'ajustement), puis la rangée
   d'actions dessous, **toujours visible** (Préparer / Pâtisser, Refaire,
   Supprimer ; « Fournée validée » à gauche et pastille de statut à droite, après les gestes, pour une fournée close) — au survol
