@@ -72,11 +72,15 @@ export default async function EnCuisinePage() {
           droits={droits}
           conversions={conversions}
           units={units}
+          userId={user.id}
+          nbRealisations={realisations.length}
         />
         <MesRealisationsCuisine realisations={realisations} />
       </main>
       <Footer />
-      <MobileNav current="cuisine" />
+      {/* Indice serveur : le bouton central s'affiche « Actions » dès le
+          premier rendu (les actions sont déclarées par le sommaire). */}
+      <MobileNav current="cuisine" centre="actions" />
     </>
   );
 }

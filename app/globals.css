@@ -377,6 +377,13 @@ body {
     display: none !important;
   }
 }
+/* « En cuisine » (`bascule="lg"`) : rail seulement dès 1024 px, la languette
+   et le panneau gauche couvrent tout ce qui est plus étroit. */
+@media (max-width: 1023px) {
+  .recipe-toc[data-bp='lg'] {
+    display: none !important;
+  }
+}
 /* Il exista ici une « barre d'actions de secours » (`.recipe-toc-fallback-bar`,
    CreerForm et RelectureEditor) montrée sous 701 px pour rattraper les boutons
    du rail devenus inatteignables. Elle n'est plus : ces deux écrans passent
@@ -528,7 +535,12 @@ body {
   font-size: 22px;
 }
 @media (min-width: 701px) {
-  .recipe-toc-fab.is-pill {
+  .recipe-toc-fab.is-pill:not([data-bp='lg']) {
+    display: none;
+  }
+}
+@media (min-width: 1024px) {
+  .recipe-toc-fab.is-pill[data-bp='lg'] {
     display: none;
   }
 }
