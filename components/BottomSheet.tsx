@@ -25,11 +25,20 @@
 // feuille remontante, les actions. Même mécanique de focus, de verrou et
 // d'`inert` pour les deux : seul le contenant change.
 //
+// **Rendue dans `document.body`** (portail), jamais à l'endroit de son
+// déclencheur : un ancêtre porteur d'un `transform`, d'un `filter` ou d'un
+// `backdrop-filter` devient le repère de ses descendants `fixed`. L'en-tête du
+// site en a un (`backdrop-blur-md`) : le tiroir Compte, ouvert par l'avatar de
+// l'en-tête, se calait sur l'en-tête au lieu de l'écran, et sa feuille FERMÉE
+// (translatée de 101 % vers le bas) s'affichait juste sous lui, par-dessus la
+// page. Le portail vaut pour toutes les feuilles, où qu'on les monte.
+//
 // Ce qu'elle ne fait pas : le glissement vers le bas pour fermer. Le voile,
 // `Échap` et le déclencheur suffisent, et un glissement se dispute le geste
 // avec le défilement interne du contenu — à reprendre le jour où le besoin est
 // avéré, ici pour les deux tiroirs à la fois.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 // Point de bascule au-dessus duquel la feuille n'a plus lieu d'être. Les deux
 // expressions du même seuil (classe Tailwind pour le masquage, media query pour
@@ -96,6 +105,10 @@ export function BottomSheet({
 
   const [wide, setWide] = useState(false);
   const active = open && !wide;
+  // Le portail n'existe qu'au navigateur : rien au rendu serveur ni avant le
+  // montage (la feuille est fermée au départ, rien ne manque à l'écran).
+  const [monte, setMonte] = useState(false);
+  useEffect(() => setMonte(true), []);
 
   useEffect(() => {
     const mq = window.matchMedia(query);
@@ -167,9 +180,11 @@ export function BottomSheet({
       document.body.style.overflow = previousOverflow;
       restoreTo?.focus?.({ preventScroll: true });
     };
-  }, [active, focusables]);
+  }, [active, focusables, monte]);
 
-  return (
+  if (!monte) return null;
+
+  return createPortal(
     // `no-print` : une feuille remontante n'a rien à faire sur une impression,
     // quelle que soit la largeur de la page au moment où elle est lancée.
     <div className={`${hide} no-print fixed inset-0 z-[60] ${active ? '' : 'pointer-events-none'}`}>
@@ -216,6 +231,7 @@ export function BottomSheet({
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
