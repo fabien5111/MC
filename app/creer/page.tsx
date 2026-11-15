@@ -127,7 +127,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
       </StockageEnLigneProvider>
       </div>
       <Footer />
-      <MobileNav />
+      <MobileNav centre="actions" />
     </>
   );
 }

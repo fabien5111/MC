@@ -1025,12 +1025,29 @@ actions (Lancer une fournée, Éditer, Dupliquer…) n'arrivant qu'en dessous.
   d'avancement dans la page (mesurée à l'ouverture : la page est verrouillée
   ensuite). **Jamais d'ouverture au glissé** : le glissé depuis le bord gauche
   est le geste « retour » d'Android et d'iOS.
-- **Actions sous 701 px** : une pastille étiquetée « Actions » (`.recipe-toc-fab
-  .is-pill`, en bas à droite, `mobileInset` inchangé) ouvre une feuille
-  remontante « Que voulez-vous faire ? » avec les actions de l'écran. Elle
-  n'existe que si l'écran fournit des actions. **Provisoire** : l'étape 2 de la
-  proposition D déplace ces actions vers un bouton central de la barre basse
-  (le profil passant en avatar dans l'en-tête).
+- **Bouton central de la barre basse** (étape 2, `components/BoutonCentral.tsx`) :
+  la barre basse devient Accueil · Carnet · **bouton central** · En cuisine ·
+  Le blog, et le **profil passe en avatar dans l'en-tête** (`AccountSheetButton
+  variante="entete"`, même tiroir Compte). Le bouton central affiche
+  **« Actions »** quand l'écran en déclare, **« Créer »** ailleurs (entrées
+  `Entrees` de `CreateMenuButton` : recette, import, projet), **« Se
+  connecter »** pour un visiteur ; son libellé est toujours écrit sous le rond.
+- **Déclaration des actions** (`lib/actions-ecran.ts`, magasin de module lu par
+  `useSyncExternalStore`) : `RecipeToc` y pose ses actions quand l'écran monte
+  la barre basse (`mobile="drawer"` + `mobileInset="nav"`), les y redéclare à
+  chaque rendu et les retire au démontage — seul le déclarant peut retirer sa
+  déclaration. Sans barre basse, une pastille « Actions » (`.recipe-toc-fab
+  .is-pill`) ouvre la même feuille (`FeuilleActions`). Les pages à sommaire
+  passent `centre="actions"` à `MobileNav` : sans cet indice serveur, le bouton
+  s'afficherait « Créer » jusqu'à l'hydratation. **Un nouvel écran à actions
+  doit faire les deux** (actions à `RecipeToc`, indice à `MobileNav`).
+- **Droit `mode_projet` lu à l'ouverture du menu « Créer »**
+  (`GET /api/droits/mode-projet`), jamais dans la barre basse : ce serait un
+  appel à `mc_effective_rights` sur chaque page de chaque membre. « Créer un
+  projet » reste grisé le temps de la lecture ; la garde réelle reste celle de
+  `/projets/nouveau` et de `POST /api/projet`.
+- **Tablette (701 à 1023 px)** : rail du bureau ET bouton « Actions » proposent
+  les mêmes actions — doublon assumé, sans danger.
 - **Filtres du carnet sous 1024 px** : même languette (`data-bp="lg"`) et même
   panneau latéral, cf. « Carnet : réglages sous 1024 px ».
 - **Masquage par `globals.css`, pas par une classe Tailwind** (`rail:hidden`) :

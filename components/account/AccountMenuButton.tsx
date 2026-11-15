@@ -1,7 +1,7 @@
 'use client';
 
 // Tiroir Compte du bureau : l'avatar de l'en-tête ouvre un panneau aligné à
-// droite. Sur mobile, c'est la cinquième fente de la barre basse qui ouvre le
+// droite. Sous 1024 px, c'est l'avatar de l'en-tête (variante mobile) qui ouvre le
 // même contenu en feuille remontante (`AccountSheetButton`) — d'où le
 // `hidden lg:block` posé par l'appelant.
 //

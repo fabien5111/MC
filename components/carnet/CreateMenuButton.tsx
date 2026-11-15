@@ -34,7 +34,9 @@ const ENTREES = [
 const BTN =
   'flex items-center gap-1.5 rounded-pill bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95';
 
-function Entrees({
+// Exportée : le menu « Créer » du bouton central de la barre basse
+// (`BoutonCentral`) affiche les mêmes entrées — une seule liste à maintenir.
+export function Entrees({
   peutProjet,
   onNavigate,
   grand,

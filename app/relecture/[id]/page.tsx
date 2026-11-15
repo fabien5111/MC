@@ -149,7 +149,7 @@ export default async function RelecturePage({ params }: Params) {
       </StockageEnLigneProvider>
       </div>
       <Footer />
-      <MobileNav current="carnet" />
+      <MobileNav current="carnet" centre="actions" />
     </>
   );
 }

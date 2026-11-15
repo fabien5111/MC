@@ -929,7 +929,7 @@ export default async function RecettePage({ params, searchParams }: Params) {
 
       <div className="no-print">
       <Footer />
-      <MobileNav />
+      <MobileNav centre="actions" />
       </div>
     </>
   );

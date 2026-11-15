@@ -16,11 +16,13 @@
 //  - une **languette** collée au bord gauche ouvre un **panneau latéral** qui
 //    porte le sommaire — même liste, même scroll-spy, même `navigate` — et une
 //    jauge de progression dans la page : le bord gauche sert à se repérer ;
-//  - une **pastille « Actions »** en bas à droite ouvre une feuille remontante
-//    avec les actions de l'écran (Lancer une fournée, Éditer, Enregistrer…).
+//  - les **actions** de l'écran (Lancer une fournée, Éditer, Enregistrer…)
+//    vont au **bouton central de la barre basse** (« Actions ») quand l'écran
+//    la monte (`mobileInset="nav"`) : elles y sont déclarées par
+//    `lib/actions-ecran.ts`. Sans barre basse, une pastille « Actions » en bas
+//    à droite ouvre la même feuille.
 // Avant, un seul bouton rond à picto « liste » portait les deux, sommaire
-// d'abord : les testeurs ne trouvaient pas les actions. La pastille est
-// provisoire : elle doit rejoindre un bouton central de la barre basse.
+// d'abord : les testeurs ne trouvaient pas les actions.
 // Ce rendu mobile est **choisi par l'écran hôte** (prop `mobile`) et non
 // automatique : un écran qui a déjà quelque chose de fixe en bas doit dire quoi
 // dégager (`mobileInset`), sans quoi la pastille vient se poser dessus.
@@ -28,6 +30,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNod
 import { useToc } from '@/lib/use-toc';
 import { useRailTooltip } from '@/lib/use-rail-tooltip';
 import { BottomSheet } from '@/components/BottomSheet';
+import { declarerActions, retirerActions } from '@/lib/actions-ecran';
 
 // Titre d'étape tel qu'affiché dans le sommaire. Volontairement réduit au
 // minimum : le sommaire dérive du modèle de recette, il ne le duplique pas.
@@ -231,6 +234,19 @@ export function RecipeToc({
   const actionList = actions ?? [];
   const hasActions = actionList.length > 0;
 
+  // Barre basse présente : les actions partent au bouton central plutôt que
+  // dans une pastille de plus. Redéclarées à chaque rendu (libellés et états
+  // `disabled` changent), retirées au démontage.
+  const versBoutonCentral = mobile === 'drawer' && mobileInset === 'nav';
+  const proprietaire = useMemo(() => Symbol('actions-ecran'), []);
+  useEffect(() => {
+    if (versBoutonCentral) declarerActions(proprietaire, actionList);
+  });
+  useEffect(() => {
+    if (!versBoutonCentral) return;
+    return () => retirerActions(proprietaire);
+  }, [versBoutonCentral, proprietaire]);
+
   return (
     <>
     <nav className={classes.join(' ')} aria-label="Sommaire de la recette">
@@ -367,7 +383,7 @@ export function RecipeToc({
         {/* Actions de l'écran hôte : elles vivent autrement dans le pied du
             rail, inatteignable sous 700 px. Pastille étiquetée plutôt qu'un
             bouton rond : on doit savoir ce qu'elle ouvre avant de la toucher. */}
-        {hasActions && (
+        {hasActions && !versBoutonCentral && (
           <>
             <button
               type="button"
@@ -386,43 +402,63 @@ export function RecipeToc({
               </span>
               Actions
             </button>
-            <BottomSheet
+            <FeuilleActions
+              id={`${sheetId}-actions`}
               open={actionsOpen}
               onClose={() => setActionsOpen(false)}
               breakpoint="rail"
-              id={`${sheetId}-actions`}
-              label="Actions"
-              sheetClassName="recipe-toc-sheet"
-            >
-              <h2 className="shrink-0">Que voulez-vous faire ?</h2>
-              {/* En bas de l'écran, là où le pouce tombe. */}
-              <div className="actions is-sheet min-h-0 overflow-y-auto" role="group" aria-label="Actions">
-                {actionList.map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    className="item"
-                    onClick={() => {
-                      setActionsOpen(false);
-                      a.onClick();
-                    }}
-                    disabled={a.disabled}
-                  >
-                    <span
-                      className={`badge variant-${a.variant}${typeof a.icon === 'string' ? ' material-symbols-outlined' : ''}`}
-                      aria-hidden="true"
-                    >
-                      {a.icon}
-                    </span>
-                    <span className="lbl">{a.label}</span>
-                  </button>
-                ))}
-              </div>
-            </BottomSheet>
+              actions={actionList}
+            />
           </>
         )}
       </>
     )}
     </>
+  );
+}
+
+// Feuille « Que voulez-vous faire ? » : partagée par la pastille « Actions »
+// (écrans sans barre basse) et le bouton central de la barre basse. En bas de
+// l'écran, là où le pouce tombe ; même badge rond et mêmes variantes que le
+// pied du rail, pour que ce soient visiblement les mêmes actions.
+export function FeuilleActions({
+  id,
+  open,
+  onClose,
+  breakpoint,
+  actions,
+}: {
+  id?: string;
+  open: boolean;
+  onClose: () => void;
+  breakpoint: 'rail' | 'lg';
+  actions: TocAction[];
+}) {
+  return (
+    <BottomSheet open={open} onClose={onClose} breakpoint={breakpoint} id={id} label="Actions" sheetClassName="recipe-toc-sheet">
+      <h2 className="shrink-0">Que voulez-vous faire ?</h2>
+      <div className="actions is-sheet min-h-0 overflow-y-auto" role="group" aria-label="Actions">
+        {actions.map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            className="item"
+            onClick={() => {
+              onClose();
+              a.onClick();
+            }}
+            disabled={a.disabled}
+          >
+            <span
+              className={`badge variant-${a.variant}${typeof a.icon === 'string' ? ' material-symbols-outlined' : ''}`}
+              aria-hidden="true"
+            >
+              {a.icon}
+            </span>
+            <span className="lbl">{a.label}</span>
+          </button>
+        ))}
+      </div>
+    </BottomSheet>
   );
 }

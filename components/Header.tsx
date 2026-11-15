@@ -5,9 +5,10 @@
 //  - **Créer** n'a plus de bouton ici — il ferait doublon avec celui d'en-tête
 //    de `/carnet`, sa vraie maison (on crée une recette pour l'ajouter à son
 //    carnet). Atteignable via Mon carnet, dans les deux chromes.
-//  - **Compte** est un tiroir, ouvert par l'avatar (`AccountMenuButton`). Sur
-//    mobile il est ouvert par la cinquième fente de la barre basse, d'où
-//    l'avatar masqué ici en dessous du seuil.
+//  - **Compte** est un tiroir, ouvert par l'avatar : menu déroulant au bureau
+//    (`AccountMenuButton`), feuille remontante en dessous de 1024 px
+//    (`AccountSheetButton variante="entete"`). Le profil a quitté la barre
+//    basse, dont la fente centrale sert désormais à agir (proposition D).
 //
 // L'état de connexion est résolu côté serveur (session cookie) — pas de
 // pré-masquage CSS ni de flash au chargement.
@@ -17,6 +18,7 @@ import { hasActiveBatches } from '@/lib/profile';
 import { HeaderSearch } from '@/components/HeaderSearch';
 import { ShareSiteButton } from '@/components/share/ShareSiteButton';
 import { AccountMenuButton } from '@/components/account/AccountMenuButton';
+import { AccountSheetButton } from '@/components/account/AccountSheetButton';
 import { NotificationBell } from '@/components/NotificationBell';
 import { countUnreadNotifications, getRecentNotifications } from '@/lib/notifications-data';
 import { getHomeCategories } from '@/lib/taxonomy';
@@ -122,15 +124,27 @@ export async function Header({ current, className }: { current?: NavKey; classNa
           {/* Réseaux sociaux (JEP-15) : entre la cloche et l'avatar, dès 768 px. */}
           {liensSociaux.length > 0 && <SocialRondsHeader liens={liensSociaux} />}
           {user ? (
-            <AccountMenuButton
-              className="hidden lg:block"
-              data={{
-                name: profile?.full_name || user.email || 'Mon compte',
-                avatarUrl,
-                isManager: backOffice,
-                handle: profile?.username || user.id,
-              }}
-            />
+            <>
+              <AccountMenuButton
+                className="hidden lg:block"
+                data={{
+                  name: profile?.full_name || user.email || 'Mon compte',
+                  avatarUrl,
+                  isManager: backOffice,
+                  handle: profile?.username || user.id,
+                }}
+              />
+              <AccountSheetButton
+                className="block shrink-0 lg:hidden"
+                variante="entete"
+                data={{
+                  name: profile?.full_name || user.email || 'Mon compte',
+                  avatarUrl,
+                  isManager: backOffice,
+                  handle: profile?.username || user.id,
+                }}
+              />
+            </>
           ) : (
             <>
               {/* Visiteur : les quatre destinations restent visibles et sans
