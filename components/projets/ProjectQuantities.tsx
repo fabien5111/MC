@@ -423,6 +423,41 @@ export function QuantitiesStep({
     }
   }
 
+  // Ajustement par le poids (JEP-403) : le pâtissier sait souvent ce qu'il
+  // veut obtenir (« 300 g de ganache »). Coefficient = poids visé ÷ masse de
+  // la recette d'origine (quantités de base, celles que multiplie tout
+  // ajustement), estimée par le référentiel. La perte s'y ajoute comme pour
+  // les autres propositions : le poids visé est ce qui doit arriver dans le
+  // dessert.
+  const [poidsVise, setPoidsVise] = useState<Record<number, string>>({});
+  function proposerPoids(c: ProjectComponent) {
+    const cibleG = parseFloat((poidsVise[c.id] ?? '').replace(',', '.'));
+    if (!(cibleG > 0)) {
+      dialog.alert('Indiquez le poids visé, en grammes.');
+      return;
+    }
+    const origine = masseGrammes(c.lines, true, estimerMasse);
+    if (!origine || !(origine.grammes > 0)) {
+      dialog.alert('Le poids de cette préparation n’a pas pu être estimé (aucun ingrédient pesable) : saisissez le coefficient.');
+      return;
+    }
+    const factor = round2(cibleG / origine.grammes);
+    if (!(factor > 0)) {
+      dialog.alert('Le poids visé est trop faible pour cette préparation.');
+      return;
+    }
+    const hors = origine.horsTotal.length ? ` Hors calcul (conversion inconnue) : ${origine.horsTotal.join(', ')}.` : '';
+    const base: ScaleProposal = {
+      factor,
+      moldCoefs: null,
+      reason: `Poids visé ${masseTexte(cibleG)} ÷ ${masseTexte(origine.grammes)} (recette d’origine) = ×${fr(factor)}.${hors}`,
+    };
+    const avec = appliquerPerte(base, perteDe(c.id));
+    setBasesSansPerte((p) => ({ ...p, [c.id]: base }));
+    setPropositions((p) => ({ ...p, [c.id]: avec }));
+    setSaisie((p) => ({ ...p, [c.id]: fr(avec.factor) }));
+  }
+
   // Changer la perte recalcule aussitôt le coefficient depuis la proposition
   // d'origine (calcul pur, sans réseau : fluide à chaque frappe, y compris sur
   // mobile). Champ vide ou en cours de frappe = 0 %.
@@ -687,6 +722,28 @@ export function QuantitiesStep({
                       (il vous en reste {iaRestants} ce mois-ci)
                     </span>
                   )}
+                </div>
+
+                {/* Poids visé (JEP-403) : une troisième façon de proposer un
+                    coefficient, à côté du format et de l'IA. */}
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <label htmlFor={`poids-${c.id}`} className="w-24 font-label-md text-[12px] text-outline">
+                    POIDS VISÉ (G)
+                  </label>
+                  <input
+                    id={`poids-${c.id}`}
+                    value={poidsVise[c.id] ?? ''}
+                    onChange={(e) => setPoidsVise((p) => ({ ...p, [c.id]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') proposerPoids(c);
+                    }}
+                    inputMode="decimal"
+                    placeholder={masseActuelle ? String(Math.round(masseActuelle.grammes)) : undefined}
+                    className={`${champ} w-24`}
+                  />
+                  <button type="button" onClick={() => proposerPoids(c)} className={btnGhost}>
+                    Proposer d’après ce poids
+                  </button>
                 </div>
 
                 {/* Perte et coefficient sur une seconde rangée : libellés de
