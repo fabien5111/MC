@@ -23,7 +23,11 @@ export class ARacheterIndisponible extends Error {}
 // Colonne `kind` absente : la migration n'est pas jouée.
 const colonneAbsente = (e: { code?: string; message?: string }) => e.code === '42703' || /kind/.test(e.message ?? '');
 
-/** Identifiant de la liste « À racheter » du membre, créée au premier ajout. */
+/** Identifiant de la liste « À racheter » du membre, créée si elle manque (premier ajout ou bouton « Créer la liste »). */
+export async function assurerListeARacheter(db: SupabaseClient, userId: string): Promise<number> {
+  return listeDuMembre(db, userId);
+}
+
 async function listeDuMembre(db: SupabaseClient, userId: string): Promise<number> {
   const lire = () => db.from('shopping_lists').select('id').eq('user_id', userId).eq('kind', KIND_A_RACHETER).maybeSingle();
   const { data, error } = await lire();
@@ -71,4 +75,9 @@ export async function ajouterARacheter(userId: string, nom: string, refId: numbe
     if (insErr) throw new Error(insErr.message);
   }
   return decision.action;
+}
+
+/** Garantit la liste « À racheter » du membre (créée si besoin) et rend son identifiant. */
+export async function creerListeARacheter(userId: string): Promise<number> {
+  return assurerListeARacheter(vers(createAdminClient()), userId);
 }

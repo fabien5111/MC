@@ -2588,6 +2588,14 @@ Logique pure : `lib/a-racheter.ts` (testé) ; écriture : `lib/a-racheter-data.t
   `shopping_lists_guard_a_racheter` refuse à un membre de créer, renommer,
   changer le `kind` ou supprimer la liste système. Les articles, eux, se
   cochent et se suppriment depuis le navigateur comme ailleurs (RLS).
+- **Créer la liste depuis l'écran des courses** (15/11/2026, sans ticket) : pour un
+  membre qui a le droit (`droits.aRacheter`, lu par `/en-cuisine`) et dont la liste
+  est absente **ou vide** (donc masquée), `CuisineContent` affiche en tête une carte
+  en pointillés « À racheter » avec « Créer la liste » (ou « Ouvrir » si elle existe
+  déjà, vide), doublée d'une entrée de la feuille « Actions ». Le clic appelle
+  `PUT /api/courses/a-racheter` (mêmes gardes que l'ajout, idempotent, 503 avant la
+  migration) puis ouvre `/courses/<id>`, où l'on saisit les articles à la main. Sans
+  le droit : rien n'est affiché.
 - **Écran des courses** (`CuisineContent`, `rangerListes`) : en tête, masquée
   tant qu'elle est vide, **jamais archivée** (tout barré, elle reste), ni
   supprimable ni fusionnable, absente des destinations « Ajouter à une liste »
