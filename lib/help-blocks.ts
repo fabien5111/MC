@@ -139,6 +139,7 @@ export const HELP_BLOCKS: HelpBlockDef[] = [
   // Lot 2 (JEP-373) : import, courses, carnet, fiche recette, recherche, réglages, idées.
   { key: 'importer.intro', title: 'Importer une recette', page: 'importer', adminLabel: "/importer, avant le choix texte collé / PDF / photos" },
   { key: 'importer.photos', title: 'Importer depuis des photos', page: 'importer', adminLabel: "Onglet « Photos », avant la zone de dépôt" },
+  { key: 'courses.listes', title: 'Mes listes de courses', page: 'courses', adminLabel: "/en-cuisine, à côté du titre « Listes de courses »" },
   { key: 'courses.fusion', title: 'Comment les articles se regroupent', page: 'courses', adminLabel: "/courses/[id], en tête de la liste" },
   { key: 'courses.ajout', title: 'Ajouter un article à la main', page: 'courses', adminLabel: "Avant le formulaire d'ajout à la main" },
   { key: 'carnet.portees', title: "S'y retrouver dans son carnet", page: 'carnet', adminLabel: "/carnet, sous la ligne des portées" },

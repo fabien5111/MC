@@ -2596,6 +2596,7 @@ Logique pure : `lib/a-racheter.ts` (testé) ; écriture : `lib/a-racheter-data.t
   `PUT /api/courses/a-racheter` (mêmes gardes que l'ajout, idempotent, 503 avant la
   migration) puis ouvre `/courses/<id>`, où l'on saisit les articles à la main. Sans
   le droit : rien n'est affiché.
+- **Aide des listes de courses** : picto « ? » à droite du titre « Listes de courses » de `/en-cuisine` (bloc `courses.listes`, page `courses`, lu par `getVisibleHelpBlocks` dans la page) ; invisible tant que son texte n'est pas saisi dans Admin → Blocs d'aide.
 - **Écran des courses** (`CuisineContent`, `rangerListes`) : en tête, masquée
   tant qu'elle est vide, **jamais archivée** (tout barré, elle reste), ni
   supprimable ni fusionnable, absente des destinations « Ajouter à une liste »
