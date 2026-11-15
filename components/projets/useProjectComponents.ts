@@ -8,7 +8,7 @@
 // Même doctrine que le reste du mode projet : aucune liste tenue en état
 // local, chaque geste écrit puis resynchronise via le `mutate` du parent
 // (son voile couvre l'écriture ET le nouveau rendu serveur).
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { useMutation } from '@/lib/use-mutation';
 import type { useDialog } from '@/components/Dialog';
@@ -18,8 +18,9 @@ import {
   resequenceProjectSteps,
   resetComponent,
   setComponentScalingMode,
+  writeComponentContent,
 } from '@/lib/projects-write';
-import { MAX_COMPONENTS, nextComponentPosition, type ComponentSourceKind, type ComponentStepDraft } from '@/lib/projects';
+import { MAX_COMPONENTS, ROLE_ASSEMBLAGE, nextComponentPosition, type ComponentSourceKind, type ComponentStepDraft } from '@/lib/projects';
 import type { ProjectComponent, ProjectFull } from '@/lib/projects-data';
 
 type Mutate = ReturnType<typeof useMutation>['mutate'];
@@ -68,6 +69,77 @@ export function useProjectComponents(project: ProjectFull, mutate: Mutate, dialo
       { errorLabel: 'Ajout du composant' },
     );
   }
+
+  // Étape d'assemblage (JEP-403) : une préparation SANS recette (montage,
+  // finition), créée d'emblée avec une étape à son nom et sans ingrédient —
+  // donc résolue, jamais « À résoudre ». La fenêtre d'édition s'ouvre ensuite
+  // dessus, une fois le rendu serveur revenu (`aOuvrir`).
+  const [aOuvrir, setAOuvrir] = useState<number | null>(null);
+  async function addAssemblage() {
+    if (project.components.length >= MAX_COMPONENTS) {
+      dialog.alert(`Un projet est limité à ${MAX_COMPONENTS} composants.`);
+      return;
+    }
+    const nom = await dialog.prompt('Nom de l’étape d’assemblage :', {
+      required: true,
+      singleLine: true,
+      maxLength: 80,
+      defaultValue: 'Montage',
+    });
+    if (!nom) return;
+    let creeId: number | null = null;
+    const ok = await mutate(
+      async () => {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('recipe_project_components')
+          .insert({
+            recipe_id: project.id,
+            position: nextComponentPosition(project.components.map((c) => c.position)),
+            name: nom.trim().slice(0, 80),
+            role: ROLE_ASSEMBLAGE,
+            source_kind: 'manual',
+            resolved: false,
+          } as never)
+          .select('id')
+          .single();
+        if (error || !data) return { error: error ?? { message: 'Création refusée' } };
+        creeId = (data as { id: number }).id;
+        try {
+          await writeComponentContent(supabase, project.id, creeId, ordered.length, [
+            {
+              title: nom.trim().slice(0, 80),
+              scaling_mode: 'aucun',
+              description: null,
+              sous_etapes: null,
+              prep_time: null,
+              cook_time: null,
+              wait_time: null,
+              cook_temp: null,
+              tips: null,
+              day_offset: null,
+              ingredients: [],
+            },
+          ]);
+          await resequenceProjectSteps(supabase, project.id, [...ordered.map((c) => c.id), creeId]);
+        } catch (e) {
+          return { error: { message: (e as Error).message } };
+        }
+        return supabase.from('recipe_project_components').update({ resolved: true } as never).eq('id', creeId);
+      },
+      { errorLabel: 'Ajout de l’étape d’assemblage' },
+    );
+    if (ok && creeId != null) setAOuvrir(creeId);
+  }
+  useEffect(() => {
+    if (aOuvrir == null) return;
+    const c = project.components.find((x) => x.id === aOuvrir);
+    if (!c?.resolved) return;
+    setAOuvrir(null);
+    void ouvrirComposant(c, true);
+    // `ouvrirComposant` est recréée à chaque rendu ; seul l'arrivée du composant compte.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aOuvrir, project.components]);
 
   async function renameComponent(c: ProjectComponent) {
     const nom = await dialog.prompt(`Renommer « ${c.name} » :`, {
@@ -252,6 +324,7 @@ export function useProjectComponents(project: ProjectFull, mutate: Mutate, dialo
     setResolvingInit,
     consultBusy,
     addComponent,
+    addAssemblage,
     renameComponent,
     setRole,
     setScalingMode,

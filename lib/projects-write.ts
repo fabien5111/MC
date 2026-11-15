@@ -19,7 +19,7 @@
 //     rattachement : seul un déplacement ou une suppression de composant
 //     redistribue les blocs (`resequenceProjectSteps`).
 import type { createClient } from '@/lib/supabase/client';
-import { baseDeLigne, empreinteEtapes, utensilsToAdd, type ComponentStepDraft, type ComponentUtensil } from '@/lib/projects';
+import { ROLE_ASSEMBLAGE, baseDeLigne, empreinteEtapes, utensilsToAdd, type ComponentStepDraft, type ComponentUtensil } from '@/lib/projects';
 import { fixOeufLigature } from '@/lib/text';
 import { noteAvance } from '@/lib/recipe-view';
 
@@ -492,6 +492,10 @@ export async function writeAssemblyStep(
     const { error } = await supabase.from('recipe_steps').delete().in('id', anciennes.map((s) => s.id));
     if (error) throw error;
   }
+
+  // Le membre a écrit sa propre étape d'assemblage (JEP-403) : la section
+  // automatique ferait doublon.
+  if (components.some((c) => c.role === ROLE_ASSEMBLAGE)) return;
 
   const description = components.map((c, i) => `${i + 1}. ${c.name}${c.role ? ` (${c.role})` : ''}`).join('\n');
   const order = components.length * BLOCK;

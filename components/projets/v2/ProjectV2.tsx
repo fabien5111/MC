@@ -46,6 +46,7 @@ import {
   COMPONENT_SOURCE_LABELS,
   MAX_COMPONENTS,
   PROJECT_V2_ATELIER,
+  ROLE_ASSEMBLAGE,
   buildProjectFormatUpdate,
   deduceProjectFormat,
   projectFormatKey,
@@ -589,6 +590,7 @@ export function ProjectV2({
       checkedQuantitiesKey: c.checkedQuantitiesKey,
       cleEtapes: empreinteEtapes(steps.filter((s) => componentOf(s) === c.id)),
       cleQuantites: empreinteQuantites(c.lines, c.scaleFactor),
+      sansIngredient: c.resolved && c.lines.length === 0,
     })),
   });
 
@@ -675,14 +677,14 @@ export function ProjectV2({
           }}
           className={btnGhost}
         >
-          {c.resolved ? 'Modifier cette préparation' : 'Choisir une recette'}
+          {c.resolved ? (c.role === ROLE_ASSEMBLAGE ? 'Modifier cette étape' : 'Modifier cette préparation') : 'Choisir une recette'}
         </button>
-        {c.resolved && (
+        {c.resolved && c.role !== ROLE_ASSEMBLAGE && (
           <button type="button" onClick={() => changerRecette(c)} disabled={busy} className={btnGhost}>
             Choisir une autre recette
           </button>
         )}
-        {c.resolved && (
+        {c.resolved && c.role !== ROLE_ASSEMBLAGE && (
           <button type="button" onClick={() => void retirerRecette(c)} className={btnGhost}>
             Retirer la recette
           </button>
@@ -1169,7 +1171,7 @@ export function ProjectV2({
                         coefficient par préparation, comme en base), replié
                         par défaut : les étapes dessous montrent déjà les
                         quantités ajustées. */}
-                    {c.resolved && (
+                    {c.resolved && c.lines.length > 0 && (
                       <details id={`prep-${c.id}-quantites`} open={ouvertAuChargement(c, 'quantites')} className="group mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
                           <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">

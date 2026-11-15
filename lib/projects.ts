@@ -301,6 +301,17 @@ export const COMPONENT_ROLES = [
   'Décor',
 ] as const;
 
+// Rôle d'une étape d'assemblage ou de montage, ajoutée par « Ajouter une
+// étape d'assemblage » (JEP-403) : une préparation sans recette ni ingrédient.
+// Hors de `COMPONENT_ROLES` pour ne pas être proposée par l'IA. Un projet qui
+// en porte une n'a plus besoin de la section d'assemblage automatique écrite à
+// la validation (`writeAssemblyStep`).
+export const ROLE_ASSEMBLAGE = 'Assemblage';
+
+// À quoi sert le rôle : affiché en infobulle à côté de la liste (JEP-403).
+export const ROLE_AIDE =
+  'Facultatif. Le rôle aide l’IA à proposer une recette de base et à ajuster les quantités (un insert, une garniture ne se dosent pas comme un fond). Il n’a pas d’autre effet.';
+
 // Modes d'ajustement proposés à l'étape 3 (JEP-254, point 4) — les valeurs
 // de `ingredient_groups.scaling_mode`, avec les libellés de l'éditeur
 // classique (CreerForm) pour qu'un même choix se lise pareil partout.
@@ -954,6 +965,8 @@ export function projectTodo(input: {
     checkedQuantitiesKey: string | null;
     cleEtapes: string;
     cleQuantites: string;
+    // Aucun ingrédient (étape d'assemblage, JEP-403) : pas de quantités à vérifier.
+    sansIngredient?: boolean;
   }[];
 }): TodoItem[] {
   const out: TodoItem[] = [];
@@ -995,7 +1008,17 @@ export function projectTodo(input: {
     });
     if (!c.resolved || c.stepCount === 0) continue;
     const perimee = quantitiesStale(c, input.formatKey);
-    if (input.verifsDispo) {
+    if (input.verifsDispo && c.sansIngredient) {
+      const etapes = c.checkedStepsKey == null ? 'afaire' : c.checkedStepsKey === c.cleEtapes ? 'fait' : 'arefaire';
+      out.push({
+        id: `etapes-${c.id}`,
+        groupe: c.name,
+        libelle: etapes === 'arefaire' ? 'Étapes à relire (modifiées depuis)' : 'Étapes relues',
+        etat: etapes,
+        ancre: `prep-${c.id}-etapes`,
+        verif: { componentId: c.id, type: 'etapes', cle: c.cleEtapes },
+      });
+    } else if (input.verifsDispo) {
       const quantites =
         perimee || (c.checkedQuantitiesKey != null && c.checkedQuantitiesKey !== c.cleQuantites)
           ? 'arefaire'
