@@ -103,7 +103,7 @@ const sousTitre = 'mb-3 font-label-md text-[13px] uppercase tracking-widest text
 const BLOCS: Record<BlockKey, { titre: string; apercu: string; court: string; icone: string }> = {
   intention: { titre: 'Votre intention', apercu: 'Ce que vous voulez réaliser, en quelques phrases.', court: 'Intention', icone: 'construction' },
   identite: { titre: 'Le dessert', apercu: 'Nom, photo, description et catégories.', court: 'Le dessert', icone: 'edit_note' },
-  format: { titre: 'Format et rendement', apercu: 'Moule, dimensions, nombre de parts.', court: 'Format', icone: 'straighten' },
+  format: { titre: 'Format et rendement', apercu: 'Moule, dimensions, nombre de parts (estimé d’après le moule si vous le laissez vide).', court: 'Format', icone: 'straighten' },
   structure: { titre: 'Structure', apercu: 'Les préparations qui composent le dessert, du bas vers le haut.', court: 'Structure', icone: 'construction' },
   etapes: { titre: 'Étapes', apercu: 'Le déroulé de chaque préparation, avec ses ingrédients et l’ajustement de ses quantités.', court: 'Étapes', icone: 'format_list_numbered' },
   ingredients: { titre: 'Liste complète des ingrédients', apercu: 'Tous les ingrédients du dessert, totalisés.', court: 'Ingrédients', icone: 'egg_alt' },
@@ -111,11 +111,13 @@ const BLOCS: Record<BlockKey, { titre: string; apercu: string; court: string; ic
   conseils: { titre: 'Conseils et source', apercu: 'Astuces, conseils de service, provenance.', court: 'Conseils', icone: 'lightbulb' },
   validation: { titre: 'Essais et validation', apercu: 'Les fournées d’essai, puis le passage en recette.', court: 'Essais et validation', icone: 'construction' },
 };
+// Format juste après l'intention (JEP-403) : les quantités de chaque
+// préparation en dépendent, on le pose avant de composer la structure.
 const ORDRE_BLOCS: BlockKey[] = [
   'intention',
+  'format',
   'structure',
   'identite',
-  'format',
   'etapes',
   'ingredients',
   'organisation',

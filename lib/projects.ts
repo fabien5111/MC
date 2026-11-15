@@ -741,8 +741,6 @@ export function buildProjectFormatUpdate(input: {
   dims: Record<string, string>;
   moldTypeId: string;
 }): { error: string } | { payload: Record<string, unknown> } {
-  const parts = parseInt(input.servings, 10);
-  if (!(parts > 0)) return { error: 'Indiquez le nombre de parts visé.' };
   const nb = parseInt(input.count, 10);
   const countLabel = PROJECT_FORMATS[input.format].countLabel;
   if (countLabel && !(nb > 0)) return { error: `Indiquez le nombre à réaliser (${countLabel.toLowerCase()}).` };
@@ -750,6 +748,19 @@ export function buildProjectFormatUpdate(input: {
   for (const d of PROJECT_FORMATS[input.format].dims) {
     const v = parseFloat((input.dims[d.key] ?? '').replace(',', '.'));
     if (!isNaN(v) && v > 0) parsedDims[d.key] = v;
+  }
+  // Nombre de parts facultatif pour un format en moule (JEP-403) : vide, il
+  // est estimé d'après le moule (`estimerParts`). Seul le format libre, qui
+  // n'a rien d'autre pour se décrire, l'exige.
+  const saisies = parseInt(input.servings, 10);
+  const parts = saisies > 0 ? saisies : estimerParts(input.format, parsedDims, nb > 0 ? nb : 1);
+  if (!(parts && parts > 0)) {
+    return {
+      error:
+        input.format === 'free'
+          ? 'Indiquez le nombre de parts visé.'
+          : 'Indiquez le nombre de parts, ou les dimensions du moule pour qu’il soit estimé.',
+    };
   }
   return {
     payload: projectFormatPayload({
@@ -761,6 +772,26 @@ export function buildProjectFormatUpdate(input: {
       moldTypeId: input.format !== 'free' && input.moldTypeId ? Number(input.moldTypeId) : null,
     }),
   };
+}
+
+// Nombre de parts estimé d'après le moule (JEP-403), quand le membre ne l'a
+// pas saisi. Repères du métier : une part d'entremets ou de tarte occupe
+// environ 40 cm² (Ø 20 cm → 8 parts, Ø 24 cm → 11), une tranche de bûche
+// environ 3 cm de long ; une empreinte individuelle est une part. Multiplié par
+// le nombre d'exemplaires. `null` sans dimension utile (ou format libre) :
+// l'estimation ne s'invente pas.
+export const SURFACE_PART_CM2 = 40;
+export const TRANCHE_BUCHE_CM = 3;
+export function estimerParts(format: ProjectFormat, dims: Record<string, number>, count: number): number | null {
+  const n = count > 0 ? count : 1;
+  let parUnite: number | null = null;
+  if (format === 'round' && dims.diametre > 0) parUnite = (Math.PI * (dims.diametre / 2) ** 2) / SURFACE_PART_CM2;
+  else if (format === 'rectangular' && dims.longueur > 0 && dims.largeur > 0)
+    parUnite = (dims.longueur * dims.largeur) / SURFACE_PART_CM2;
+  else if (format === 'log' && dims.longueur > 0) parUnite = dims.longueur / TRANCHE_BUCHE_CM;
+  else if (format === 'individual') parUnite = 1;
+  if (parUnite == null) return null;
+  return Math.max(1, Math.round(parUnite * n));
 }
 
 // ── Mode projet v2 : blocs de la page verticale ───────────────────────────
@@ -775,9 +806,9 @@ export function buildProjectFormatUpdate(input: {
 // projet ouvert dans la v2 ne doit pas changer d'étape dans l'autre vue).
 export const PROJECT_V2_BLOCKS = [
   'intention',
+  'format',
   'structure',
   'identite',
-  'format',
   'etapes',
   'ingredients',
   'organisation',
