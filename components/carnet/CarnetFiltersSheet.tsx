@@ -1,10 +1,10 @@
 'use client';
 
 // Réglages du carnet sous 1024 px (mobile et tablette) : rappel des réglages
-// actifs sous le titre, bouton flottant et feuille remontante qui porte tout —
-// partage, recherche, tri, portée, statut. Même motif que le tiroir de la
-// recherche avancée (`SearchFiltersPanel`) et que le sommaire d'une recette
-// (`RecipeToc`) : au-dessus de 1024 px, `CarnetToolbar` garde ses pastilles.
+// actifs sous le titre, languette au bord gauche et panneau latéral qui porte
+// tout — partage, recherche, tri, portée, statut. Même motif que le sommaire
+// d'une recette (`RecipeToc`) : le bord gauche sert à se repérer et à filtrer.
+// Au-dessus de 1024 px, `CarnetToolbar` garde ses pastilles.
 //
 // **Brouillon local, appliqué à la validation seulement.** Les réglages
 // alimentent un état propre à la feuille ; « Afficher les résultats » les pose
@@ -109,10 +109,11 @@ export function CarnetFiltersSheet({
 
       <button
         type="button"
-        className="recipe-toc-fab lg:hidden"
-        data-inset="nav"
+        className="recipe-toc-tab no-print"
+        data-bp="lg"
         data-hidden={open}
         aria-label={actifs > 0 ? `Réglages du carnet, ${actifs} actif${actifs > 1 ? 's' : ''}` : 'Réglages du carnet'}
+        title="Filtrer mon carnet"
         aria-expanded={open}
         aria-controls={sheetId}
         onClick={() => setOpen(true)}
@@ -120,14 +121,7 @@ export function CarnetFiltersSheet({
         <span className="material-symbols-outlined" aria-hidden>
           tune
         </span>
-        {actifs > 0 && (
-          <span
-            aria-hidden
-            className="absolute -right-1 -top-1 flex h-[20px] min-w-[20px] items-center justify-center rounded-pill bg-white px-1 text-[11px] font-bold text-primary ring-2 ring-primary"
-          >
-            {actifs}
-          </span>
-        )}
+        {actifs > 0 && <span aria-hidden className="dot" />}
       </button>
 
       <BottomSheet
@@ -135,10 +129,12 @@ export function CarnetFiltersSheet({
         open={open}
         onClose={() => setOpen(false)}
         breakpoint="lg"
+        side="left"
         label="Réglages du carnet"
-        sheetClassName="max-h-[85vh] overflow-y-auto"
+        title="Filtrer mon carnet"
+        sheetClassName="overflow-y-auto"
       >
-        <div className="flex flex-col gap-5 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5">
+        <div className="flex flex-col gap-5 px-5 pb-4 pt-2">
           {onShare && (
             <button
               type="button"

@@ -432,6 +432,31 @@ body {
 .bottom-sheet[data-open='true'] {
   transform: translateY(0);
 }
+/* Variante latérale (`side="left"`) : panneau pleine hauteur glissant depuis
+   le bord gauche. Encoches : le haut et le bas de l'écran, et le bord gauche
+   d'un téléphone tenu en paysage. */
+.side-sheet {
+  transform: translateX(-101%);
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.side-sheet[data-open='true'] {
+  transform: translateX(0);
+}
+.side-sheet-head {
+  padding: 16px 12px 8px 20px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .side-sheet {
+    transition: none;
+    transform: translateX(0);
+  }
+  .side-sheet:not([data-open='true']) {
+    display: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .bottom-sheet-scrim,
   .bottom-sheet {
@@ -486,6 +511,97 @@ body {
   opacity: 0;
   pointer-events: none;
 }
+/* Pastille « Actions » du sommaire mobile (`RecipeToc`) : même bouton, mais
+   étiqueté — on doit savoir ce qu'il ouvre avant de le toucher. Masquée
+   au-dessus du rail, où les actions sont dans le pied du rail. */
+.recipe-toc-fab.is-pill {
+  width: auto;
+  height: 48px;
+  padding: 0 20px 0 16px;
+  gap: 8px;
+  border-radius: 999px;
+  font:
+    600 14px/1 'Work Sans',
+    sans-serif;
+}
+.recipe-toc-fab.is-pill .material-symbols-outlined {
+  font-size: 22px;
+}
+@media (min-width: 701px) {
+  .recipe-toc-fab.is-pill {
+    display: none;
+  }
+}
+
+/* Languette du panneau gauche (sommaire d'une recette, réglages du carnet).
+   Petite, pour ne pas masquer le texte ; la zone de toucher est élargie par
+   `::before` (environ 36 × 50 px) sans grossir ce qui se voit. Masquée au-dessus
+   de son point de bascule : 701 px (rail du sommaire) par défaut, 1024 px pour
+   le carnet (`data-bp="lg"`, seuil de ses pastilles de bureau). */
+.recipe-toc-tab {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 45; /* même plan que la pastille « Actions » */
+  width: calc(22px + env(safe-area-inset-left, 0px));
+  height: 38px;
+  padding: 0 0 0 env(safe-area-inset-left, 0px);
+  border: none;
+  border-radius: 0 12px 12px 0;
+  background: #300a12; /* primary */
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 2px 4px 12px -6px rgba(48, 10, 18, 0.7);
+  transition: opacity 0.2s ease;
+}
+.recipe-toc-tab::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -6px;
+  bottom: -6px;
+  width: 36px;
+}
+.recipe-toc-tab .material-symbols-outlined {
+  font-size: 16px;
+  color: #fff;
+}
+.recipe-toc-tab[data-hidden='true'] {
+  opacity: 0;
+  pointer-events: none;
+}
+/* Pastille « réglages actifs » du carnet : un point, sans chiffre — le rappel
+   des réglages est écrit sous le titre de la page. */
+.recipe-toc-tab .dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #fab4bd; /* inverse-primary */
+  box-shadow: 0 0 0 2px #fff8f7; /* surface */
+}
+@media (min-width: 701px) {
+  .recipe-toc-tab:not([data-bp='lg']) {
+    display: none;
+  }
+}
+@media (min-width: 1024px) {
+  .recipe-toc-tab[data-bp='lg'] {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .recipe-toc-tab {
+    transition: none;
+  }
+}
+
 /* Barre de navigation basse du site (fiche recette). */
 .recipe-toc-fab[data-inset='nav'] {
   bottom: calc(var(--mobile-nav-h) + 12px);
@@ -525,7 +641,9 @@ body {
      à dégager de ce côté-là. L'encoche, en revanche, reste devant elle. */
   padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
 }
-.recipe-toc-sheet h2 {
+/* `>` : seulement le titre posé par `RecipeToc`, jamais celui de l'en-tête du
+   panneau latéral (`.side-sheet-head`), stylé par `BottomSheet`. */
+.recipe-toc-sheet > h2 {
   font:
     500 16px/1.3 'Playfair Display',
     serif;
@@ -594,6 +712,31 @@ body {
   border-top: 1px solid #efdfde; /* surface-container-highest */
   padding: 8px 0 0;
   margin-top: 4px;
+}
+.recipe-toc-sheet.side-sheet {
+  /* Le panneau latéral occupe toute la hauteur : pas de plafond, ni de marge
+     basse propre (l'encoche est déjà réservée par `.side-sheet`). */
+  max-height: none;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+/* Jauge d'avancement dans la page, sous le titre du panneau. */
+.recipe-toc-progress {
+  margin: 0 20px 10px;
+  height: 4px;
+  border-radius: 4px;
+  background: #fbeae9; /* surface-container */
+  overflow: hidden;
+}
+.recipe-toc-progress span {
+  display: block;
+  height: 100%;
+  background: #300a12; /* primary */
+}
+/* Feuille « Actions » : les actions sont son seul contenu, pas un pied sous un
+   sommaire — ni filet ni marge au-dessus. */
+.recipe-toc-sheet .actions.is-sheet {
+  border-top: none;
+  margin-top: 0;
 }
 .recipe-toc-sheet .actions button:disabled {
   opacity: 0.5;
@@ -761,7 +904,8 @@ body {
      restait visible (et cliquable en apparence) sur la page imprimée. */
   .fixed,
   .recipe-toc,
-  .recipe-toc-fab {
+  .recipe-toc-fab,
+  .recipe-toc-tab {
     display: none !important;
   }
   /* Le rail se masque juste au-dessus, mais la marge qui lui réservait de la

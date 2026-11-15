@@ -11,11 +11,19 @@
 // du formulaire.
 //
 // Sous 700 px le rail est masqué (il n'a pas la place de coexister avec le
-// contenu) et un bouton flottant ouvre un tiroir remontant portant les mêmes
-// entrées — même liste, même scroll-spy, même `navigate`. Ce rendu mobile est
-// **choisi par l'écran hôte** (prop `mobile`) et non automatique : un écran qui
-// a déjà quelque chose de fixe en bas doit dire quoi dégager (`mobileInset`),
-// sans quoi le bouton flottant vient se poser dessus.
+// contenu). Deux commandes distinctes prennent le relais (proposition D de la
+// refonte de l'ergonomie mobile) :
+//  - une **languette** collée au bord gauche ouvre un **panneau latéral** qui
+//    porte le sommaire — même liste, même scroll-spy, même `navigate` — et une
+//    jauge de progression dans la page : le bord gauche sert à se repérer ;
+//  - une **pastille « Actions »** en bas à droite ouvre une feuille remontante
+//    avec les actions de l'écran (Lancer une fournée, Éditer, Enregistrer…).
+// Avant, un seul bouton rond à picto « liste » portait les deux, sommaire
+// d'abord : les testeurs ne trouvaient pas les actions. La pastille est
+// provisoire : elle doit rejoindre un bouton central de la barre basse.
+// Ce rendu mobile est **choisi par l'écran hôte** (prop `mobile`) et non
+// automatique : un écran qui a déjà quelque chose de fixe en bas doit dire quoi
+// dégager (`mobileInset`), sans quoi la pastille vient se poser dessus.
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useToc } from '@/lib/use-toc';
 import { useRailTooltip } from '@/lib/use-rail-tooltip';
@@ -126,9 +134,10 @@ type Props = {
   // garde que le bouton d'épinglage, comme avant leur introduction.
   actions?: TocAction[];
   // Rendu sous 700 px. `'none'` (défaut) : le sommaire disparaît, l'écran se
-  // débrouille autrement. `'drawer'` : bouton flottant + tiroir remontant.
+  // débrouille autrement. `'drawer'` : languette + panneau latéral pour le
+  // sommaire, pastille « Actions » + feuille remontante pour les actions.
   mobile?: 'none' | 'drawer';
-  // Ce que le bouton flottant doit dégager en bas d'écran. `'nav'` : la barre
+  // Ce que la pastille « Actions » doit dégager en bas d'écran. `'nav'` : la barre
   // de navigation basse du site. `'action-bar'` : une barre d'actions fixe
   // propre à l'écran (session d'exécution). Les hauteurs sont dans
   // `.recipe-toc-fab[data-inset]` — l'appelant nomme ce qu'il a en bas de
@@ -176,6 +185,10 @@ export function RecipeToc({
   const { show: showTip, hide: hideTip, node: tooltipNode } = useRailTooltip();
 
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  // Avancement dans la page, mesuré à l'ouverture du panneau : la page est
+  // verrouillée tant qu'il est ouvert, la valeur ne bouge donc pas.
+  const [progression, setProgression] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   // Identifiant généré : rien n'interdit à un écran de monter deux sommaires,
   // et un `aria-controls` en double ne désignerait plus rien.
@@ -189,6 +202,8 @@ export function RecipeToc({
   // serait à jour qu'au rendu suivant, soit trop tard pour ce calcul.
   useEffect(() => {
     if (!sheetOpen) return;
+    const course = document.documentElement.scrollHeight - window.innerHeight;
+    setProgression(course > 0 ? Math.min(100, Math.round((100 * window.scrollY) / course)) : 0);
     const current = refresh();
     const list = listRef.current;
     if (!list) return;
@@ -284,41 +299,47 @@ export function RecipeToc({
 
     {mobile === 'drawer' && (
       <>
+        {/* Languette du sommaire. Petite (22 × 38 px) pour ne pas masquer le
+            texte, mais sa zone de toucher est élargie en CSS (::before). */}
         <button
           type="button"
-          className="recipe-toc-fab rail:hidden"
-          data-inset={mobileInset}
-          // Le bouton s'efface quand le tiroir est ouvert : le tiroir porte
-          // déjà tout ce qu'il propose, et le laisser flotter au-dessus du
-          // voile le ferait passer pour une commande encore active.
+          className="recipe-toc-tab no-print"
           data-hidden={sheetOpen}
-          aria-label={hasActions ? 'Sommaire et actions de la recette' : 'Aller à une section'}
+          aria-label="Ouvrir le sommaire"
+          title="Sommaire"
           aria-expanded={sheetOpen}
           aria-controls={sheetId}
           onClick={() => setSheetOpen(true)}
         >
           <span className="material-symbols-outlined" aria-hidden="true">
-            format_list_bulleted
+            toc
           </span>
         </button>
         <BottomSheet
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
           breakpoint="rail"
+          side="left"
           id={sheetId}
-          label={hasActions ? 'Sommaire et actions de la recette' : 'Sommaire de la recette'}
+          label="Sommaire"
           sheetClassName="recipe-toc-sheet"
         >
-          <h2 className="shrink-0">Aller à…</h2>
+          <div
+            className="recipe-toc-progress shrink-0"
+            role="progressbar"
+            aria-label="Avancement dans la page"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progression}
+          >
+            <span style={{ width: `${progression}%` }} />
+          </div>
           {/* `relative` : c'est ce qui fait du conteneur l'`offsetParent` des
               entrées, donc ce qui rend `offsetTop` directement comparable à
-              son `scrollTop` (cf. le centrage de l'entrée active).
-              Pas de `flex-1` ici, contrairement au tiroir de filtres : sa
-              base nulle ne contribuerait pas à la hauteur d'une feuille qui
-              n'en a pas de fixée, et la feuille se réduirait à son titre. La
-              liste garde donc sa base `auto` — elle donne sa hauteur à la
-              feuille jusqu'aux 70 vh, puis se comprime et défile. */}
-          <div ref={listRef} className="relative min-h-0 overflow-y-auto">
+              son `scrollTop` (cf. le centrage de l'entrée active). `flex-1` :
+              le panneau a une hauteur fixe (tout l'écran), la liste prend ce
+              qui reste sous l'en-tête et défile. */}
+          <div ref={listRef} className="relative min-h-0 flex-1 overflow-y-auto">
             <ul>
               {items.map((it) => (
                 <li key={it.id} className={it.level === 2 ? 'sub' : undefined}>
@@ -341,35 +362,65 @@ export function RecipeToc({
               ))}
             </ul>
           </div>
-          {/* Les actions de l'écran hôte vivent autrement dans le pied du rail,
-              inatteignable sous 700 px : sans ce bloc, la fiche recette
-              perdrait Planifier, Éditer et Dupliquer sur téléphone. Elles sont
-              en bas de la feuille, là où le pouce tombe. */}
-          {hasActions && (
-            <div className="actions shrink-0" role="group" aria-label="Actions sur la recette">
-              {actionList.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  className="item"
-                  onClick={() => {
-                    setSheetOpen(false);
-                    a.onClick();
-                  }}
-                  disabled={a.disabled}
-                >
-                  <span
-                    className={`badge variant-${a.variant}${typeof a.icon === 'string' ? ' material-symbols-outlined' : ''}`}
-                    aria-hidden="true"
-                  >
-                    {a.icon}
-                  </span>
-                  <span className="lbl">{a.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
         </BottomSheet>
+
+        {/* Actions de l'écran hôte : elles vivent autrement dans le pied du
+            rail, inatteignable sous 700 px. Pastille étiquetée plutôt qu'un
+            bouton rond : on doit savoir ce qu'elle ouvre avant de la toucher. */}
+        {hasActions && (
+          <>
+            <button
+              type="button"
+              className="recipe-toc-fab is-pill no-print"
+              data-inset={mobileInset}
+              // La pastille s'efface quand la feuille est ouverte : la feuille
+              // porte déjà tout ce qu'elle propose, et la laisser flotter
+              // au-dessus du voile la ferait passer pour une commande active.
+              data-hidden={actionsOpen}
+              aria-expanded={actionsOpen}
+              aria-controls={`${sheetId}-actions`}
+              onClick={() => setActionsOpen(true)}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                more_horiz
+              </span>
+              Actions
+            </button>
+            <BottomSheet
+              open={actionsOpen}
+              onClose={() => setActionsOpen(false)}
+              breakpoint="rail"
+              id={`${sheetId}-actions`}
+              label="Actions"
+              sheetClassName="recipe-toc-sheet"
+            >
+              <h2 className="shrink-0">Que voulez-vous faire ?</h2>
+              {/* En bas de l'écran, là où le pouce tombe. */}
+              <div className="actions is-sheet min-h-0 overflow-y-auto" role="group" aria-label="Actions">
+                {actionList.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className="item"
+                    onClick={() => {
+                      setActionsOpen(false);
+                      a.onClick();
+                    }}
+                    disabled={a.disabled}
+                  >
+                    <span
+                      className={`badge variant-${a.variant}${typeof a.icon === 'string' ? ' material-symbols-outlined' : ''}`}
+                      aria-hidden="true"
+                    >
+                      {a.icon}
+                    </span>
+                    <span className="lbl">{a.label}</span>
+                  </button>
+                ))}
+              </div>
+            </BottomSheet>
+          </>
+        )}
       </>
     )}
     </>

@@ -18,6 +18,13 @@
 //    la feuille reste montée pour pouvoir s'animer, mais ses commandes ne
 //    doivent être ni tabulables ni annoncées.
 //
+// Deux orientations (`side`) : remontante depuis le bas (défaut), ou panneau
+// latéral glissant depuis le bord gauche, pleine hauteur, avec un en-tête
+// (titre + croix de fermeture). Le panneau gauche porte ce qui sert à se
+// repérer ou à filtrer — sommaire d'une recette, réglages du carnet — ; la
+// feuille remontante, les actions. Même mécanique de focus, de verrou et
+// d'`inert` pour les deux : seul le contenant change.
+//
 // Ce qu'elle ne fait pas : le glissement vers le bas pour fermer. Le voile,
 // `Échap` et le déclencheur suffisent, et un glissement se dispute le geste
 // avec le défilement interne du contenu — à reprendre le jour où le besoin est
@@ -57,10 +64,28 @@ type Props = {
   sheetClassName?: string;
   // Posé sur la feuille, pour l'`aria-controls` du bouton qui l'ouvre.
   id?: string;
+  // `'left'` : panneau latéral pleine hauteur, ouvert depuis le bord gauche.
+  // Jamais par un glissé : ce geste est réservé au « retour » du téléphone
+  // (Android, iPhone) et le panneau s'ouvrirait en même temps que la page
+  // précédente se charge.
+  side?: 'bottom' | 'left';
+  // Titre visible en tête du panneau latéral (défaut : `label`).
+  title?: string;
   children: ReactNode;
 };
 
-export function BottomSheet({ open, onClose, breakpoint, label, sheetClassName = '', id, children }: Props) {
+export function BottomSheet({
+  open,
+  onClose,
+  breakpoint,
+  label,
+  sheetClassName = '',
+  id,
+  side = 'bottom',
+  title,
+  children,
+}: Props) {
+  const gauche = side === 'left';
   const { hide, query } = BREAKPOINTS[breakpoint];
   const sheetRef = useRef<HTMLDivElement>(null);
   // Ref plutôt que dépendance d'effet : les appelants passent une lambda,
@@ -152,7 +177,11 @@ export function BottomSheet({ open, onClose, breakpoint, label, sheetClassName =
       <div
         ref={sheetRef}
         id={id}
-        className={`bottom-sheet absolute left-0 right-0 bottom-0 bg-surface rounded-t-[22px] shadow-2xl flex flex-col ${sheetClassName}`}
+        className={`${
+          gauche
+            ? 'side-sheet absolute left-0 top-0 bottom-0 w-[min(84vw,340px)] rounded-r-[22px]'
+            : 'bottom-sheet absolute left-0 right-0 bottom-0 rounded-t-[22px]'
+        } bg-surface shadow-2xl flex flex-col ${sheetClassName}`}
         data-open={active}
         role="dialog"
         aria-modal="true"
@@ -162,12 +191,29 @@ export function BottomSheet({ open, onClose, breakpoint, label, sheetClassName =
         tabIndex={-1}
         inert={!active}
       >
-        {/* Poignée de préhension, purement indicative (le glissement n'est pas
-            implémenté) : elle dit « ceci est une feuille » et rien d'autre.
-            40 × 4 px, la mesure déjà en place sur le tiroir de recherche. */}
-        <div className="pt-3 pb-1 flex justify-center shrink-0">
-          <span className="w-10 h-1 rounded-full bg-outline-variant" />
-        </div>
+        {gauche ? (
+          // En-tête du panneau latéral : sans poignée (rien ne se glisse), mais
+          // avec une croix — le voile étroit à droite ne suffit pas à dire
+          // comment refermer.
+          <div className="side-sheet-head flex items-center justify-between gap-3 shrink-0">
+            <h2 className="font-headline-md text-[19px] font-semibold text-primary truncate">{title ?? label}</h2>
+            <button
+              type="button"
+              onClick={() => onClose()}
+              aria-label="Fermer"
+              className="material-symbols-outlined shrink-0 rounded-pill p-1.5 text-[22px] text-on-surface-variant hover:bg-surface-container"
+            >
+              close
+            </button>
+          </div>
+        ) : (
+          // Poignée de préhension, purement indicative (le glissement n'est pas
+          // implémenté) : elle dit « ceci est une feuille » et rien d'autre.
+          // 40 × 4 px, la mesure déjà en place sur le tiroir de recherche.
+          <div className="pt-3 pb-1 flex justify-center shrink-0">
+            <span className="w-10 h-1 rounded-full bg-outline-variant" />
+          </div>
+        )}
         {children}
       </div>
     </div>
