@@ -796,29 +796,66 @@ export function QuantitiesStep({
                 </div>
 
                 {c.lines.length > 0 && (
-                  <ul className="space-y-1">
+                  <div className="overflow-x-auto">
+                  <ul className="min-w-[440px] space-y-1">
+                    {/* En-têtes (JEP-403) : « Origine » calé à droite au-dessus des
+                        quantités de base, « Ce dessert » centré sur le champ de
+                        saisie seul (mêmes largeurs que les lignes ci-dessous). */}
+                    <li aria-hidden className="flex items-center gap-2 font-label-md text-[10px] uppercase tracking-wider text-outline">
+                      <span className="min-w-0 flex-1" />
+                      <span className="w-20 shrink-0 text-right">Origine</span>
+                      <span className="w-16 shrink-0" />
+                      <span className="w-24 shrink-0 text-center">Ce dessert</span>
+                      <span className="w-14 shrink-0" />
+                    </li>
                     {c.lines.map((l) => {
-                      const actuelle = parseFloat(String(l.quantity ?? '').replace(',', '.'));
-                      // Quantité d'origine, à titre de repère : affichée en
-                      // italique tant qu'un ajustement l'a réellement changée
-                      // — inutile de la répéter à l'identique (facteur ×1, ou
-                      // avant tout ajustement).
-                      const montrerOrigine =
-                        l.baseQuantity != null && (!isFinite(actuelle) || Math.abs(l.baseQuantity - actuelle) > 1e-9);
+                      const texteQte = String(l.quantity ?? '').trim().replace(',', '.');
+                      const actuelle = texteQte === '' ? NaN : Number(texteQte);
+                      // Une ligne « manuelle » : retouchée à la main, donc sans
+                      // quantité de base (`base_quantity` effacée) alors que
+                      // d'autres lignes de la préparation en ont une. Sans cette
+                      // condition, une préparation jamais ajustée (aucune base
+                      // nulle part) marquerait toutes ses lignes.
+                      const preparationAjustee = c.lines.some((x) => x.baseQuantity != null);
+                      const manuelle = c.manuallyAdjusted && preparationAjustee && l.baseQuantity == null && isFinite(actuelle);
+                      // Origine : la base enregistrée ; sans base, la quantité
+                      // elle-même tant que la ligne n'est pas manuelle (rien n'a
+                      // encore changé) ; vide pour une ligne manuelle ou non chiffrée.
+                      const origine = l.baseQuantity != null ? l.baseQuantity : manuelle || !isFinite(actuelle) ? null : actuelle;
+                      const inchangee = origine != null && isFinite(actuelle) && Math.abs(origine - actuelle) < 1e-9;
+                      // Coefficient de la ligne : calculé à l'affichage, jamais stocké.
+                      const coefLigne = origine != null && origine !== 0 && isFinite(actuelle) ? actuelle / origine : null;
                       return (
-                        <li key={l.id} className="flex flex-wrap items-center gap-2 text-[13.5px]">
+                        <li key={l.id} className="flex items-center gap-2 text-[13.5px]">
                           <span className="min-w-0 flex-1 text-on-surface">
                             {l.name}
                             {l.comment && <span className="italic text-on-surface-variant"> — {l.comment}</span>}
                           </span>
-                          {montrerOrigine && (
-                            <span
-                              className="w-20 shrink-0 text-right text-[12px] italic text-on-surface-variant"
-                              title="Quantité d’origine, avant ajustement"
-                            >
-                              {fr(l.baseQuantity as number)} {l.unit ?? ''}
-                            </span>
-                          )}
+                          <span
+                            className={`w-20 shrink-0 text-right text-[12px] italic tabular-nums text-on-surface-variant ${inchangee ? 'opacity-55' : ''}`}
+                            title={origine != null ? 'Quantité d’origine, avant ajustement' : undefined}
+                          >
+                            {origine != null ? `${fr(origine)} ${l.unit ?? ''}` : ''}
+                          </span>
+                          <span className="flex w-16 shrink-0 justify-center">
+                            {manuelle ? (
+                              <span
+                                className="rounded-pill bg-secondary-container px-2 py-px text-[11px] text-on-secondary-container"
+                                title="Quantité modifiée à la main : cette ligne ne suit plus le coefficient de la préparation."
+                              >
+                                manuel
+                              </span>
+                            ) : coefLigne != null ? (
+                              <span
+                                className={`rounded-pill px-2 py-px text-[11px] tabular-nums ${
+                                  inchangee ? 'text-outline' : 'bg-surface-container text-secondary'
+                                }`}
+                                title="Quantité actuelle ÷ quantité d’origine"
+                              >
+                                ×{fr(coefLigne)}
+                              </span>
+                            ) : null}
+                          </span>
                           <input
                             // `key` porte la quantité et pas seulement l'id : le
                             // champ est non contrôlé (on n'écrit qu'à la sortie
@@ -831,13 +868,16 @@ export function QuantitiesStep({
                             onBlur={(e) => {
                               if ((e.target.value || '') !== (l.quantity ?? '')) void editerLigne(c, l.id, e.target.value);
                             }}
-                            className={`${champ} w-24 py-1`}
+                            className={`${champ} w-24 shrink-0 py-1 text-right tabular-nums ${
+                              manuelle ? 'border-secondary bg-primary-fixed/60' : ''
+                            }`}
                           />
-                          <span className="w-20 text-[12.5px] text-on-surface-variant">{l.unit ?? ''}</span>
+                          <span className="w-14 shrink-0 text-[12.5px] text-on-surface-variant">{l.unit ?? ''}</span>
                         </li>
                       );
                     })}
                   </ul>
+                  </div>
                 )}
                 {pied}
               </>
