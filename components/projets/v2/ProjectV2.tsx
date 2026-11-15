@@ -787,6 +787,19 @@ export function ProjectV2({
     );
   }
 
+  // Blocs verrouillés tant qu'aucune préparation n'a sa recette : le lien mène à
+  // la première préparation « À résoudre » du bloc « Structure », à défaut au
+  // bloc lui-même. Aucun lien si « Structure » est lui-même verrouillé.
+  const BLOCS_APRES_RECETTE: ReadonlySet<BlockKey> = new Set(['etapes', 'ingredients', 'organisation', 'conseils']);
+  const lienVersRecette = (key: BlockKey) => {
+    if (!BLOCS_APRES_RECETTE.has(key) || !states.structure.unlocked) return undefined;
+    const cible = project.components.find((c) => !c.resolved);
+    return {
+      texte: 'Choisir une recette →',
+      onClick: () => allerA(cible ? `prep-${cible.id}-recette` : 'bloc-structure'),
+    };
+  };
+
   const bloc = (key: BlockKey, children: ReactNode, aide?: ReactNode, resume?: ReactNode) => (
     <ProjectV2Block
       key={key}
@@ -797,6 +810,7 @@ export function ProjectV2({
       state={states[key]}
       aide={aide}
       resume={resume}
+      lienVerrou={lienVersRecette(key)}
       replie={
         key === 'intention'
           ? replies.intention

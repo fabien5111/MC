@@ -18,6 +18,7 @@ export function ProjectV2Block({
   replie,
   aide,
   resume,
+  lienVerrou,
   children,
 }: {
   id: string;
@@ -37,6 +38,9 @@ export function ProjectV2Block({
   // (`group-open:hidden`, purement CSS : aucun état) et accompagné d'un picto
   // « modifier » qui ouvre le volet. Sans effet sur un bloc non repliable.
   resume?: ReactNode;
+  // Lien sous la phrase de verrouillage : mène à ce qui débloque le bloc.
+  // Sans effet quand le bloc est ouvert.
+  lienVerrou?: { texte: string; onClick: () => void };
   children?: ReactNode;
 }) {
   const cadre = atelier
@@ -52,6 +56,15 @@ export function ProjectV2Block({
           lock
         </span>
         {state.lockedReason}
+        {lienVerrou && (
+          <button
+            type="button"
+            onClick={lienVerrou.onClick}
+            className="ml-1 font-semibold not-italic text-primary underline underline-offset-2 hover:text-secondary"
+          >
+            {lienVerrou.texte}
+          </button>
+        )}
       </p>
     </div>
   );
