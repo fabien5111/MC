@@ -957,7 +957,7 @@ function ARacheterVide({ existe, onClick }: { existe: boolean; onClick: () => vo
         </button>
       </div>
       <p className="mt-2 text-[12px] text-on-surface-variant">
-        Les ingrédients à racheter : ajoutez-les à la main, ou depuis le mode Pâtisser d'une fournée.
+        Les ingrédients à racheter : ajoutez-les à la main, ou depuis le mode Pâtisser d’une fournée.
       </p>
     </div>
   );
