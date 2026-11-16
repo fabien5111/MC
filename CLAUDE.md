@@ -2360,6 +2360,7 @@ l'éditeur, entre lesquels s'intercalent les blocs « Atelier projet »
   (`lib/projects.ts`), jamais de cette colonne.
 - **Un bloc pas encore atteint reste visible, grisé** — arbitrage produit : on
   voit d'emblée toute la recette à venir.
+- **Format et rendement replié avec un rappel** (JEP-403, `replies.format`, `resumeFormat`) : replié au chargement dès que le format ET le nombre de parts sont enregistrés (mêmes règles que l'intention : calculé une fois). La phrase « Cercle ou moule rond · Cercle à tarte — Ø 22 cm × 2 cm · 6 parts » vit dans le `<summary>` ; c'est le format **enregistré**, pas la saisie en cours.
 - **Format** — `ProjectFormatFields` (champs) et `buildProjectFormatUpdate`
   (contrôle + colonnes à écrire). Le bloc « Format » ne réécrit pas le titre
   (il se modifie dans « Le dessert »). La description se saisit pour tous les

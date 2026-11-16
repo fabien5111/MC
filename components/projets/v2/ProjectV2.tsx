@@ -49,6 +49,7 @@ import {
   ROLE_ASSEMBLAGE,
   buildProjectFormatUpdate,
   deduceProjectFormat,
+  PROJECT_FORMATS,
   projectFormatKey,
   projectTargetForme,
   quantitiesStale,
@@ -270,6 +271,19 @@ export function ProjectV2({
   const formatLabel =
     [moldTypes.find((m) => m.id === project.mold_type_id)?.name, project.yield_desc].filter(Boolean).join(' — ') ||
     (project.servings ? `${project.servings} parts` : 'format libre');
+
+  // Phrase de rappel du format ENREGISTRÉ (jamais la saisie en cours).
+  const formatBase = deduceProjectFormat({ measure_type: project.measure_type, forme: formeBase, dims: dimsBase, count: nbBase });
+  const resumeFormat =
+    project.measure_type && project.servings
+      ? [
+          PROJECT_FORMATS[formatBase].label,
+          formatBase === 'free' ? null : formatLabel,
+          `${project.servings} part${project.servings > 1 ? 's' : ''}`,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : '';
 
   async function saveFormat(): Promise<boolean> {
     // Le titre passé est celui DÉJÀ enregistré : il se modifie dans « Le
@@ -640,12 +654,15 @@ export function ProjectV2({
   // ce que le membre vient d'ouvrir). « Reste à faire » : replié une fois tout
   // fait (seule la jauge reste). « Votre intention » : replié dès qu'elle est
   // écrite. « Structure » : repliée quand toutes les recettes sont choisies.
-  const repliesInitiaux = useRef<{ todo: boolean; intention: boolean; structure: boolean; ingredients: boolean; organisation: boolean } | null>(null);
+  const repliesInitiaux = useRef<{ todo: boolean; intention: boolean; format: boolean; structure: boolean; ingredients: boolean; organisation: boolean } | null>(null);
   if (repliesInitiaux.current == null) {
     const recettes = todo.filter((i) => i.id === 'preparations' || i.id.startsWith('recette-'));
     repliesInitiaux.current = {
       todo: todo.length > 0 && todo.every((i) => i.etat === 'fait'),
       intention: !!project.intent?.trim(),
+      // Format et rendement : replié dès que le format ET le nombre de parts sont
+      // enregistrés (JEP-403) ; le rappel reste visible dans l'en-tête.
+      format: !!project.measure_type && !!project.servings,
       structure: recettes.length > 1 && recettes.every((i) => i.etat === 'fait'),
       // Consultation : la liste totale des ingrédients et le bloc ustensiles /
       // difficulté / temps sont repliés par défaut.
@@ -1032,7 +1049,9 @@ export function ProjectV2({
       replie={
         key === 'intention'
           ? replies.intention
-          : key === 'structure'
+          : key === 'format'
+            ? replies.format
+            : key === 'structure'
             ? replies.structure
             : key === 'ingredients'
               ? replies.ingredients
@@ -1331,6 +1350,14 @@ export function ProjectV2({
               Enregistrer le format
             </button>
           </div>,
+          undefined,
+          // Volet replié : rappel du format enregistré (type, moule, dimensions,
+          // parts) ; le picto « modifier » rouvre le volet.
+          resumeFormat ? (
+            <p className="text-[20px] leading-7 text-on-surface" title={resumeFormat}>
+              {resumeFormat}
+            </p>
+          ) : undefined,
         )}
 
         {bloc(
