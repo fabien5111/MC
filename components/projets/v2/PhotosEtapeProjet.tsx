@@ -11,6 +11,8 @@
 // (`step_photos` n'a pas d'identifiant exposé dans la vue) : suppression puis
 // insertion, sous la session du membre (RLS), par le `mutate` du parent.
 import { useState } from 'react';
+import { useDialog } from '@/components/Dialog';
+import { resizeFilesToDataUrls } from '@/lib/images';
 import { ImageSlot } from '@/components/ImageSlot';
 import { createClient } from '@/lib/supabase/client';
 import { televerserImage } from '@/lib/storage-client';
@@ -28,10 +30,25 @@ export function PhotosEtapeProjet({
   photos: Photo[];
   mutate: (fn: () => PromiseLike<{ error: { message: string } | null }>, opts?: { errorLabel?: string }) => Promise<boolean>;
 }) {
+  const dialog = useDialog();
   const [brouillon, setBrouillon] = useState<Photo[]>(photos);
   const modifie = JSON.stringify(brouillon) !== JSON.stringify(photos);
   const maj = (k: number, patch: Partial<Photo>) =>
     setBrouillon((prev) => prev.map((x, m) => (m === k ? { ...x, ...patch } : x)));
+
+  // Plusieurs photos reçues d'un coup (sélection multiple, glisser-déposer,
+  // stockage en ligne) : compressées puis ajoutées aux emplacements libres, le
+  // surplus étant signalé plutôt que perdu en silence — comme dans `/creer`.
+  async function ajouterPlusieurs(files: File[]) {
+    const { urls, rejected } = await resizeFilesToDataUrls(files, 800, 'image/jpeg');
+    if (rejected) await dialog.alert(`${rejected} fichier${rejected > 1 ? 's' : ''} ignoré${rejected > 1 ? 's' : ''} (format non supporté).`);
+    if (!urls.length) return;
+    const libres = Math.max(0, PHOTOS_ETAPE_MAX - brouillon.length);
+    const retenues = urls.slice(0, libres);
+    setBrouillon((prev) => [...prev, ...retenues.map((u) => ({ url: u, original_url: u, ai_retouched: false }))].slice(0, PHOTOS_ETAPE_MAX));
+    const surplus = urls.length - retenues.length;
+    if (surplus > 0) await dialog.alert(`${surplus} photo${surplus > 1 ? 's' : ''} non ajoutée${surplus > 1 ? 's' : ''} : plus assez d'emplacements libres sur cette étape.`);
+  }
 
   async function ecrire(suivantes: Photo[]) {
     await mutate(
@@ -92,6 +109,7 @@ export function PhotosEtapeProjet({
             <ImageSlot
               src={null}
               onChange={(url) => setBrouillon((prev) => [...prev, { url, original_url: null, ai_retouched: false }])}
+              onFilesAdded={(files) => void ajouterPlusieurs(files)}
               shape="rect"
               maxWidth={800}
               aspectRatio={1}

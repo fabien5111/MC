@@ -11,6 +11,8 @@ import { saisieIngredient } from '@/lib/saisie-ingredient';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImageSlot } from '@/components/ImageSlot';
+import { useDialog } from '@/components/Dialog';
+import { resizeFilesToDataUrls } from '@/lib/images';
 import { DureeInput } from '@/components/DureeInput';
 import type { ComponentStepDraft } from '@/lib/projects';
 import { ADVANCE_NOTE_MAX } from '@/lib/recipe-view';
@@ -101,6 +103,18 @@ export function StepEditorCard({
   poidsEquivalent?: (g: Ingredient) => string | null;
 }) {
   const photos = step.photos ?? [];
+  const dialogPhotos = useDialog();
+  // Plusieurs photos reçues d'un coup : réparties sur les emplacements libres,
+  // surplus signalé (même geste que `/creer`).
+  const ajouterPlusieurs = async (files: File[]) => {
+    const { urls, rejected } = await resizeFilesToDataUrls(files, 800, 'image/jpeg');
+    if (rejected) await dialogPhotos.alert(`${rejected} fichier${rejected > 1 ? 's' : ''} ignoré${rejected > 1 ? 's' : ''} (format non supporté).`);
+    if (!urls.length) return;
+    const retenues = urls.slice(0, Math.max(0, MAX_PHOTOS - photos.length));
+    onChange({ photos: [...photos, ...retenues.map((u) => ({ url: u, original_url: u, ai_retouched: false }))] });
+    const surplus = urls.length - retenues.length;
+    if (surplus > 0) await dialogPhotos.alert(`${surplus} photo${surplus > 1 ? 's' : ''} non ajoutée${surplus > 1 ? 's' : ''} : plus assez d'emplacements libres sur cette étape.`);
+  };
   const sous = step.sous_etapes;
   const modeListe = Array.isArray(sous) && sous.length > 0;
   const [popup, setPopup] = useState<number | null>(null);
@@ -622,7 +636,7 @@ export function StepEditorCard({
       </div>
 
       <div>
-        <p className="mb-2 text-[12px] text-on-surface-variant">Cliquez ou glissez une photo sur un emplacement.</p>
+        <p className="mb-2 text-[12px] text-on-surface-variant">Cliquez ou glissez — plusieurs photos à la fois sont acceptées, elles se répartissent sur les emplacements libres.</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {photos.map((p, k) => (
             <div key={k} className="space-y-1.5">
@@ -658,6 +672,7 @@ export function StepEditorCard({
               <ImageSlot
                 src={null}
                 onChange={(url) => onChange({ photos: [...photos, { url, original_url: null, ai_retouched: false }] })}
+                onFilesAdded={(files) => void ajouterPlusieurs(files)}
                 shape="rect"
                 maxWidth={800}
                 aspectRatio={1}
