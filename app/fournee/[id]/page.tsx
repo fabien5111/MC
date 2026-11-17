@@ -14,6 +14,7 @@ import { getIngredientRefAllergens } from '@/lib/imports';
 import { getMyRecipeReview, recetteEstProjetEnCours } from '@/lib/reviews-data';
 import { getVisibleHelpBlocks } from '@/lib/help';
 import { createClient } from '@/lib/supabase/server';
+import { isProjectDraft } from '@/lib/projects';
 import { getRemarques } from '@/lib/batch-lecons-data';
 import { getPhotosFournee } from '@/lib/batch-photos-data';
 import { Footer } from '@/components/Footer';
@@ -42,6 +43,9 @@ type BaseRecipeInfo = {
   heroImageUrl: string | null;
   heroImageAiRetouched: boolean;
   stepPhotosBySourceStepId: Record<number, { url: string; ai_retouched: boolean }[]>;
+  // « Points à vérifier » des étapes du projet (JEP-403), lus en direct comme
+  // les photos : seulement pour l'essai d'un projet en cours, `{}` sinon.
+  pointsAVerifierBySourceStepId: Record<number, string>;
   // Auteur de la recette de base — pour le lien « Voir la recette d'origine »
   // + signature affichés sur la fournée (même pattern que la fiche recette :
   // repli sur `author_id` si l'auteur n'a pas encore choisi de pseudo).
@@ -49,13 +53,31 @@ type BaseRecipeInfo = {
   author: { username: string | null; fullName: string | null; avatarUrl: string | null } | null;
 };
 
+// Notes « points à vérifier » d'un projet. Lecture À PART et best-effort : la
+// colonne est posée à la main (psql) — nommée dans la sélection principale,
+// son absence ferait échouer toute la recette de base.
+async function getPointsAVerifier(recipeId: string): Promise<Record<number, string>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('recipe_steps')
+    .select('id, points_a_verifier' as never)
+    .eq('recipe_id', recipeId);
+  if (error || !data) return {};
+  const notes: Record<number, string> = {};
+  for (const n of data as unknown as { id: number; points_a_verifier: string | null }[]) {
+    const texte = (n.points_a_verifier ?? '').trim();
+    if (texte) notes[n.id] = texte;
+  }
+  return notes;
+}
+
 async function getBaseRecipeInfo(recipeId: string | null): Promise<BaseRecipeInfo | null> {
   if (!recipeId) return null;
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('recipes')
     .select(
-      'id, updated_at, hero_image_url, hero_image_ai_retouched, author_id, profiles!recipes_author_id_fkey(username, full_name, avatar_url), recipe_steps(id, step_photos(url, ai_retouched, order_index))',
+      'id, kind, project_stage, updated_at, hero_image_url, hero_image_ai_retouched, author_id, profiles!recipes_author_id_fkey(username, full_name, avatar_url), recipe_steps(id, step_photos(url, ai_retouched, order_index))',
     )
     .eq('id', recipeId)
     .maybeSingle();
@@ -67,6 +89,7 @@ async function getBaseRecipeInfo(recipeId: string | null): Promise<BaseRecipeInf
       .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
       .map((p) => ({ url: p.url, ai_retouched: p.ai_retouched }));
   });
+  const pointsAVerifierBySourceStepId = isProjectDraft(data as { kind?: string | null; project_stage?: string | null }) ? await getPointsAVerifier(recipeId) : {};
   const profile = data.profiles as unknown as { username: string | null; full_name: string | null; avatar_url: string | null } | null;
   return {
     id: data.id,
@@ -74,6 +97,7 @@ async function getBaseRecipeInfo(recipeId: string | null): Promise<BaseRecipeInf
     heroImageUrl: data.hero_image_url,
     heroImageAiRetouched: data.hero_image_ai_retouched,
     stepPhotosBySourceStepId,
+    pointsAVerifierBySourceStepId,
     authorId: data.author_id,
     author: profile ? { username: profile.username, fullName: profile.full_name, avatarUrl: profile.avatar_url } : null,
   };

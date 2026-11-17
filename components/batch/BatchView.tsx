@@ -177,6 +177,8 @@ type BaseRecipeInfo = {
   heroImageUrl: string | null;
   heroImageAiRetouched: boolean;
   stepPhotosBySourceStepId: Record<number, Photo[]>;
+  // Notes « points à vérifier » du projet (essai d'un projet en cours seulement).
+  pointsAVerifierBySourceStepId?: Record<number, string>;
   authorId: string | null;
   author: { username: string | null; fullName: string | null; avatarUrl: string | null } | null;
 } | null;
@@ -819,6 +821,7 @@ export function BatchView({
             finishBatch={finishBatch}
             reviewEligible={reviewEligible}
             peutRacheter={droits.aRacheter}
+            pointsAVerifier={baseRecipe?.pointsAVerifierBySourceStepId}
             help={readOnly ? undefined : help}
           />
         )}
@@ -1683,6 +1686,7 @@ function PreparerView({
               </div>
             );
             const photos = baseRecipe && s.source_step_id ? baseRecipe.stepPhotosBySourceStepId[s.source_step_id] || [] : [];
+            const pointsDe = (id: number | null | undefined) => (id && baseRecipe?.pointsAVerifierBySourceStepId?.[id]) || null;
             // Retours avec écart : sous le bloc d'aide, juste au-dessus du
             // tableau des ingrédients quand l'éditeur est monté ; en tête du
             // bloc sinon (fournée close).
@@ -1732,6 +1736,7 @@ function PreparerView({
                     ) : undefined
                   }
                 >
+                  <PointsAVerifierFournee texte={pointsDe(s.source_step_id)} />
                   <StepPhotoGallery photos={photos} />
                   {/* Photos de réalisation rattachées à l'étape (JEP-382). */}
                   <PhotosEtape stepId={s.id} />
@@ -1768,8 +1773,10 @@ function PatisserView({
   finishBatch,
   reviewEligible,
   peutRacheter,
+  pointsAVerifier,
   help,
 }: {
+  pointsAVerifier?: Record<number, string>;
   batch: BatchFull;
   setBatch: React.Dispatch<React.SetStateAction<BatchFull>>;
   readOnly: boolean;
@@ -2084,6 +2091,7 @@ function PatisserView({
           onStepComment={onStepComment}
           onStepEcart={onStepEcart}
           peutRacheter={peutRacheter}
+          pointsAVerifier={pointsAVerifier}
         />
       </div>
 
@@ -2110,7 +2118,9 @@ function PatisserBody({
   onStepComment,
   onStepEcart,
   peutRacheter,
+  pointsAVerifier,
 }: {
+  pointsAVerifier?: Record<number, string>;
   batch: BatchFull;
   jalons: BatchJalon[];
   readOnly: boolean;
@@ -2258,6 +2268,7 @@ function PatisserBody({
                     onStepComment={onStepComment}
                     onStepEcart={onStepEcart}
                     peutRacheter={peutRacheter}
+                    pointsAVerifier={s.source_step_id ? pointsAVerifier?.[s.source_step_id] ?? null : null}
                   />
                 );
               })}
@@ -2266,6 +2277,22 @@ function PatisserBody({
         );
       })}
     </>
+  );
+}
+
+// « Points à vérifier » posés sur l'étape du projet (JEP-403) : rappel en
+// lecture seule dans la fournée d'essai, hors du volet replié — c'est ce qu'on
+// vient contrôler en cuisinant. Rien si la note est vide ou absente.
+function PointsAVerifierFournee({ texte }: { texte: string | null }) {
+  if (!texte) return null;
+  return (
+    <div className="mx-4 mb-3 rounded-lg border border-amber-600/60 bg-amber-50 px-3 py-2 print:mx-0">
+      <p className="mb-1 flex items-center gap-1.5 font-label-md text-[12px] uppercase tracking-widest text-amber-800">
+        <span className="material-symbols-outlined text-[18px]">flag</span>
+        Points à vérifier
+      </p>
+      <div className="font-body-md text-[15px] whitespace-pre-line">{texte}</div>
+    </div>
   );
 }
 
@@ -2286,7 +2313,9 @@ function StepCookCard({
   onStepComment,
   onStepEcart,
   peutRacheter,
+  pointsAVerifier = null,
 }: {
+  pointsAVerifier?: string | null;
   step: BatchStepRow & { batch_substeps: BatchSubstepRow[] };
   ingredients: BatchIngredientRow[];
   readOnly: boolean;
@@ -2445,6 +2474,8 @@ function StepCookCard({
           <div className="font-body-md text-[16px] whitespace-pre-line">{s.user_note}</div>
         </div>
       )}
+
+      <PointsAVerifierFournee texte={pointsAVerifier} />
 
       {/* Photos de réalisation de l'étape (JEP-382) : hors du volet, pour
           photographier une étape déjà cochée (repliée). */}
