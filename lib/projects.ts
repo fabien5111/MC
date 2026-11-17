@@ -53,6 +53,15 @@ export function isProjectDraft(r: ProjectMarks | null | undefined): boolean {
   return r?.kind === 'project' && r?.project_stage === 'wizard';
 }
 
+// Nom d'une fournée d'ESSAI d'un projet en cours, partout où elle s'affiche
+// (planning par jour, cartes « En cuisine », en-tête de la fournée) : préfixé
+// « [Projet] » pour ne pas la confondre avec une recette ordinaire du même nom.
+// Affichage seul — jamais écrit en base (`batches.recipe_title` reste le titre).
+export const PREFIXE_PROJET = '[Projet] ';
+export function titreAvecProjet(titre: string, recette: ProjectMarks | null | undefined): string {
+  return titre && isProjectDraft(recette) ? PREFIXE_PROJET + titre : titre;
+}
+
 // Projet dont les étapes ont été ré-enregistrées par l'éditeur classique.
 // `CreerForm` fait un `delete` + `insert` complet à chaque sauvegarde : tous
 // les `recipe_steps.component_id` disparaissent, et avec eux la vue par

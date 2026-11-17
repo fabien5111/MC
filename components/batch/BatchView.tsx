@@ -63,6 +63,7 @@ import { arrondiQuantite, cleRemarque, libelleEcartProduit, normaliserEcartProdu
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import { colonneRefaisableAbsente, enregistrerRefaisable, useDemanderBilan, useDemanderRefaisable } from '@/lib/batch-lecons-client';
 import { useClotureEssai } from '@/components/batch/ClotureEssai';
+import { PREFIXE_PROJET } from '@/lib/projects';
 import {
   fmtNum,
   BATCH_STATUS_LBL,
@@ -355,6 +356,8 @@ export function BatchView({
   // d'entrée principal. Donner son avis n'est pas modifier la fournée.
   // Seule l'impersonation lecture seule reste bloquante (garde réelle,
   // revérifiée côté serveur par la route avec la propriété de la fournée).
+  // Essai d'un projet en cours : « [Projet] » devant le nom (affichage seul).
+  const titreAffiche = (essaiProjet ? PREFIXE_PROJET : '') + (batch.recipe_title || 'Fournée');
   const canReview = batch.status === 'terminee' && !batch.review_dismissed && !impersonationReadOnly && !essaiProjet;
 
   // Un avis sera effectivement proposable une fois la fournée marquée
@@ -610,7 +613,7 @@ export function BatchView({
         <RetourContextuel
           fallbackHref="/en-cuisine"
           fallbackLabel="En cuisine"
-          currentLabel={batch.recipe_title || 'Fournée'}
+          currentLabel={titreAffiche}
           className="no-print mb-4"
         />
 
@@ -622,10 +625,10 @@ export function BatchView({
                 privée d'un autre auteur) — jamais un lien mort. */}
             {batch.recipe_id && baseRecipe ? (
               <Link href={`/recette/${batch.recipe_id}`} className="hover:underline" title="Ouvrir la recette d'origine">
-                {batch.recipe_title || 'Fournée'}
+                {titreAffiche}
               </Link>
             ) : (
-              batch.recipe_title || 'Fournée'
+              titreAffiche
             )}
           </h1>
           {help && <HelpBlockSlot blockKey={mode === 'patisser' ? 'fournee.patisser_intro' : 'fournee.preparer_intro'} help={help} />}

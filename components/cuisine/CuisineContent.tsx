@@ -21,7 +21,7 @@
 // que je fais aujourd'hui, toutes fournées confondues ? » — la vue par
 // fournée reste à un clic.
 import { libelleAjustement } from '@/lib/batch-ai';
-import { isProjectDraft } from '@/lib/projects';
+import { isProjectDraft, titreAvecProjet } from '@/lib/projects';
 import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -506,7 +506,7 @@ export function CuisineContent({
               const daysCount = new Set([0, ...p.batch_steps.map((s) => Math.max(0, s.day_offset || 0))]).size;
               const daysTxt = daysCount > 1 ? `${daysCount} jours` : '';
               const durationTxt = [timeTxt, daysTxt].filter(Boolean).join(' · ');
-              const titre = p.recipe_title || p.recipes?.title || '';
+              const titre = titreAvecProjet(p.recipe_title || p.recipes?.title || '', p.recipes);
               // Cartes de fournée (15/11/2026) : titre sur une ligne, date, coefficient,
               // puis la rangée d'actions dessous — toujours visible (au survol seul,
               // elle était introuvable au doigt).
@@ -704,7 +704,7 @@ export function CuisineContent({
                 <div className="mt-4 max-w-3xl space-y-4">
                   {terminees.map((p) => {
                     const timeTxt = p.recipes?.total_time || p.recipes?.prep_time ? formatTime(p.recipes.total_time || p.recipes.prep_time) : '';
-                    const titre = p.recipe_title || p.recipes?.title || '';
+                    const titre = titreAvecProjet(p.recipe_title || p.recipes?.title || '', p.recipes);
                     const dateTxt = [p.planned_date ? 'Prévu pour ' + formatDate(p.planned_date) : '', timeTxt].filter(Boolean).join(' · ');
                     const coefTxt = coefficientTexte(p.factor);
                     return (
@@ -840,7 +840,7 @@ function ActiveBatchCard({ batch }: { batch: ActiveBatchRow }) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="font-headline-md text-lg leading-tight text-primary">{batch.recipe_title || 'Fournée'}</p>
+        <p className="font-headline-md text-lg leading-tight text-primary">{titreAvecProjet(batch.recipe_title || 'Fournée', batch.recipes)}</p>
         <p className="mt-0.5 font-body-md text-[13px] text-on-surface-variant">
           {[etape, currentTitle].filter(Boolean).join(' · ') || 'Fournée en cours'}
         </p>
