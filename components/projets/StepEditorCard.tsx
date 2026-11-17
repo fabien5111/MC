@@ -20,7 +20,7 @@ import { autoGrow } from '@/lib/auto-grow';
 
 type Ingredient = ComponentStepDraft['ingredients'][number];
 
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 8;
 // Comme l'éditeur de recette : trois allergènes au plus par ingrédient.
 const MAX_ALLERGENS = 3;
 // Modes d'ajustement d'une étape — ceux de l'éditeur pour une recette en moule

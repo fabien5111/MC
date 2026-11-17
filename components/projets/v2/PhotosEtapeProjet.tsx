@@ -2,7 +2,7 @@
 
 // Photos d'une étape, éditables directement dans la vue des étapes du projet
 // (JEP-403) — sans passer par « Modifier cette préparation ». Mêmes
-// emplacements que la fenêtre d'édition (`StepEditorCard` : 4 photos,
+// emplacements que la fenêtre d'édition (`StepEditorCard` : 8 photos, comme `/creer`,
 // carrées, 800 px), même dépôt sur le stockage objet (`televerserImage`).
 //
 // Brouillon local, enregistré par un bouton : un dépôt passe par plusieurs
@@ -17,7 +17,7 @@ import { ImageSlot } from '@/components/ImageSlot';
 import { createClient } from '@/lib/supabase/client';
 import { televerserImage } from '@/lib/storage-client';
 
-export const PHOTOS_ETAPE_MAX = 4;
+export const PHOTOS_ETAPE_MAX = 8;
 
 type Photo = { url: string; original_url: string | null; ai_retouched: boolean };
 
