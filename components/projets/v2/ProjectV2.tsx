@@ -16,7 +16,8 @@
 //   (cf. RecipeDetailEditors).
 import { useSeuilsArrondi } from '@/components/SeuilsArrondiProvider';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useImpersonation } from '@/components/ImpersonationProvider';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { SCALING_OPTIONS } from '@/components/projets/StepEditorCard';
@@ -32,7 +33,7 @@ import { DessertVise, QuantitiesStep } from '@/components/projets/ProjectQuantit
 import { ProjectTrials } from '@/components/projets/ProjectTrials';
 import { useProjectComponents } from '@/components/projets/useProjectComponents';
 import { ProjectV2Block } from '@/components/projets/v2/ProjectV2Block';
-import { useRegisterSection, useSectionRegistry } from '@/components/projets/v2/sections';
+import { useRegisterSection, useSectionRegistry, type OptionsSauvegarde } from '@/components/projets/v2/sections';
 import { RecipeToc, stepAnchorId, type TocAction, type TocSections } from '@/components/recipe/RecipeToc';
 import {
   ConseilsEditor,
@@ -193,13 +194,54 @@ export function ProjectV2({
   const dialog = useDialog();
   // Seuils d'arrondi à l'unité des quantités calculées (JEP-389).
   const seuils = useSeuilsArrondi();
-  const { mutate, busy, refresh } = useMutation();
+  const { mutate, busy, refresh, refreshSilencieux } = useMutation();
+  const impersonation = useImpersonation();
   // Case « Afficher le total des ingrédients » des étapes (JEP-403) : même
   // réglage, mémorisé dans le navigateur, que dans le mode Préparer d'une fournée.
   const [totalVoulu, setTotalVoulu] = useTotalEtape();
   // Sections modifiées et non enregistrées (cf. sections.ts) : alimente les
   // boutons « Enregistrer le brouillon » / « Quitter » / « Valider » du rail.
-  const { registry: sectionRegistry, dirtyLabels, saveAll } = useSectionRegistry();
+  // Enregistrement AUTOMATIQUE (JEP-403) : plus de bouton par section. Après des
+  // écritures silencieuses, le rendu serveur (« Reste à faire », résumés…) est
+  // resynchronisé dès qu'aucun champ de saisie n'a le focus — une
+  // resynchronisation en pleine frappe remonterait certains éditeurs.
+  // Conditions : aucun champ de saisie n'a le focus ET aucune section n'attend
+  // d'être écrite — la resynchronisation remonte certains éditeurs (clés liées
+  // aux données), elle ne doit jamais effacer une saisie pas encore enregistrée.
+  const resynchroEnAttente = useRef(false);
+  const modificationsEnAttente = useRef<() => boolean>(() => false);
+  const peutResynchroniser = useCallback(() => {
+    const a = document.activeElement as HTMLElement | null;
+    const champActif = !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable);
+    return !champActif && !modificationsEnAttente.current();
+  }, []);
+  const resynchroQuandLibre = useCallback(() => {
+    if (peutResynchroniser()) {
+      resynchroEnAttente.current = false;
+      refreshSilencieux();
+    } else {
+      // Rejouée au prochain départ du focus, ou après le prochain enregistrement.
+      resynchroEnAttente.current = true;
+    }
+  }, [peutResynchroniser, refreshSilencieux]);
+  useEffect(() => {
+    const surPerteDeFocus = () => {
+      // Le focus passe d'un champ à l'autre : on laisse le temps à l'autre de le prendre.
+      window.setTimeout(() => {
+        if (resynchroEnAttente.current && peutResynchroniser()) {
+          resynchroEnAttente.current = false;
+          refreshSilencieux();
+        }
+      }, 300);
+    };
+    document.addEventListener('focusout', surPerteDeFocus);
+    return () => document.removeEventListener('focusout', surPerteDeFocus);
+  }, [peutResynchroniser, refreshSilencieux]);
+  const { registry: sectionRegistry, dirtyLabels, saveAll, etatAuto, aDesModifications } = useSectionRegistry({
+    auto: impersonation?.mode !== 'read_only',
+    apresEnregistrement: resynchroQuandLibre,
+  });
+  modificationsEnAttente.current = aDesModifications;
   const anyDirty = dirtyLabels.length > 0;
   const [leaving, setLeaving] = useState(false);
   // Coefficient proposé par la quantité obtenue d'une fournée d'essai, par
@@ -285,20 +327,28 @@ export function ProjectV2({
           .join(' · ')
       : '';
 
-  async function saveFormat(): Promise<boolean> {
+  async function saveFormat(options?: OptionsSauvegarde): Promise<boolean> {
     // Le titre passé est celui DÉJÀ enregistré : il se modifie dans « Le
     // dessert », le format ne doit pas l'écraser avec une saisie en cours.
     const built = buildProjectFormatUpdate({ format, title: project.title, servings, count, dims, moldTypeId });
     if ('error' in built) {
+      // Enregistrement automatique : un format encore incomplet n'est pas une
+      // erreur, on attend simplement la suite de la saisie (la section reste
+      // « en attente »). Au geste explicite, le message s'affiche.
+      if (options?.silencieux) return true;
       dialog.alert(built.error);
       return false;
     }
+    const sigAppel = empreinteFormat({ format, dims, moldTypeId, servings, count });
     const ok = await mutate(() => createClient().from('recipes').update(built.payload as never).eq('id', project.id), {
       errorLabel: 'Enregistrement du format',
+      silent: options?.silencieux,
     });
     if (ok) {
-      setFormatEnregistre(empreinteFormat({ format, dims, moldTypeId, servings, count }));
-      await signalerQuantites(built.payload);
+      setFormatEnregistre(sigAppel);
+      // Au geste explicite seulement : en enregistrement automatique, les
+      // préparations à recalculer apparaissent dans « Reste à faire ».
+      if (!options?.silencieux) await signalerQuantites(built.payload);
     }
     return ok;
   }
@@ -316,15 +366,22 @@ export function ProjectV2({
     ? `Crédits IA épuisés ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Ils se renouvellent à la prochaine période.`
     : 'La proposition de format et de préparations par IA n’est pas incluse dans votre formule.';
 
-  async function saveIntent(): Promise<boolean> {
-    return await mutate(
+  // Référence de « modifié » : ce qui est enregistré, tenu localement (cf.
+  // `sections.ts` — les props ne sont resynchronisées qu'une fois la saisie finie).
+  const [intentEnregistree, setIntentEnregistree] = useState((project.intent ?? '').trim());
+  const signatureIntention = intent.trim().slice(0, INTENT_MAX);
+  async function saveIntent(options?: OptionsSauvegarde): Promise<boolean> {
+    const sigAppel = signatureIntention;
+    const ok = await mutate(
       () =>
         createClient()
           .from('recipe_projects')
-          .update({ intent: intent.trim().slice(0, INTENT_MAX) || null } as never)
+          .update({ intent: sigAppel || null } as never)
           .eq('recipe_id', project.id),
-      { errorLabel: "Enregistrement de l'intention" },
+      { errorLabel: "Enregistrement de l'intention", silent: options?.silencieux },
     );
+    if (ok) setIntentEnregistree(sigAppel);
+    return ok;
   }
 
   // Une seule proposition pour le format ET les préparations
@@ -369,10 +426,11 @@ export function ProjectV2({
     }
     if (data?.erreur) await dialog.alert(data.erreur);
     if (!data || (!data.format && !data.components?.length)) {
-      await mutate(
+      const intentOk = await mutate(
         () => createClient().from('recipe_projects').update({ intent: texte } as never).eq('recipe_id', project.id),
         { errorLabel: "Enregistrement de l'intention" },
       );
+      if (intentOk) setIntentEnregistree(texte);
       if (!data?.erreur) dialog.alert('Aucune proposition n’a pu être établie. Vous pouvez composer le projet à la main.');
       return;
     }
@@ -434,6 +492,7 @@ export function ProjectV2({
       },
       { errorLabel: 'Enregistrement de la proposition' },
     );
+    if (ecrit) setIntentEnregistree(texte);
     if (ecrit && 'payload' in built) {
       setFormatEnregistre(empreinteFormat({ format: f, dims: d, moldTypeId: moule, servings: s, count: n }));
       await signalerQuantites(built.payload);
@@ -444,31 +503,40 @@ export function ProjectV2({
   // ── Le dessert : titre + description ──────────────────────────────────
   const [title, setTitle] = useState(project.title === 'Nouveau projet' ? '' : project.title);
   const [description, setDescription] = useState(project.description ?? '');
-  async function saveIdentite(): Promise<boolean> {
-    return await mutate(
+  const identiteDe = (t: string, d: string) => JSON.stringify([t.trim().slice(0, 120) || 'Nouveau projet', d.trim()]);
+  const [identiteEnregistree, setIdentiteEnregistree] = useState(() => identiteDe(project.title === 'Nouveau projet' ? '' : project.title, project.description ?? ''));
+  const signatureIdentite = identiteDe(title, description);
+  async function saveIdentite(options?: OptionsSauvegarde): Promise<boolean> {
+    const sigAppel = signatureIdentite;
+    const ok = await mutate(
       () =>
         createClient()
           .from('recipes')
           .update({ title: title.trim().slice(0, 120) || 'Nouveau projet', description: description.trim() || null } as never)
           .eq('id', project.id),
-      { errorLabel: 'Enregistrement du dessert' },
+      { errorLabel: 'Enregistrement du dessert', silent: options?.silencieux },
     );
+    if (ok) setIdentiteEnregistree(sigAppel);
+    return ok;
   }
 
   // ── Sections déclarées au registre (rail : enregistrer / quitter / valider) ──
   useRegisterSection(sectionRegistry, 'intention', {
     label: 'Intention',
-    dirty: intent.trim().slice(0, INTENT_MAX) !== (project.intent ?? '').trim(),
+    dirty: signatureIntention !== intentEnregistree,
+    signature: signatureIntention,
     save: saveIntent,
   });
   useRegisterSection(sectionRegistry, 'dessert', {
     label: 'Nom et description',
-    dirty: (title.trim() || 'Nouveau projet') !== project.title || description.trim() !== (project.description ?? '').trim(),
+    dirty: signatureIdentite !== identiteEnregistree,
+    signature: signatureIdentite,
     save: saveIdentite,
   });
   useRegisterSection(sectionRegistry, 'format', {
     label: 'Format',
     dirty: empreinteFormat({ format, dims, moldTypeId, servings, count }) !== formatEnregistre,
+    signature: empreinteFormat({ format, dims, moldTypeId, servings, count }),
     save: saveFormat,
   });
 
@@ -492,21 +560,20 @@ export function ProjectV2({
       router.push(versCarnet);
       return;
     }
+    // Enregistrement automatique : on écrit d'abord ce qui attendait encore son
+    // échéance. Ce n'est qu'en cas d'échec qu'on demande quoi faire.
+    if (await saveAll()) {
+      setLeaving(true);
+      router.push(versCarnet);
+      return;
+    }
     const choix = await dialog.choice(
-      `Des modifications n’ont pas été enregistrées (${dirtyLabels.join(', ')}). Que souhaitez-vous faire ?`,
-      [
-        { label: 'Quitter sans enregistrer', value: 'discard' },
-        { label: 'Enregistrer et quitter', value: 'save', variant: 'primary' },
-      ],
+      `Des modifications n’ont pas pu être enregistrées (${dirtyLabels.join(', ')}). Que souhaitez-vous faire ?`,
+      [{ label: 'Quitter sans enregistrer', value: 'discard' }],
     );
     if (choix === 'discard') {
       setLeaving(true);
       router.push(versCarnet);
-    } else if (choix === 'save') {
-      if (await saveAll()) {
-        setLeaving(true);
-        router.push(versCarnet);
-      }
     }
     // choix === null (Annuler / Échap) : on reste sur la page.
   }
@@ -995,12 +1062,13 @@ export function ProjectV2({
         photosEdition={
           comp ? (
             <PhotosEtapeProjet
-              key={`${s.id}-${(s.step_photos ?? []).map((p) => p.url).join('|')}`}
+              key={s.id}
               stepId={s.id}
               photos={[...(s.step_photos ?? [])]
                 .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
                 .map((p) => ({ url: p.url, original_url: p.original_url ?? null, ai_retouched: !!p.ai_retouched }))}
               mutate={mutate}
+              sections={sectionRegistry}
             />
           ) : undefined
         }
@@ -1097,9 +1165,7 @@ export function ProjectV2({
     {
       id: 'brouillon',
       icon: 'save',
-      label: anyDirty
-        ? `Enregistrer le brouillon (${dirtyLabels.length} section${dirtyLabels.length > 1 ? 's' : ''} modifiée${dirtyLabels.length > 1 ? 's' : ''})`
-        : 'Brouillon enregistré',
+      label: anyDirty ? 'Enregistrer maintenant' : 'Brouillon enregistré',
       variant: 'outline-strong',
       onClick: () => void saveAll(),
       disabled: busy || leaving || !anyDirty,
@@ -1170,9 +1236,18 @@ export function ProjectV2({
         </h1>
         <div className="flex flex-wrap items-center gap-3">
           <span className="bg-secondary px-3 py-1 font-label-md text-[10px] uppercase tracking-widest text-white">Brouillon</span>
-          {anyDirty ? (
-            <span className="border border-error px-3 py-1 font-label-md text-[10px] uppercase tracking-widest text-error">
-              Modifications non enregistrées · {dirtyLabels.join(', ')}
+          {etatAuto.etat === 'echec' ? (
+            <span className="flex flex-wrap items-center gap-2 border border-error px-3 py-1 font-label-md text-[10px] uppercase tracking-widest text-error">
+              Enregistrement automatique impossible · {etatAuto.echecs.join(', ')}
+              <button type="button" onClick={() => void saveAll()} className="underline underline-offset-2">
+                Réessayer
+              </button>
+            </span>
+          ) : etatAuto.etat === 'enregistrement' ? (
+            <span className="font-label-md text-[12px] text-on-surface-variant">Enregistrement…</span>
+          ) : anyDirty ? (
+            <span className="font-label-md text-[12px] text-on-surface-variant" title={dirtyLabels.join(', ')}>
+              Enregistrement dans un instant… · {dirtyLabels.join(', ')}
             </span>
           ) : (
             <span className="font-label-md text-[12px] text-green-700">Tout est enregistré</span>
@@ -1198,14 +1273,6 @@ export function ProjectV2({
               className={`${champ} resize-none overflow-hidden`}
             />
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={saveIntent}
-                disabled={busy || intent.trim() === (project.intent ?? '').trim()}
-                className={btnGhost}
-              >
-                Enregistrer
-              </button>
               {!peutGenererIA ? (
                 <LockedAction label={libelleIA} message={iaMessage} className={btnGhost}>
                   {libelleIA}
@@ -1316,12 +1383,6 @@ export function ProjectV2({
                   className={`${champ} resize-none overflow-hidden`}
                 />
               </div>
-              {((title.trim() || 'Nouveau projet') !== project.title ||
-                description.trim() !== (project.description ?? '').trim()) && (
-                <button type="button" onClick={saveIdentite} disabled={busy} className={btnPrimary}>
-                  Enregistrer le nom et la description
-                </button>
-              )}
             </div>
             {recipe && (
               <TagsEditor recipe={recipe} tags={tags} mutate={mutate} busy={busy} sections={sectionRegistry} peutCreer={peutCreerTag} />
@@ -1346,9 +1407,6 @@ export function ProjectV2({
               setServings={setServings}
               disabled={busy}
             />
-            <button type="button" onClick={saveFormat} disabled={busy} className={btnPrimary}>
-              Enregistrer le format
-            </button>
           </div>,
           undefined,
           // Volet replié : rappel du format enregistré (type, moule, dimensions,

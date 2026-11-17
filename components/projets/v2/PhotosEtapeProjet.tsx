@@ -5,13 +5,16 @@
 // emplacements que la fenêtre d'édition (`StepEditorCard` : 8 photos, comme `/creer`,
 // carrées, 800 px), même dépôt sur le stockage objet (`televerserImage`).
 //
-// Brouillon local, enregistré par un bouton : un dépôt passe par plusieurs
-// changements successifs (photo, original, recadrage), qu'on ne veut pas
-// écrire un par un. L'enregistrement réécrit toutes les photos de l'étape
-// (`step_photos` n'a pas d'identifiant exposé dans la vue) : suppression puis
-// insertion, sous la session du membre (RLS), par le `mutate` du parent.
-import { useState } from 'react';
+// Brouillon local, enregistré AUTOMATIQUEMENT (registre `sections.ts`, JEP-403) :
+// un dépôt passe par plusieurs changements successifs (photo, original,
+// recadrage), que le délai de l'enregistrement automatique regroupe en une
+// seule écriture. Elle réécrit toutes les photos de l'étape (`step_photos` n'a
+// pas d'identifiant exposé dans la vue) : suppression puis insertion, sous la
+// session du membre (RLS), par le `mutate` du parent. Les photos déposées
+// remplacent ensuite les data-URL du brouillon : rien n'est redéposé deux fois.
+import { useRef, useState } from 'react';
 import { useDialog } from '@/components/Dialog';
+import { useRegisterSection, type OptionsSauvegarde, type SectionRegistry } from '@/components/projets/v2/sections';
 import { resizeFilesToDataUrls } from '@/lib/images';
 import { ImageSlot } from '@/components/ImageSlot';
 import { createClient } from '@/lib/supabase/client';
@@ -25,14 +28,28 @@ export function PhotosEtapeProjet({
   stepId,
   photos,
   mutate,
+  sections,
 }: {
   stepId: number;
   photos: Photo[];
-  mutate: (fn: () => PromiseLike<{ error: { message: string } | null }>, opts?: { errorLabel?: string }) => Promise<boolean>;
+  mutate: (
+    fn: () => PromiseLike<{ error: { message: string } | null }>,
+    opts?: { errorLabel?: string; silent?: boolean },
+  ) => Promise<boolean>;
+  sections?: SectionRegistry;
 }) {
   const dialog = useDialog();
   const [brouillon, setBrouillon] = useState<Photo[]>(photos);
-  const modifie = JSON.stringify(brouillon) !== JSON.stringify(photos);
+  const brouillonRef = useRef(brouillon);
+  brouillonRef.current = brouillon;
+  const signature = JSON.stringify(brouillon);
+  const [base, setBase] = useState(() => JSON.stringify(photos));
+  useRegisterSection(sections, `photos-${stepId}`, {
+    label: 'Photos d’étape',
+    dirty: signature !== base,
+    signature,
+    save: ecrire,
+  });
   const maj = (k: number, patch: Partial<Photo>) =>
     setBrouillon((prev) => prev.map((x, m) => (m === k ? { ...x, ...patch } : x)));
 
@@ -50,8 +67,11 @@ export function PhotosEtapeProjet({
     if (surplus > 0) await dialog.alert(`${surplus} photo${surplus > 1 ? 's' : ''} non ajoutée${surplus > 1 ? 's' : ''} : plus assez d'emplacements libres sur cette étape.`);
   }
 
-  async function ecrire(suivantes: Photo[]) {
-    await mutate(
+  async function ecrire(options?: OptionsSauvegarde): Promise<boolean> {
+    const suivantes = brouillon;
+    const sigAppel = signature;
+    let deposees: Photo[] | null = null;
+    const ok = await mutate(
       async () => {
         const supabase = createClient();
         let pretes: Photo[];
@@ -69,6 +89,7 @@ export function PhotosEtapeProjet({
         }
         const { error } = await supabase.from('step_photos').delete().eq('step_id', stepId);
         if (error) return { error };
+        deposees = pretes;
         if (!pretes.length) return { error: null };
         return supabase.from('step_photos').insert(
           pretes.map((p, i) => ({
@@ -80,8 +101,19 @@ export function PhotosEtapeProjet({
           })) as never,
         );
       },
-      { errorLabel: 'Photos de l’étape' },
+      { errorLabel: 'Photos de l’étape', silent: options?.silencieux },
     );
+    if (!ok) return false;
+    // Les photos déposées (adresses du stockage) remplacent les data-URL, si le
+    // brouillon n'a pas bougé pendant l'écriture.
+    const pretes = deposees as Photo[] | null;
+    if (pretes && JSON.stringify(brouillonRef.current) === sigAppel) {
+      setBrouillon(pretes);
+      setBase(JSON.stringify(pretes));
+    } else {
+      setBase(sigAppel);
+    }
+    return true;
   }
 
   return (
@@ -119,24 +151,6 @@ export function PhotosEtapeProjet({
           </div>
         )}
       </div>
-      {modifie && (
-        <div className="mt-3 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => void ecrire(brouillon)}
-            className="rounded-pill bg-primary px-5 py-2.5 font-label-md text-[13px] font-semibold text-on-primary"
-          >
-            Enregistrer les photos
-          </button>
-          <button
-            type="button"
-            onClick={() => setBrouillon(photos)}
-            className="rounded-pill border border-outline-variant px-5 py-2.5 font-label-md text-[13px] font-semibold text-primary"
-          >
-            Annuler
-          </button>
-        </div>
-      )}
     </div>
   );
 }
