@@ -1714,6 +1714,7 @@ function PreparerView({
                   retoursEcart={editeurMonte ? undefined : retoursEcartNode}
                   aideRealise={help ? <HelpBlockSlot blockKey="fournee.deja_realise" help={help} /> : undefined}
                   aideNote={help ? <HelpBlockSlot blockKey="fournee.notes" help={help} /> : undefined}
+                  pointsAVerifier={pointsDe(s.source_step_id)}
                   aideIngredients={help ? <HelpBlockSlot blockKey="fournee.remplacement" help={help} /> : undefined}
                   planAmont={(suivant) => planifierRecalculAmont(batch, s.id, suivant, seuils)}
                   ingredientsEditor={
@@ -1736,7 +1737,6 @@ function PreparerView({
                     ) : undefined
                   }
                 >
-                  <PointsAVerifierFournee texte={pointsDe(s.source_step_id)} />
                   <StepPhotoGallery photos={photos} />
                   {/* Photos de réalisation rattachées à l'étape (JEP-382). */}
                   <PhotosEtape stepId={s.id} />
