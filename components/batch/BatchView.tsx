@@ -2286,7 +2286,7 @@ function PatisserBody({
 function PointsAVerifierFournee({ texte }: { texte: string | null }) {
   if (!texte) return null;
   return (
-    <div className="mx-4 mb-3 rounded-lg border border-amber-600/60 bg-amber-50 px-3 py-2 print:mx-0">
+    <div className="rounded-lg border border-amber-600/60 bg-amber-50 px-3 py-2">
       <p className="mb-1 flex items-center gap-1.5 font-label-md text-[12px] uppercase tracking-widest text-amber-800">
         <span className="material-symbols-outlined text-[18px]">flag</span>
         Points à vérifier
@@ -2459,27 +2459,22 @@ function StepCookCard({
         </span>
       </div>
 
-      {/* JEP-381 : juste sous l'en-tête (titre, temps), visible étape repliée. */}
-      <div className="px-4 pt-3 empty:hidden">
+      {/* Blocs hors du volet, empilés dans UN seul conteneur (`gap-3`) : posés
+          séparément avec leurs propres marges, ils se collaient à l'en-tête et
+          les uns aux autres. Ordre : retours des fournées précédentes (JEP-381),
+          note personnelle (jamais repliée avec l'étape : c'est le seul contenu
+          qui serve encore APRÈS coup, cf. CLAUDE.md), points à vérifier du
+          projet, photos de réalisation (JEP-382, pour photographier une étape
+          déjà cochée). */}
+      <div className="px-4 py-3 flex flex-col gap-3 empty:hidden">
         <DerniereFoisEtape stepId={s.id} />
-      </div>
-
-      {/* Hors du volet, comme en mode Préparer : la note personnelle est le
-          seul contenu de l'étape qui serve encore APRÈS coup, pour ajuster la
-          recette au vu de ce qui s'est passé (cf. CLAUDE.md). La replier avec
-          le reste la rendrait invisible sur toute étape non dépliée. */}
-      {s.user_note && (
-        <div className="mx-4 mb-3 p-3 bg-secondary/5 border-l-4 border-secondary rounded">
-          <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
-          <div className="font-body-md text-[16px] whitespace-pre-line">{s.user_note}</div>
-        </div>
-      )}
-
-      <PointsAVerifierFournee texte={pointsAVerifier} />
-
-      {/* Photos de réalisation de l'étape (JEP-382) : hors du volet, pour
-          photographier une étape déjà cochée (repliée). */}
-      <div className="px-4 pb-3 empty:hidden">
+        {s.user_note && (
+          <div className="p-3 bg-secondary/5 border-l-4 border-secondary rounded">
+            <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary mb-1">Ma note</p>
+            <div className="font-body-md text-[16px] whitespace-pre-line">{s.user_note}</div>
+          </div>
+        )}
+        <PointsAVerifierFournee texte={pointsAVerifier} />
         <PhotosEtape stepId={s.id} />
       </div>
 
