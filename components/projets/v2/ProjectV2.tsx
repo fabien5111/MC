@@ -1046,6 +1046,8 @@ export function ProjectV2({
               key={`${s.id}-${noteDe(s) ?? ''}`}
               valeur={noteDe(s)}
               busy={busy}
+              stepId={s.id}
+              retours={<RetoursEtape stepId={s.id} ajustement={comp ? ajustementEcart(comp, s) : undefined} />}
               onSave={(texte) =>
                 mutate(
                   () => createClient().from('recipe_steps').update({ points_a_verifier: texte } as never).eq('id', s.id),
@@ -1055,7 +1057,7 @@ export function ProjectV2({
             />
           ) : undefined
         }
-        retoursEtape={<RetoursEtape stepId={s.id} ajustement={comp ? ajustementEcart(comp, s) : undefined} />}
+        retoursEtape={comp && notesDisponibles ? undefined : <RetoursEtape stepId={s.id} ajustement={comp ? ajustementEcart(comp, s) : undefined} />}
         retoursIngredient={(it) => <RetoursIngredient stepId={s.id} ingredientId={it.id} />}
         retoursSousEtape={(t) => <RetoursSousEtape stepId={s.id} texte={t} />}
         piedIngredients={comp ? piedTotal(s) : undefined}
