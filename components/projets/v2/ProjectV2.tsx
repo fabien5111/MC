@@ -1015,7 +1015,7 @@ export function ProjectV2({
                   // de marge) y placent le crayon à 17 px du bord, les sous-étapes,
                   // sans cadre, le décalent d'autant.
                   className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary/60 hover:bg-surface-variant hover:text-primary focus-visible:text-primary disabled:opacity-40 ${
-                    zone === 'sous-etape' ? 'ml-[17px]' : ''
+                    zone === 'sous-etape' ? 'ml-1' : ''
                   }`}
                 >
                   <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -1033,7 +1033,7 @@ export function ProjectV2({
               disabled={busy}
               title={`Modifier cette préparation (« ${comp.name} », toutes ses étapes)`}
               aria-label={`Modifier la préparation ${comp.name}`}
-              className="ml-[17px] inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40"
+              className="ml-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-[20px]">edit</span>
             </button>
@@ -1502,7 +1502,7 @@ export function ProjectV2({
                             disabled={busy}
                             title={`Modifier cette préparation (« ${c.name} »), à l’étape en cours de lecture`}
                             aria-label={`Modifier la préparation ${c.name}`}
-                            className="ml-[17px] inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40"
+                            className="ml-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40"
                           >
                             <span className="material-symbols-outlined text-[20px]">edit</span>
                           </button>

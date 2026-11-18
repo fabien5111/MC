@@ -131,7 +131,7 @@ export function RecipeStep({
       )}
       {ings.length > 0 && (
         <details className="group border border-outline-variant mb-2" open>
-          <summary className="flex items-center gap-2 p-4 cursor-pointer bg-surface-container-low list-none">
+          <summary className="flex items-center gap-2 py-4 pl-1 pr-4 cursor-pointer bg-surface-container-low list-none">
             {crayon?.('ingredients')}
             <span className="min-w-0 flex-1 font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
             <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
@@ -183,7 +183,7 @@ export function RecipeStep({
       ) : null}
       {s.tips && (
         <details className="group border border-outline-variant" open>
-          <summary className="flex items-center gap-2 p-4 cursor-pointer bg-surface-container-low list-none">
+          <summary className="flex items-center gap-2 py-4 pl-1 pr-4 cursor-pointer bg-surface-container-low list-none">
             {crayon?.('conseil')}
             <span className="min-w-0 flex-1 font-label-md text-label-md text-primary">Conseils &amp; Astuces de l&apos;étape</span>
             <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
