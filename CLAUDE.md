@@ -1802,7 +1802,7 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
 
 - **Table `batch_photos`** (`batch_id` en cascade, `batch_step_id` en `set null`,
   `user_id` dénormalisé, `url` / `thumb_url`, `legende` ≤ 200, `order_index`).
-  Au plus **6 photos** par fournée (`BATCH_PHOTOS_MAX`, trigger en base). RLS :
+  Au plus **8 photos** par fournée (`BATCH_PHOTOS_MAX`, trigger en base — porté de 6 à 8 le 18/11/2026 : le trigger doit être relevé par `psql`, nœud 216075, sans quoi la 7ᵉ photo est refusée par la base). RLS :
   `batch_photos_proprietaire` (`owns_plan`) + `impersonation_ro_*` + `blocked_user_*`.
   Écrite par le navigateur sous la session (état optimiste du fournisseur, sans
   resynchronisation serveur). **Table absente** (migration pas jouée) : ni bloc, ni
@@ -1819,7 +1819,21 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   téléphone, le sélecteur du système propose appareil photo ou photothèque) dans le
   bloc « Photos de cette fournée » (sous le déroulé
   d'une fournée en cours ; en bas du résumé, mis en avant, sur une fournée close),
-  bouton « Photo » sur chaque étape (Préparer, et Pâtisser hors du volet replié).
+  bouton « Photo » sur chaque étape (Préparer, et Pâtisser hors du volet replié) :
+  un clic déplie le choix « Prendre une photo » (`capture`) / « Choisir dans la
+  galerie » (plusieurs fichiers). En Pâtisser, le bouton est en tête d'étape ET en
+  **fin de bloc** (après « Quantité obtenue »), où s'affichent aussi les vignettes
+  (`PhotosEtape`, prop `seulementBouton` pour la tête).
+- **Photos de mes fournées pour illustrer une étape de recette** (18/11/2026) :
+  bouton « Depuis mes fournées » (`components/recipe/PhotosDeMesFournees.tsx`,
+  `photosDesFournees`, `lib/batch-photos-client.ts`) sur les photos d'étape de
+  `/creer` (recette enregistrée) et de la vue des étapes du mode projet. Liste les
+  photos de MES fournées de la recette (RLS), celles de l'étape correspondante
+  d'abord (`batch_steps.source_step_id`, à défaut même titre normalisé : les id
+  d'étape changent à chaque enregistrement de l'éditeur) ; case pour voir aussi les
+  autres étapes. La photo est rattachée **par son adresse** (`realisations/`, aucune
+  copie) ; la réconciliation la garde tant que `step_photos` la cite. Non proposé
+  dans la fenêtre « Modifier cette préparation » (`StepEditorCard`).
   **Permis sur une fournée close** (indépendant de `readOnly` / `?lecture=1`, comme
   l'avis) ; seule l'impersonation lecture seule bloque. Légende et étape modifiables
   sous chaque vignette, corbeille + confirmation. « Refaire » ne copie pas les

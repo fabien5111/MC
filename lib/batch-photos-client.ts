@@ -10,6 +10,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { isAcceptedImage, isHeic, resizeDataUrlToThumb, resizeImageToDataUrl } from '@/lib/images';
 import { televerserImage } from '@/lib/storage-client';
+import { normSearch } from '@/lib/text-search';
 import { PHOTO_LARGEUR, VIGNETTE_LARGEUR, normaliserLegende, type BatchPhoto } from '@/lib/batch-photos';
 
 // Table absente des types générés : accès non typé.
@@ -54,7 +55,7 @@ export async function ajouterPhotoFournee(p: {
     })
     .select(COLONNES)
     .single();
-  if (error || !data) throw new Error(error?.message?.includes('batch_photos_max') ? 'Six photos au plus par fournée.' : 'La photo n’a pas pu être enregistrée.');
+  if (error || !data) throw new Error(error?.message?.includes('batch_photos_max') ? 'Huit photos au plus par fournée.' : 'La photo n’a pas pu être enregistrée.');
   return data as BatchPhoto;
 }
 
@@ -74,4 +75,63 @@ export async function supprimerPhotoFournee(id: number): Promise<string | null> 
 export async function rattacherEtape(id: number, stepId: number | null): Promise<string | null> {
   const { error } = await table().update({ batch_step_id: stepId }).eq('id', id);
   return error ? error.message : null;
+}
+
+// ── Photos de mes fournées d'une recette (pour illustrer une étape) ────────
+
+export type PhotoDeFournee = {
+  id: number;
+  url: string;
+  thumb_url: string | null;
+  legende: string | null;
+  // Date prévue de la fournée (aaaa-mm-jj), pour s'y retrouver.
+  date: string | null;
+  // Étape de la fournée de la photo, et si elle correspond à l'étape visée.
+  etape: string | null;
+  correspond: boolean;
+};
+
+/**
+ * Photos de réalisation des fournées du membre sur UNE recette (ou un projet,
+ * qui est une recette), sous la session (RLS : ses seules fournées). Une photo
+ * « correspond » à l'étape visée quand l'étape de sa fournée en est la copie
+ * (`source_step_id`) — ou, faute de lien (les id d'étape changent à chaque
+ * enregistrement de l'éditeur), quand les titres sont les mêmes. Les
+ * correspondantes viennent en premier. Lecture seule, best-effort : tables
+ * absentes → liste vide.
+ */
+export async function photosDesFournees(recipeId: string, stepId: number | null, titreEtape: string): Promise<PhotoDeFournee[]> {
+  const db = createClient() as unknown as { from: (t: string) => any };
+  const { data: fournees } = await db.from('batches').select('id, planned_date').eq('recipe_id', recipeId);
+  const lots = (fournees ?? []) as { id: number; planned_date: string | null }[];
+  if (!lots.length) return [];
+  const dates = new Map(lots.map((f) => [f.id, f.planned_date]));
+  const { data: photos } = await db
+    .from('batch_photos')
+    .select('id, batch_id, batch_step_id, url, thumb_url, legende, order_index')
+    .in('batch_id', lots.map((f) => f.id));
+  const lignes = (photos ?? []) as { id: number; batch_id: number; batch_step_id: number | null; url: string; thumb_url: string | null; legende: string | null; order_index: number }[];
+  if (!lignes.length) return [];
+  const idsEtapes = [...new Set(lignes.map((p) => p.batch_step_id).filter((x): x is number => x != null))];
+  const etapes = new Map<number, { source_step_id: number | null; title: string | null }>();
+  if (idsEtapes.length) {
+    const { data } = await db.from('batch_steps').select('id, source_step_id, title').in('id', idsEtapes);
+    for (const e of (data ?? []) as { id: number; source_step_id: number | null; title: string | null }[]) etapes.set(e.id, e);
+  }
+  const cible = normSearch(titreEtape || '');
+  const sortie = lignes.map((p): PhotoDeFournee => {
+    const e = p.batch_step_id != null ? etapes.get(p.batch_step_id) : undefined;
+    const parLien = !!e && stepId != null && e.source_step_id === stepId;
+    const parTitre = !!e && !!cible && normSearch(e.title || '') === cible;
+    return {
+      id: p.id,
+      url: p.url,
+      thumb_url: p.thumb_url,
+      legende: p.legende,
+      date: dates.get(p.batch_id) ?? null,
+      etape: e?.title ?? null,
+      correspond: parLien || parTitre,
+    };
+  });
+  return sortie.sort((a, b) => Number(b.correspond) - Number(a.correspond) || (b.date ?? '').localeCompare(a.date ?? '') || a.id - b.id);
 }

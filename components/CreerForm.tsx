@@ -27,6 +27,7 @@ import { resizeDataUrlToThumb, resizeFilesToDataUrls } from '@/lib/images';
 import { televerserImage } from '@/lib/storage-client';
 import { estDataUrlImage } from '@/lib/storage';
 import { ImageSlot } from '@/components/ImageSlot';
+import { PhotosDeMesFournees } from '@/components/recipe/PhotosDeMesFournees';
 import { DureeInput } from '@/components/DureeInput';
 import { swapAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
@@ -602,6 +603,22 @@ export function CreerForm({
     );
     if (overflow) await dialog.alert(`${overflow} photo${overflow > 1 ? 's' : ''} non ajoutée${overflow > 1 ? 's' : ''} : plus assez d'emplacements libres sur cette étape.`);
   };
+  // Photos de mes fournées rattachées à l'étape : remplissent les emplacements libres.
+  const addUrlsToStep = (si: number, urls: string[]) =>
+    setSteps((s) =>
+      s.map((st, k) => {
+        if (k !== si) return st;
+        const photos = [...st.photos];
+        let ri = 0;
+        for (let i = 0; i < photos.length && ri < urls.length; i++) {
+          if (!photos[i]) {
+            photos[i] = { url: urls[ri], original_url: urls[ri], ai_retouched: false };
+            ri++;
+          }
+        }
+        return { ...st, photos };
+      }),
+    );
   const stepPhotoReorder = usePhotoDragReorder((from, to) => {
     const [siFrom, piFromRaw] = from.split(':');
     const [siTo, piToRaw] = to.split(':');
@@ -2445,6 +2462,17 @@ export function CreerForm({
                     Cliquez ou glissez — plusieurs photos à la fois sont acceptées, elles se répartissent
                     sur les emplacements libres.
                   </p>
+                  {editingId && (
+                    <div className="mb-2">
+                      <PhotosDeMesFournees
+                        recipeId={editingId}
+                        stepId={st.srcId ?? null}
+                        titreEtape={st.title}
+                        places={st.photos.filter((p) => !p).length}
+                        onChoisir={(urls) => addUrlsToStep(si, urls)}
+                      />
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {st.photos.map((p, pi) => {

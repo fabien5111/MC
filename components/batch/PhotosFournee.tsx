@@ -194,6 +194,7 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
   const ctx = usePhotosFournee();
   const camera = useRef<HTMLInputElement>(null);
   const galerie = useRef<HTMLInputElement>(null);
+  const [choix, setChoix] = useState(false);
   if (!ctx || ctx.bloque) return null;
   const plein = placesRestantes(ctx.photos) <= 0;
   const surChoix = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,17 +208,49 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
       <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={surChoix} />
       <input ref={galerie} type="file" accept="image/*" multiple className="hidden" onChange={surChoix} />
       {compact ? (
-        <button
-          type="button"
-          onClick={() => camera.current?.click()}
-          disabled={plein}
-          title={titrePlein ?? 'Prendre une photo de cette étape'}
-          aria-label="Prendre une photo de cette étape"
-          className="inline-flex items-center gap-1 rounded-pill border border-outline-variant px-2.5 py-1 text-[12px] font-label-md text-on-surface-variant hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
-        >
-          <span className="material-symbols-outlined text-[16px]">photo_camera</span>
-          Photo
-        </button>
+        // Un clic sur « Photo » déplie le choix : appareil photo OU galerie
+        // (sur téléphone et tablette ; sur ordinateur, les deux ouvrent les
+        // fichiers du disque).
+        <>
+          <button
+            type="button"
+            onClick={() => setChoix((v) => !v)}
+            disabled={plein}
+            aria-expanded={choix}
+            title={titrePlein ?? 'Ajouter une photo à cette étape'}
+            aria-label="Ajouter une photo à cette étape"
+            className="inline-flex items-center gap-1 rounded-pill border border-outline-variant px-2.5 py-1 text-[12px] font-label-md text-on-surface-variant hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[16px]">photo_camera</span>
+            Photo
+          </button>
+          {choix && !plein && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setChoix(false);
+                  camera.current?.click();
+                }}
+                className="inline-flex items-center gap-1 rounded-pill bg-primary px-2.5 py-1 text-[12px] font-label-md text-on-primary hover:opacity-90"
+              >
+                <span className="material-symbols-outlined text-[16px]">photo_camera</span>
+                Prendre une photo
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setChoix(false);
+                  galerie.current?.click();
+                }}
+                className="inline-flex items-center gap-1 rounded-pill bg-primary px-2.5 py-1 text-[12px] font-label-md text-on-primary hover:opacity-90"
+              >
+                <span className="material-symbols-outlined text-[16px]">photo_library</span>
+                Choisir dans la galerie
+              </button>
+            </>
+          )}
+        </>
       ) : (
         // Un seul bouton : sur un téléphone, le sélecteur du système propose
         // lui-même l'appareil photo ou la photothèque ; sur ordinateur, les
@@ -388,14 +421,25 @@ export function PhotosFourneeBloc({
 
 // ── Sous une étape ────────────────────────────────────────────────────────
 
-export function PhotosEtape({ stepId }: { stepId: number }) {
+export function PhotosEtape({
+  stepId,
+  seulementBouton = false,
+  sansMarge = false,
+}: {
+  stepId: number;
+  // Bouton « Photo » seul (en tête d'étape du mode Pâtisser) : les vignettes
+  // se montrent en fin de bloc.
+  seulementBouton?: boolean;
+  sansMarge?: boolean;
+}) {
   const ctx = usePhotosFournee();
   if (!ctx) return null;
   const photos = photosDeEtape(ctx.photos, stepId);
   if (ctx.bloque && photos.length === 0) return null;
+  if (seulementBouton && ctx.bloque) return null;
   return (
-    <div className="no-print mt-3 flex flex-col gap-2">
-      {photos.length > 0 && (
+    <div className={`no-print ${sansMarge ? '' : 'mt-3'} flex flex-col gap-2`}>
+      {!seulementBouton && photos.length > 0 && (
         <StepPhotoGallery photos={photos} grille="grid-cols-3 sm:grid-cols-4 lg:grid-cols-6" />
       )}
       <div>

@@ -9,7 +9,7 @@
 // la page Confidentialité le dit. Une photo ne devient publique, au sens de
 // « affichée à d'autres », que si le membre la choisit pour son avis.
 
-export const BATCH_PHOTOS_MAX = 6;
+export const BATCH_PHOTOS_MAX = 8;
 export const LEGENDE_MAX = 200;
 
 /** Largeur de la photo pleine et de sa vignette (calculées dans le navigateur au dépôt). */
