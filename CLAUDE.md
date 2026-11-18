@@ -1828,6 +1828,7 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   `ImageSlot` carrés comme dans les recettes** (`PhotosEtape`) : recadrage, zoom,
   rotation (crayon) et suppression ; l'image recadrée, en mémoire, est redéposée avec
   sa vignette (`remplacerPhotoFournee`, ancien objet repris par la réconciliation).
+  Un emplacement vide en fin de grille (et chaque emplacement rempli, `onFilesAdded`) accepte **plusieurs fichiers à la fois** : chacun devient une photo de l'étape.
   Pas d'ouverture automatique du recadrage à l'ajout. Le format carré ne se force
   pas à la prise de vue (appli photo du système) : il se cadre après coup.
 - **Photos de mes fournées pour illustrer une étape de recette** (18/11/2026) :

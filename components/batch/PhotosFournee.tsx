@@ -470,11 +470,23 @@ export function PhotosEtape({
   if (!ctx) return null;
   const photos = photosDeEtape(ctx.photos, stepId);
   if (ctx.bloque && photos.length === 0) return null;
+  // Plusieurs fichiers choisis d'un coup (sélecteur, glisser-déposer, stockage
+  // en ligne) : chacun devient une photo de l'étape, y compris depuis un
+  // emplacement déjà rempli.
+  const ajouterPlusieurs = (fichiers: File[]) => void ctx.ajouter(fichiers, stepId);
+  // Un seul fichier : l'emplacement vide le rend en data-URL (déjà compressée).
+  const ajouterUne = (dataUrl: string) => {
+    void fetch(dataUrl)
+      .then((r) => r.blob())
+      .then((blob) => ctx.ajouter([new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' })], stepId));
+  };
+  const places = placesRestantes(ctx.photos);
   return (
     <div className={`no-print ${sansMarge ? '' : 'mt-3'} flex flex-col gap-2`}>
-      {photos.length > 0 && (
+      {(photos.length > 0 || (!ctx.bloque && places > 0)) && (
         // Même bloc que les photos d'étape d'une recette : emplacements carrés,
-        // recadrage / zoom / rotation (crayon) et suppression par `ImageSlot`.
+        // recadrage / zoom / rotation (crayon) et suppression par `ImageSlot`,
+        // plus un emplacement vide pour en ajouter (plusieurs à la fois).
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {photos.map((p) => (
             <div key={p.id} className="relative aspect-square overflow-hidden border border-dashed border-outline-variant">
@@ -483,6 +495,7 @@ export function PhotosEtape({
                 originalSrc={p.url}
                 onChange={ctx.bloque ? undefined : (url) => void ctx.remplacer(p.id, url)}
                 onClear={ctx.bloque ? undefined : () => void ctx.supprimer(p.id)}
+                onFilesAdded={ctx.bloque ? undefined : ajouterPlusieurs}
                 shape="rect"
                 maxWidth={PHOTO_LARGEUR}
                 aspectRatio={1}
@@ -490,6 +503,20 @@ export function PhotosEtape({
               />
             </div>
           ))}
+          {!ctx.bloque && places > 0 && (
+            <div key={`vide-${photos.length}`} className="relative aspect-square overflow-hidden border border-dashed border-outline-variant">
+              <ImageSlot
+                src={null}
+                onChange={ajouterUne}
+                onFilesAdded={ajouterPlusieurs}
+                shape="rect"
+                maxWidth={PHOTO_LARGEUR}
+                aspectRatio={1}
+                placeholder="Ajouter des photos"
+                className="h-full w-full"
+              />
+            </div>
+          )}
         </div>
       )}
       <div>
