@@ -1469,6 +1469,7 @@ directes :
   replierait au passage.
 - **Le titre de la fournée renvoie à la recette d'origine** (`/recette/<id>`, `BatchView`), seulement si la recette existe encore et reste lisible (`baseRecipe` non nul) : supprimée ou devenue illisible, le titre reste un simple texte, jamais un lien mort. Un projet en cours y est redirigé vers sa page projet par la fiche elle-même.
 - **Cocher une étape depuis son en-tête la replie** (mode Pâtisser, `StepCookCard`) : elle est terminée. Seul ce geste replie — l'auto-coche déclenchée par le dernier ingrédient ou la dernière sous-étape ne referme rien sous le doigt ; la case se décoche sans rouvrir.
+  **L'auto-coche ne fait pas défiler la page** (`toggleStep(…, defiler = false)`, 18/11/2026) : cocher la dernière sous-étape ou le dernier ingrédient coche l'étape mais laisse le membre où il est, pour saisir ses notes ; seule la case de l'en-tête emmène vers l'étape suivante. **Décocher une ligne d'une étape cochée rouvre l'étape** (`rouvrirEtape`, `done` faux) : sous-étapes et ingrédients « sortis » par `done` restent décochables (plus d'aller-retour par l'en-tête) ; une ligne retirée à la main ou une étape remplacée par une recette restent verrouillées. Une étape « déjà réalisée avant la fournée » passe par la même confirmation chiffrée qu'à la décoche de son en-tête.
 - **Le sommaire de la fournée vise SES ancres, pas celles de la fiche.**
   `RecipeToc` vise par défaut `sec-etape-N` (`stepAnchorId`), qui n'existent que
   sur la fiche recette et dans les éditeurs : dans la fournée, les entrées

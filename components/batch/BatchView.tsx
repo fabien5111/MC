@@ -1880,7 +1880,10 @@ function PatisserView({
     }
   }
 
-  async function toggleStep(id: number, checked: boolean) {
+  // `defiler` faux : cocher l'étape ne doit pas emmener la page vers la
+  // suivante (auto-coche du dernier ingrédient / de la dernière sous-étape :
+  // on est encore là pour saisir une note).
+  async function toggleStep(id: number, checked: boolean, defiler = true) {
     // Décocher une étape « déjà réalisée avant la fournée » la rend à la
     // fournée : `fait_en_amont` retombe avec `done` (sinon ses ingrédients
     // resteraient absents de la liste totale alors qu'elle est à refaire), et
@@ -1903,7 +1906,7 @@ function PatisserView({
     }
     updateStep(id, { done: checked, done_at: checked ? new Date().toISOString() : null, ...(enAmont ? { fait_en_amont: false } : {}) });
     if (checked) {
-      setTimeout(() => document.querySelector('[data-step-pending]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      if (defiler) setTimeout(() => document.querySelector('[data-step-pending]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
       const allDone = batch.batch_steps.length > 0 && batch.batch_steps.every((s) => (s.id === id ? true : s.done));
       if (allDone && batch.status === 'planifiee' && !readOnly) proposeFinish();
     }
@@ -2129,7 +2132,7 @@ function PatisserBody({
   hashStepId: number | null;
   conversions: ConversionRef[];
   units: UnitRef[];
-  onToggleStep: (id: number, checked: boolean) => void;
+  onToggleStep: (id: number, checked: boolean, defiler?: boolean) => void;
   onToggleSub: (id: number, checked: boolean) => void;
   onSubComment: (id: number, value: string) => void;
   onToggleIng: (id: number, checked: boolean) => void;
@@ -2324,7 +2327,7 @@ function StepCookCard({
   openedByHash: boolean;
   conversions: ConversionRef[];
   units: UnitRef[];
-  onToggleStep: (id: number, checked: boolean) => void;
+  onToggleStep: (id: number, checked: boolean, defiler?: boolean) => void;
   onToggleSub: (id: number, checked: boolean) => void;
   onSubComment: (id: number, value: string) => void;
   onToggleIng: (id: number, checked: boolean) => void;
@@ -2391,7 +2394,16 @@ function StepCookCard({
     if (activeIngredients.length === 0 && activeSubsteps.length === 0) return;
     const allIngDone = activeIngredients.every((it) => it.done || justDoneIngredientIds.has(it.id));
     const allSubDone = activeSubsteps.every((su) => su.done || justDoneSubstepIds.has(su.id));
-    if (allIngDone && allSubDone) onToggleStep(s.id, true);
+    if (allIngDone && allSubDone) onToggleStep(s.id, true, false);
+  }
+
+  // Étape cochée : ses lignes « sorties » par `done` restent décochables —
+  // décocher l'une rouvre l'étape (`done` faux), sans quoi il fallait décocher
+  // l'étape puis revenir décocher la ligne. Une ligne retirée à la main ou une
+  // étape remplacée par une recette restent verrouillées.
+  const rouvrable = s.done && s.replaced_by_recipe_id == null;
+  function rouvrirEtape() {
+    if (s.done) onToggleStep(s.id, false, false);
   }
 
   // Ce que le volet replié contient, annoncé sur l'en-tête : une étape
@@ -2502,7 +2514,7 @@ function StepCookCard({
             // Un ingrédient éclaté en sous-recette n'entre PAS dans ce cas :
             // sans mention particulière ici, il se coche normalement.
             const excluded = cookExcluded(ing);
-            const locked = readOnly || excluded;
+            const locked = readOnly || (excluded && !(rouvrable && !ing.removed));
             const struck = ing.done || excluded ? ' line-through opacity-50' : '';
             const checkbox = (
               <input
@@ -2513,6 +2525,7 @@ function StepCookCard({
                   const checked = ev.target.checked;
                   onToggleIng(ing.id, checked);
                   if (checked) maybeAutoCheckStep(new Set([ing.id]), new Set());
+                  else rouvrirEtape();
                 }}
                 className={`w-6 h-6 rounded border-outline accent-primary focus:ring-primary shrink-0 ${locked ? '' : 'cursor-pointer'}`}
               />
@@ -2589,7 +2602,7 @@ function StepCookCard({
           {substeps.map((su) => {
             const subIngredients = subIngredientsBySubstep.get(su.id) || [];
             const subExcluded = batchSubstepExcluded(s, su);
-            const subLocked = readOnly || subExcluded;
+            const subLocked = readOnly || (subExcluded && !rouvrable);
             return (
               <li key={su.id} className="flex flex-col gap-1.5">
                 <label className="flex items-start gap-3">
@@ -2603,6 +2616,8 @@ function StepCookCard({
                       if (checked) {
                         subIngredients.forEach((it) => onToggleIng(it.id, true));
                         maybeAutoCheckStep(new Set(subIngredients.map((it) => it.id)), new Set([su.id]));
+                      } else {
+                        rouvrirEtape();
                       }
                     }}
                     className={`w-6 h-6 rounded border-outline accent-primary focus:ring-primary shrink-0 mt-0.5 ${subLocked ? '' : 'cursor-pointer'}`}
