@@ -1823,8 +1823,8 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   **sur appareil tactile seulement** (`useTactile`, `pointer: coarse`), un clic
   déplie le choix « Prendre une photo » (`capture`) / « Choisir dans la galerie »
   (plusieurs fichiers) ; sur ordinateur, `capture` n'a aucun effet : le bouton ouvre
-  directement les fichiers. En Pâtisser, photos + bouton sont en tête d'étape ET en
-  **fin de bloc** (après « Quantité obtenue »). **Les photos d'étape sont des
+  directement les fichiers. En Pâtisser, photos + bouton sont en tête d'étape (**étape dépliée seulement**) ET en
+  **fin de bloc** (après « Quantité obtenue »), seul endroit quand l'étape est repliée. **Les photos d'étape sont des
   `ImageSlot` carrés comme dans les recettes** (`PhotosEtape`) : recadrage, zoom,
   rotation (crayon) et suppression ; l'image recadrée, en mémoire, est redéposée avec
   sa vignette (`remplacerPhotoFournee`, ancien objet repris par la réconciliation).
