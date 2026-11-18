@@ -334,7 +334,7 @@ export function PlanningDayView({
                           }
                           className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 disabled:cursor-not-allowed"
                         />
-                        <Link href={hrefPreparer} className="flex items-baseline gap-1.5 hover:underline">
+                        <Link href={hrefPatisser} title="Ouvrir cette étape en mode Pâtisser" className="flex items-baseline gap-1.5 hover:underline">
                           {numberSpan}
                           {titleSpan}
                         </Link>
