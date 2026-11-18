@@ -1,10 +1,13 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 // Flèches « avant / après » posées sur une photo d'une grille réordonnable
 // (étapes d'un projet, d'une fournée) : le glisser-déposer ne se fait pas au
 // doigt, ces flèches sont le geste du téléphone — et du clavier. Placées au
 // bas de l'emplacement, à côté de l'`ImageSlot` (jamais dedans : un clic ne
-// doit pas ouvrir le sélecteur de fichiers).
+// doit pas ouvrir le sélecteur de fichiers). Affichées sur appareil tactile
+// seulement : à la souris, le glisser-déposer suffit, comme dans `/creer`.
 export function BoutonsOrdrePhoto({
   index,
   total,
@@ -15,7 +18,15 @@ export function BoutonsOrdrePhoto({
   /** -1 : vers le début, +1 : vers la fin. */
   onDeplacer: (delta: -1 | 1) => void;
 }) {
-  if (total < 2) return null;
+  const [tactile, setTactile] = useState(false);
+  useEffect(() => {
+    try {
+      setTactile(window.matchMedia('(pointer: coarse)').matches);
+    } catch {
+      setTactile(false);
+    }
+  }, []);
+  if (total < 2 || !tactile) return null;
   const classes =
     'flex h-8 w-8 items-center justify-center rounded-full bg-surface/90 text-on-surface shadow-md hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-30 disabled:hover:bg-surface/90 disabled:hover:text-on-surface';
   return (
