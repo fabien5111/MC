@@ -86,10 +86,13 @@ export function RecipeStep({
       className={`${decalage} flex flex-col gap-6${last ? '' : ' pb-14 border-b-2 border-outline-variant'}`}
     >
       <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">
-        <h4 className="font-headline-md text-headline-md text-primary">
-          {i + 1}. {s.title || 'Étape ' + (i + 1)}
-        </h4>
-        {action}
+        {/* Crayon en début de ligne (JEP-403) : à gauche du titre qu'il modifie. */}
+        <div className="flex min-w-0 items-center gap-1">
+          {action}
+          <h4 className="font-headline-md text-headline-md text-primary">
+            {i + 1}. {s.title || 'Étape ' + (i + 1)}
+          </h4>
+        </div>
         <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
           {/* JEP-19 : picto seul, l'explication est dans l'infobulle (même
               repère que la carte recette). */}
@@ -128,9 +131,9 @@ export function RecipeStep({
       )}
       {ings.length > 0 && (
         <details className="group border border-outline-variant mb-2" open>
-          <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-            <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
+          <summary className="flex items-center gap-2 p-4 cursor-pointer bg-surface-container-low list-none">
             {crayon?.('ingredients')}
+            <span className="min-w-0 flex-1 font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
             <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
           </summary>
           <div className="p-4 bg-white">
@@ -163,10 +166,10 @@ export function RecipeStep({
         <ul className="flex flex-col gap-3 font-body-lg text-body-md leading-relaxed text-on-surface">
           {s.sous_etapes.map((t, k) => (
             <li key={k} className="flex flex-col">
-              <div className="flex gap-3">
+              <div className="flex items-start gap-3">
+                {crayon?.('sous-etape')}
                 <span className="text-primary shrink-0">–</span>
                 <span className="min-w-0 flex-1">{t}</span>
-                {crayon?.('sous-etape')}
               </div>
               {retoursSousEtape?.(t)}
             </li>
@@ -174,15 +177,15 @@ export function RecipeStep({
         </ul>
       ) : s.description ? (
         <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1 font-body-lg text-body-md leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
           {crayon?.('sous-etape')}
+          <div className="min-w-0 flex-1 font-body-lg text-body-md leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
         </div>
       ) : null}
       {s.tips && (
         <details className="group border border-outline-variant" open>
-          <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-            <span className="font-label-md text-label-md text-primary">Conseils &amp; Astuces de l&apos;étape</span>
+          <summary className="flex items-center gap-2 p-4 cursor-pointer bg-surface-container-low list-none">
             {crayon?.('conseil')}
+            <span className="min-w-0 flex-1 font-label-md text-label-md text-primary">Conseils &amp; Astuces de l&apos;étape</span>
             <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
           </summary>
           <div className="p-4 bg-white font-body-md text-body-md italic whitespace-pre-line">{s.tips}</div>

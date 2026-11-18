@@ -1010,12 +1010,12 @@ export function ProjectV2({
                       : `Modifier ${zone === 'conseil' ? 'les conseils' : 'les ingrédients'} de cette étape (ouvre « ${comp.name} »)`
                   }
                   aria-label={`Modifier l’étape ${s.title || ''} de ${comp.name}`}
-                  // Un seul axe vertical pour tous les crayons (JEP-403) : à gauche des
-                  // chevrons des volets d'ingrédients et de conseils (cadre 1 px +
-                  // 16 px de marge + chevron 24 px + 8 px), soit 49 px de plus que
-                  // le bord pour les lignes qui n'ont pas de chevron.
+                  // Un seul axe vertical pour tous les crayons (JEP-403), en DÉBUT de
+                  // ligne : les volets d'ingrédients et de conseils (cadre 1 px + 16 px
+                  // de marge) y placent le crayon à 17 px du bord, les sous-étapes,
+                  // sans cadre, le décalent d'autant.
                   className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary/60 hover:bg-surface-variant hover:text-primary focus-visible:text-primary disabled:opacity-40 ${
-                    zone === 'sous-etape' ? 'mr-[49px]' : 'ml-auto mr-2'
+                    zone === 'sous-etape' ? 'ml-[17px]' : ''
                   }`}
                 >
                   <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -1033,7 +1033,7 @@ export function ProjectV2({
               disabled={busy}
               title={`Modifier cette préparation (« ${comp.name} », toutes ses étapes)`}
               aria-label={`Modifier la préparation ${comp.name}`}
-              className="order-last ml-auto mr-[49px] inline-flex h-8 w-8 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40"
+              className="ml-[17px] inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-[20px]">edit</span>
             </button>
@@ -1491,7 +1491,21 @@ export function ProjectV2({
                         {/* Bandeau collant (JEP-403) : sous l'en-tête du site, il reste
                             à l'écran tant qu'on lit les étapes de cette préparation,
                             avec son nom et le crayon — plus besoin de remonter. */}
-                        <summary className="sticky top-[var(--site-header-h,72px)] z-30 flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl bg-surface-container-lowest px-4 py-3 group-open:rounded-b-none group-open:border-b group-open:border-dashed group-open:border-secondary/40">
+                        <summary className="sticky top-[var(--site-header-h,72px)] z-30 flex cursor-pointer list-none items-center gap-3 rounded-xl bg-surface-container-lowest px-4 py-3 md:px-6 group-open:rounded-b-none group-open:border-b group-open:border-dashed group-open:border-secondary/40">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              modifierPreparation(c, rangEnVue(c));
+                            }}
+                            disabled={busy}
+                            title={`Modifier cette préparation (« ${c.name} »), à l’étape en cours de lecture`}
+                            aria-label={`Modifier la préparation ${c.name}`}
+                            className="ml-[17px] inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">edit</span>
+                          </button>
                           <span className="min-w-0 flex-1 font-label-md text-[12px] uppercase tracking-widest text-secondary">
                             <b className="mr-2 truncate font-body-md text-[14px] font-semibold normal-case tracking-normal text-primary">{c.name}</b>
                             Étapes · {own.length}
@@ -1505,20 +1519,6 @@ export function ProjectV2({
                               }))}
                             />
                           </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              modifierPreparation(c, rangEnVue(c));
-                            }}
-                            disabled={busy}
-                            title={`Modifier cette préparation (« ${c.name} »), à l’étape en cours de lecture`}
-                            aria-label={`Modifier la préparation ${c.name}`}
-                            className="mr-[13px] inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40 md:mr-[21px]"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">edit</span>
-                          </button>
                           <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
                         </summary>
                         <div className="px-4 py-6 md:px-6">
