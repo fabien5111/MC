@@ -2475,8 +2475,8 @@ function StepCookCard({
           </div>
         )}
         <PointsAVerifierFournee texte={pointsAVerifier} />
-        {/* Bouton seul en tête ; les vignettes et un second bouton en fin de bloc. */}
-        <PhotosEtape stepId={s.id} seulementBouton sansMarge />
+        {/* Photos + bouton en tête, et de nouveau en fin de bloc. */}
+        <PhotosEtape stepId={s.id} sansMarge />
       </div>
 
       {/* Toujours monté : une étape repliée doit quand même sortir à l'impression

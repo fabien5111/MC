@@ -20,10 +20,12 @@ import { DepuisStockage } from '@/components/stockage/DepuisStockage';
 import { BoutonColler } from '@/components/BoutonColler';
 import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
+import { ImageSlot } from '@/components/ImageSlot';
 import { trackEvent } from '@/lib/analytics';
 import {
   BATCH_PHOTOS_MAX,
   LEGENDE_MAX,
+  PHOTO_LARGEUR,
   photosDeEtape,
   placesRestantes,
   prochainOrdre,
@@ -35,6 +37,7 @@ import {
   ajouterPhotoFournee,
   modifierLegende,
   rattacherEtape,
+  remplacerPhotoFournee,
   supprimerPhotoFournee,
 } from '@/lib/batch-photos-client';
 
@@ -46,6 +49,8 @@ type Ctx = {
   // Rend `true` quand la légende a été écrite (faux : inchangée, refusée ou en échec).
   legender: (id: number, legende: string) => Promise<boolean>;
   rattacher: (id: number, stepId: number | null) => Promise<void>;
+  // Remplace l'image (recadrage, rotation) par une data-URL fraîche.
+  remplacer: (id: number, dataUrl: string) => Promise<void>;
 };
 
 const PhotosCtx = createContext<Ctx | null>(null);
@@ -168,9 +173,26 @@ export function PhotosFourneeProvider({
     [dialog, writeGuard],
   );
 
+  const remplacer = useCallback(
+    async (id: number, dataUrl: string) => {
+      if (!writeGuard('Photo de réalisation')) return;
+      setBusy(true);
+      try {
+        const { url, thumb_url } = await remplacerPhotoFournee(id, dataUrl);
+        courantes.current = courantes.current.map((p) => (p.id === id ? { ...p, url, thumb_url } : p));
+        setPhotos(courantes.current);
+      } catch (e) {
+        await dialog.alert((e as Error).message);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [dialog, writeGuard],
+  );
+
   const valeur = useMemo<Ctx>(
-    () => ({ photos, bloque, ajouter, supprimer, legender, rattacher }),
-    [photos, bloque, ajouter, supprimer, legender, rattacher],
+    () => ({ photos, bloque, ajouter, supprimer, legender, rattacher, remplacer }),
+    [photos, bloque, ajouter, supprimer, legender, rattacher, remplacer],
   );
 
   if (!initiales?.disponible) return <>{children}</>;
@@ -190,11 +212,27 @@ export function PhotosFourneeProvider({
  * sur ordinateur, les fichiers du disque. En version compacte (sous une étape),
  * le bouton « Photo » ouvre directement l'appareil photo (`capture`).
  */
+// Appareil tactile (téléphone, tablette) : seul cas où « Prendre une photo »
+// (`capture`) a un sens — sur ordinateur, l'attribut est ignoré et le bouton
+// ouvrirait simplement les fichiers, comme « Choisir ».
+function useTactile(): boolean {
+  const [tactile, setTactile] = useState(false);
+  useEffect(() => {
+    try {
+      setTactile(window.matchMedia('(pointer: coarse)').matches);
+    } catch {
+      setTactile(false);
+    }
+  }, []);
+  return tactile;
+}
+
 export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | null; compact?: boolean }) {
   const ctx = usePhotosFournee();
   const camera = useRef<HTMLInputElement>(null);
   const galerie = useRef<HTMLInputElement>(null);
   const [choix, setChoix] = useState(false);
+  const tactile = useTactile();
   if (!ctx || ctx.bloque) return null;
   const plein = placesRestantes(ctx.photos) <= 0;
   const surChoix = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -214,9 +252,9 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
         <>
           <button
             type="button"
-            onClick={() => setChoix((v) => !v)}
+            onClick={() => (tactile ? setChoix((v) => !v) : galerie.current?.click())}
             disabled={plein}
-            aria-expanded={choix}
+            aria-expanded={tactile ? choix : undefined}
             title={titrePlein ?? 'Ajouter une photo à cette étape'}
             aria-label="Ajouter une photo à cette étape"
             className="inline-flex items-center gap-1 rounded-pill border border-outline-variant px-2.5 py-1 text-[12px] font-label-md text-on-surface-variant hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
@@ -224,7 +262,7 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
             <span className="material-symbols-outlined text-[16px]">photo_camera</span>
             Photo
           </button>
-          {choix && !plein && (
+          {tactile && choix && !plein && (
             <>
               <button
                 type="button"
@@ -423,24 +461,36 @@ export function PhotosFourneeBloc({
 
 export function PhotosEtape({
   stepId,
-  seulementBouton = false,
   sansMarge = false,
 }: {
   stepId: number;
-  // Bouton « Photo » seul (en tête d'étape du mode Pâtisser) : les vignettes
-  // se montrent en fin de bloc.
-  seulementBouton?: boolean;
   sansMarge?: boolean;
 }) {
   const ctx = usePhotosFournee();
   if (!ctx) return null;
   const photos = photosDeEtape(ctx.photos, stepId);
   if (ctx.bloque && photos.length === 0) return null;
-  if (seulementBouton && ctx.bloque) return null;
   return (
     <div className={`no-print ${sansMarge ? '' : 'mt-3'} flex flex-col gap-2`}>
-      {!seulementBouton && photos.length > 0 && (
-        <StepPhotoGallery photos={photos} grille="grid-cols-3 sm:grid-cols-4 lg:grid-cols-6" />
+      {photos.length > 0 && (
+        // Même bloc que les photos d'étape d'une recette : emplacements carrés,
+        // recadrage / zoom / rotation (crayon) et suppression par `ImageSlot`.
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {photos.map((p) => (
+            <div key={p.id} className="relative aspect-square overflow-hidden border border-dashed border-outline-variant">
+              <ImageSlot
+                src={p.url}
+                originalSrc={p.url}
+                onChange={ctx.bloque ? undefined : (url) => void ctx.remplacer(p.id, url)}
+                onClear={ctx.bloque ? undefined : () => void ctx.supprimer(p.id)}
+                shape="rect"
+                maxWidth={PHOTO_LARGEUR}
+                aspectRatio={1}
+                className="h-full w-full"
+              />
+            </div>
+          ))}
+        </div>
       )}
       <div>
         <BoutonsPhoto stepId={stepId} compact />

@@ -1820,10 +1820,16 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   bloc « Photos de cette fournée » (sous le déroulé
   d'une fournée en cours ; en bas du résumé, mis en avant, sur une fournée close),
   bouton « Photo » sur chaque étape (Préparer, et Pâtisser hors du volet replié) :
-  un clic déplie le choix « Prendre une photo » (`capture`) / « Choisir dans la
-  galerie » (plusieurs fichiers). En Pâtisser, le bouton est en tête d'étape ET en
-  **fin de bloc** (après « Quantité obtenue »), où s'affichent aussi les vignettes
-  (`PhotosEtape`, prop `seulementBouton` pour la tête).
+  **sur appareil tactile seulement** (`useTactile`, `pointer: coarse`), un clic
+  déplie le choix « Prendre une photo » (`capture`) / « Choisir dans la galerie »
+  (plusieurs fichiers) ; sur ordinateur, `capture` n'a aucun effet : le bouton ouvre
+  directement les fichiers. En Pâtisser, photos + bouton sont en tête d'étape ET en
+  **fin de bloc** (après « Quantité obtenue »). **Les photos d'étape sont des
+  `ImageSlot` carrés comme dans les recettes** (`PhotosEtape`) : recadrage, zoom,
+  rotation (crayon) et suppression ; l'image recadrée, en mémoire, est redéposée avec
+  sa vignette (`remplacerPhotoFournee`, ancien objet repris par la réconciliation).
+  Pas d'ouverture automatique du recadrage à l'ajout. Le format carré ne se force
+  pas à la prise de vue (appli photo du système) : il se cadre après coup.
 - **Photos de mes fournées pour illustrer une étape de recette** (18/11/2026) :
   bouton « Depuis mes fournées » (`components/recipe/PhotosDeMesFournees.tsx`,
   `photosDesFournees`, `lib/batch-photos-client.ts`) sur les photos d'étape de

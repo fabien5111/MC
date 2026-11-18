@@ -59,6 +59,20 @@ export async function ajouterPhotoFournee(p: {
   return data as BatchPhoto;
 }
 
+/**
+ * Remplace l'image d'une photo après un recadrage / une rotation (éditeur
+ * partagé avec les recettes) : la nouvelle photo, encore en mémoire (data-URL),
+ * est déposée avec sa vignette — aucune relecture d'un objet sur Swift. L'ancien
+ * objet est repris par la réconciliation. Lève une erreur au message lisible.
+ */
+export async function remplacerPhotoFournee(id: number, dataUrl: string): Promise<{ url: string; thumb_url: string }> {
+  const vignette = await resizeDataUrlToThumb(dataUrl, VIGNETTE_LARGEUR, 'image/jpeg', 0.78);
+  const [url, thumb] = await Promise.all([televerserImage('realisation', dataUrl), televerserImage('realisation', vignette)]);
+  const { error } = await table().update({ url, thumb_url: thumb }).eq('id', id);
+  if (error || !url || !thumb) throw new Error('La photo n’a pas pu être enregistrée.');
+  return { url, thumb_url: thumb };
+}
+
 /** Renvoie un message d'erreur, `null` si tout va bien. */
 export async function modifierLegende(id: number, legende: string): Promise<string | null> {
   const { error } = await table().update({ legende: normaliserLegende(legende) }).eq('id', id);
