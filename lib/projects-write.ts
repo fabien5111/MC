@@ -19,7 +19,7 @@
 //     rattachement : seul un déplacement ou une suppression de composant
 //     redistribue les blocs (`resequenceProjectSteps`).
 import type { createClient } from '@/lib/supabase/client';
-import { baseDeLigne, utensilsToAdd, type ComponentStepDraft, type ComponentUtensil } from '@/lib/projects';
+import { ROLE_ASSEMBLAGE, baseDeLigne, empreinteEtapes, utensilsToAdd, type ComponentStepDraft, type ComponentUtensil } from '@/lib/projects';
 import { fixOeufLigature } from '@/lib/text';
 import { noteAvance } from '@/lib/recipe-view';
 
@@ -153,6 +153,17 @@ export async function readComponentDraft(
     ingByGroup.set(it.group_id, l);
   }
 
+  // Notes « points à vérifier » (JEP-403) : colonne posée à la main, lue à
+  // part pour qu'une base sans elle continue de fonctionner.
+  const notes = new Map<number, string | null>();
+  const { data: noteRows, error: noteErr } = await supabase
+    .from('recipe_steps')
+    .select('id, points_a_verifier' as never)
+    .in('id', mine.map((s) => s.id));
+  if (!noteErr) {
+    for (const n of (noteRows ?? []) as unknown as { id: number; points_a_verifier: string | null }[]) notes.set(n.id, n.points_a_verifier);
+  }
+
   return mine.map((s) => {
     const d = details.get(s.id);
     const groupe = groupByOrder.get(s.order_index ?? -1);
@@ -188,6 +199,7 @@ export async function readComponentDraft(
       photos: [...(d?.step_photos ?? [])]
         .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
         .map((p) => ({ url: p.url, original_url: p.original_url, ai_retouched: p.ai_retouched })),
+      points_a_verifier: notes.get(s.id) ?? null,
       etape_id: s.id,
     };
   });
@@ -240,6 +252,16 @@ export async function writeComponentContent(
       .select('id')
       .single();
     if (stepErr || !stepRow) throw stepErr ?? new Error('Étape refusée');
+
+    // Note « points à vérifier » (JEP-403) : à part, échec ignoré (colonne
+    // posée à la main, peut manquer).
+    const note = (st.points_a_verifier ?? '').trim();
+    if (note) {
+      await supabase
+        .from('recipe_steps')
+        .update({ points_a_verifier: note } as never)
+        .eq('id', (stepRow as { id: number }).id);
+    }
 
     // Photos : déjà déposées sur le stockage par l'écran appelant — ce module
     // sert aussi côté serveur, il n'a pas à téléverser quoi que ce soit.
@@ -396,13 +418,24 @@ export async function resequenceProjectSteps(supabase: Supabase, recipeId: strin
 // de la gélatine comme de la crème.
 export async function applyComponentScale(
   supabase: Supabase,
-  lines: { id: number; quantity?: string | null; baseQuantity: number | null; scalingMode: string | null; unit?: string | null }[],
+  lines: {
+    id: number;
+    quantity?: string | null;
+    baseQuantity: number | null;
+    scalingMode: string | null;
+    unit?: string | null;
+    quantityManual?: boolean;
+  }[],
   factor: number,
   moldCoefs: { surface: number; volume: number } | null,
   coefPourMode: (mode: string | null, factor: number, moldCoefs: { surface: number; volume: number } | null) => number,
   texte: (base: number | null, coef: number, unit?: string | null) => string | null,
+  // Lignes retouchées à la main que le membre a choisi de ne PAS recalculer
+  // (JEP-403) : elles gardent leur quantité, leur base et leur drapeau.
+  ignorer: ReadonlySet<number> = new Set(),
 ) {
   for (const l of lines) {
+    if (ignorer.has(l.id)) continue;
     // Ligne sans base (retouchée à la main, ou préparation copiée avant que
     // `base_quantity` soit écrite) : on en prend la quantité affichée comme base — sans quoi « Appliquer » enregistrait le
     // coefficient sans rien changer, en silence. La ligne suit ensuite les
@@ -411,23 +444,45 @@ export async function applyComponentScale(
     if (base == null) continue;
     const coef = coefPourMode(l.scalingMode, factor, moldCoefs);
     const q = texte(base, coef, l.unit);
+    // Une ligne marquée manuelle que le membre inclut redevient une ligne
+    // ordinaire. Le drapeau n'est écrit que si elle le portait : la colonne
+    // existe alors forcément (migration pas jouée = jamais de drapeau).
+    const maj: Record<string, unknown> = { quantity: q, base_quantity: base };
+    if (l.quantityManual) maj.quantity_manual = false;
     const { error } = await supabase
       .from('ingredients')
-      .update({ quantity: q, base_quantity: base } as never)
+      .update(maj as never)
       .eq('id', l.id);
     if (error) throw error;
   }
 }
 
 // Modification d'UNE ligne à la main (spec §6.3) : les autres ne bougent pas,
-// et cette ligne sort du recalcul global — `base_quantity` est effacée, ce qui
-// la rend invisible à `applyComponentScale`. Sans ça, le prochain changement
-// de coefficient écraserait silencieusement la valeur voulue par
-// l'utilisateur.
-export async function setLineQuantity(supabase: Supabase, lineId: number, quantity: string | null) {
+// et cette ligne sort du recalcul global. Depuis JEP-403 la quantité de BASE est
+// conservée (on veut garder l'origine sous les yeux) et la ligne est marquée par
+// `quantity_manual` ; `applyComponentScale` ne la touche que si le membre
+// l'inclut explicitement. Sans le marquage, le prochain changement de
+// coefficient écraserait silencieusement la valeur voulue.
+//
+// `baseSiAbsente` : origine à enregistrer quand la ligne n'en a pas encore (une
+// préparation jamais ajustée : la quantité d'avant la retouche EST l'origine).
+//
+// Colonne `quantity_manual` absente (migration pas jouée) : repli sur l'ancien
+// mécanisme, base effacée — rien ne casse.
+export async function setLineQuantity(
+  supabase: Supabase,
+  lineId: number,
+  quantity: string | null,
+  baseSiAbsente: number | null = null,
+) {
+  const q = quantity && quantity.trim() ? quantity.trim() : null;
+  const maj: Record<string, unknown> = { quantity: q, quantity_manual: true };
+  if (baseSiAbsente != null) maj.base_quantity = baseSiAbsente;
+  const avecDrapeau = await supabase.from('ingredients').update(maj as never).eq('id', lineId);
+  if (!avecDrapeau.error) return;
   const { error } = await supabase
     .from('ingredients')
-    .update({ quantity: quantity && quantity.trim() ? quantity.trim() : null, base_quantity: null } as never)
+    .update({ quantity: q, base_quantity: null } as never)
     .eq('id', lineId);
   if (error) throw error;
 }
@@ -492,6 +547,10 @@ export async function writeAssemblyStep(
     const { error } = await supabase.from('recipe_steps').delete().in('id', anciennes.map((s) => s.id));
     if (error) throw error;
   }
+
+  // Le membre a écrit sa propre étape d'assemblage (JEP-403) : la section
+  // automatique ferait doublon.
+  if (components.some((c) => c.role === ROLE_ASSEMBLAGE)) return;
 
   const description = components.map((c, i) => `${i + 1}. ${c.name}${c.role ? ` (${c.role})` : ''}`).join('\n');
   const order = components.length * BLOCK;
@@ -586,4 +645,20 @@ export async function resetComponent(supabase: Supabase, recipeId: string, compo
     ({ error } = await supabase.from('recipe_project_components').update(base as never).eq('id', componentId));
   }
   if (error) throw error;
+}
+
+// Empreinte des étapes d'une préparation TELLES QU'ENREGISTRÉES (JEP-403) :
+// relue en base après l'écriture, pour qu'elle soit exactement celle que la
+// page calcule (`empreinteEtapes` sur `recipe_steps`), sans dépendre des
+// normalisations faites à l'écriture. Sert à garder « Étapes relues » après
+// une modification, quand le membre le demande.
+export async function cleEtapesComposant(supabase: Supabase, recipeId: string, componentId: number): Promise<string> {
+  const { data, error } = await supabase
+    .from('recipe_steps')
+    .select('order_index, title, description, sous_etapes, prep_time, cook_time, wait_time, cook_temp, tips, day_offset')
+    .eq('recipe_id', recipeId)
+    .eq('component_id', componentId)
+    .order('order_index', { ascending: true });
+  if (error) throw error;
+  return empreinteEtapes((data ?? []) as unknown as Parameters<typeof empreinteEtapes>[0]);
 }

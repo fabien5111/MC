@@ -21,7 +21,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
 import { INTENT_MAX, normaliseStructure, type ProposedStructure } from '@/lib/ai/project-structure';
-import { MAX_COMPONENTS, projectFormatPayload } from '@/lib/projects';
+import { MAX_COMPONENTS, estimerParts, projectFormatPayload } from '@/lib/projects';
 import { verifierAcces } from '@/lib/quota-route';
 import { refusSiCompteBloque } from '@/lib/moderation-route';
 
@@ -73,12 +73,17 @@ export async function POST(req: Request) {
   // Titre provisoire : `recipes.title` est obligatoire, et l'intention n'est
   // pas un titre. Il est remplacé par celui que l'IA propose, ou par celui
   // que l'utilisateur saisit à l'étape 2.
+  // Parts absentes de la proposition : estimées d'après le moule (JEP-403).
+  const partsProposees =
+    proposition?.format
+      ? proposition.servings || estimerParts(proposition.format, proposition.dims ?? {}, proposition.count ?? 1)
+      : null;
   const format =
-    proposition?.format && proposition.servings
+    proposition?.format && partsProposees
       ? projectFormatPayload({
           format: proposition.format,
           title: proposition.title ?? 'Nouveau projet',
-          servings: proposition.servings,
+          servings: partsProposees,
           dims: proposition.dims,
           count: proposition.count,
           moldTypeId: null,

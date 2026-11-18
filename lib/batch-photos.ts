@@ -9,7 +9,7 @@
 // la page Confidentialité le dit. Une photo ne devient publique, au sens de
 // « affichée à d'autres », que si le membre la choisit pour son avis.
 
-export const BATCH_PHOTOS_MAX = 6;
+export const BATCH_PHOTOS_MAX = 8;
 export const LEGENDE_MAX = 200;
 
 /** Largeur de la photo pleine et de sa vignette (calculées dans le navigateur au dépôt). */
@@ -62,6 +62,36 @@ export function photosDeEtape<T extends Pick<BatchPhoto, 'batch_step_id' | 'orde
   stepId: number,
 ): T[] {
   return trierPhotos(photos.filter((p) => p.batch_step_id === stepId));
+}
+
+/**
+ * Nouveaux `order_index` après l'échange de deux photos d'une même étape
+ * (glisser-déposer ou flèches). Seules les photos dont l'ordre change sont
+ * rendues. Les ordres existants sont réutilisés dans leur ordre croissant ; s'ils
+ * ne sont pas tous distincts (dépôts simultanés), on renumérote à partir du plus
+ * petit pour que l'échange soit visible. Rien si l'une des photos manque ou si
+ * elles ne sont pas de la même étape.
+ */
+export function ordresApresEchange(
+  photos: readonly Pick<BatchPhoto, 'id' | 'batch_step_id' | 'order_index' | 'created_at'>[],
+  idA: number,
+  idB: number,
+): { id: number; ordre: number }[] {
+  const a = photos.find((p) => p.id === idA);
+  const b = photos.find((p) => p.id === idB);
+  if (!a || !b || idA === idB || a.batch_step_id !== b.batch_step_id) return [];
+  const liste = trierPhotos(photos.filter((p) => p.batch_step_id === a.batch_step_id));
+  const i = liste.findIndex((p) => p.id === idA);
+  const j = liste.findIndex((p) => p.id === idB);
+  const apres = [...liste];
+  [apres[i], apres[j]] = [apres[j], apres[i]];
+  const valeurs = liste.map((p) => p.order_index);
+  const distinctes = new Set(valeurs).size === valeurs.length;
+  const ordres = distinctes ? valeurs : valeurs.map((_, n) => valeurs[0] + n);
+  return apres
+    .map((p, n) => ({ id: p.id, ordre: ordres[n], avant: p.order_index }))
+    .filter((x) => x.ordre !== x.avant)
+    .map(({ id, ordre }) => ({ id, ordre }));
 }
 
 /** Une photo de galerie (« Mes réalisations »), avec la fournée qui la porte. */

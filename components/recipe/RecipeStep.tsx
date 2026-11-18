@@ -23,9 +23,14 @@ export function RecipeStep({
   last,
   action,
   ajustement,
+  note,
+  piedIngredients,
+  photosEdition,
   retoursEtape,
   retoursIngredient,
   retoursSousEtape,
+  crayon,
+  decalage = 'scroll-mt-28',
 }: {
   step: RecipeStepView;
   index: number;
@@ -41,11 +46,26 @@ export function RecipeStep({
   // Réglage facultatif posé sous le titre (mode projet : « Ajustement des
   // quantités de cette étape »). Absent, l'étape se rend comme sur la fiche.
   ajustement?: ReactNode;
+  // Note facultative sous le titre (mode projet : « points à vérifier »,
+  // JEP-403). Absente, l'étape se rend comme sur la fiche.
+  note?: ReactNode;
+  // Contenu facultatif sous la liste des ingrédients de l'étape (mode projet :
+  // case et ligne « Total de l'étape », JEP-403).
+  piedIngredients?: ReactNode;
+  // Photos éditables à la place de la galerie (mode projet, JEP-403).
+  photosEdition?: ReactNode;
   // Retours de mes fournées (JEP-381) : posés sous la ligne qu'ils concernent.
   // Absents, l'étape se rend comme sur la fiche recette.
   retoursEtape?: ReactNode;
   retoursIngredient?: (it: IngredientView) => ReactNode;
   retoursSousEtape?: (texte: string) => ReactNode;
+  // Crayon « modifier » posé sur la ligne qu'on est en train de lire (mode
+  // projet, JEP-403) : sous-étape ou description, conseils, ingrédients. Absent,
+  // l'étape se rend comme sur la fiche recette.
+  crayon?: (zone: 'sous-etape' | 'conseil' | 'ingredients') => ReactNode;
+  // Décalage de défilement de l'ancre (le mode projet porte un bandeau collant
+  // sous l'en-tête du site).
+  decalage?: string;
 }) {
   const ings = [...ingredients].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const photos = [...(s.step_photos || [])].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -63,13 +83,16 @@ export function RecipeStep({
   return (
     <div
       id={anchorId}
-      className={`scroll-mt-28 flex flex-col gap-6${last ? '' : ' pb-14 border-b-2 border-outline-variant'}`}
+      className={`${decalage} flex flex-col gap-6${last ? '' : ' pb-14 border-b-2 border-outline-variant'}`}
     >
       <div className="flex items-center justify-between border-b border-outline pb-4 flex-wrap gap-3">
-        <h4 className="font-headline-md text-headline-md text-primary">
-          {i + 1}. {s.title || 'Étape ' + (i + 1)}
-        </h4>
-        {action}
+        {/* Crayon en début de ligne (JEP-403) : à gauche du titre qu'il modifie. */}
+        <div className="flex min-w-0 items-center gap-1">
+          {action}
+          <h4 className="font-headline-md text-headline-md text-primary">
+            {i + 1}. {s.title || 'Étape ' + (i + 1)}
+          </h4>
+        </div>
         <div className="print-fs-9 flex gap-4 text-on-surface-variant font-label-md text-[12px] flex-wrap">
           {/* JEP-19 : picto seul, l'explication est dans l'infobulle (même
               repère que la carte recette). */}
@@ -93,6 +116,7 @@ export function RecipeStep({
       {/* JEP-19 : précisions de l'auteur, seulement si l'étape peut se faire à
           l'avance (une note laissée sur une étape décochée reste masquée). */}
       {ajustement}
+      {note}
       {retoursEtape}
       {s.can_prepare_ahead && s.advance_note && (
         <p className="font-body-md text-body-md text-on-surface-variant -mt-2 flex items-start gap-2">
@@ -107,8 +131,9 @@ export function RecipeStep({
       )}
       {ings.length > 0 && (
         <details className="group border border-outline-variant mb-2" open>
-          <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-            <span className="font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
+          <summary className="flex items-center gap-2 py-4 pl-1 pr-4 cursor-pointer bg-surface-container-low list-none">
+            {crayon?.('ingredients')}
+            <span className="min-w-0 flex-1 font-label-md text-label-md text-primary">Ingrédients de l&apos;étape</span>
             <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
           </summary>
           <div className="p-4 bg-white">
@@ -131,30 +156,36 @@ export function RecipeStep({
                 </li>
               ))}
             </ul>
+            {piedIngredients}
           </div>
         </details>
       )}
-      <StepPhotoGallery photos={photos} />
+      {photosEdition ?? <StepPhotoGallery photos={photos} />}
       {s.video_url && <StepVideoPlayer url={s.video_url} />}
       {Array.isArray(s.sous_etapes) && s.sous_etapes.length > 0 ? (
         <ul className="flex flex-col gap-3 font-body-lg text-body-md leading-relaxed text-on-surface">
           {s.sous_etapes.map((t, k) => (
             <li key={k} className="flex flex-col">
-              <div className="flex gap-3">
+              <div className="flex items-start gap-3">
+                {crayon?.('sous-etape')}
                 <span className="text-primary shrink-0">–</span>
-                <span>{t}</span>
+                <span className="min-w-0 flex-1">{t}</span>
               </div>
               {retoursSousEtape?.(t)}
             </li>
           ))}
         </ul>
       ) : s.description ? (
-        <div className="font-body-lg text-body-md leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
+        <div className="flex items-start gap-3">
+          {crayon?.('sous-etape')}
+          <div className="min-w-0 flex-1 font-body-lg text-body-md leading-relaxed text-on-surface whitespace-pre-line">{s.description}</div>
+        </div>
       ) : null}
       {s.tips && (
         <details className="group border border-outline-variant" open>
-          <summary className="flex items-center justify-between p-4 cursor-pointer bg-surface-container-low list-none">
-            <span className="font-label-md text-label-md text-primary">Conseils &amp; Astuces de l&apos;étape</span>
+          <summary className="flex items-center gap-2 py-4 pl-1 pr-4 cursor-pointer bg-surface-container-low list-none">
+            {crayon?.('conseil')}
+            <span className="min-w-0 flex-1 font-label-md text-label-md text-primary">Conseils &amp; Astuces de l&apos;étape</span>
             <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
           </summary>
           <div className="p-4 bg-white font-body-md text-body-md italic whitespace-pre-line">{s.tips}</div>

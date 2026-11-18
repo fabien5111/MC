@@ -41,3 +41,14 @@ describe('filtre de statut par portée', () => {
     expect(f.map((i) => i.recipe.id).sort()).toEqual(['m1', 'o1', 'o2']);
   });
 });
+
+describe('projets en cours (JEP-403)', () => {
+  const projet: CarnetItem = { kind: 'mine', recipe: carte('p1', { status: 'draft', kind: 'project', project_stage: 'wizard' }), favorite: false };
+  const items = [mine('m1', 'published'), projet];
+
+  it('« Tout » montre les projets en cours, « Mes recettes » non', () => {
+    expect(applyCarnetFilters(items, { ...EMPTY_CARNET_PARAMS, scope: 'all' }).map((i) => i.recipe.id).sort()).toEqual(['m1', 'p1']);
+    expect(applyCarnetFilters(items, { ...EMPTY_CARNET_PARAMS, scope: 'mine' }).map((i) => i.recipe.id)).toEqual(['m1']);
+    expect(applyCarnetFilters(items, { ...EMPTY_CARNET_PARAMS, scope: 'proj' }).map((i) => i.recipe.id)).toEqual(['p1']);
+  });
+});

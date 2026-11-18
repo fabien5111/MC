@@ -5,7 +5,7 @@
 // page projet (`ProjectV2`) : composant contrôlé, sans écriture — le contrôle
 // et les colonnes à écrire viennent de `buildProjectFormatUpdate`
 // (lib/projects.ts).
-import { PROJECT_FORMATS, PROJECT_FORMAT_KEYS, type ProjectFormat } from '@/lib/projects';
+import { PROJECT_FORMATS, PROJECT_FORMAT_KEYS, estimerParts, type ProjectFormat } from '@/lib/projects';
 
 export type MoldTypeOption = { id: number; name: string; forme: string | null };
 
@@ -40,6 +40,15 @@ export function ProjectFormatFields({
     const forme = PROJECT_FORMATS[format].forme;
     return !forme || m.forme === forme;
   });
+
+  // Parts estimées d'après le moule (JEP-403) : proposées en filigrane, et
+  // retenues à l'enregistrement si le champ reste vide.
+  const dimsNum = Object.fromEntries(
+    Object.entries(dims)
+      .map(([k, v]) => [k, parseFloat(String(v).replace(',', '.'))] as [string, number])
+      .filter(([, v]) => v > 0),
+  );
+  const estimees = estimerParts(format, dimsNum, parseInt(count, 10) || 1);
 
   return (
     <>
@@ -122,14 +131,24 @@ export function ProjectFormatFields({
       )}
 
       <div>
-        <label className="mb-1 block font-label-md text-label-md text-outline">NOMBRE DE PARTS</label>
+        <label className="mb-1 block font-label-md text-label-md text-outline">
+          NOMBRE DE PARTS{format !== 'free' && ' (FACULTATIF)'}
+        </label>
         <input
           value={servings}
           onChange={(e) => setServings(e.target.value)}
           disabled={disabled}
           inputMode="numeric"
+          placeholder={estimees ? `≈ ${estimees}` : undefined}
           className="w-32 rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3 outline-none focus:border-primary"
         />
+        {format !== 'free' && (
+          <p className="mt-1 text-[12px] text-on-surface-variant">
+            {estimees
+              ? `Laissé vide, il est estimé d’après le moule : environ ${estimees} part${estimees > 1 ? 's' : ''}.`
+              : 'Laissé vide, il est estimé d’après les dimensions du moule.'}
+          </p>
+        )}
       </div>
     </>
   );

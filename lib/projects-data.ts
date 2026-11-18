@@ -19,6 +19,11 @@ export type ProjectLine = {
   name: string;
   quantity: string | null;
   baseQuantity: number | null;
+  // Quantité retouchée à la main (`ingredients.quantity_manual`, JEP-403) : la
+  // base est alors CONSERVÉE (on garde l'origine sous les yeux) et c'est ce
+  // drapeau, non plus une base vide, qui sort la ligne du recalcul. Colonne
+  // absente (migration pas jouée) : toujours faux.
+  quantityManual: boolean;
   unit: string | null;
   // Commentaire de l'ingrédient (« température ambiante », « tamisée »…) : ce
   // qui distingue deux lignes du même ingrédient.
@@ -140,6 +145,7 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
     unit: string | null;
     order_index: number | null;
     base_quantity?: number | null;
+    quantity_manual?: boolean | null;
     comment?: string | null;
   };
   let ingredients: IngRow[] = [];
@@ -176,6 +182,7 @@ export async function getProjectFull(recipeId: string): Promise<ProjectFull | nu
         name: it.name,
         quantity: it.quantity,
         baseQuantity: it.base_quantity ?? null,
+        quantityManual: it.quantity_manual === true,
         unit: it.unit,
         comment: it.comment?.trim() || null,
         scalingMode: groupe.scaling_mode,

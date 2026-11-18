@@ -30,7 +30,9 @@ function Ligne({ r }: { r: Remarque }) {
   );
 }
 
-export function ValidationFournee({ propres, onClose }: { propres: Remarque[]; onClose: () => void }) {
+// Liste des retours à trier (cette fournée, puis héritées), sans cadre : posée
+// dans la fenêtre « Fournée validée » du résumé ET dans l'écran de fin de fournée.
+export function TriRetours({ propres }: { propres: Remarque[] }) {
   const v = useLecons();
   const avecContenu = (r: Remarque) => !!(r.texte || r.ecart);
   const ici = propres.filter(avecContenu);
@@ -39,42 +41,50 @@ export function ValidationFournee({ propres, onClose }: { propres: Remarque[]; o
   // jusqu'au rechargement), sans ceux de cette fournée.
   const herites = (v?.remarques ?? []).filter((r) => avecContenu(r) && !dejaVues.has(r.cle));
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Fournée validée">
-      <PorteeEdition silencieux>
-        <div className="w-full max-w-xl bg-white rounded-lg p-6 flex flex-col gap-4 shadow-xl max-h-[90vh] overflow-y-auto">
-          <h2 className="font-headline-sm text-primary">Fournée validée</h2>
-          <p className="text-sm text-on-surface-variant">
-            Gardez épinglés les retours à retrouver quand vous <strong>refaites</strong> cette fournée ; désépinglez ceux qui ne servent plus.
-            Vous pourrez toujours les modifier depuis le résumé de la fournée.
-          </p>
-          {ici.length === 0 && herites.length === 0 && <p className="text-sm text-on-surface-variant">Aucun retour à trier pour cette fournée.</p>}
-          {ici.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <p className="font-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Retours de cette fournée</p>
-              <ul className="flex flex-col gap-2">
-                {ici.map((r) => (
-                  <Ligne key={r.cle} r={r} />
-                ))}
-              </ul>
-            </div>
-          )}
-          {herites.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <p className="font-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Retours des fournées précédentes</p>
-              <ul className="flex flex-col gap-2">
-                {herites.map((r) => (
-                  <Ligne key={r.cle} r={r} />
-                ))}
-              </ul>
-            </div>
-          )}
-          <div className="flex justify-end">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-primary text-on-primary rounded font-label-md">
-              Terminer
-            </button>
+    <PorteeEdition silencieux>
+      <div className="flex flex-col gap-4">
+        {ici.length === 0 && herites.length === 0 && <p className="text-sm text-on-surface-variant">Aucun retour à trier pour cette fournée.</p>}
+        {ici.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="font-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Retours de cette fournée</p>
+            <ul className="flex flex-col gap-2">
+              {ici.map((r) => (
+                <Ligne key={r.cle} r={r} />
+              ))}
+            </ul>
           </div>
+        )}
+        {herites.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="font-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Retours des fournées précédentes</p>
+            <ul className="flex flex-col gap-2">
+              {herites.map((r) => (
+                <Ligne key={r.cle} r={r} />
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </PorteeEdition>
+  );
+}
+
+export function ValidationFournee({ propres, onClose }: { propres: Remarque[]; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Fournée validée">
+      <div className="w-full max-w-xl bg-white rounded-lg p-6 flex flex-col gap-4 shadow-xl max-h-[90vh] overflow-y-auto">
+        <h2 className="font-headline-sm text-primary">Fournée validée</h2>
+        <p className="text-sm text-on-surface-variant">
+          Gardez épinglés les retours à retrouver quand vous <strong>refaites</strong> cette fournée ; désépinglez ceux qui ne servent plus.
+          Vous pourrez toujours les modifier depuis le résumé de la fournée.
+        </p>
+        <TriRetours propres={propres} />
+        <div className="flex justify-end">
+          <button type="button" onClick={onClose} className="px-4 py-2 bg-primary text-on-primary rounded font-label-md">
+            Terminer
+          </button>
         </div>
-      </PorteeEdition>
+      </div>
     </div>
   );
 }

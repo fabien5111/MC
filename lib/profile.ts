@@ -79,6 +79,9 @@ export type BatchListRow = {
     hero_thumb_url: string | null;
     prep_time: number | null;
     total_time: number | null;
+    // Fournée d'essai d'un projet en cours (JEP-403) : carte distinguée.
+    kind?: string | null;
+    project_stage?: string | null;
   } | null;
 };
 
@@ -135,7 +138,7 @@ export async function getBatches(
   let query = supabase
     .from('batches')
     .select(
-      'id, recipe_id, recipe_title, planned_date, degustation_at, factor, adjust_label, notes, status, date_debut, date_fin, recipes(id, title, hero_thumb_url, prep_time, total_time), batch_steps(id, title, day_offset, day_order_index, order_index, done, prep_time, wait_time, cook_time, cook_temp' +
+      'id, recipe_id, recipe_title, planned_date, degustation_at, factor, adjust_label, notes, status, date_debut, date_fin, recipes(id, title, hero_thumb_url, prep_time, total_time, kind, project_stage), batch_steps(id, title, day_offset, day_order_index, order_index, done, prep_time, wait_time, cook_time, cook_temp' +
         (detail ? ', replaced_by_recipe_id, batch_substeps(id, done, excluded_when_done)' : '') +
         ')' +
         (detail ? ', batch_ingredients(id, batch_step_id, done, removed, excluded_when_done, expanded_into_recipe_id)' : ''),
@@ -161,7 +164,7 @@ export async function getBatches(
 // joindre, l'état vit directement sur `batches` (`date_debut` renseignée,
 // `date_fin` encore nulle).
 export type ActiveBatchRow = Pick<BatchListRow, 'id' | 'recipe_title' | 'date_debut' | 'degustation_at'> & {
-  recipes: { hero_thumb_url: string | null } | null;
+  recipes: { hero_thumb_url: string | null; kind?: string | null; project_stage?: string | null } | null;
   // Avancement constaté, calculé depuis `batch_steps` : nombre d'étapes
   // cochées, total, et titre de la première étape restante.
   //
@@ -179,14 +182,14 @@ export async function getActiveBatches(userId: string): Promise<ActiveBatchRow[]
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('batches')
-    .select('id, recipe_title, date_debut, degustation_at, recipes(hero_thumb_url), batch_steps(title, order_index, done)')
+    .select('id, recipe_title, date_debut, degustation_at, recipes(hero_thumb_url, kind, project_stage), batch_steps(title, order_index, done)')
     .eq('user_id', userId)
     .eq('status', 'planifiee')
     .not('date_debut', 'is', null)
     .order('date_debut', { ascending: false });
   if (error) console.error('getActiveBatches:', error.message);
   const rows = (data as unknown as (Pick<BatchListRow, 'id' | 'recipe_title' | 'date_debut' | 'degustation_at'> & {
-    recipes: { hero_thumb_url: string | null } | null;
+    recipes: { hero_thumb_url: string | null; kind?: string | null; project_stage?: string | null } | null;
     batch_steps: { title: string | null; order_index: number; done: boolean }[];
   })[]) ?? [];
   return rows.map((r) => {

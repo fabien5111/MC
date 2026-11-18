@@ -19,6 +19,7 @@ import type { Database } from '@/lib/database.types';
 import type { RecipeFull, RecipeStepView, AllergenRef } from '@/lib/recipes';
 import type { BatchEntry, BatchListRow } from '@/lib/profile';
 import { ingredientKey } from '@/lib/ingredient-name';
+import { titreAvecProjet } from '@/lib/projects';
 
 // Taille de page des fournées terminées (« En cuisine ») : `getBatches` de
 // `lib/profile.ts` (server-only, importe next/headers) et le bouton
@@ -108,7 +109,7 @@ export function groupPlanningStepsByDate(plans: BatchListRow[]): PlanningDayGrou
   const withDate: (PlanningDayItem & { date: string })[] = [];
   plans.forEach((p) => {
     if (!p.planned_date) return;
-    const recipeTitle = p.recipe_title || p.recipes?.title || '';
+    const recipeTitle = titreAvecProjet(p.recipe_title || p.recipes?.title || '', p.recipes);
     [...p.batch_steps]
       .sort((a, b) => a.order_index - b.order_index)
       .forEach((s, i) => {

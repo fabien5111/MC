@@ -73,6 +73,7 @@ export function BatchStepDonePanel({
   retoursEcart,
   aideRealise,
   aideNote,
+  pointsAVerifier,
   aideIngredients,
   planAmont,
   derniereFois,
@@ -125,6 +126,9 @@ export function BatchStepDonePanel({
   // titre « Ingrédients de l'étape ».
   aideRealise?: ReactNode;
   aideNote?: ReactNode;
+  // « Points à vérifier » de l'étape du projet (essai d'un projet en cours) :
+  // rappel en lecture seule, dans le bloc « Ma note ».
+  pointsAVerifier?: string | null;
   aideIngredients?: ReactNode;
   // Recalcul des sous-recettes quand l'étape passe « avant la fournée » (cf.
   // `lib/batch-expansion-recalcul.ts`) : fourni par BatchView, qui connaît toute
@@ -441,7 +445,7 @@ export function BatchStepDonePanel({
   // première chose à relire en abordant l'étape (matériel à sortir,
   // adaptation…), pas une note de fin de liste.
   // Fournée close sans note : rien à lire ni à ajouter, le bloc est omis.
-  const noteBlock = readOnly && !step.user_note ? null : (
+  const noteBlock = readOnly && !step.user_note && !pointsAVerifier ? null : (
     <div className="border-l-4 border-green-700 bg-surface-container-low pl-4 pr-3 py-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-2 font-label-md text-[10px] uppercase tracking-widest text-secondary">
@@ -498,8 +502,17 @@ export function BatchStepDonePanel({
         </div>
       ) : step.user_note ? (
         <p className="font-body-md text-body-md whitespace-pre-line text-on-surface">{step.user_note}</p>
-      ) : (
+      ) : !pointsAVerifier ? (
         <p className="no-print font-body-md text-sm italic text-on-surface-variant">Aucune note.</p>
+      ) : null}
+      {pointsAVerifier && (
+        <div className="rounded border border-amber-600/60 bg-amber-50 px-3 py-2">
+          <p className="mb-1 flex items-center gap-1.5 font-label-md text-[11px] uppercase tracking-widest text-amber-800">
+            <span className="material-symbols-outlined text-[18px]">flag</span>
+            Points à vérifier
+          </p>
+          <div className="font-body-md text-body-md whitespace-pre-line text-on-surface">{pointsAVerifier}</div>
+        </div>
       )}
     </div>
   );

@@ -6,9 +6,14 @@
 // Ils écrivent les MÊMES colonnes et tables que l'éditeur de recette
 // (`CreerForm`), section par section — jamais par son enregistrement global,
 // qui supprime et réinsère toutes les étapes et effacerait les
-// `component_id` du projet (cf. CLAUDE.md « Dissolution assumée »). Chaque
-// éditeur a son propre bouton « Enregistrer » : la saisie en cours n'est
-// écrite qu'au geste, puis le parent resynchronise (`mutate`).
+// `component_id` du projet (cf. CLAUDE.md « Dissolution assumée »). Plus de
+// bouton « Enregistrer » (JEP-403) : chaque éditeur se déclare au registre des
+// sections (`sections.ts`), qui l'enregistre tout seul, en silence, quelques
+// secondes après la dernière modification. La référence de « modifié » est une
+// empreinte tenue localement (posée à l'ouverture, puis à chaque écriture
+// réussie), jamais les props : le rendu serveur n'est resynchronisé qu'une fois
+// la saisie terminée, et un champ qui se remettrait à zéro en cours de frappe
+// serait pire que tout.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -21,20 +26,22 @@ import { ImageSlot } from '@/components/ImageSlot';
 import { MaryseIcon } from '@/components/MaryseIcon';
 import { DureeInput } from '@/components/DureeInput';
 import { formatTime } from '@/lib/format';
+
+// Une durée en minutes, suivie de son équivalent en heures dès 1 h (JEP-403) :
+// « 962 min (16h02) ».
+const avecHeures = (n: number) => (n >= 60 ? `${n} min (${formatTime(n)})` : `${n} min`);
 import { resizeDataUrlToThumb } from '@/lib/images';
 import { televerserImage } from '@/lib/storage-client';
 import { estDataUrlImage } from '@/lib/storage';
 import type { RecipeFull } from '@/lib/recipes';
 import { stepTimeSums } from '@/lib/recipe-view';
 import { autoGrow } from '@/lib/auto-grow';
-import { useRegisterSection, type SectionRegistry } from '@/components/projets/v2/sections';
+import { useRegisterSection, type OptionsSauvegarde, type SectionRegistry } from '@/components/projets/v2/sections';
 
 type Mutate = ReturnType<typeof useMutation>['mutate'];
 export type RefOption = { id: number; name: string };
 export type DifficultyOption = { id: number; name: string; level: number };
 
-const btnPrimary =
-  'rounded-pill bg-primary px-6 py-3 font-label-md text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95 disabled:opacity-40';
 const champ =
   'w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3 font-body-md text-[15px] outline-none focus:border-primary';
 const etiquette = 'mb-1 block font-label-md text-label-md text-outline';
@@ -69,22 +76,26 @@ function minutes(v: string): number | null {
 export function HeroEditor({
   recipe,
   mutate,
-  busy,
   sections,
 }: {
   recipe: RecipeFull;
   mutate: Mutate;
-  busy: boolean;
+  busy?: boolean;
   sections?: SectionRegistry;
 }) {
   const [hero, setHero] = useState<string | null>(recipe.hero_image_url ?? null);
   const [original, setOriginal] = useState<string | null>(recipe.hero_image_original_url ?? recipe.hero_image_url ?? null);
   const [ai, setAi] = useState(recipe.hero_image_ai_retouched);
-  const modifie = hero !== (recipe.hero_image_url ?? null) || ai !== recipe.hero_image_ai_retouched;
-  useRegisterSection(sections, 'photo', { label: 'Photo', dirty: modifie, save: enregistrer });
+  const signature = `${hero ?? ''}§${ai}`;
+  const [base, setBase] = useState(() => `${recipe.hero_image_url ?? ''}§${recipe.hero_image_ai_retouched}`);
+  const modifie = signature !== base;
+  useRegisterSection(sections, 'photo', { label: 'Photo', dirty: modifie, signature, save: enregistrer });
 
-  async function enregistrer() {
-    return await mutate(
+  async function enregistrer(options?: OptionsSauvegarde) {
+    const sigAppel = signature;
+    const heroAppel = hero;
+    let deposee: { url: string; originalUrl: string | null } | null = null;
+    const ok = await mutate(
       async () => {
         try {
           if (!hero) {
@@ -105,6 +116,7 @@ export function HeroEditor({
               ? televerserImage('recette', await resizeDataUrlToThumb(hero, 480, 'image/jpeg', 0.7))
               : Promise.resolve(undefined),
           ]);
+          deposee = { url, originalUrl: originalUrl ?? null };
           return await majRecette(recipe.id, {
             hero_image_url: url,
             hero_image_original_url: originalUrl,
@@ -116,8 +128,20 @@ export function HeroEditor({
           return { error: { message: (e as Error).message } };
         }
       },
-      { errorLabel: 'Enregistrement de la photo' },
+      { errorLabel: 'Enregistrement de la photo', silent: options?.silencieux },
     );
+    if (!ok) return false;
+    // La photo déposée remplace la data-URL locale : un second enregistrement
+    // (la case « retravaillée avec l'IA », par exemple) ne la redépose pas.
+    const d = deposee as { url: string; originalUrl: string | null } | null;
+    if (d && hero === heroAppel) {
+      setHero(d.url);
+      setOriginal(d.originalUrl ?? d.url);
+      setBase(`${d.url}§${ai}`);
+    } else {
+      setBase(sigAppel);
+    }
+    return true;
   }
 
   return (
@@ -146,11 +170,6 @@ export function HeroEditor({
           className="h-full w-full"
         />
       </div>
-      {modifie && (
-        <button type="button" onClick={enregistrer} disabled={busy} className={btnPrimary}>
-          Enregistrer la photo
-        </button>
-      )}
     </div>
   );
 }
@@ -171,14 +190,13 @@ export function TagsEditor({
   recipe,
   tags,
   mutate,
-  busy,
   sections,
   peutCreer = false,
 }: {
   recipe: RecipeFull;
   tags: RefOption[];
   mutate: Mutate;
-  busy: boolean;
+  busy?: boolean;
   sections?: SectionRegistry;
   peutCreer?: boolean;
 }) {
@@ -214,8 +232,9 @@ export function TagsEditor({
     return q ? remaining.filter((t) => normLoose(t.name).includes(q)) : remaining;
   }, [remaining, search]);
 
-  const modifie = selected.size !== initiaux.size || [...initiaux.keys()].some((id) => !selected.has(id));
-  useRegisterSection(sections, 'tags', { label: 'Catégories', dirty: modifie, save: enregistrer });
+  const signature = [...selected.keys()].sort((a, b) => a - b).join(',');
+  const [base, setBase] = useState(() => [...initiaux.keys()].sort((a, b) => a - b).join(','));
+  useRegisterSection(sections, 'tags', { label: 'Catégories', dirty: signature !== base, signature, save: enregistrer });
 
   async function addTag(name: string) {
     const clean = capitalizeSentences(name.trim());
@@ -244,8 +263,9 @@ export function TagsEditor({
     router.refresh();
   }
 
-  async function enregistrer() {
-    return await mutate(
+  async function enregistrer(options?: OptionsSauvegarde) {
+    const sigAppel = signature;
+    const ok = await mutate(
       async () => {
         const supabase = createClient();
         // Même geste que l'éditeur : liaisons supprimées puis réinsérées.
@@ -254,8 +274,10 @@ export function TagsEditor({
         if (!selected.size) return { error: null };
         return supabase.from('recipe_tags').insert([...selected.keys()].map((tag_id) => ({ recipe_id: recipe.id, tag_id })));
       },
-      { errorLabel: 'Enregistrement des catégories' },
+      { errorLabel: 'Enregistrement des catégories', silent: options?.silencieux },
     );
+    if (ok) setBase(sigAppel);
+    return ok;
   }
 
   return (
@@ -356,11 +378,6 @@ export function TagsEditor({
         </button>
       </div>
       )}
-      {modifie && (
-        <button type="button" onClick={enregistrer} disabled={busy} className={btnPrimary}>
-          Enregistrer les catégories
-        </button>
-      )}
     </div>
   );
 }
@@ -372,7 +389,6 @@ export function OrganisationEditor({
   difficulties,
   utensilNames,
   mutate,
-  busy,
   sections,
 }: {
   recipe: RecipeFull;
@@ -380,7 +396,7 @@ export function OrganisationEditor({
   difficulties: DifficultyOption[];
   utensilNames: string[];
   mutate: Mutate;
-  busy: boolean;
+  busy?: boolean;
   sections?: SectionRegistry;
 }) {
   const init = {
@@ -405,9 +421,14 @@ export function OrganisationEditor({
   const [total, setTotal] = useState(init.total);
   // Somme des temps des étapes : ce qui sert tant qu'un champ est vide.
   const sommes = stepTimeSums(recipe.recipe_steps);
-  const modifie =
-    JSON.stringify({ ustensiles, difficulte, prep, cook, wait, total }) !== JSON.stringify(init);
-  useRegisterSection(sections, 'organisation', { label: 'Ustensiles, difficulté et temps', dirty: modifie, save: enregistrer });
+  const signature = JSON.stringify({ ustensiles, difficulte, prep, cook, wait, total });
+  const [base, setBase] = useState(() => JSON.stringify(init));
+  useRegisterSection(sections, 'organisation', {
+    label: 'Ustensiles, difficulté et temps',
+    dirty: signature !== base,
+    signature,
+    save: enregistrer,
+  });
 
   // Niveau (1 à 5) de la difficulté choisie, 0 si aucune. Un niveau cliqué sans
   // difficulté de ce niveau au référentiel prend la plus proche, comme l'éditeur.
@@ -424,8 +445,9 @@ export function OrganisationEditor({
     setDifficulte(proche ? String(proche.id) : '');
   }
 
-  async function enregistrer() {
-    return await mutate(
+  async function enregistrer(options?: OptionsSauvegarde) {
+    const sigAppel = signature;
+    const ok = await mutate(
       async () => {
         const supabase = createClient();
         const { error } = await majRecette(recipe.id, {
@@ -457,8 +479,10 @@ export function OrganisationEditor({
         if (!rows.length) return { error: null };
         return supabase.from('recipe_utensils').insert(rows);
       },
-      { errorLabel: 'Enregistrement des ustensiles, de la difficulté et des temps' },
+      { errorLabel: 'Enregistrement des ustensiles, de la difficulté et des temps', silent: options?.silencieux },
     );
+    if (ok) setBase(sigAppel);
+    return ok;
   }
 
   return (
@@ -539,10 +563,10 @@ export function OrganisationEditor({
             Somme des temps des étapes
           </span>
           <div className="grid grid-cols-2 gap-3 text-[14px] text-on-surface sm:grid-cols-4">
-            <span>Préparation : {sommes.prep} min</span>
-            <span>Cuisson : {sommes.cook} min</span>
-            <span>Repos : {sommes.wait >= 60 ? formatTime(sommes.wait) : `${sommes.wait} min`}</span>
-            <span>Total : {sommes.total} min</span>
+            <span>Préparation : {avecHeures(sommes.prep)}</span>
+            <span>Cuisson : {avecHeures(sommes.cook)}</span>
+            <span>Repos : {avecHeures(sommes.wait)}</span>
+            <span>Total : {avecHeures(sommes.total)}</span>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -578,13 +602,17 @@ export function OrganisationEditor({
                     className={champ}
                   />
                 )}
+                {/* Équivalent en heures de la valeur saisie (JEP-403). */}
+                {libelle !== 'Repos' && Number(valeur) >= 60 && (
+                  <span className="mt-0.5 block text-[11.5px] text-on-surface-variant">soit {formatTime(Number(valeur))}</span>
+                )}
                 {corrige && (
                   <button
                     type="button"
                     onClick={() => maj('')}
                     className="mt-0.5 text-left text-[11.5px] text-primary underline underline-offset-2"
                   >
-                    corrigé à la main · revenir à {libelle === 'Repos' && somme >= 60 ? formatTime(somme) : `${somme} min`}
+                    corrigé à la main · revenir à {avecHeures(somme)}
                   </button>
                 )}
               </div>
@@ -596,11 +624,6 @@ export function OrganisationEditor({
         </p>
       </div>
 
-      {modifie && (
-        <button type="button" onClick={enregistrer} disabled={busy} className={btnPrimary}>
-          Enregistrer
-        </button>
-      )}
     </div>
   );
 }
@@ -609,12 +632,11 @@ export function OrganisationEditor({
 export function ConseilsEditor({
   recipe,
   mutate,
-  busy,
   sections,
 }: {
   recipe: RecipeFull;
   mutate: Mutate;
-  busy: boolean;
+  busy?: boolean;
   sections?: SectionRegistry;
 }) {
   const init = {
@@ -625,12 +647,14 @@ export function ConseilsEditor({
     videoUrl: recipe.video_url ?? '',
   };
   const [v, setV] = useState(init);
-  const modifie = JSON.stringify(v) !== JSON.stringify(init);
-  useRegisterSection(sections, 'conseils', { label: 'Conseils et source', dirty: modifie, save: enregistrer });
+  const signature = JSON.stringify(v);
+  const [base, setBase] = useState(() => JSON.stringify(init));
+  useRegisterSection(sections, 'conseils', { label: 'Conseils et source', dirty: signature !== base, signature, save: enregistrer });
   const maj = (k: keyof typeof init) => (e: { target: { value: string } }) => setV((p) => ({ ...p, [k]: e.target.value }));
 
-  async function enregistrer() {
-    return await mutate(
+  async function enregistrer(options?: OptionsSauvegarde) {
+    const sigAppel = signature;
+    const ok = await mutate(
       () =>
         majRecette(recipe.id, {
           tips: v.tips.trim() || null,
@@ -639,8 +663,10 @@ export function ConseilsEditor({
           source_url: v.sourceUrl.trim() || null,
           video_url: v.videoUrl.trim() || null,
         }),
-      { errorLabel: 'Enregistrement des conseils' },
+      { errorLabel: 'Enregistrement des conseils', silent: options?.silencieux },
     );
+    if (ok) setBase(sigAppel);
+    return ok;
   }
 
   return (
@@ -667,11 +693,6 @@ export function ConseilsEditor({
           <input value={v.videoUrl} onChange={maj('videoUrl')} inputMode="url" className={champ} placeholder="https://youtube.com/…" />
         </div>
       </div>
-      {modifie && (
-        <button type="button" onClick={enregistrer} disabled={busy} className={btnPrimary}>
-          Enregistrer
-        </button>
-      )}
     </div>
   );
 }

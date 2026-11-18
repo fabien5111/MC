@@ -4,6 +4,7 @@ import {
   LEGENDE_MAX,
   estTableAbsente,
   grouperParFournee,
+  ordresApresEchange,
   normaliserLegende,
   photosDeEtape,
   placesRestantes,
@@ -75,5 +76,33 @@ describe('grouperParFournee', () => {
       photo(2, { fournee: { id: 2, recipe_id: 'r', titre: 'B', date: '2026-11-01' } }),
     ]);
     expect(groupes.map((g) => g.fourneeId)).toEqual([1, 2]);
+  });
+});
+
+describe('ordresApresEchange', () => {
+  const ph = (id: number, step: number | null, ordre: number) => photo(id, { batch_step_id: step, order_index: ordre });
+  it('échange les ordres de deux photos de la même étape', () => {
+    const l = [ph(1, 7, 0), ph(2, 7, 1), ph(3, 7, 2)];
+    expect(ordresApresEchange(l, 1, 2)).toEqual([
+      { id: 2, ordre: 0 },
+      { id: 1, ordre: 1 },
+    ]);
+  });
+  it('ignore les photos des autres étapes', () => {
+    const l = [ph(1, 7, 0), ph(2, 8, 1), ph(3, 7, 5)];
+    expect(ordresApresEchange(l, 1, 3)).toEqual([
+      { id: 3, ordre: 0 },
+      { id: 1, ordre: 5 },
+    ]);
+  });
+  it('renumérote quand des ordres sont en double', () => {
+    const l = [ph(1, 7, 3), ph(2, 7, 3)];
+    const r = ordresApresEchange(l, 1, 2);
+    expect(new Set(r.map((x) => x.ordre)).size).toBe(r.length);
+    expect(r.length).toBeGreaterThan(0);
+  });
+  it('ne fait rien pour deux étapes différentes ou une photo inconnue', () => {
+    expect(ordresApresEchange([ph(1, 7, 0), ph(2, 8, 1)], 1, 2)).toEqual([]);
+    expect(ordresApresEchange([ph(1, 7, 0)], 1, 9)).toEqual([]);
   });
 });

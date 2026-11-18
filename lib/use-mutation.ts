@@ -55,6 +55,12 @@ export type MutateOptions = {
   // false uniquement pour une écriture très fréquente (coche à la volée…)
   // dont l'affichage est déjà tenu à jour localement.
   refresh?: boolean;
+  // Écriture silencieuse (enregistrement automatique du mode projet) : ni
+  // voile (`busy` reste faux, un champ en cours de frappe garde son focus), ni
+  // alerte modale, ni resynchronisation — l'appelant la demande plus tard par
+  // `refreshSilencieux`. Un échec rend `false` et passe le message à `onErreur`.
+  silent?: boolean;
+  onErreur?: (message: string) => void;
 };
 
 export function useMutation() {
@@ -69,6 +75,8 @@ export function useMutation() {
   // `pending` reste vrai jusqu'à ce que le nouveau rendu soit appliqué : le
   // spinner couvre enfin toute l'opération, écriture ET resynchronisation.
   const [pending, startTransition] = useTransition();
+  // Resynchronisation « en douce » : sa transition n'entre PAS dans `busy`.
+  const [, startSilent] = useTransition();
 
   // Instrumentation temporaire — voir NavigationSpinner.tsx : mesure séparé-
   // ment le temps d'écriture réseau et celui de la resynchronisation
@@ -91,6 +99,7 @@ export function useMutation() {
   const mutate = useCallback(
     async (write: Write, options: MutateOptions = {}): Promise<boolean> => {
       // Session d'impersonation en lecture seule : rien n'est envoyé.
+      if (impersonation?.mode === 'read_only' && options.silent) return false;
       if (impersonation?.mode === 'read_only') {
         logImpersonationAction('write_blocked', options.errorLabel ?? options.confirm ?? 'Écriture');
         dialog.alert(
@@ -102,7 +111,7 @@ export function useMutation() {
       if (options.confirm && !(await dialog.confirm(options.confirm))) return false;
       const label = options.errorLabel ?? options.confirm ?? 'Écriture';
       const writeStart = performance.now();
-      setWriting(true);
+      if (!options.silent) setWriting(true);
       try {
         const res = await write();
         const writeMs = Math.round(performance.now() - writeStart);
@@ -113,13 +122,17 @@ export function useMutation() {
         if (res.error) {
           console.debug(`[mutation-timing] ${label} — erreur après ${writeMs}ms`);
           const educatif = await translateQuotaError(res.error.message);
-          dialog.alert(educatif ?? `${options.errorLabel ?? 'Erreur'} : ${res.error.message}`);
+          const texte = educatif ?? `${options.errorLabel ?? 'Erreur'} : ${res.error.message}`;
+          if (options.silent) options.onErreur?.(texte);
+          else dialog.alert(texte);
           return false;
         }
         if (impersonation) {
           logImpersonationAction('write', options.errorLabel ?? options.confirm ?? 'Écriture');
         }
-        if (options.refresh !== false) {
+        if (options.silent) {
+          console.debug(`[mutation-timing] ${label} — écriture silencieuse ${writeMs}ms`);
+        } else if (options.refresh !== false) {
           console.debug(`[mutation-timing] ${label} — écriture ${writeMs}ms, resynchro lancée`);
           refreshTiming.current = { start: performance.now(), label };
           startTransition(() => router.refresh());
@@ -130,16 +143,24 @@ export function useMutation() {
       } catch (e) {
         const brut = (e as Error).message || 'écriture impossible';
         const educatif = await translateQuotaError(brut);
-        dialog.alert(educatif ?? `${options.errorLabel ?? 'Erreur'} : ${brut}`);
+        const texte = educatif ?? `${options.errorLabel ?? 'Erreur'} : ${brut}`;
+        if (options.silent) options.onErreur?.(texte);
+        else dialog.alert(texte);
         return false;
       } finally {
         // Groupé avec le passage à `pending` par React : `busy` ne retombe pas
         // entre les deux, le spinner ne clignote pas.
-        setWriting(false);
+        if (!options.silent) setWriting(false);
       }
     },
     [router, impersonation, dialog],
   );
+
+  // Resynchronisation sans voile : pour rattraper, une fois la saisie finie,
+  // les écritures silencieuses (le rendu serveur garde l'ancien état entre-temps).
+  const refreshSilencieux = useCallback(() => {
+    startSilent(() => router.refresh());
+  }, [router]);
 
   // Resynchronisation seule, sans écriture. Sert quand l'écriture a eu lieu
   // dans un composant qui se démonte juste après (une fenêtre modale qui se
@@ -152,5 +173,5 @@ export function useMutation() {
     startTransition(() => router.refresh());
   }, [router]);
 
-  return { busy: writing || pending, mutate, refresh };
+  return { busy: writing || pending, mutate, refresh, refreshSilencieux };
 }

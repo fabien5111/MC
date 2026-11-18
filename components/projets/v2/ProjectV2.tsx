@@ -16,7 +16,8 @@
 //   (cf. RecipeDetailEditors).
 import { useSeuilsArrondi } from '@/components/SeuilsArrondiProvider';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useImpersonation } from '@/components/ImpersonationProvider';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { SCALING_OPTIONS } from '@/components/projets/StepEditorCard';
@@ -32,7 +33,7 @@ import { DessertVise, QuantitiesStep } from '@/components/projets/ProjectQuantit
 import { ProjectTrials } from '@/components/projets/ProjectTrials';
 import { useProjectComponents } from '@/components/projets/useProjectComponents';
 import { ProjectV2Block } from '@/components/projets/v2/ProjectV2Block';
-import { useRegisterSection, useSectionRegistry } from '@/components/projets/v2/sections';
+import { useRegisterSection, useSectionRegistry, type OptionsSauvegarde } from '@/components/projets/v2/sections';
 import { RecipeToc, stepAnchorId, type TocAction, type TocSections } from '@/components/recipe/RecipeToc';
 import {
   ConseilsEditor,
@@ -46,8 +47,10 @@ import {
   COMPONENT_SOURCE_LABELS,
   MAX_COMPONENTS,
   PROJECT_V2_ATELIER,
+  ROLE_ASSEMBLAGE,
   buildProjectFormatUpdate,
   deduceProjectFormat,
+  PROJECT_FORMATS,
   projectFormatKey,
   projectTargetForme,
   quantitiesStale,
@@ -71,6 +74,10 @@ import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { ProjectTodo, allerA } from '@/components/projets/v2/ProjectTodo';
 import { VerifCase } from '@/components/projets/v2/VerifCase';
+import { PointsAVerifier } from '@/components/projets/v2/PointsAVerifier';
+import { PhotosEtapeProjet } from '@/components/projets/v2/PhotosEtapeProjet';
+import { useTotalEtape } from '@/lib/use-total-etape';
+import { formatMasse, totalEtape } from '@/lib/total-etape';
 import { mergeIngredientLines, planningDays } from '@/lib/recipe-view';
 import { groupWithTotal } from '@/lib/ingredients-recap';
 import { ingredientKey } from '@/lib/ingredient-name';
@@ -97,25 +104,28 @@ const sousTitre = 'mb-3 font-label-md text-[13px] uppercase tracking-widest text
 
 // Ordre et libellés des blocs. `apercu` est ce que l'on voit d'un bloc encore
 // verrouillé : la recette à venir se lit dès l'ouverture du projet.
-// `icone` et `court` servent au sommaire (rail de gauche, `RecipeToc`) : les
-// icônes de la recette reprennent celles de la fiche et de l'éditeur, les
-// blocs « Atelier projet » partagent le même picto de chantier.
-const BLOCS: Record<BlockKey, { titre: string; apercu: string; court: string; icone: string }> = {
-  intention: { titre: 'Votre intention', apercu: 'Ce que vous voulez réaliser, en quelques phrases.', court: 'Intention', icone: 'construction' },
-  identite: { titre: 'Le dessert', apercu: 'Nom, photo, description et catégories.', court: 'Le dessert', icone: 'edit_note' },
-  format: { titre: 'Format et rendement', apercu: 'Moule, dimensions, nombre de parts.', court: 'Format', icone: 'straighten' },
-  structure: { titre: 'Structure', apercu: 'Les préparations qui composent le dessert, du bas vers le haut.', court: 'Structure', icone: 'construction' },
-  etapes: { titre: 'Étapes', apercu: 'Le déroulé de chaque préparation, avec ses ingrédients et l’ajustement de ses quantités.', court: 'Étapes', icone: 'format_list_numbered' },
-  ingredients: { titre: 'Liste complète des ingrédients', apercu: 'Tous les ingrédients du dessert, totalisés.', court: 'Ingrédients', icone: 'egg_alt' },
-  organisation: { titre: 'Ustensiles, difficulté et temps', apercu: 'Le matériel, le niveau et le planning.', court: 'Ustensiles et temps', icone: 'blender' },
-  conseils: { titre: 'Conseils et source', apercu: 'Astuces, conseils de service, provenance.', court: 'Conseils', icone: 'lightbulb' },
-  validation: { titre: 'Essais et validation', apercu: 'Les fournées d’essai, puis le passage en recette.', court: 'Essais et validation', icone: 'construction' },
+// `icon` et `court` servent au sommaire (rail de gauche, `RecipeToc`) : les
+// icônes de la recette reprennent celles de la fiche et de l'éditeur ; le champ
+// se nomme `icon` pour que `scripts/material-symbols.mjs` l'ajoute à la police.
+// Structure garde le picto de chantier des blocs « Atelier projet ».
+const BLOCS: Record<BlockKey, { titre: string; apercu: string; court: string; icon: string }> = {
+  intention: { titre: 'Votre intention', apercu: 'Ce que vous voulez réaliser, en quelques phrases.', court: 'Intention', icon: 'target' },
+  identite: { titre: 'Le dessert', apercu: 'Nom, photo, description et catégories.', court: 'Le dessert', icon: 'edit_note' },
+  format: { titre: 'Format et rendement', apercu: 'Moule, dimensions, nombre de parts (estimé d’après le moule si vous le laissez vide).', court: 'Format', icon: 'straighten' },
+  structure: { titre: 'Structure', apercu: 'Les préparations qui composent le dessert, du bas vers le haut.', court: 'Structure', icon: 'construction' },
+  etapes: { titre: 'Étapes', apercu: 'Le déroulé de chaque préparation, avec ses ingrédients et l’ajustement de ses quantités.', court: 'Étapes', icon: 'format_list_numbered' },
+  ingredients: { titre: 'Liste complète des ingrédients', apercu: 'Tous les ingrédients du dessert, totalisés.', court: 'Ingrédients', icon: 'egg_alt' },
+  organisation: { titre: 'Ustensiles, difficulté et temps', apercu: 'Le matériel, le niveau et le planning.', court: 'Ustensiles et temps', icon: 'blender' },
+  conseils: { titre: 'Conseils et source', apercu: 'Astuces, conseils de service, provenance.', court: 'Conseils', icon: 'lightbulb' },
+  validation: { titre: 'Essais et validation', apercu: 'Les fournées d’essai, puis le passage en recette.', court: 'Essais et validation', icon: 'science' },
 };
+// Format juste après l'intention (JEP-403) : les quantités de chaque
+// préparation en dépendent, on le pose avant de composer la structure.
 const ORDRE_BLOCS: BlockKey[] = [
   'intention',
+  'format',
   'structure',
   'identite',
-  'format',
   'etapes',
   'ingredients',
   'organisation',
@@ -184,10 +194,54 @@ export function ProjectV2({
   const dialog = useDialog();
   // Seuils d'arrondi à l'unité des quantités calculées (JEP-389).
   const seuils = useSeuilsArrondi();
-  const { mutate, busy, refresh } = useMutation();
+  const { mutate, busy, refresh, refreshSilencieux } = useMutation();
+  const impersonation = useImpersonation();
+  // Case « Afficher le total des ingrédients » des étapes (JEP-403) : même
+  // réglage, mémorisé dans le navigateur, que dans le mode Préparer d'une fournée.
+  const [totalVoulu, setTotalVoulu] = useTotalEtape();
   // Sections modifiées et non enregistrées (cf. sections.ts) : alimente les
   // boutons « Enregistrer le brouillon » / « Quitter » / « Valider » du rail.
-  const { registry: sectionRegistry, dirtyLabels, saveAll } = useSectionRegistry();
+  // Enregistrement AUTOMATIQUE (JEP-403) : plus de bouton par section. Après des
+  // écritures silencieuses, le rendu serveur (« Reste à faire », résumés…) est
+  // resynchronisé dès qu'aucun champ de saisie n'a le focus — une
+  // resynchronisation en pleine frappe remonterait certains éditeurs.
+  // Conditions : aucun champ de saisie n'a le focus ET aucune section n'attend
+  // d'être écrite — la resynchronisation remonte certains éditeurs (clés liées
+  // aux données), elle ne doit jamais effacer une saisie pas encore enregistrée.
+  const resynchroEnAttente = useRef(false);
+  const modificationsEnAttente = useRef<() => boolean>(() => false);
+  const peutResynchroniser = useCallback(() => {
+    const a = document.activeElement as HTMLElement | null;
+    const champActif = !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable);
+    return !champActif && !modificationsEnAttente.current();
+  }, []);
+  const resynchroQuandLibre = useCallback(() => {
+    if (peutResynchroniser()) {
+      resynchroEnAttente.current = false;
+      refreshSilencieux();
+    } else {
+      // Rejouée au prochain départ du focus, ou après le prochain enregistrement.
+      resynchroEnAttente.current = true;
+    }
+  }, [peutResynchroniser, refreshSilencieux]);
+  useEffect(() => {
+    const surPerteDeFocus = () => {
+      // Le focus passe d'un champ à l'autre : on laisse le temps à l'autre de le prendre.
+      window.setTimeout(() => {
+        if (resynchroEnAttente.current && peutResynchroniser()) {
+          resynchroEnAttente.current = false;
+          refreshSilencieux();
+        }
+      }, 300);
+    };
+    document.addEventListener('focusout', surPerteDeFocus);
+    return () => document.removeEventListener('focusout', surPerteDeFocus);
+  }, [peutResynchroniser, refreshSilencieux]);
+  const { registry: sectionRegistry, dirtyLabels, saveAll, etatAuto, aDesModifications } = useSectionRegistry({
+    auto: impersonation?.mode !== 'read_only',
+    apresEnregistrement: resynchroQuandLibre,
+  });
+  modificationsEnAttente.current = aDesModifications;
   const anyDirty = dirtyLabels.length > 0;
   const [leaving, setLeaving] = useState(false);
   // Coefficient proposé par la quantité obtenue d'une fournée d'essai, par
@@ -260,20 +314,41 @@ export function ProjectV2({
     [moldTypes.find((m) => m.id === project.mold_type_id)?.name, project.yield_desc].filter(Boolean).join(' — ') ||
     (project.servings ? `${project.servings} parts` : 'format libre');
 
-  async function saveFormat(): Promise<boolean> {
+  // Phrase de rappel du format ENREGISTRÉ (jamais la saisie en cours).
+  const formatBase = deduceProjectFormat({ measure_type: project.measure_type, forme: formeBase, dims: dimsBase, count: nbBase });
+  const resumeFormat =
+    project.measure_type && project.servings
+      ? [
+          PROJECT_FORMATS[formatBase].label,
+          formatBase === 'free' ? null : formatLabel,
+          `${project.servings} part${project.servings > 1 ? 's' : ''}`,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : '';
+
+  async function saveFormat(options?: OptionsSauvegarde): Promise<boolean> {
     // Le titre passé est celui DÉJÀ enregistré : il se modifie dans « Le
     // dessert », le format ne doit pas l'écraser avec une saisie en cours.
     const built = buildProjectFormatUpdate({ format, title: project.title, servings, count, dims, moldTypeId });
     if ('error' in built) {
+      // Enregistrement automatique : un format encore incomplet n'est pas une
+      // erreur, on attend simplement la suite de la saisie (la section reste
+      // « en attente »). Au geste explicite, le message s'affiche.
+      if (options?.silencieux) return true;
       dialog.alert(built.error);
       return false;
     }
+    const sigAppel = empreinteFormat({ format, dims, moldTypeId, servings, count });
     const ok = await mutate(() => createClient().from('recipes').update(built.payload as never).eq('id', project.id), {
       errorLabel: 'Enregistrement du format',
+      silent: options?.silencieux,
     });
     if (ok) {
-      setFormatEnregistre(empreinteFormat({ format, dims, moldTypeId, servings, count }));
-      await signalerQuantites(built.payload);
+      setFormatEnregistre(sigAppel);
+      // Au geste explicite seulement : en enregistrement automatique, les
+      // préparations à recalculer apparaissent dans « Reste à faire ».
+      if (!options?.silencieux) await signalerQuantites(built.payload);
     }
     return ok;
   }
@@ -291,15 +366,22 @@ export function ProjectV2({
     ? `Crédits IA épuisés ce mois-ci (${quotaProjetIA?.usage ?? quotaProjetIA?.limit}/${quotaProjetIA?.limit}). Ils se renouvellent à la prochaine période.`
     : 'La proposition de format et de préparations par IA n’est pas incluse dans votre formule.';
 
-  async function saveIntent(): Promise<boolean> {
-    return await mutate(
+  // Référence de « modifié » : ce qui est enregistré, tenu localement (cf.
+  // `sections.ts` — les props ne sont resynchronisées qu'une fois la saisie finie).
+  const [intentEnregistree, setIntentEnregistree] = useState((project.intent ?? '').trim());
+  const signatureIntention = intent.trim().slice(0, INTENT_MAX);
+  async function saveIntent(options?: OptionsSauvegarde): Promise<boolean> {
+    const sigAppel = signatureIntention;
+    const ok = await mutate(
       () =>
         createClient()
           .from('recipe_projects')
-          .update({ intent: intent.trim().slice(0, INTENT_MAX) || null } as never)
+          .update({ intent: sigAppel || null } as never)
           .eq('recipe_id', project.id),
-      { errorLabel: "Enregistrement de l'intention" },
+      { errorLabel: "Enregistrement de l'intention", silent: options?.silencieux },
     );
+    if (ok) setIntentEnregistree(sigAppel);
+    return ok;
   }
 
   // Une seule proposition pour le format ET les préparations
@@ -344,10 +426,11 @@ export function ProjectV2({
     }
     if (data?.erreur) await dialog.alert(data.erreur);
     if (!data || (!data.format && !data.components?.length)) {
-      await mutate(
+      const intentOk = await mutate(
         () => createClient().from('recipe_projects').update({ intent: texte } as never).eq('recipe_id', project.id),
         { errorLabel: "Enregistrement de l'intention" },
       );
+      if (intentOk) setIntentEnregistree(texte);
       if (!data?.erreur) dialog.alert('Aucune proposition n’a pu être établie. Vous pouvez composer le projet à la main.');
       return;
     }
@@ -409,6 +492,7 @@ export function ProjectV2({
       },
       { errorLabel: 'Enregistrement de la proposition' },
     );
+    if (ecrit) setIntentEnregistree(texte);
     if (ecrit && 'payload' in built) {
       setFormatEnregistre(empreinteFormat({ format: f, dims: d, moldTypeId: moule, servings: s, count: n }));
       await signalerQuantites(built.payload);
@@ -419,31 +503,40 @@ export function ProjectV2({
   // ── Le dessert : titre + description ──────────────────────────────────
   const [title, setTitle] = useState(project.title === 'Nouveau projet' ? '' : project.title);
   const [description, setDescription] = useState(project.description ?? '');
-  async function saveIdentite(): Promise<boolean> {
-    return await mutate(
+  const identiteDe = (t: string, d: string) => JSON.stringify([t.trim().slice(0, 120) || 'Nouveau projet', d.trim()]);
+  const [identiteEnregistree, setIdentiteEnregistree] = useState(() => identiteDe(project.title === 'Nouveau projet' ? '' : project.title, project.description ?? ''));
+  const signatureIdentite = identiteDe(title, description);
+  async function saveIdentite(options?: OptionsSauvegarde): Promise<boolean> {
+    const sigAppel = signatureIdentite;
+    const ok = await mutate(
       () =>
         createClient()
           .from('recipes')
           .update({ title: title.trim().slice(0, 120) || 'Nouveau projet', description: description.trim() || null } as never)
           .eq('id', project.id),
-      { errorLabel: 'Enregistrement du dessert' },
+      { errorLabel: 'Enregistrement du dessert', silent: options?.silencieux },
     );
+    if (ok) setIdentiteEnregistree(sigAppel);
+    return ok;
   }
 
   // ── Sections déclarées au registre (rail : enregistrer / quitter / valider) ──
   useRegisterSection(sectionRegistry, 'intention', {
     label: 'Intention',
-    dirty: intent.trim().slice(0, INTENT_MAX) !== (project.intent ?? '').trim(),
+    dirty: signatureIntention !== intentEnregistree,
+    signature: signatureIntention,
     save: saveIntent,
   });
   useRegisterSection(sectionRegistry, 'dessert', {
     label: 'Nom et description',
-    dirty: (title.trim() || 'Nouveau projet') !== project.title || description.trim() !== (project.description ?? '').trim(),
+    dirty: signatureIdentite !== identiteEnregistree,
+    signature: signatureIdentite,
     save: saveIdentite,
   });
   useRegisterSection(sectionRegistry, 'format', {
     label: 'Format',
     dirty: empreinteFormat({ format, dims, moldTypeId, servings, count }) !== formatEnregistre,
+    signature: empreinteFormat({ format, dims, moldTypeId, servings, count }),
     save: saveFormat,
   });
 
@@ -467,21 +560,20 @@ export function ProjectV2({
       router.push(versCarnet);
       return;
     }
+    // Enregistrement automatique : on écrit d'abord ce qui attendait encore son
+    // échéance. Ce n'est qu'en cas d'échec qu'on demande quoi faire.
+    if (await saveAll()) {
+      setLeaving(true);
+      router.push(versCarnet);
+      return;
+    }
     const choix = await dialog.choice(
-      `Des modifications n’ont pas été enregistrées (${dirtyLabels.join(', ')}). Que souhaitez-vous faire ?`,
-      [
-        { label: 'Quitter sans enregistrer', value: 'discard' },
-        { label: 'Enregistrer et quitter', value: 'save', variant: 'primary' },
-      ],
+      `Des modifications n’ont pas pu être enregistrées (${dirtyLabels.join(', ')}). Que souhaitez-vous faire ?`,
+      [{ label: 'Quitter sans enregistrer', value: 'discard' }],
     );
     if (choix === 'discard') {
       setLeaving(true);
       router.push(versCarnet);
-    } else if (choix === 'save') {
-      if (await saveAll()) {
-        setLeaving(true);
-        router.push(versCarnet);
-      }
     }
     // choix === null (Annuler / Échap) : on reste sur la page.
   }
@@ -549,6 +641,32 @@ export function ProjectV2({
   });
   const days = planningDays(steps);
 
+  // Retour sur l'étape modifiée (JEP-403). « Modifier » réécrit toutes les
+  // étapes de la préparation (supprimées puis réinsérées : nouveaux id) : on
+  // retient donc la préparation et le RANG de l'étape cliquée, puis, une fois
+  // le rendu serveur revenu (les id ont changé), on défile jusqu'à elle.
+  const retourEtape = useRef<{ componentId: number; rang: number; attente: string | null } | null>(null);
+  const signatureEtapes = steps.map((st) => st.id).join(',');
+  useEffect(() => {
+    const r = retourEtape.current;
+    if (!r?.attente || r.attente === signatureEtapes) return;
+    retourEtape.current = null;
+    const siens = steps.filter((st) => componentOf(st) === r.componentId);
+    const cible = siens.length
+      ? document.getElementById(`etape-${(siens[Math.min(Math.max(r.rang, 0), siens.length - 1)]).id}`)
+      : document.getElementById(`prep-${r.componentId}-etapes`);
+    if (!cible) return;
+    for (let d = cible.closest('details'); d; d = d.parentElement?.closest('details') ?? null) d.open = true;
+    cible.scrollIntoView({ block: 'start' });
+    // `steps` est recalculé à chaque rendu : seule la signature des id compte.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signatureEtapes]);
+
+  // Note « points à vérifier » d'une étape (JEP-403). La colonne, posée à la
+  // main, arrive par `recipe_steps(*)` : absente, la note n'est pas proposée.
+  const noteDe = (st: RecipeStepView) => (st as RecipeStepView & { points_a_verifier?: string | null }).points_a_verifier ?? null;
+  const notesDisponibles = steps.some((st) => 'points_a_verifier' in st);
+
   // ── Reste à faire ─────────────────────────────────────────────────────
   const todo = projectTodo({
     intent: project.intent,
@@ -566,7 +684,33 @@ export function ProjectV2({
       checkedQuantitiesKey: c.checkedQuantitiesKey,
       cleEtapes: empreinteEtapes(steps.filter((s) => componentOf(s) === c.id)),
       cleQuantites: empreinteQuantites(c.lines, c.scaleFactor),
+      sansIngredient: c.resolved && c.lines.length === 0,
+      notes: steps
+        .filter((st) => componentOf(st) === c.id && (noteDe(st) ?? '').trim())
+        .map((st) => ({ stepId: st.id, titre: st.title || `Étape ${steps.indexOf(st) + 1}` })),
     })),
+  });
+
+  // Filet de « cocher replie le volet » (JEP-403) : `basculerVerif` ferme le
+  // volet tout de suite, mais ce geste porte sur un élément du DOM que la
+  // resynchronisation peut remplacer ou rouvrir. Quand un point passe à « fait »
+  // (n'importe quelle porte : panneau du haut, du bas, pied du volet), on referme
+  // donc son volet APRÈS le rendu, sur l'élément alors présent. Un point déjà
+  // « fait » au chargement ne replie rien (pas d'état précédent).
+  const etatsVerifPrecedents = useRef<Map<string, string> | null>(null);
+  useEffect(() => {
+    const courants = new Map<string, string>();
+    for (const i of todo) if (i.verif) courants.set(`${i.verif.componentId}|${i.verif.type}`, i.etat);
+    const avant = etatsVerifPrecedents.current;
+    etatsVerifPrecedents.current = courants;
+    if (!avant) return;
+    courants.forEach((etat, k) => {
+      const ancien = avant.get(k);
+      if (etat !== 'fait' || !ancien || ancien === 'fait') return;
+      const [id, type] = k.split('|');
+      const volet = document.getElementById(`prep-${id}-${type}`);
+      if (volet instanceof HTMLDetailsElement && volet.open) volet.open = false;
+    });
   });
 
   const verifDe = (componentId: number, type: 'etapes' | 'quantites') =>
@@ -577,12 +721,15 @@ export function ProjectV2({
   // ce que le membre vient d'ouvrir). « Reste à faire » : replié une fois tout
   // fait (seule la jauge reste). « Votre intention » : replié dès qu'elle est
   // écrite. « Structure » : repliée quand toutes les recettes sont choisies.
-  const repliesInitiaux = useRef<{ todo: boolean; intention: boolean; structure: boolean; ingredients: boolean; organisation: boolean } | null>(null);
+  const repliesInitiaux = useRef<{ todo: boolean; intention: boolean; format: boolean; structure: boolean; ingredients: boolean; organisation: boolean } | null>(null);
   if (repliesInitiaux.current == null) {
     const recettes = todo.filter((i) => i.id === 'preparations' || i.id.startsWith('recette-'));
     repliesInitiaux.current = {
       todo: todo.length > 0 && todo.every((i) => i.etat === 'fait'),
       intention: !!project.intent?.trim(),
+      // Format et rendement : replié dès que le format ET le nombre de parts sont
+      // enregistrés (JEP-403) ; le rappel reste visible dans l'en-tête.
+      format: !!project.measure_type && !!project.servings,
       structure: recettes.length > 1 && recettes.every((i) => i.etat === 'fait'),
       // Consultation : la liste totale des ingrédients et le bloc ustensiles /
       // difficulté / temps sont repliés par défaut.
@@ -618,28 +765,70 @@ export function ProjectV2({
     if (!comp) return;
     const courant = v.type === 'etapes' ? comp.checkedStepsKey : comp.checkedQuantitiesKey;
     const colonne = v.type === 'etapes' ? 'checked_steps_key' : 'checked_quantities_key';
-    await mutate(
+    const coche = courant !== v.cle;
+    // Volet concerné, et si la case cochée est la sienne (au bas du volet)
+    // plutôt que celle du « Reste à faire » : lu AVANT l'écriture, la case
+    // perdant le focus pendant qu'elle est désactivée.
+    const volet = document.getElementById(`prep-${v.componentId}-${v.type}`);
+    const depuisVolet = !!volet && !!document.activeElement && volet.contains(document.activeElement);
+    const ok = await mutate(
       () =>
         createClient()
           .from('recipe_project_components')
-          .update({ [colonne]: courant === v.cle ? null : v.cle } as never)
+          .update({ [colonne]: coche ? v.cle : null } as never)
           .eq('id', v.componentId),
       { errorLabel: 'Vérification' },
     );
+    // Vérifié : le volet se replie (JEP-403), et si on l'a coché depuis son
+    // pied, la page revient sur son en-tête plutôt que de sauter plus bas.
+    if (ok && coche && volet instanceof HTMLDetailsElement && volet.open) {
+      volet.open = false;
+      if (depuisVolet) volet.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+
+  // Ouvre « Modifier cette préparation » depuis une étape (crayon d'étape, de
+  // sous-étape, bandeau collant) : le rang retenu sert à ouvrir l'éditeur sur
+  // cette étape, puis à revenir sur elle après l'enregistrement (JEP-403).
+  function modifierPreparation(c: ProjectComponent, rang: number) {
+    retourEtape.current = { componentId: c.id, rang: Math.max(rang, 0), attente: null };
+    void ouvrirComposant(c, true);
+  }
+
+  // Étape de la préparation que l'on est en train de lire : la dernière dont le
+  // haut est passé sous l'en-tête du site et le bandeau collant.
+  function rangEnVue(c: ProjectComponent): number {
+    const seuil = 72 + 64 + 40;
+    let rang = 0;
+    steps
+      .filter((st) => componentOf(st) === c.id)
+      .forEach((st, k) => {
+        const el = document.getElementById(`etape-${st.id}`);
+        if (el && el.getBoundingClientRect().top <= seuil) rang = k;
+      });
+    return rang;
   }
 
   function boutonRecette(c: ProjectComponent) {
     return (
       <span className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => void ouvrirComposant(c, c.resolved)} className={btnGhost}>
-          {c.resolved ? 'Modifier cette préparation' : 'Choisir une recette'}
+        <button
+          type="button"
+          onClick={() => {
+            // Préparation entière : au retour, la page revient sur sa première étape.
+            retourEtape.current = c.resolved ? { componentId: c.id, rang: 0, attente: null } : null;
+            void ouvrirComposant(c, c.resolved);
+          }}
+          className={btnGhost}
+        >
+          {c.resolved ? (c.role === ROLE_ASSEMBLAGE ? 'Modifier cette étape' : 'Modifier cette préparation') : 'Choisir une recette'}
         </button>
-        {c.resolved && (
+        {c.resolved && c.role !== ROLE_ASSEMBLAGE && (
           <button type="button" onClick={() => changerRecette(c)} disabled={busy} className={btnGhost}>
             Choisir une autre recette
           </button>
         )}
-        {c.resolved && (
+        {c.resolved && c.role !== ROLE_ASSEMBLAGE && (
           <button type="button" onClick={() => void retirerRecette(c)} className={btnGhost}>
             Retirer la recette
           </button>
@@ -740,6 +929,57 @@ export function ProjectV2({
     );
   }
 
+  // Case et ligne « Total de l'étape » sous les ingrédients (JEP-403) : masse
+  // estimée par le référentiel (`totalEtape`, comme en fournée) ; une ligne
+  // sans conversion est nommée, jamais passée sous silence.
+  function piedTotal(s: RecipeStepView) {
+    const ings = groupByOrder.get(s.order_index ?? -1)?.ingredients ?? [];
+    if (!ings.length) return undefined;
+    const t = totalVoulu
+      ? totalEtape(
+          ings.map((it) => {
+            const q = it.quantity == null ? NaN : parseFloat(String(it.quantity).replace(',', '.'));
+            return {
+              name: it.name,
+              quantity: isFinite(q) ? q : null,
+              base_quantity: null,
+              unit: it.unit,
+              ref_id: it.ref_id ?? null,
+              removed: false,
+              expanded_into_recipe_id: null,
+            };
+          }),
+          conversions,
+          unitRefs,
+          ingredientDensities,
+        )
+      : null;
+    return (
+      <div className="no-print mt-3 space-y-2">
+        {t && (
+          <p className="flex flex-wrap items-baseline justify-between gap-2 border-t border-outline-variant pt-2 font-label-md text-label-md text-primary">
+            <span>Total de l’étape</span>
+            <span>{formatMasse(t.ajuste)}</span>
+            {t.horsTotal.length > 0 && (
+              <span className="block w-full font-body-md text-[12px] font-normal text-on-surface-variant">
+                Hors total (conversion inconnue) : {t.horsTotal.join(', ')}
+              </span>
+            )}
+          </p>
+        )}
+        <label className="flex cursor-pointer items-center gap-2 text-[13px] text-on-surface-variant">
+          <input
+            type="checkbox"
+            checked={totalVoulu}
+            onChange={(e) => setTotalVoulu(e.target.checked)}
+            className="h-4 w-4 rounded border-outline accent-primary"
+          />
+          <span>Afficher le total des ingrédients</span>
+        </label>
+      </div>
+    );
+  }
+
   // Même présentation que la fiche recette (`RecipeStep`, partagé). `dernier`
   // : pas de filet sous la dernière étape d'un groupe.
   function etape(s: RecipeStepView, i: number, dernier: boolean) {
@@ -748,27 +988,94 @@ export function ProjectV2({
     // l'assemblage, qui n'appartient à aucune préparation.
     const comp = ordered.find((c) => c.id === componentOf(s));
     return (
-      <div key={s.id} id={`etape-${s.id}`} className="scroll-mt-28">
+      <div key={s.id} id={`etape-${s.id}`} className="scroll-mt-40">
       <RecipeStep
         step={s}
+        decalage="scroll-mt-40"
+        crayon={
+          comp
+            ? (zone) => (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    // Dans un <summary> (conseils, ingrédients) : ne pas replier le volet.
+                    e.preventDefault();
+                    e.stopPropagation();
+                    modifierPreparation(comp, steps.filter((st) => componentOf(st) === comp.id).findIndex((st) => st.id === s.id));
+                  }}
+                  disabled={busy}
+                  title={
+                    zone === 'sous-etape'
+                      ? `Modifier cette étape (ouvre « ${comp.name} » sur cette étape)`
+                      : `Modifier ${zone === 'conseil' ? 'les conseils' : 'les ingrédients'} de cette étape (ouvre « ${comp.name} »)`
+                  }
+                  aria-label={`Modifier l’étape ${s.title || ''} de ${comp.name}`}
+                  // Un seul axe vertical pour tous les crayons (JEP-403), en DÉBUT de
+                  // ligne : les volets d'ingrédients et de conseils (cadre 1 px + 16 px
+                  // de marge) y placent le crayon à 17 px du bord, les sous-étapes,
+                  // sans cadre, le décalent d'autant.
+                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary/60 hover:bg-surface-variant hover:text-primary focus-visible:text-primary disabled:opacity-40 ${
+                    zone === 'sous-etape' ? 'ml-1' : ''
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                </button>
+              )
+            : undefined
+        }
         action={
           comp ? (
             <button
               type="button"
-              onClick={() => void ouvrirComposant(comp, true)}
+              onClick={() =>
+                modifierPreparation(comp, steps.filter((st) => componentOf(st) === comp.id).findIndex((st) => st.id === s.id))
+              }
               disabled={busy}
               title={`Modifier cette préparation (« ${comp.name} », toutes ses étapes)`}
               aria-label={`Modifier la préparation ${comp.name}`}
-              className="order-last ml-auto inline-flex h-9 w-9 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40"
+              className="ml-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-[20px]">edit</span>
             </button>
           ) : undefined
         }
         ajustement={comp ? selecteurAjustement(s) : undefined}
-        retoursEtape={<RetoursEtape stepId={s.id} ajustement={comp ? ajustementEcart(comp, s) : undefined} />}
+        note={
+          comp && notesDisponibles ? (
+            <PointsAVerifier
+              key={`${s.id}-${noteDe(s) ?? ''}`}
+              valeur={noteDe(s)}
+              busy={busy}
+              stepId={s.id}
+              retours={<RetoursEtape stepId={s.id} ajustement={comp ? ajustementEcart(comp, s) : undefined} />}
+              onSave={(texte) =>
+                mutate(
+                  () => createClient().from('recipe_steps').update({ points_a_verifier: texte } as never).eq('id', s.id),
+                  { errorLabel: 'Points à vérifier' },
+                )
+              }
+            />
+          ) : undefined
+        }
+        retoursEtape={comp && notesDisponibles ? undefined : <RetoursEtape stepId={s.id} ajustement={comp ? ajustementEcart(comp, s) : undefined} />}
         retoursIngredient={(it) => <RetoursIngredient stepId={s.id} ingredientId={it.id} />}
         retoursSousEtape={(t) => <RetoursSousEtape stepId={s.id} texte={t} />}
+        piedIngredients={comp ? piedTotal(s) : undefined}
+        photosEdition={
+          comp ? (
+            <PhotosEtapeProjet
+              key={s.id}
+              stepId={s.id}
+              recipeId={project.id}
+              titreEtape={s.title ?? ''}
+              photos={[...(s.step_photos ?? [])]
+                .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+                .map((p) => ({ url: p.url, original_url: p.original_url ?? null, ai_retouched: !!p.ai_retouched }))}
+              mutate={mutate}
+              sections={sectionRegistry}
+            />
+          ) : undefined
+        }
         index={i}
         anchorId={stepAnchorId(i)}
         ingredients={groupByOrder.get(s.order_index ?? -1)?.ingredients ?? []}
@@ -814,7 +1121,9 @@ export function ProjectV2({
       replie={
         key === 'intention'
           ? replies.intention
-          : key === 'structure'
+          : key === 'format'
+            ? replies.format
+            : key === 'structure'
             ? replies.structure
             : key === 'ingredients'
               ? replies.ingredients
@@ -831,16 +1140,24 @@ export function ProjectV2({
   // Tous les blocs y figurent, verrouillés compris : ils sont visibles dans la
   // page. Les étapes s'intercalent après « Étapes » (entrées de niveau 2),
   // seulement quand le bloc est ouvert — sinon leurs ancres n'existent pas.
+  // Le panneau du haut n'apparaît qu'une fois le travail engagé : à la création
+  // du projet, aucune préparation n'a encore sa recette (bloc « Étapes »
+  // verrouillé) et il ne ferait qu'empiler une liste de points d'emblée ouverts.
+  const afficherResteAFaire = states.etapes.unlocked;
   const avantEtapes = ORDRE_BLOCS.indexOf('etapes') + 1;
-  const entree = (k: BlockKey) => ({ id: `bloc-${k}`, label: BLOCS[k].court, icon: BLOCS[k].icone, level: 1 as const });
+  const entree = (k: BlockKey) => ({ id: `bloc-${k}`, label: BLOCS[k].court, icon: BLOCS[k].icon, level: 1 as const });
   const tocSections: TocSections = {
     before: [
-      {
-        id: 'reste-a-faire',
-        label: `Reste à faire (${todo.filter((i) => i.etat === 'fait').length}/${todo.length})`,
-        icon: 'checklist',
-        level: 1 as const,
-      },
+      ...(afficherResteAFaire
+        ? [
+            {
+              id: 'reste-a-faire',
+              label: `Reste à faire (${todo.filter((i) => i.etat === 'fait').length}/${todo.length})`,
+              icon: 'checklist',
+              level: 1 as const,
+            },
+          ]
+        : []),
       ...ORDRE_BLOCS.slice(0, avantEtapes).map(entree),
     ],
     after: ORDRE_BLOCS.slice(avantEtapes).map(entree),
@@ -852,9 +1169,7 @@ export function ProjectV2({
     {
       id: 'brouillon',
       icon: 'save',
-      label: anyDirty
-        ? `Enregistrer le brouillon (${dirtyLabels.length} section${dirtyLabels.length > 1 ? 's' : ''} modifiée${dirtyLabels.length > 1 ? 's' : ''})`
-        : 'Brouillon enregistré',
+      label: anyDirty ? 'Enregistrer maintenant' : 'Brouillon enregistré',
       variant: 'outline-strong',
       onClick: () => void saveAll(),
       disabled: busy || leaving || !anyDirty,
@@ -925,9 +1240,18 @@ export function ProjectV2({
         </h1>
         <div className="flex flex-wrap items-center gap-3">
           <span className="bg-secondary px-3 py-1 font-label-md text-[10px] uppercase tracking-widest text-white">Brouillon</span>
-          {anyDirty ? (
-            <span className="border border-error px-3 py-1 font-label-md text-[10px] uppercase tracking-widest text-error">
-              Modifications non enregistrées · {dirtyLabels.join(', ')}
+          {etatAuto.etat === 'echec' ? (
+            <span className="flex flex-wrap items-center gap-2 border border-error px-3 py-1 font-label-md text-[10px] uppercase tracking-widest text-error">
+              Enregistrement automatique impossible · {etatAuto.echecs.join(', ')}
+              <button type="button" onClick={() => void saveAll()} className="underline underline-offset-2">
+                Réessayer
+              </button>
+            </span>
+          ) : etatAuto.etat === 'enregistrement' ? (
+            <span className="font-label-md text-[12px] text-on-surface-variant">Enregistrement…</span>
+          ) : anyDirty ? (
+            <span className="font-label-md text-[12px] text-on-surface-variant" title={dirtyLabels.join(', ')}>
+              Enregistrement dans un instant… · {dirtyLabels.join(', ')}
             </span>
           ) : (
             <span className="font-label-md text-[12px] text-green-700">Tout est enregistré</span>
@@ -935,7 +1259,7 @@ export function ProjectV2({
         </div>
       </header>
 
-      <ProjectTodo id="reste-a-faire" aide={<HelpBlockSlot blockKey="projet.reste_a_faire" help={help} />} ouvert={!replies.todo} items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />
+      {afficherResteAFaire && <ProjectTodo id="reste-a-faire" aide={<HelpBlockSlot blockKey="projet.reste_a_faire" help={help} />} ouvert={!replies.todo} items={todo} onToggle={(it) => void basculerVerif(it)} busy={busy || leaving} />}
 
       <div className="space-y-6">
         {bloc(
@@ -953,14 +1277,6 @@ export function ProjectV2({
               className={`${champ} resize-none overflow-hidden`}
             />
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={saveIntent}
-                disabled={busy || intent.trim() === (project.intent ?? '').trim()}
-                className={btnGhost}
-              >
-                Enregistrer
-              </button>
               {!peutGenererIA ? (
                 <LockedAction label={libelleIA} message={iaMessage} className={btnGhost}>
                   {libelleIA}
@@ -989,7 +1305,7 @@ export function ProjectV2({
           // Volet replié : rappel de l'intention enregistrée (4 lignes au plus,
           // texte entier en infobulle) ; le picto « modifier » rouvre le volet.
           project.intent?.trim() ? (
-            <p className="line-clamp-4 whitespace-pre-line text-sm text-on-surface" title={project.intent.trim()}>
+            <p className="line-clamp-4 whitespace-pre-line text-[20px] leading-7 text-on-surface" title={project.intent.trim()}>
               {project.intent.trim()}
             </p>
           ) : undefined,
@@ -1005,7 +1321,7 @@ export function ProjectV2({
             <ProjectStructureList
               components={composants}
               extra={(c) => (
-                <div id={`prep-${c.id}-recette`} className="mt-2 flex scroll-mt-28 flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-2">
+                <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-2">
                   <span className={`flex min-w-0 flex-1 items-center gap-1.5 text-[12.5px] ${c.resolved ? 'text-green-700' : 'text-secondary'}`}>
                     {c.resolved
                       ? [
@@ -1071,12 +1387,6 @@ export function ProjectV2({
                   className={`${champ} resize-none overflow-hidden`}
                 />
               </div>
-              {((title.trim() || 'Nouveau projet') !== project.title ||
-                description.trim() !== (project.description ?? '').trim()) && (
-                <button type="button" onClick={saveIdentite} disabled={busy} className={btnPrimary}>
-                  Enregistrer le nom et la description
-                </button>
-              )}
             </div>
             {recipe && (
               <TagsEditor recipe={recipe} tags={tags} mutate={mutate} busy={busy} sections={sectionRegistry} peutCreer={peutCreerTag} />
@@ -1101,10 +1411,15 @@ export function ProjectV2({
               setServings={setServings}
               disabled={busy}
             />
-            <button type="button" onClick={saveFormat} disabled={busy} className={btnPrimary}>
-              Enregistrer le format
-            </button>
           </div>,
+          undefined,
+          // Volet replié : rappel du format enregistré (type, moule, dimensions,
+          // parts) ; le picto « modifier » rouvre le volet.
+          resumeFormat ? (
+            <p className="text-[20px] leading-7 text-on-surface" title={resumeFormat}>
+              {resumeFormat}
+            </p>
+          ) : undefined,
         )}
 
         {bloc(
@@ -1141,12 +1456,13 @@ export function ProjectV2({
                         coefficient par préparation, comme en base), replié
                         par défaut : les étapes dessous montrent déjà les
                         quantités ajustées. */}
-                    {c.resolved && (
+                    {c.resolved && c.lines.length > 0 && (
                       <details id={`prep-${c.id}-quantites`} open={ouvertAuChargement(c, 'quantites')} className="group mb-6 scroll-mt-28 rounded-xl border border-dashed border-secondary/40 bg-surface-container-lowest">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
                           <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
                             Ajustement des quantités · ×{String(Math.round((c.scaleFactor ?? 1) * 100) / 100).replace('.', ',')}
                             {quantitiesStale(c, cleFormat) && <span className="text-error"> · à recalculer (format modifié)</span>}
+                            {verifDe(c.id, 'quantites')?.etat === 'fait' && <span className="text-green-700"> · Vérifié</span>}
                           </span>
                           {c.id === ordered.find((o) => o.resolved)?.id && (
                             <span className="mr-auto">{<HelpBlockSlot blockKey="projet.ajustement" help={help} />}</span>
@@ -1172,8 +1488,26 @@ export function ProjectV2({
                         {/* Un seul cadre autour de l'en-tête ET des étapes (comme le
                             volet « Ajustement des quantités ») : ouvert, on voit que
                             les étapes dessous appartiennent à ce bandeau. */}
-                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl bg-surface-container-lowest px-4 py-3 group-open:rounded-b-none group-open:border-b group-open:border-dashed group-open:border-secondary/40">
-                          <span className="font-label-md text-[12px] uppercase tracking-widest text-secondary">
+                        {/* Bandeau collant (JEP-403) : sous l'en-tête du site, il reste
+                            à l'écran tant qu'on lit les étapes de cette préparation,
+                            avec son nom et le crayon — plus besoin de remonter. */}
+                        <summary className="sticky top-[var(--site-header-h,72px)] z-30 flex cursor-pointer list-none items-center gap-3 rounded-xl bg-surface-container-lowest px-4 py-3 md:px-6 group-open:rounded-b-none group-open:border-b group-open:border-dashed group-open:border-secondary/40">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              modifierPreparation(c, rangEnVue(c));
+                            }}
+                            disabled={busy}
+                            title={`Modifier cette préparation (« ${c.name} »), à l’étape en cours de lecture`}
+                            aria-label={`Modifier la préparation ${c.name}`}
+                            className="ml-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-variant disabled:opacity-40"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">edit</span>
+                          </button>
+                          <span className="min-w-0 flex-1 font-label-md text-[12px] uppercase tracking-widest text-secondary">
+                            <b className="mr-2 truncate font-body-md text-[14px] font-semibold normal-case tracking-normal text-primary">{c.name}</b>
                             Étapes · {own.length}
                             {verifDe(c.id, 'etapes')?.etat === 'fait' && <span className="text-green-700"> · relues</span>}
                             <NombreRetours
@@ -1380,10 +1714,18 @@ export function ProjectV2({
           initialDraft={resolvingInit?.draft}
           initialDraftKind={resolvingInit?.kind}
           initialSource={resolvingInit?.source}
-          onClose={fermerResolution}
+          etapesRelues={verifDe(resolving.id, 'etapes')?.etat === 'fait'}
+          rangInitial={retourEtape.current?.componentId === resolving.id ? retourEtape.current.rang : undefined}
+          onClose={() => {
+            retourEtape.current = null;
+            fermerResolution();
+          }}
           // La modale n'emporte pas sa propre resynchronisation : elle écrit,
           // ce parent-ci rafraîchit (il reste monté), puis elle se ferme.
           onDone={() => {
+            // Le retour sur l'étape attend le rendu serveur (id renouvelés).
+            if (retourEtape.current?.componentId === resolving.id) retourEtape.current.attente = signatureEtapes;
+            else retourEtape.current = null;
             refresh();
             fermerResolution();
           }}

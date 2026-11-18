@@ -19,6 +19,9 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
+import ChoixLignesManuelles, { type LigneManuelleChoix } from '@/components/projets/ChoixLignesManuelles';
+import { formatMasse } from '@/lib/total-etape';
+import { useTotalEtape } from '@/lib/use-total-etape';
 import { useLecons } from '@/components/batch/DerniereFois';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { moldMetrics } from '@/lib/recipe-view';
@@ -26,6 +29,8 @@ import { applyComponentScale, setLineQuantity } from '@/lib/projects-write';
 import {
   COMPONENT_SOURCE_LABELS,
   coefPreparation,
+  baseDeLigne,
+  lignesManuelles,
   componentScaleProposal,
   scaleIncompatibility,
   projectFormatKey,
@@ -45,6 +50,35 @@ const btnPrimary =
   'rounded-pill bg-primary px-5 py-2.5 font-label-md text-[13px] font-semibold text-on-primary transition-all hover:shadow-lg active:scale-95 disabled:opacity-40';
 const champ =
   'rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-body-md text-[14px] outline-none focus:border-primary';
+
+// Quantité d'origine d'une ligne, telle que la colonne « Origine » l'affiche :
+// la base enregistrée ; sans base, la quantité elle-même tant que la ligne n'a
+// pas été retouchée ; rien pour une ligne manuelle d'origine inconnue ou non chiffrée.
+function origineDe(l: ProjectComponent['lines'][number], manuelle: boolean): number | null {
+  if (l.baseQuantity != null) return l.baseQuantity;
+  const t = String(l.quantity ?? '').trim().replace(',', '.');
+  const a = t === '' ? NaN : Number(t);
+  return manuelle || !isFinite(a) ? null : a;
+}
+
+// Masse (g) d'une série de valeurs : par le référentiel quand l'écran le fournit
+// (un lait en ml compte), sinon les seules lignes en g / kg.
+function masseDeValeurs(
+  valeurs: { name: string; quantity: number; unit: string | null }[],
+  estimer?: EstimerMasse,
+): { grammes: number; horsTotal: string[] } {
+  if (estimer) {
+    const e = estimer(valeurs);
+    return { grammes: e.grammes, horsTotal: e.nonConvertis };
+  }
+  let total = 0;
+  for (const v of valeurs) {
+    const u = (v.unit || '').trim().toLowerCase();
+    const mult = u === 'g' ? 1 : u === 'kg' ? 1000 : null;
+    if (mult != null) total += v.quantity * mult;
+  }
+  return { grammes: Math.round(total), horsTotal: [] };
+}
 
 const fr = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
 
@@ -235,6 +269,18 @@ export function QuantitiesStep({
   // point 15) — « la recette d'origine est pour 2 fonds », « je veux une
   // couche plus épaisse »…
   const [contexteIA, setContexteIA] = useState<Record<number, string>>({});
+  // Complément d'informations de la recette d'origine : replié par défaut, une
+  // seule ligne visible (JEP-403). Réglage d'affichage, jamais enregistré.
+  const [complementOuvert, setComplementOuvert] = useState<Record<number, boolean>>({});
+  // Même réglage que le mode Préparer et la vue des étapes (navigateur, rien en base).
+  const [totalVoulu, setTotalVoulu] = useTotalEtape();
+  // Fenêtre « appliquer aussi aux lignes manuelles ? » : la promesse de
+  // `appliquer` attend le choix du membre (lignes retenues, ou null = annulé).
+  const [choixManuel, setChoixManuel] = useState<{
+    coefficient: string;
+    lignes: LigneManuelleChoix[];
+    resoudre: (incluses: Set<number> | null) => void;
+  } | null>(null);
   // Perte en cuisine par composant (ce qui reste sur le fouet, les bols, les
   // cuillères) : un pourcentage qui vient gonfler le coefficient proposé,
   // quelle que soit sa source — géométrique, IA, ou plan de montage. Défaut
@@ -423,6 +469,41 @@ export function QuantitiesStep({
     }
   }
 
+  // Ajustement par le poids (JEP-403) : le pâtissier sait souvent ce qu'il
+  // veut obtenir (« 300 g de ganache »). Coefficient = poids visé ÷ masse de
+  // la recette d'origine (quantités de base, celles que multiplie tout
+  // ajustement), estimée par le référentiel. La perte s'y ajoute comme pour
+  // les autres propositions : le poids visé est ce qui doit arriver dans le
+  // dessert.
+  const [poidsVise, setPoidsVise] = useState<Record<number, string>>({});
+  function proposerPoids(c: ProjectComponent) {
+    const cibleG = parseFloat((poidsVise[c.id] ?? '').replace(',', '.'));
+    if (!(cibleG > 0)) {
+      dialog.alert('Indiquez le poids visé, en grammes.');
+      return;
+    }
+    const origine = masseGrammes(c.lines, true, estimerMasse);
+    if (!origine || !(origine.grammes > 0)) {
+      dialog.alert('Le poids de cette préparation n’a pas pu être estimé (aucun ingrédient pesable) : saisissez le coefficient.');
+      return;
+    }
+    const factor = round2(cibleG / origine.grammes);
+    if (!(factor > 0)) {
+      dialog.alert('Le poids visé est trop faible pour cette préparation.');
+      return;
+    }
+    const hors = origine.horsTotal.length ? ` Hors calcul (conversion inconnue) : ${origine.horsTotal.join(', ')}.` : '';
+    const base: ScaleProposal = {
+      factor,
+      moldCoefs: null,
+      reason: `Poids visé ${masseTexte(cibleG)} ÷ ${masseTexte(origine.grammes)} (recette d’origine) = ×${fr(factor)}.${hors}`,
+    };
+    const avec = appliquerPerte(base, perteDe(c.id));
+    setBasesSansPerte((p) => ({ ...p, [c.id]: base }));
+    setPropositions((p) => ({ ...p, [c.id]: avec }));
+    setSaisie((p) => ({ ...p, [c.id]: fr(avec.factor) }));
+  }
+
   // Changer la perte recalcule aussitôt le coefficient depuis la proposition
   // d'origine (calcul pur, sans réseau : fluide à chaque frappe, y compris sur
   // mobile). Champ vide ou en cours de frappe = 0 %.
@@ -473,12 +554,42 @@ export function QuantitiesStep({
     const moldCoefs = prop && Math.abs(prop.factor - factor) < 1e-9 ? prop.moldCoefs : null;
     const reason =
       prop && Math.abs(prop.factor - factor) < 1e-9 ? prop.reason : `Coefficient ×${fr(factor)} saisi à la main.`;
+    const texteQte = (b: number | null, c2: number, u?: string | null) => scaledQuantityText(b, c2, u, seuils);
+
+    // Lignes retouchées à la main : le membre choisit celles qui suivent aussi
+    // le nouveau coefficient (toutes cochées d'office). Celles qu'il décoche
+    // gardent leur quantité.
+    const manuelles = lignesManuelles(c);
+    const ignorer = new Set<number>();
+    if (manuelles.length > 0) {
+      const choix: LigneManuelleChoix[] = manuelles.map((l) => {
+        const base = baseDeLigne(l);
+        const coef = coefPreparation(l.scalingMode, factor, moldCoefs);
+        const unite = l.unit ? ` ${l.unit}` : '';
+        return {
+          id: l.id,
+          nom: l.name,
+          commentaire: l.comment,
+          actuelle: `${l.quantity ?? ''}${unite}`,
+          proposee: `${texteQte(base, coef, l.unit) ?? ''}${unite}`,
+          origineConnue: l.baseQuantity != null,
+        };
+      });
+      const incluses = await new Promise<Set<number> | null>((resoudre) =>
+        setChoixManuel({ coefficient: fr(factor), lignes: choix, resoudre }),
+      );
+      setChoixManuel(null);
+      if (incluses === null) return;
+      manuelles.forEach((l) => {
+        if (!incluses.has(l.id)) ignorer.add(l.id);
+      });
+    }
 
     await mutate(
       async () => {
         const supabase = createClient();
         try {
-          await applyComponentScale(supabase, c.lines, factor, moldCoefs, coefPreparation, (b, c2, u) => scaledQuantityText(b, c2, u, seuils));
+          await applyComponentScale(supabase, c.lines, factor, moldCoefs, coefPreparation, texteQte, ignorer);
         } catch (e) {
           return { error: { message: (e as Error).message } };
         }
@@ -487,10 +598,9 @@ export function QuantitiesStep({
           .update({
             scale_factor: factor,
             scale_reason: reason,
-            // L'ajustement global reprend la main : les lignes touchées à la
-            // main gardent malgré tout leur valeur (leur `base_quantity` est
-            // vide, `applyComponentScale` en déduit une de la quantité actuelle).
-            manually_adjusted: false,
+            // Les lignes retouchées à la main que le membre a laissées telles
+            // quelles restent signalées ; sinon l'ajustement global reprend la main.
+            manually_adjusted: ignorer.size > 0,
           } as never)
           .eq('id', c.id);
         if (res.error) return res;
@@ -509,11 +619,16 @@ export function QuantitiesStep({
   }
 
   async function editerLigne(c: ProjectComponent, lineId: number, valeur: string) {
+    // Préparation jamais ajustée (×1) et ligne sans base : la quantité d'avant la
+    // retouche EST l'origine, on la garde sous les yeux.
+    const ligne = c.lines.find((x) => x.id === lineId);
+    const avant = parseFloat(String(ligne?.quantity ?? '').replace(',', '.'));
+    const baseSiAbsente = ligne && ligne.baseQuantity == null && (c.scaleFactor ?? 1) === 1 && isFinite(avant) ? avant : null;
     await mutate(
       async () => {
         const supabase = createClient();
         try {
-          await setLineQuantity(supabase, lineId, valeur);
+          await setLineQuantity(supabase, lineId, valeur, baseSiAbsente);
         } catch (e) {
           return { error: { message: (e as Error).message } };
         }
@@ -548,6 +663,32 @@ export function QuantitiesStep({
         const masseOrigine = masseGrammes(c.lines, true, estimerMasse);
         const masseActuelle = masseGrammes(c.lines, false, estimerMasse);
         const perime = quantitiesStale(c, cleFormat);
+        const manuellesIds = new Set(lignesManuelles(c).map((x) => x.id));
+        // Totaux sous les colonnes « Origine » et « Ce dessert » (case « Afficher le
+        // total des ingrédients », même réglage que le mode Préparer).
+        let totaux: { origine: number; actuel: number; horsTotal: string[]; sansOrigine: string[] } | null = null;
+        if (totalVoulu) {
+          const actuelles: { name: string; quantity: number; unit: string | null }[] = [];
+          const origines: { name: string; quantity: number; unit: string | null }[] = [];
+          const sansOrigine: string[] = [];
+          for (const l of c.lines) {
+            const t = String(l.quantity ?? '').trim().replace(',', '.');
+            const a = t === '' ? NaN : Number(t);
+            if (!isFinite(a)) continue;
+            actuelles.push({ name: l.name, quantity: a, unit: l.unit });
+            const o = origineDe(l, manuellesIds.has(l.id));
+            if (o == null) sansOrigine.push(l.name);
+            else origines.push({ name: l.name, quantity: o, unit: l.unit });
+          }
+          const ma = masseDeValeurs(actuelles, estimerMasse);
+          const mo = masseDeValeurs(origines, estimerMasse);
+          totaux = {
+            actuel: ma.grammes,
+            origine: mo.grammes,
+            horsTotal: [...new Set([...ma.horsTotal, ...mo.horsTotal])],
+            sansOrigine,
+          };
+        }
         return (
           <div key={c.id} className={componentId == null ? 'rounded-xl border border-outline-variant p-4' : ''}>
             {perime && (
@@ -557,34 +698,17 @@ export function QuantitiesStep({
                 « Proposer », puis « Appliquer ».
               </p>
             )}
-            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-              <div>
-                {componentId == null && <h3 className="font-body-md text-[16px] font-semibold text-on-surface">{c.name}</h3>}
-                <p className="text-[12px] text-on-surface-variant">
-                  {COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind}
-                  {c.source_title && c.source_recipe_id ? (
-                    <>
-                      {' · '}
-                      <a
-                        href={`/recette/${c.source_recipe_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
-                      >
-                        {c.source_title}
-                      </a>
-                    </>
-                  ) : c.source_title ? (
-                    ` · ${c.source_title}`
-                  ) : (
-                    ''
-                  )}
-                  {c.manuallyAdjusted ? ' · ajusté à la main' : ''}
-                </p>
+            {/* Le nom de la recette d'origine vit dans « Recette d'origine » ; le
+                coefficient est déjà dans le titre du volet (préparation seule). */}
+            {(componentId == null || c.manuallyAdjusted) && (
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  {componentId == null && <h3 className="font-body-md text-[16px] font-semibold text-on-surface">{c.name}</h3>}
+                  {c.manuallyAdjusted && <p className="text-[12px] text-on-surface-variant">Ajusté à la main</p>}
+                </div>
+                {componentId == null && <span className="font-label-md text-[12.5px] text-primary">×{fr(facteur)}</span>}
               </div>
-              <span className="font-label-md text-[12.5px] text-primary">×{fr(facteur)}</span>
-            </div>
-
+            )}
 
             {!c.resolved ? (
               <p className="text-[13px] italic text-on-surface-variant">
@@ -595,50 +719,83 @@ export function QuantitiesStep({
                 {/* Ce que produit la recette choisie (JEP-254, point 13) :
                     son rendement d'origine, et le poids de la préparation
                     avant / après ajustement. */}
-                <dl className="mb-3 grid grid-cols-1 gap-x-4 gap-y-1 text-[12.5px] sm:grid-cols-[auto_1fr]">
-                  <dt className="text-outline">Recette d’origine</dt>
-                  <dd className="flex items-center gap-1.5 text-on-surface">
-                    <span>
-                      {c.sourceYield
-                        ? lignesRendement(c.sourceYield).map((l, i) => (
-                            <span key={i} className="block">
-                              {l}
-                            </span>
-                          ))
-                        : 'rendement non précisé'}
-                    </span>
-                    {/* Recette d'origine dans un nouvel onglet (préparation copiée seulement). */}
-                    {c.source_recipe_id && (
-                      <a
-                        href={`/recette/${c.source_recipe_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Voir la recette d'origine"
-                        aria-label={`Voir la recette d'origine de ${c.name}`}
-                        className="relative top-px shrink-0 self-center text-on-surface-variant transition-colors hover:text-primary"
-                      >
-                        <span className="material-symbols-outlined block" style={{ fontSize: 14, lineHeight: 1 }}>
-                          visibility
-                        </span>
-                      </a>
-                    )}
-                  </dd>
-                  {masseActuelle != null && (
-                    <>
-                      <dt className="text-outline">Ingrédients pesés</dt>
+                {(() => {
+                  const lignes = c.sourceYield ? lignesRendement(c.sourceYield) : [];
+                  const reste = lignes.slice(1);
+                  const ecart = masseActuelle != null && masseOrigine != null && Math.abs(masseOrigine.grammes - masseActuelle.grammes) > 0.5;
+                  const poids = masseOrigine ?? masseActuelle;
+                  const plus = reste.length > 0 || poids != null;
+                  const ouvert = !!complementOuvert[c.id];
+                  const sourceLabel = COMPONENT_SOURCE_LABELS[c.source_kind as ComponentSourceKind] ?? c.source_kind;
+                  return (
+                    <dl className="mb-3 grid grid-cols-1 gap-x-4 gap-y-1 text-[12.5px] sm:grid-cols-[auto_1fr]">
+                      <dt className="text-outline">Recette d’origine</dt>
                       <dd className="text-on-surface">
-                        {masseOrigine != null && Math.abs(masseOrigine.grammes - masseActuelle.grammes) > 0.5
-                          ? `${masseTexte(masseOrigine.grammes)} dans la recette d’origine → ${masseTexte(masseActuelle.grammes)} pour ce dessert`
-                          : masseTexte(masseActuelle.grammes)}
-                        {masseActuelle.horsTotal.length > 0 && (
-                          <span className="block text-[12px] text-outline">
-                            Hors total (conversion inconnue) : {masseActuelle.horsTotal.join(', ')}
+                        {/* Première ligne : d'où vient la recette (lien vers elle). */}
+                        <span className="block">
+                          {sourceLabel}
+                          {c.source_title && c.source_recipe_id ? (
+                            <>
+                              {' · '}
+                              <a
+                                href={`/recette/${c.source_recipe_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Voir la recette d'origine"
+                                className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                              >
+                                {c.source_title}
+                              </a>
+                            </>
+                          ) : c.source_title ? (
+                            ` · ${c.source_title}`
+                          ) : (
+                            ''
+                          )}
+                        </span>
+                        {/* Complément d'informations : première ligne seule, le reste se déplie. */}
+                        <span className="flex items-start gap-1.5">
+                          <span className="block">{lignes[0] ?? 'rendement non précisé'}</span>
+                          {plus && (
+                            <button
+                              type="button"
+                              onClick={() => setComplementOuvert((p) => ({ ...p, [c.id]: !ouvert }))}
+                              aria-expanded={ouvert}
+                              title={ouvert ? 'Voir moins' : 'Voir plus'}
+                              aria-label={ouvert ? 'Voir moins' : 'Voir plus'}
+                              className="shrink-0 text-on-surface-variant transition-colors hover:text-primary"
+                            >
+                              <span className="material-symbols-outlined block text-[18px] leading-none">
+                                {ouvert ? 'expand_less' : 'expand_more'}
+                              </span>
+                            </button>
+                          )}
+                        </span>
+                        {plus && ouvert && (
+                          <span className="mt-1 block">
+                            {reste.map((l, i) => (
+                              <span key={i} className="block">
+                                {l}
+                              </span>
+                            ))}
+                            {poids != null && (
+                              <span className="mt-1 block">
+                                <span className="text-outline">Poids des ingrédients de la recette d’origine : </span>
+                                {masseTexte(poids.grammes)}
+                                {ecart && masseActuelle != null ? ` → ${masseTexte(masseActuelle.grammes)} pour ce dessert` : ''}
+                                {poids.horsTotal.length > 0 && (
+                                  <span className="block text-[12px] text-outline">
+                                    Hors total (conversion inconnue) : {poids.horsTotal.join(', ')}
+                                  </span>
+                                )}
+                              </span>
+                            )}
                           </span>
                         )}
                       </dd>
-                    </>
-                  )}
-                </dl>
+                    </dl>
+                  );
+                })()}
 
                 <div className="mb-3">
                   <label className="mb-1 block font-label-md text-[11.5px] text-outline">
@@ -689,6 +846,28 @@ export function QuantitiesStep({
                   )}
                 </div>
 
+                {/* Poids visé (JEP-403) : une troisième façon de proposer un
+                    coefficient, à côté du format et de l'IA. */}
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <label htmlFor={`poids-${c.id}`} className="w-24 font-label-md text-[12px] text-outline">
+                    POIDS VISÉ (G)
+                  </label>
+                  <input
+                    id={`poids-${c.id}`}
+                    value={poidsVise[c.id] ?? ''}
+                    onChange={(e) => setPoidsVise((p) => ({ ...p, [c.id]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') proposerPoids(c);
+                    }}
+                    inputMode="decimal"
+                    placeholder={masseActuelle ? String(Math.round(masseActuelle.grammes)) : undefined}
+                    className={`${champ} w-24`}
+                  />
+                  <button type="button" onClick={() => proposerPoids(c)} className={btnGhost}>
+                    Proposer d’après ce poids
+                  </button>
+                </div>
+
                 {/* Perte et coefficient sur une seconde rangée : libellés de
                     même largeur, champs de même taille, donc alignés. */}
                 <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -720,29 +899,61 @@ export function QuantitiesStep({
                 </div>
 
                 {c.lines.length > 0 && (
-                  <ul className="space-y-1">
+                  <>
+                  <div className="overflow-x-auto">
+                  <ul className="min-w-[440px] space-y-1">
+                    {/* En-têtes (JEP-403) : « Origine » calé à droite au-dessus des
+                        quantités de base, « Ce dessert » centré sur le champ de
+                        saisie seul (mêmes largeurs que les lignes ci-dessous). */}
+                    <li aria-hidden className="flex items-center gap-2 font-label-md text-[10px] uppercase tracking-wider text-outline">
+                      <span className="min-w-0 flex-1" />
+                      <span className="w-20 shrink-0 text-right">Origine</span>
+                      <span className="w-16 shrink-0" />
+                      <span className="w-24 shrink-0 text-center">Ce dessert</span>
+                      <span className="w-14 shrink-0" />
+                    </li>
                     {c.lines.map((l) => {
-                      const actuelle = parseFloat(String(l.quantity ?? '').replace(',', '.'));
-                      // Quantité d'origine, à titre de repère : affichée en
-                      // italique tant qu'un ajustement l'a réellement changée
-                      // — inutile de la répéter à l'identique (facteur ×1, ou
-                      // avant tout ajustement).
-                      const montrerOrigine =
-                        l.baseQuantity != null && (!isFinite(actuelle) || Math.abs(l.baseQuantity - actuelle) > 1e-9);
+                      const texteQte = String(l.quantity ?? '').trim().replace(',', '.');
+                      const actuelle = texteQte === '' ? NaN : Number(texteQte);
+                      // Une ligne « manuelle » : voir `lignesManuelles` (drapeau
+                      // `quantity_manual`, ou ancien marquage sans origine).
+                      const manuelle = manuellesIds.has(l.id);
+                      // Origine : voir `origineDe`.
+                      const origine = origineDe(l, manuelle);
+                      const inchangee = origine != null && isFinite(actuelle) && Math.abs(origine - actuelle) < 1e-9;
+                      // Coefficient de la ligne : calculé à l'affichage, jamais stocké.
+                      const coefLigne = origine != null && origine !== 0 && isFinite(actuelle) ? actuelle / origine : null;
                       return (
-                        <li key={l.id} className="flex flex-wrap items-center gap-2 text-[13.5px]">
+                        <li key={l.id} className="flex items-center gap-2 text-[13.5px]">
                           <span className="min-w-0 flex-1 text-on-surface">
                             {l.name}
                             {l.comment && <span className="italic text-on-surface-variant"> — {l.comment}</span>}
                           </span>
-                          {montrerOrigine && (
-                            <span
-                              className="w-20 shrink-0 text-right text-[12px] italic text-on-surface-variant"
-                              title="Quantité d’origine, avant ajustement"
-                            >
-                              {fr(l.baseQuantity as number)} {l.unit ?? ''}
-                            </span>
-                          )}
+                          <span
+                            className={`w-20 shrink-0 text-right text-[12px] italic tabular-nums text-on-surface-variant ${inchangee ? 'opacity-55' : ''}`}
+                            title={origine != null ? 'Quantité d’origine, avant ajustement' : undefined}
+                          >
+                            {origine != null ? `${fr(origine)} ${l.unit ?? ''}` : ''}
+                          </span>
+                          <span className="flex w-16 shrink-0 justify-center">
+                            {manuelle ? (
+                              <span
+                                className="rounded-pill bg-secondary-container px-2 py-px text-[11px] text-on-secondary-container"
+                                title="Quantité modifiée à la main : cette ligne ne suit plus le coefficient de la préparation."
+                              >
+                                manuel
+                              </span>
+                            ) : coefLigne != null ? (
+                              <span
+                                className={`rounded-pill px-2 py-px text-[11px] tabular-nums ${
+                                  inchangee ? 'text-outline' : 'bg-surface-container text-secondary'
+                                }`}
+                                title="Quantité actuelle ÷ quantité d’origine"
+                              >
+                                ×{fr(coefLigne)}
+                              </span>
+                            ) : null}
+                          </span>
                           <input
                             // `key` porte la quantité et pas seulement l'id : le
                             // champ est non contrôlé (on n'écrit qu'à la sortie
@@ -755,13 +966,45 @@ export function QuantitiesStep({
                             onBlur={(e) => {
                               if ((e.target.value || '') !== (l.quantity ?? '')) void editerLigne(c, l.id, e.target.value);
                             }}
-                            className={`${champ} w-24 py-1`}
+                            className={`${champ} w-24 shrink-0 py-1 text-right tabular-nums ${
+                              manuelle ? 'border-secondary bg-primary-fixed/60' : ''
+                            }`}
                           />
-                          <span className="w-20 text-[12.5px] text-on-surface-variant">{l.unit ?? ''}</span>
+                          <span className="w-14 shrink-0 text-[12.5px] text-on-surface-variant">{l.unit ?? ''}</span>
                         </li>
                       );
                     })}
+                    {totalVoulu && totaux && (
+                      <li className="flex items-center gap-2 border-t border-outline-variant pt-1.5 text-[13.5px] font-semibold text-primary">
+                        <span className="min-w-0 flex-1">Total</span>
+                        <span className="w-20 shrink-0 text-right text-[12px] tabular-nums">
+                          {totaux.origine > 0 ? formatMasse(totaux.origine) : ''}
+                        </span>
+                        <span className="w-16 shrink-0" />
+                        <span className="w-24 shrink-0 pr-3 text-right tabular-nums">{formatMasse(totaux.actuel)}</span>
+                        <span className="w-14 shrink-0" />
+                      </li>
+                    )}
                   </ul>
+                  </div>
+                  {totalVoulu && totaux && (totaux.horsTotal.length > 0 || totaux.sansOrigine.length > 0) && (
+                    <p className="mt-1 text-[12px] text-on-surface-variant">
+                      {totaux.horsTotal.length > 0 && <>Hors total (conversion inconnue) : {totaux.horsTotal.join(', ')}. </>}
+                      {totaux.sansOrigine.length > 0 && (
+                        <>Origine inconnue, non comptée dans le total d’origine : {totaux.sansOrigine.join(', ')}.</>
+                      )}
+                    </p>
+                  )}
+                  <label className="mt-2 flex cursor-pointer items-center gap-2 text-[13px] text-on-surface-variant">
+                    <input
+                      type="checkbox"
+                      checked={totalVoulu}
+                      onChange={(e) => setTotalVoulu(e.target.checked)}
+                      className="h-4 w-4 rounded border-outline accent-primary"
+                    />
+                    <span>Afficher le total des ingrédients</span>
+                  </label>
+                  </>
                 )}
                 {pied}
               </>
@@ -769,6 +1012,14 @@ export function QuantitiesStep({
           </div>
         );
       })}
+      {choixManuel && (
+        <ChoixLignesManuelles
+          coefficient={choixManuel.coefficient}
+          lignes={choixManuel.lignes}
+          onConfirm={(incluses) => choixManuel.resoudre(incluses)}
+          onCancel={() => choixManuel.resoudre(null)}
+        />
+      )}
     </section>
   );
 }

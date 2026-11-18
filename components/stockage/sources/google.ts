@@ -257,6 +257,32 @@ export function ouvrirGooglePhotos(session: SessionPhotos): void {
 
 type MediaBrut = { id: string; type?: string; mediaFile?: { baseUrl?: string; mimeType?: string; filename?: string } };
 
+/**
+ * Pause entre deux interrogations de Google, écourtée dès que le membre revient
+ * sur l'onglet du site. Pendant qu'il choisit dans Google Photos, notre onglet
+ * est en arrière-plan : le navigateur y retarde les minuteries (jusqu'à une
+ * minute), et la fenêtre « Choisissez vos photos » restait affichée alors que le
+ * choix était déjà validé.
+ */
+function attendreOuReveil(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((ok) => {
+    const fin = () => {
+      window.clearTimeout(minuteur);
+      document.removeEventListener('visibilitychange', reveil);
+      window.removeEventListener('focus', fin);
+      signal.removeEventListener('abort', fin);
+      ok();
+    };
+    const reveil = () => {
+      if (document.visibilityState === 'visible') fin();
+    };
+    const minuteur = window.setTimeout(fin, ms);
+    document.addEventListener('visibilitychange', reveil);
+    window.addEventListener('focus', fin);
+    signal.addEventListener('abort', fin);
+  });
+}
+
 /** Attend que le membre valide son choix dans Google Photos, puis télécharge les photos. */
 export async function recupererGooglePhotos(
   session: SessionPhotos,
@@ -272,7 +298,7 @@ export async function recupererGooglePhotos(
       const r = await telecharger(`${API_PHOTOS}/sessions/${encodeURIComponent(session.id)}`, { headers: auth, signal });
       const etat = await jsonOuErreur<SessionBrute>(r, 'Google Photos ne répond pas');
       if (etat.mediaItemsSet) break;
-      await new Promise((ok) => window.setTimeout(ok, session.intervalleMs));
+      await attendreOuReveil(session.intervalleMs, signal);
     }
 
     const medias: MediaBrut[] = [];

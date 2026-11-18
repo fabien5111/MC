@@ -65,7 +65,7 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
   }
 
   const parsed = parseCarnetParams(await searchParams);
-  const [readOnly, { items, counts, statusCounts, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven, defaultPhoto, allergenRefs, droits, toutesListes, helpBlocks] =
+  const [readOnly, { items, counts, statusCounts, statusCountsTout, sharedStatusCounts }, favIds, importsEnAttente, bookSharesGiven, defaultPhoto, allergenRefs, droits, toutesListes, helpBlocks] =
     await Promise.all([
       isReadOnlySession(),
       getCarnetData(user.id),
@@ -120,7 +120,9 @@ export default async function CarnetPage({ searchParams }: SearchParams) {
       ? sharedStatusCounts
       : params.scope === 'fav' || params.scope === 'sub' || params.scope === 'proj' || params.scope === 'cap' || params.scope === 'listes'
         ? compteursStatut(applyCarnetFilters(source, { ...params, statut: 'all', q: '' }))
-        : statusCounts;
+        : params.scope === 'all'
+          ? statusCountsTout
+          : statusCounts;
   const countsAffiches = { ...counts, ...(cap ? { cap: cap.items.length } : {}), listes: listesPerso.length };
   const verrouilles = [...(peutCap ? [] : ['cap' as const]), ...(listesOuvertes ? [] : ['listes' as const])];
   const lienImpression = `/carnet/cap?choisir=1&liste=cap${params.q ? `&q=${encodeURIComponent(params.q)}` : ''}`;

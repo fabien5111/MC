@@ -53,6 +53,15 @@ export function isProjectDraft(r: ProjectMarks | null | undefined): boolean {
   return r?.kind === 'project' && r?.project_stage === 'wizard';
 }
 
+// Nom d'une fournée d'ESSAI d'un projet en cours, partout où elle s'affiche
+// (planning par jour, cartes « En cuisine », en-tête de la fournée) : préfixé
+// « [Projet] » pour ne pas la confondre avec une recette ordinaire du même nom.
+// Affichage seul — jamais écrit en base (`batches.recipe_title` reste le titre).
+export const PREFIXE_PROJET = '[Projet] ';
+export function titreAvecProjet(titre: string, recette: ProjectMarks | null | undefined): string {
+  return titre && isProjectDraft(recette) ? PREFIXE_PROJET + titre : titre;
+}
+
 // Projet dont les étapes ont été ré-enregistrées par l'éditeur classique.
 // `CreerForm` fait un `delete` + `insert` complet à chaque sauvegarde : tous
 // les `recipe_steps.component_id` disparaissent, et avec eux la vue par
@@ -301,6 +310,20 @@ export const COMPONENT_ROLES = [
   'Décor',
 ] as const;
 
+// Rôle d'une étape d'assemblage ou de montage, ajoutée par « Ajouter une
+// étape d'assemblage » (JEP-403) : une préparation sans recette ni ingrédient.
+// Hors de `COMPONENT_ROLES` pour ne pas être proposée par l'IA. Un projet qui
+// en porte une n'a plus besoin de la section d'assemblage automatique écrite à
+// la validation (`writeAssemblyStep`).
+export const ROLE_ASSEMBLAGE = 'Assemblage';
+
+// À quoi sert le rôle : affiché en infobulle à côté de la liste (JEP-403).
+// Longueur maximale d'une note « points à vérifier » (JEP-403).
+export const NOTE_VERIF_MAX = 500;
+
+export const ROLE_AIDE =
+  'Facultatif. Le rôle aide l’IA à proposer une recette de base et à ajuster les quantités (un insert, une garniture ne se dosent pas comme un fond). Il n’a pas d’autre effet.';
+
 // Modes d'ajustement proposés à l'étape 3 (JEP-254, point 4) — les valeurs
 // de `ingredient_groups.scaling_mode`, avec les libellés de l'éditeur
 // classique (CreerForm) pour qu'un même choix se lise pareil partout.
@@ -452,6 +475,10 @@ export type ComponentStepDraft = {
   // relues par `readComponentDraft` pour qu'une modification du composant
   // ne les efface pas (ses étapes sont supprimées puis réécrites).
   photos?: ComponentStepPhoto[];
+  // Note « points à vérifier » de l'étape (JEP-403, mode projet seulement) :
+  // relue et réécrite pour survivre à la réécriture des étapes d'une
+  // préparation. Colonne posée à la main : lue et écrite à part, échec ignoré.
+  points_a_verifier?: string | null;
   // Étape du projet relue par `readComponentDraft` : sert à rattacher les
   // retours des fournées d'essai dans la fenêtre d'édition (JEP-381).
   // Jamais écrit (les étapes sont supprimées puis réinsérées).
@@ -674,6 +701,30 @@ export function baseDeLigne(l: { quantity?: string | null; baseQuantity: number 
   return isFinite(actuelle) ? actuelle : null;
 }
 
+// Lignes « retouchées à la main » d'une préparation (JEP-403) : celles qu'un
+// nouveau coefficient ne doit pas écraser sans demander. Deux sources :
+// - le drapeau `quantity_manual` (la base est conservée : l'origine reste
+//   affichable) ;
+// - l'ancien marquage, sans drapeau : base effacée alors que la préparation a
+//   été ajustée et que `manually_adjusted` est posé (sans la dernière condition,
+//   une préparation jamais ajustée marquerait toutes ses lignes). Ces lignes-là
+//   ont perdu leur origine.
+// Une ligne non chiffrée (« 1 pincée ») n'est jamais « manuelle ».
+export function lignesManuelles<L extends { quantity?: string | null; baseQuantity: number | null; quantityManual?: boolean }>(
+  c: { manuallyAdjusted: boolean; lines: L[] },
+): L[] {
+  const chiffree = (l: L) => {
+    const t = String(l.quantity ?? '').trim().replace(',', '.');
+    return t !== '' && isFinite(Number(t));
+  };
+  const preparationAjustee = c.lines.some((x) => x.baseQuantity != null);
+  return c.lines.filter(
+    (l) =>
+      chiffree(l) &&
+      (l.quantityManual === true || (c.manuallyAdjusted && preparationAjustee && l.baseQuantity == null)),
+  );
+}
+
 // Coefficient effectif d'une ligne quand on applique le coefficient d'UNE
 // préparation du mode projet. Même calcul que `scalingCoef`
 // (`lib/recipe-plan.ts`), sauf pour « aucun » : ici, le coefficient est un
@@ -741,8 +792,6 @@ export function buildProjectFormatUpdate(input: {
   dims: Record<string, string>;
   moldTypeId: string;
 }): { error: string } | { payload: Record<string, unknown> } {
-  const parts = parseInt(input.servings, 10);
-  if (!(parts > 0)) return { error: 'Indiquez le nombre de parts visé.' };
   const nb = parseInt(input.count, 10);
   const countLabel = PROJECT_FORMATS[input.format].countLabel;
   if (countLabel && !(nb > 0)) return { error: `Indiquez le nombre à réaliser (${countLabel.toLowerCase()}).` };
@@ -750,6 +799,19 @@ export function buildProjectFormatUpdate(input: {
   for (const d of PROJECT_FORMATS[input.format].dims) {
     const v = parseFloat((input.dims[d.key] ?? '').replace(',', '.'));
     if (!isNaN(v) && v > 0) parsedDims[d.key] = v;
+  }
+  // Nombre de parts facultatif pour un format en moule (JEP-403) : vide, il
+  // est estimé d'après le moule (`estimerParts`). Seul le format libre, qui
+  // n'a rien d'autre pour se décrire, l'exige.
+  const saisies = parseInt(input.servings, 10);
+  const parts = saisies > 0 ? saisies : estimerParts(input.format, parsedDims, nb > 0 ? nb : 1);
+  if (!(parts && parts > 0)) {
+    return {
+      error:
+        input.format === 'free'
+          ? 'Indiquez le nombre de parts visé.'
+          : 'Indiquez le nombre de parts, ou les dimensions du moule pour qu’il soit estimé.',
+    };
   }
   return {
     payload: projectFormatPayload({
@@ -761,6 +823,26 @@ export function buildProjectFormatUpdate(input: {
       moldTypeId: input.format !== 'free' && input.moldTypeId ? Number(input.moldTypeId) : null,
     }),
   };
+}
+
+// Nombre de parts estimé d'après le moule (JEP-403), quand le membre ne l'a
+// pas saisi. Repères du métier : une part d'entremets ou de tarte occupe
+// environ 40 cm² (Ø 20 cm → 8 parts, Ø 24 cm → 11), une tranche de bûche
+// environ 3 cm de long ; une empreinte individuelle est une part. Multiplié par
+// le nombre d'exemplaires. `null` sans dimension utile (ou format libre) :
+// l'estimation ne s'invente pas.
+export const SURFACE_PART_CM2 = 40;
+export const TRANCHE_BUCHE_CM = 3;
+export function estimerParts(format: ProjectFormat, dims: Record<string, number>, count: number): number | null {
+  const n = count > 0 ? count : 1;
+  let parUnite: number | null = null;
+  if (format === 'round' && dims.diametre > 0) parUnite = (Math.PI * (dims.diametre / 2) ** 2) / SURFACE_PART_CM2;
+  else if (format === 'rectangular' && dims.longueur > 0 && dims.largeur > 0)
+    parUnite = (dims.longueur * dims.largeur) / SURFACE_PART_CM2;
+  else if (format === 'log' && dims.longueur > 0) parUnite = dims.longueur / TRANCHE_BUCHE_CM;
+  else if (format === 'individual') parUnite = 1;
+  if (parUnite == null) return null;
+  return Math.max(1, Math.round(parUnite * n));
 }
 
 // ── Mode projet v2 : blocs de la page verticale ───────────────────────────
@@ -775,9 +857,9 @@ export function buildProjectFormatUpdate(input: {
 // projet ouvert dans la v2 ne doit pas changer d'étape dans l'autre vue).
 export const PROJECT_V2_BLOCKS = [
   'intention',
+  'format',
   'structure',
   'identite',
-  'format',
   'etapes',
   'ingredients',
   'organisation',
@@ -923,6 +1005,11 @@ export function projectTodo(input: {
     checkedQuantitiesKey: string | null;
     cleEtapes: string;
     cleQuantites: string;
+    // Aucun ingrédient (étape d'assemblage, JEP-403) : pas de quantités à vérifier.
+    sansIngredient?: boolean;
+    // Étapes portant une note « points à vérifier » (JEP-403) : chacune est un
+    // point à faire, jusqu'à ce que la note soit effacée.
+    notes?: { stepId: number; titre: string }[];
   }[];
 }): TodoItem[] {
   const out: TodoItem[] = [];
@@ -955,6 +1042,15 @@ export function projectTodo(input: {
     ancre: 'bloc-structure',
   });
   for (const c of input.components) {
+    for (const n of c.notes ?? []) {
+      out.push({
+        id: `note-${n.stepId}`,
+        groupe: c.name,
+        libelle: `Point à vérifier — ${n.titre}`,
+        etat: 'afaire',
+        ancre: `etape-${n.stepId}`,
+      });
+    }
     out.push({
       id: `recette-${c.id}`,
       groupe: c.name,
@@ -964,7 +1060,17 @@ export function projectTodo(input: {
     });
     if (!c.resolved || c.stepCount === 0) continue;
     const perimee = quantitiesStale(c, input.formatKey);
-    if (input.verifsDispo) {
+    if (input.verifsDispo && c.sansIngredient) {
+      const etapes = c.checkedStepsKey == null ? 'afaire' : c.checkedStepsKey === c.cleEtapes ? 'fait' : 'arefaire';
+      out.push({
+        id: `etapes-${c.id}`,
+        groupe: c.name,
+        libelle: etapes === 'arefaire' ? 'Étapes à relire (modifiées depuis)' : 'Étapes relues',
+        etat: etapes,
+        ancre: `prep-${c.id}-etapes`,
+        verif: { componentId: c.id, type: 'etapes', cle: c.cleEtapes },
+      });
+    } else if (input.verifsDispo) {
       const quantites =
         perimee || (c.checkedQuantitiesKey != null && c.checkedQuantitiesKey !== c.cleQuantites)
           ? 'arefaire'

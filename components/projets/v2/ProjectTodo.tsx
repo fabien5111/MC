@@ -26,7 +26,7 @@ export function allerA(ancre: string) {
 const ICONE: Record<TodoItem['etat'], { icon: string; cls: string }> = {
   fait: { icon: 'check_circle', cls: 'text-green-700' },
   afaire: { icon: 'radio_button_unchecked', cls: 'text-outline' },
-  arefaire: { icon: 'history', cls: 'text-error' },
+  arefaire: { icon: 'radio_button_unchecked', cls: 'text-error' },
 };
 
 export function ProjectTodo({
@@ -120,7 +120,7 @@ export function ProjectTodo({
                     <button
                       type="button"
                       onClick={() => allerA(it.ancre)}
-                      className={`text-left ${it.etat === 'fait' ? 'text-on-surface-variant' : 'text-on-surface'}`}
+                      className={`text-left ${it.etat === 'fait' ? 'text-on-surface-variant' : it.etat === 'arefaire' ? 'text-error' : 'text-on-surface'}`}
                     >
                       {it.libelle}
                     </button>

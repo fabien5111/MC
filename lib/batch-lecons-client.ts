@@ -5,13 +5,9 @@
 // global » du résumé, qui reste modifiable ensuite. Écrit à part du statut,
 // côté navigateur (RLS `owns_plan()`). (L'ancien « À retenir »,
 // `batches.lecon`, n'est plus ni posé ni lu.)
-import { useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useDialog } from '@/components/Dialog';
 import { trackEvent } from '@/lib/analytics';
-import { BILAN_MAX, ligneDecision, normaliserBilan, phraseDejaValidee, type Remarque, type StatutRemarque } from '@/lib/batch-lecons';
-
-const QUESTION = 'Un commentaire sur cette fournée ?\n\nFacultatif — bilan de la fournée, ce que vous changeriez la prochaine fois… Il s’affichera au lancement de votre prochaine fournée de cette recette et reste modifiable depuis le résumé.';
+import { ligneDecision, normaliserBilan, phraseDejaValidee, type Remarque, type StatutRemarque } from '@/lib/batch-lecons';
 
 // Écrit le bilan ; renvoie le message d'erreur, ou `null` si tout va bien.
 export async function enregistrerBilan(batchId: number, valeur: string | null): Promise<string | null> {
@@ -56,54 +52,10 @@ async function autresFourneesValidees(batchId: number): Promise<{ date_fin: stri
   }
 }
 
-// Question de clôture : « Tout s'est bien passé ? » Renvoie `true` si le
-// membre a marqué la fournée refaisable (écrit), `undefined` sinon.
-export function useDemanderRefaisable() {
-  const dialog = useDialog();
-  return useCallback(
-    async (batchId: number): Promise<boolean | undefined> => {
-      const deja = phraseDejaValidee(await autresFourneesValidees(batchId));
-      const oui = await dialog.confirm(
-        'Tout s’est bien passé ?\n\nValidez cette fournée : vous la retrouverez avec un bouton « Refaire » sur la fiche de la recette, et vous choisirez les retours à garder pour les prochaines fournées.' +
-          (deja ? '\n\n' + deja : ''),
-        { okLabel: 'Oui, valider la fournée', cancelLabel: 'Non' },
-      );
-      if (!oui) return undefined;
-      const erreur = await enregistrerRefaisable(batchId, true);
-      if (erreur) {
-        if (!colonneRefaisableAbsente(erreur)) dialog.alert('La marque n’a pas pu être enregistrée : ' + erreur);
-        return undefined;
-      }
-      return true;
-    },
-    [dialog],
-  );
-}
-
-// Pose la question puis enregistre. Renvoie le bilan enregistré (`null` =
-// effacé), ou `undefined` si rien n'a été écrit (annulation, rien de saisi,
-// échec — signalé par une alerte).
-export function useDemanderBilan() {
-  const dialog = useDialog();
-  return useCallback(
-    async (batchId: number, actuel: string | null = null): Promise<string | null | undefined> => {
-      const saisie = await dialog.prompt(QUESTION, {
-        defaultValue: actuel ?? '',
-        maxLength: BILAN_MAX,
-        placeholder: 'Ex. : cuire 3 min de moins, mettre 20 g de sucre en moins…',
-      });
-      if (saisie == null) return undefined;
-      const bilan = normaliserBilan(saisie);
-      if (bilan === normaliserBilan(actuel)) return undefined;
-      const erreur = await enregistrerBilan(batchId, bilan);
-      if (erreur) {
-        dialog.alert('Le bilan de la fournée n’a pas pu être enregistré : ' + erreur);
-        return undefined;
-      }
-      return bilan;
-    },
-    [dialog],
-  );
+// Phrase « La fournée du 03/11 est déjà validée… » pour l'écran de fin de
+// fournée (vide si aucune autre fournée de la recette n'est validée).
+export async function phraseAutresValidees(batchId: number): Promise<string> {
+  return phraseDejaValidee(await autresFourneesValidees(batchId));
 }
 
 // ── Garder / écarter une remarque (`remarques_gardees`) ─────────────────

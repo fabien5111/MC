@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements } from '@/lib/entitlements-data';
 import { getCarnetData, applyCarnetFilters } from '@/lib/carnet';
+import { isProjectDraft } from '@/lib/projects';
 import { EMPTY_CARNET_PARAMS } from '@/lib/carnet-params';
 import { CAP_MAX_RECETTES, getFichesCapRecettes, getItemsCap } from '@/lib/carnet-cap-data';
 import { Header } from '@/components/Header';
@@ -68,7 +69,11 @@ export default async function CarnetCapPage({ searchParams }: SearchParams) {
       scope: listeCap ? 'cap' : 'all',
       tri: 'alpha',
       q: listeCap ? q : '',
-    }).map((it) => ({
+    })
+      // « Tout » montre les projets en cours (JEP-403) ; un chantier n'a rien à
+      // faire dans un carnet d'examen.
+      .filter((it) => !(it.kind === 'mine' && isProjectDraft(it.recipe)))
+      .map((it) => ({
       id: it.recipe.id,
       titre: it.recipe.title,
       origine:

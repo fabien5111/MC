@@ -21,6 +21,7 @@
 // Le parcours et l'écriture (recherche → positionnement → insertion
 // séquentielle annulée en bloc au moindre échec) reprennent exactement le
 // motif d'IngredientExpandDialog.
+import { useVoile } from '@/lib/use-voile';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -399,13 +400,15 @@ export function StepExpandDialog({
     }
   }
 
+  const voile = useVoile(onClose, busy || loading);
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Remplacer une étape par une recette"
       className="fixed inset-0 z-[95] flex items-start justify-center bg-background/60 backdrop-blur-[2px] p-4 overflow-y-auto"
-      onClick={onClose}
+      {...voile}
     >
       <LoadingOverlay visible={(searching && !hasSearchedOnce) || loading || busy} label={busy ? 'Insertion des étapes…' : 'Chargement…'} />
       <div

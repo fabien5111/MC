@@ -20,10 +20,15 @@ import { DepuisStockage } from '@/components/stockage/DepuisStockage';
 import { BoutonColler } from '@/components/BoutonColler';
 import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
+import { ImageSlot } from '@/components/ImageSlot';
+import { BoutonsOrdrePhoto } from '@/components/BoutonsOrdrePhoto';
+import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { trackEvent } from '@/lib/analytics';
 import {
   BATCH_PHOTOS_MAX,
   LEGENDE_MAX,
+  PHOTO_LARGEUR,
+  ordresApresEchange,
   photosDeEtape,
   placesRestantes,
   prochainOrdre,
@@ -34,7 +39,9 @@ import {
 import {
   ajouterPhotoFournee,
   modifierLegende,
+  ordonnerPhotos,
   rattacherEtape,
+  remplacerPhotoFournee,
   supprimerPhotoFournee,
 } from '@/lib/batch-photos-client';
 
@@ -46,6 +53,10 @@ type Ctx = {
   // Rend `true` quand la légende a été écrite (faux : inchangée, refusée ou en échec).
   legender: (id: number, legende: string) => Promise<boolean>;
   rattacher: (id: number, stepId: number | null) => Promise<void>;
+  // Remplace l'image (recadrage, rotation) par une data-URL fraîche.
+  remplacer: (id: number, dataUrl: string) => Promise<void>;
+  // Échange la place de deux photos d'une même étape (glisser-déposer, flèches).
+  echanger: (idA: number, idB: number) => Promise<void>;
 };
 
 const PhotosCtx = createContext<Ctx | null>(null);
@@ -168,9 +179,43 @@ export function PhotosFourneeProvider({
     [dialog, writeGuard],
   );
 
+  const remplacer = useCallback(
+    async (id: number, dataUrl: string) => {
+      if (!writeGuard('Photo de réalisation')) return;
+      setBusy(true);
+      try {
+        const { url, thumb_url } = await remplacerPhotoFournee(id, dataUrl);
+        courantes.current = courantes.current.map((p) => (p.id === id ? { ...p, url, thumb_url } : p));
+        setPhotos(courantes.current);
+      } catch (e) {
+        await dialog.alert((e as Error).message);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [dialog, writeGuard],
+  );
+
+  const echanger = useCallback(
+    async (idA: number, idB: number) => {
+      if (!writeGuard('Photo de réalisation')) return;
+      const avant = courantes.current;
+      const ordres = ordresApresEchange(avant, idA, idB);
+      if (!ordres.length) return;
+      const parId = new Map(ordres.map((o) => [o.id, o.ordre]));
+      setPhotos(avant.map((p) => (parId.has(p.id) ? { ...p, order_index: parId.get(p.id)! } : p)));
+      const erreur = await ordonnerPhotos(ordres);
+      if (erreur) {
+        setPhotos(avant);
+        await dialog.alert('L’ordre des photos n’a pas pu être enregistré.');
+      }
+    },
+    [dialog, writeGuard],
+  );
+
   const valeur = useMemo<Ctx>(
-    () => ({ photos, bloque, ajouter, supprimer, legender, rattacher }),
-    [photos, bloque, ajouter, supprimer, legender, rattacher],
+    () => ({ photos, bloque, ajouter, supprimer, legender, rattacher, remplacer, echanger }),
+    [photos, bloque, ajouter, supprimer, legender, rattacher, remplacer, echanger],
   );
 
   if (!initiales?.disponible) return <>{children}</>;
@@ -190,10 +235,27 @@ export function PhotosFourneeProvider({
  * sur ordinateur, les fichiers du disque. En version compacte (sous une étape),
  * le bouton « Photo » ouvre directement l'appareil photo (`capture`).
  */
+// Appareil tactile (téléphone, tablette) : seul cas où « Prendre une photo »
+// (`capture`) a un sens — sur ordinateur, l'attribut est ignoré et le bouton
+// ouvrirait simplement les fichiers, comme « Choisir ».
+function useTactile(): boolean {
+  const [tactile, setTactile] = useState(false);
+  useEffect(() => {
+    try {
+      setTactile(window.matchMedia('(pointer: coarse)').matches);
+    } catch {
+      setTactile(false);
+    }
+  }, []);
+  return tactile;
+}
+
 export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | null; compact?: boolean }) {
   const ctx = usePhotosFournee();
   const camera = useRef<HTMLInputElement>(null);
   const galerie = useRef<HTMLInputElement>(null);
+  const [choix, setChoix] = useState(false);
+  const tactile = useTactile();
   if (!ctx || ctx.bloque) return null;
   const plein = placesRestantes(ctx.photos) <= 0;
   const surChoix = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,17 +269,49 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
       <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={surChoix} />
       <input ref={galerie} type="file" accept="image/*" multiple className="hidden" onChange={surChoix} />
       {compact ? (
-        <button
-          type="button"
-          onClick={() => camera.current?.click()}
-          disabled={plein}
-          title={titrePlein ?? 'Prendre une photo de cette étape'}
-          aria-label="Prendre une photo de cette étape"
-          className="inline-flex items-center gap-1 rounded-pill border border-outline-variant px-2.5 py-1 text-[12px] font-label-md text-on-surface-variant hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
-        >
-          <span className="material-symbols-outlined text-[16px]">photo_camera</span>
-          Photo
-        </button>
+        // Un clic sur « Photo » déplie le choix : appareil photo OU galerie
+        // (sur téléphone et tablette ; sur ordinateur, les deux ouvrent les
+        // fichiers du disque).
+        <>
+          <button
+            type="button"
+            onClick={() => (tactile ? setChoix((v) => !v) : galerie.current?.click())}
+            disabled={plein}
+            aria-expanded={tactile ? choix : undefined}
+            title={titrePlein ?? 'Ajouter une photo à cette étape'}
+            aria-label="Ajouter une photo à cette étape"
+            className="inline-flex items-center gap-1 rounded-pill border border-outline-variant px-2.5 py-1 text-[12px] font-label-md text-on-surface-variant hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[16px]">photo_camera</span>
+            Photo
+          </button>
+          {tactile && choix && !plein && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setChoix(false);
+                  camera.current?.click();
+                }}
+                className="inline-flex items-center gap-1 rounded-pill bg-primary px-2.5 py-1 text-[12px] font-label-md text-on-primary hover:opacity-90"
+              >
+                <span className="material-symbols-outlined text-[16px]">photo_camera</span>
+                Prendre une photo
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setChoix(false);
+                  galerie.current?.click();
+                }}
+                className="inline-flex items-center gap-1 rounded-pill bg-primary px-2.5 py-1 text-[12px] font-label-md text-on-primary hover:opacity-90"
+              >
+                <span className="material-symbols-outlined text-[16px]">photo_library</span>
+                Choisir dans la galerie
+              </button>
+            </>
+          )}
+        </>
       ) : (
         // Un seul bouton : sur un téléphone, le sélecteur du système propose
         // lui-même l'appareil photo ou la photothèque ; sur ordinateur, les
@@ -388,15 +482,82 @@ export function PhotosFourneeBloc({
 
 // ── Sous une étape ────────────────────────────────────────────────────────
 
-export function PhotosEtape({ stepId }: { stepId: number }) {
+export function PhotosEtape({
+  stepId,
+  sansMarge = false,
+}: {
+  stepId: number;
+  sansMarge?: boolean;
+}) {
   const ctx = usePhotosFournee();
+  // Glisser-déposer (souris) ; les flèches de chaque photo servent au doigt.
+  const reorder = usePhotoDragReorder((de, vers) => void ctx?.echanger(Number(de), Number(vers)));
   if (!ctx) return null;
   const photos = photosDeEtape(ctx.photos, stepId);
   if (ctx.bloque && photos.length === 0) return null;
+  // Plusieurs fichiers choisis d'un coup (sélecteur, glisser-déposer, stockage
+  // en ligne) : chacun devient une photo de l'étape, y compris depuis un
+  // emplacement déjà rempli.
+  const ajouterPlusieurs = (fichiers: File[]) => void ctx.ajouter(fichiers, stepId);
+  // Un seul fichier : l'emplacement vide le rend en data-URL (déjà compressée).
+  const ajouterUne = (dataUrl: string) => {
+    void fetch(dataUrl)
+      .then((r) => r.blob())
+      .then((blob) => ctx.ajouter([new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' })], stepId));
+  };
+  const places = placesRestantes(ctx.photos);
   return (
-    <div className="no-print mt-3 flex flex-col gap-2">
-      {photos.length > 0 && (
-        <StepPhotoGallery photos={photos} grille="grid-cols-3 sm:grid-cols-4 lg:grid-cols-6" />
+    <div className={`no-print ${sansMarge ? '' : 'mt-3'} flex flex-col gap-2`}>
+      {(photos.length > 0 || (!ctx.bloque && places > 0)) && (
+        // Même bloc que les photos d'étape d'une recette : emplacements carrés,
+        // recadrage / zoom / rotation (crayon) et suppression par `ImageSlot`,
+        // plus un emplacement vide pour en ajouter (plusieurs à la fois).
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {photos.map((p, k) => (
+            <div
+              key={p.id}
+              className={`relative aspect-square overflow-hidden border border-dashed ${
+                reorder.overKey === String(p.id) ? 'border-primary ring-2 ring-primary' : 'border-outline-variant'
+              } ${ctx.bloque ? '' : 'cursor-grab active:cursor-grabbing'}`}
+              title={ctx.bloque ? undefined : 'Glisser pour réordonner'}
+              {...(ctx.bloque ? null : reorder.dropProps(String(p.id)))}
+              {...(ctx.bloque ? null : reorder.dragProps(String(p.id)))}
+            >
+              <ImageSlot
+                src={p.url}
+                originalSrc={p.url}
+                onChange={ctx.bloque ? undefined : (url) => void ctx.remplacer(p.id, url)}
+                onClear={ctx.bloque ? undefined : () => void ctx.supprimer(p.id)}
+                onFilesAdded={ctx.bloque ? undefined : ajouterPlusieurs}
+                shape="rect"
+                maxWidth={PHOTO_LARGEUR}
+                aspectRatio={1}
+                className="h-full w-full"
+              />
+              {!ctx.bloque && (
+                <BoutonsOrdrePhoto
+                  index={k}
+                  total={photos.length}
+                  onDeplacer={(delta) => void ctx.echanger(p.id, photos[k + delta].id)}
+                />
+              )}
+            </div>
+          ))}
+          {!ctx.bloque && places > 0 && (
+            <div key={`vide-${photos.length}`} className="relative aspect-square overflow-hidden border border-dashed border-outline-variant">
+              <ImageSlot
+                src={null}
+                onChange={ajouterUne}
+                onFilesAdded={ajouterPlusieurs}
+                shape="rect"
+                maxWidth={PHOTO_LARGEUR}
+                aspectRatio={1}
+                placeholder="Ajouter des photos"
+                className="h-full w-full"
+              />
+            </div>
+          )}
+        </div>
       )}
       <div>
         <BoutonsPhoto stepId={stepId} compact />

@@ -20,6 +20,7 @@
 // `refresh: false` puis rend la main au parent, qui reste monté. Une
 // transition déclarée ici mourrait avec la modale, le spinner s'éteindrait
 // avant le retour du rendu serveur (cf. CLAUDE.md).
+import { useVoile } from '@/lib/use-voile';
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
@@ -38,7 +39,7 @@ import {
   type PickerScope,
   planComponentCopy,
   type ComponentSourceKind, type ComponentStepDraft, type ComponentUtensil, type CopyableRecipe } from '@/lib/projects';
-import { attachComponentUtensils, resetComponent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
+import { attachComponentUtensils, cleEtapesComposant, resetComponent, writeComponentContent, resequenceProjectSteps } from '@/lib/projects-write';
 import type { ProjectComponent } from '@/lib/projects-data';
 import { poidsEquivalentTexte, resolveIngredientRefId, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
 import { RecipeStep } from '@/components/recipe/RecipeStep';
@@ -124,6 +125,8 @@ export function ComponentResolver({
   onClose,
   onDone,
   onReset,
+  etapesRelues = false,
+  rangInitial,
 }: {
   projectId: string;
   projectTitle: string;
@@ -175,6 +178,12 @@ export function ComponentResolver({
   // `onDone`. Optionnel avec un repli sur `onDone` : au pire on referme,
   // jamais d'écriture non resynchronisée côté serveur.
   onReset?: () => void;
+  // Les étapes de cette préparation étaient « relues » à l'ouverture (JEP-403) :
+  // si l'enregistrement les modifie, on demande s'il faut les garder relues.
+  etapesRelues?: boolean;
+  // Rang de l'étape d'où l'on vient (crayon d'une sous-étape, bandeau collant,
+  // JEP-403) : l'éditeur s'ouvre défilé jusqu'à sa carte. 0 / absent : en haut.
+  rangInitial?: number;
 }) {
   useAutoGrowOnResize();
   const dialog = useDialog();
@@ -307,6 +316,18 @@ export function ComponentResolver({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terme, portees, tagsChoisis]);
 
+  // Ouverture sur l'étape cliquée : une seule fois, la carte étant déjà montée.
+  const rangInitialFait = useRef(false);
+  useEffect(() => {
+    if (mode !== 'edit' || !rangInitial || rangInitial < 1 || rangInitialFait.current) return;
+    const t = setTimeout(() => {
+      const carte = document.getElementById(`projet-etape-${rangInitial}`);
+      if (carte) carte.scrollIntoView({ block: 'start' });
+      rangInitialFait.current = true;
+    }, 60);
+    return () => clearTimeout(t);
+  }, [mode, rangInitial]);
+
   // Retour de l'aperçu à la liste (bouton « Annuler » ET croix de l'en-tête) :
   // recherche et cases cochées sont conservées.
   function fermerApercu() {
@@ -393,7 +414,39 @@ export function ComponentResolver({
       },
       { errorLabel: 'Rattachement du composant', refresh: false },
     );
-    if (ok) onDone();
+    if (!ok) return;
+    // « Étapes relues » ne vaut que pour le contenu relu (empreinte) : une
+    // modification la fait tomber d'elle-même. Si les étapes étaient relues et
+    // que leur contenu a bougé, on demande s'il faut les garder relues
+    // (JEP-403) — l'empreinte est alors relue en base, telle qu'enregistrée.
+    if (etapesRelues && component.checkedStepsKey) {
+      setChargement(true);
+      let nouvelle: string | null = null;
+      try {
+        nouvelle = await cleEtapesComposant(createClient(), projectId, component.id);
+      } catch {
+        nouvelle = null;
+      } finally {
+        setChargement(false);
+      }
+      if (nouvelle && nouvelle !== component.checkedStepsKey) {
+        const garder = await dialog.confirm(
+          `Les étapes de « ${component.name} » étaient marquées « relues ». Vous venez de les modifier : les garder comme relues ?`,
+          { okLabel: 'Oui, relues', cancelLabel: 'Non, à relire' },
+        );
+        if (garder) {
+          await mutate(
+            () =>
+              createClient()
+                .from('recipe_project_components')
+                .update({ checked_steps_key: nouvelle } as never)
+                .eq('id', component.id),
+            { errorLabel: 'Vérification', refresh: false },
+          );
+        }
+      }
+    }
+    onDone();
   }
 
   // Efface le contenu déjà enregistré (étapes + ingrédients) et repasse le
@@ -563,6 +616,20 @@ export function ComponentResolver({
     setMode('edit');
   }
 
+  // « Annuler » de l'édition (JEP-403) : ferme la fenêtre sans rien écrire.
+  // Une saisie en cours n'est perdue qu'après confirmation.
+  const brouillonInitial = useRef(JSON.stringify(initialDraft ?? []));
+  async function annulerEdition() {
+    if (JSON.stringify(draft) !== brouillonInitial.current) {
+      const ok = await dialog.confirm('Abandonner les modifications de cette préparation ? Rien ne sera enregistré.', {
+        okLabel: 'Abandonner',
+        cancelLabel: 'Continuer la saisie',
+      });
+      if (!ok) return;
+    }
+    onClose();
+  }
+
   // ── Édition du brouillon ────────────────────────────────────────────────
   function majEtape(i: number, patch: Partial<ComponentStepDraft>) {
     setDraft((prev) => prev.map((s, k) => (k === i ? { ...s, ...patch } : s)));
@@ -575,12 +642,21 @@ export function ComponentResolver({
     );
   }
 
+  // Clic sur le voile = croix : retour à la liste pendant un aperçu ; en édition,
+  // même chemin que « Annuler » (confirmation si le brouillon a changé).
+  const voile = useVoile(() => {
+    if (mode === 'apercu') fermerApercu();
+    else if (mode === 'edit') void annulerEdition();
+    else onClose();
+  }, busy || chargement);
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={`Choisir une recette pour ${component.name}`}
       className="fixed inset-0 z-[95] flex items-start justify-center overflow-y-auto bg-background/60 p-4 backdrop-blur-[2px]"
+      {...voile}
     >
       <LoadingOverlay visible={busy || chargement} />
       <div
@@ -730,7 +806,7 @@ export function ComponentResolver({
 
             <div className="mt-5 flex flex-wrap gap-3 border-t border-outline-variant pt-5">
               <button type="button" onClick={saisirAMain} className={btnGhost}>
-                Saisir à la main
+                Saisir à la main (ou étape sans recette)
               </button>
               {!peutGenererIA ? (
                 // Sans le droit, le bouton désactivé n'offrait aucune issue :
@@ -1023,6 +1099,10 @@ export function ComponentResolver({
             {/* Barre collée en bas de la zone qui défile (même motif que l'aperçu :
                 jamais `fixed`, le backdrop-blur du conteneur en ferait le repère). */}
             <div className="sticky bottom-0 z-10 after:absolute after:inset-x-0 after:top-full after:h-4 after:bg-surface-container-lowest -mx-6 -mb-6 mt-5 flex flex-wrap gap-3 rounded-b-2xl border-t border-outline-variant bg-surface-container-lowest px-6 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
+              {/* Annuler (JEP-403) : sortir de l'édition sans rien enregistrer. */}
+              <button type="button" onClick={() => void annulerEdition()} className={btnGhost}>
+                Annuler
+              </button>
               <button type="button" onClick={() => setMode('sources')} className={btnGhost}>
                 Retour aux recettes
               </button>

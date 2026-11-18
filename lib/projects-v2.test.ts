@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { stepTimeSums } from '@/lib/recipe-view';
-import { pointsRestants, empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, baseDeLigne, coefPreparation, utensilsToAdd, componentScaleProposal, scaleIncompatibility } from '@/lib/projects';
+import { estimerParts, pointsRestants, empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, baseDeLigne, coefPreparation, utensilsToAdd, componentScaleProposal, scaleIncompatibility } from '@/lib/projects';
 
 describe('projectV2BlockStates', () => {
   it('ne débloque que l’intention, l’identité et le format sur un projet vierge', () => {
@@ -44,9 +44,17 @@ describe('projectV2BlockStates', () => {
 describe('buildProjectFormatUpdate', () => {
   const base = { title: 'Tarte', servings: '8', count: '1', dims: {}, moldTypeId: '' };
 
-  it('refuse un nombre de parts absent', () => {
-    expect(buildProjectFormatUpdate({ ...base, format: 'round', servings: '' })).toEqual({
+  it('refuse un nombre de parts absent en format libre', () => {
+    expect(buildProjectFormatUpdate({ ...base, format: 'free', servings: '' })).toEqual({
       error: 'Indiquez le nombre de parts visé.',
+    });
+  });
+
+  it('estime les parts d’un moule quand elles sont vides (JEP-403)', () => {
+    const r = buildProjectFormatUpdate({ ...base, format: 'round', servings: '', dims: { diametre: '20' } });
+    expect('payload' in r && r.payload).toMatchObject({ servings: 8 });
+    expect(buildProjectFormatUpdate({ ...base, format: 'round', servings: '' })).toEqual({
+      error: 'Indiquez le nombre de parts, ou les dimensions du moule pour qu’il soit estimé.',
     });
   });
 
@@ -280,5 +288,19 @@ describe('coefPreparation', () => {
   });
   it('prend le coefficient tel quel sans proposition d’après le format', () => {
     expect(coefPreparation('foncage', 3)).toBe(3);
+  });
+});
+
+describe('estimerParts', () => {
+  it('suit la surface du moule, le nombre d’exemplaires et la longueur d’une bûche', () => {
+    expect(estimerParts('round', { diametre: 20 }, 1)).toBe(8);
+    expect(estimerParts('round', { diametre: 18 }, 2)).toBe(13);
+    expect(estimerParts('rectangular', { longueur: 30, largeur: 20 }, 1)).toBe(15);
+    expect(estimerParts('log', { longueur: 30 }, 1)).toBe(10);
+    expect(estimerParts('individual', {}, 12)).toBe(12);
+  });
+  it('rien sans dimension utile, ni en format libre', () => {
+    expect(estimerParts('round', {}, 1)).toBeNull();
+    expect(estimerParts('free', {}, 1)).toBeNull();
   });
 });

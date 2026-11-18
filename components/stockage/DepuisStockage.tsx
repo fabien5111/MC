@@ -21,7 +21,8 @@ import { LockedAction } from '@/components/LockedAction';
 import { useDialog } from '@/components/Dialog';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
 import { useStockageEnLigne } from '@/components/stockage/StockageEnLigneProvider';
-import { sourcesPour, type DefinitionSource, type IdSource, type UsageStockage } from '@/lib/stockage-en-ligne';
+import { FenetrePhotosFournees, useSourceFournees } from '@/components/recipe/PhotosDeMesFournees';
+import { sourcesPour, type ConfigStockage, type DefinitionSource, type IdSource, type UsageStockage } from '@/lib/stockage-en-ligne';
 import { ErreurStockage, ouvrirFenetreVide, type Element, type Explorateur, type Selection } from './sources/commun';
 import {
   choisirDansDrive,
@@ -69,9 +70,17 @@ export function DepuisStockage({
 }: DepuisStockageProps) {
   const valeur = useStockageEnLigne();
   const peutEcrire = useWriteGuard();
+  const fournees = useSourceFournees();
   const [ouvert, setOuvert] = useState(false);
+  const [ouvertFournees, setOuvertFournees] = useState(false);
   const sources = valeur ? sourcesPour(usage, valeur.config) : [];
-  if (!valeur || !sources.length || max < 1) return null;
+  // « Mes fournées » : les photos de réalisation du membre sur la recette
+  // éditée (usage `image`, sous la grille de photos d'une étape). Ce sont SES
+  // photos, pas un service tiers : ouvert à toutes les formules, même quand
+  // les stockages en ligne sont verrouillés.
+  const avecFournees = usage === 'image' && !!fournees?.recipeId && fournees.places > 0;
+  if ((!sources.length && !avecFournees) || max < 1) return null;
+  const autorise = !!valeur?.autorise;
 
   const contenu =
     variante === 'pastille' ? (
@@ -91,7 +100,7 @@ export function DepuisStockage({
       ? `w-8 h-8 rounded-full bg-surface/90 text-on-surface flex items-center justify-center shadow-md hover:bg-primary hover:text-on-primary transition-colors ${className}`
       : `inline-flex items-center gap-2 border border-primary text-primary rounded-full px-5 py-2 font-label-md text-label-md hover:bg-primary/5 transition-colors disabled:opacity-60 ${className}`;
 
-  if (!valeur.autorise) {
+  if (!autorise && !avecFournees) {
     return (
       <span onClick={(e) => e.stopPropagation()} className={variante === 'pastille' ? className : ''}>
         <LockedAction label={LIBELLE} message={MESSAGE_VERROU} className={variante === 'pastille' ? 'rounded-full bg-surface/90 p-1.5 shadow-md' : ''}>
@@ -106,7 +115,7 @@ export function DepuisStockage({
       <button
         type="button"
         disabled={disabled}
-        title={`${LIBELLE} (${sources.map((s) => s.nom).join(', ')})`}
+        title={`${LIBELLE} (${[...(avecFournees ? ['Mes fournées'] : []), ...sources.map((s) => s.nom)].join(', ')})`}
         aria-label={LIBELLE}
         className={classes}
         onClick={(e) => {
@@ -122,7 +131,14 @@ export function DepuisStockage({
           <FenetreStockage
             usage={usage}
             max={max}
-            sources={sources}
+            sources={autorise ? sources : []}
+            verrouillees={autorise ? [] : sources}
+            config={valeur?.config ?? null}
+            avecFournees={avecFournees}
+            onFournees={() => {
+              setOuvert(false);
+              setOuvertFournees(true);
+            }}
             onClose={() => setOuvert(false)}
             onSelection={(sel) => {
               setOuvert(false);
@@ -133,6 +149,7 @@ export function DepuisStockage({
           />,
           document.body,
         )}
+      {ouvertFournees && fournees && <FenetrePhotosFournees source={fournees} onClose={() => setOuvertFournees(false)} />}
     </>
   );
 }
@@ -141,17 +158,26 @@ function FenetreStockage({
   usage,
   max,
   sources,
+  verrouillees,
+  config: configProp,
+  avecFournees,
+  onFournees,
   onClose,
   onSelection,
 }: {
   usage: UsageStockage;
   max: number;
   sources: DefinitionSource[];
+  /** Sources hors formule : listées, grisées, avec le renvoi vers les formules. */
+  verrouillees: DefinitionSource[];
+  config: ConfigStockage | null;
+  avecFournees: boolean;
+  onFournees: () => void;
   onClose: () => void;
   onSelection: (sel: Selection) => void;
 }) {
-  const valeur = useStockageEnLigne()!;
-  const config = valeur.config;
+  // Sans source active (formule sans le droit), la configuration ne sert à rien.
+  const config = configProp ?? ({} as ConfigStockage);
   const dialog = useDialog();
   const [etat, setEtat] = useState<Etat>({ vue: 'sources' });
   const [busy, setBusy] = useState(false);
@@ -349,6 +375,23 @@ function FenetreStockage({
         {etat.vue === 'sources' && (
           <div className="p-5">
             <ul className="flex flex-col gap-2">
+              {avecFournees && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={onFournees}
+                    className="w-full flex items-center gap-3 rounded-lg border border-outline-variant bg-surface px-4 py-3 text-left hover:border-primary hover:bg-primary/5 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-primary" aria-hidden>
+                      photo_library
+                    </span>
+                    <span className="font-body-md flex-1">Mes fournées</span>
+                    <span className="material-symbols-outlined text-on-surface-variant text-[18px]" aria-hidden>
+                      chevron_right
+                    </span>
+                  </button>
+                </li>
+              )}
               {sources.map((s) => (
                 <li key={s.id}>
                   <button
@@ -366,11 +409,37 @@ function FenetreStockage({
                   </button>
                 </li>
               ))}
+              {verrouillees.map((s) => (
+                <li key={s.id}>
+                  <div
+                    aria-disabled="true"
+                    className="w-full flex items-center gap-3 rounded-lg border border-outline-variant bg-surface px-4 py-3 text-left opacity-60"
+                  >
+                    <span className="material-symbols-outlined text-on-surface-variant" aria-hidden>
+                      {s.icon}
+                    </span>
+                    <span className="font-body-md flex-1">{s.nom}</span>
+                    <span className="material-symbols-outlined text-on-surface-variant text-[18px]" aria-hidden>
+                      lock
+                    </span>
+                  </div>
+                </li>
+              ))}
             </ul>
-            <p className="mt-4 text-xs text-on-surface-variant">
-              Vous vous connectez directement chez le service choisi. Je pâtisse ! ne lit que ce que vous sélectionnez
-              et ne garde aucun accès à votre compte.
-            </p>
+            {verrouillees.length > 0 && (
+              <p className="mt-4 text-xs text-on-surface-variant">
+                Les stockages en ligne ne sont pas inclus dans votre formule.{' '}
+                <a href="/plans" className="text-primary underline">
+                  Voir les formules
+                </a>
+              </p>
+            )}
+            {sources.length > 0 && (
+              <p className="mt-4 text-xs text-on-surface-variant">
+                Vous vous connectez directement chez le service choisi. Je pâtisse ! ne lit que ce que vous sélectionnez
+                et ne garde aucun accès à votre compte.
+              </p>
+            )}
           </div>
         )}
 

@@ -92,32 +92,38 @@ export function ProjectV2Block({
         </>
       ) : (
         <details open={!replie} className="group">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-            <span className="flex items-center gap-3">
-              <h2 className="font-headline-md text-[22px] text-primary">{titre}</h2>
-              {aide}
-            </span>
-            <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
-          </summary>
-          {resume && (
-            <div className="mt-3 flex items-start gap-3 group-open:hidden">
-              <div className="min-w-0 flex-1">{resume}</div>
-              <button
-                type="button"
-                title="Modifier"
-                aria-label={`Modifier : ${titre}`}
-                // Ouvre le <details> natif, comme le chevron : sa valeur `open`
-                // ne change pas côté React, rien ne se referme au re-rendu.
-                onClick={(e) => {
-                  const d = e.currentTarget.closest('details');
-                  if (d) d.open = true;
-                }}
-                className="shrink-0 rounded p-1 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
-              >
-                <span className="material-symbols-outlined text-[20px]">edit</span>
-              </button>
+          {/* Le rappel (`resume`) vit DANS le <summary> : un <details> fermé
+              n'affiche que son <summary>, tout autre enfant est masqué. */}
+          <summary className="cursor-pointer list-none">
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-3">
+                <h2 className="font-headline-md text-[22px] text-primary">{titre}</h2>
+                {aide}
+              </span>
+              <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
             </div>
-          )}
+            {resume && (
+              <div className="mt-3 flex items-start gap-3 group-open:hidden">
+                <button
+                  type="button"
+                  title="Modifier"
+                  aria-label={`Modifier : ${titre}`}
+                  // Un bouton dans un <summary> ne le fait pas basculer : on
+                  // ouvre le <details> à la main (la valeur `open` côté React ne
+                  // change pas, rien ne se referme au re-rendu).
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const d = e.currentTarget.closest('details');
+                    if (d) d.open = true;
+                  }}
+                  className="shrink-0 rounded p-1 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                >
+                  <span className="material-symbols-outlined text-[20px]">edit</span>
+                </button>
+                <div className="min-w-0 flex-1">{resume}</div>
+              </div>
+            )}
+          </summary>
           <div className="mt-4">{corps}</div>
         </details>
       )}

@@ -5,7 +5,7 @@
 // de la page projet, qui y branche le statut de résolution et le bouton
 // d'ouverture (`extra`).
 import { useState, type ReactNode } from 'react';
-import { COMPONENT_ROLES, COMPONENT_SCALING_MODES } from '@/lib/projects';
+import { COMPONENT_ROLES, COMPONENT_SCALING_MODES, ROLE_AIDE, ROLE_ASSEMBLAGE } from '@/lib/projects';
 import type { ProjectComponent } from '@/lib/projects-data';
 import type { useProjectComponents } from '@/components/projets/useProjectComponents';
 
@@ -20,7 +20,7 @@ export function ProjectStructureList({
   // Contenu ajouté sous chaque ligne (v2 : source, nombre d'étapes, bouton).
   extra?: (c: ProjectComponent) => ReactNode;
 }) {
-  const { ordered, reorder, setRole, setScalingMode, renameComponent, removeComponent, addComponent } = components;
+  const { ordered, reorder, setRole, setScalingMode, renameComponent, removeComponent, addComponent, addAssemblage } = components;
   // Réordonnancement par glisser-déposer (poignée, pas de flèches — même
   // convention que la liste des étapes dans l'éditeur classique).
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -37,6 +37,10 @@ export function ProjectStructureList({
             {ordered.map((c, i) => (
               <li
                 key={c.id}
+                // Ancre de la préparation : le lien d'un bloc verrouillé et le
+                // « Reste à faire » arrivent en haut de sa carte (JEP-403), avec
+                // le nom de la préparation sous les yeux.
+                id={`prep-${c.id}-recette`}
                 onDragOver={(e) => {
                   if (dragIndex === null) return;
                   e.preventDefault();
@@ -48,7 +52,7 @@ export function ProjectStructureList({
                   void reorder(dragIndex, i);
                   setDragIndex(null);
                 }}
-                className={`rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3${
+                className={`scroll-mt-28 rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3${
                   dragIndex === i ? ' opacity-50' : ''
                 }`}
               >
@@ -81,15 +85,17 @@ export function ProjectStructureList({
                   <select
                     value={c.role ?? ''}
                     onChange={(e) => setRole(c, e.target.value)}
+                    title={ROLE_AIDE}
+                    aria-label="Rôle de la préparation (facultatif, guide l’IA)"
                     className="min-w-0 flex-1 sm:flex-none rounded-pill border border-outline-variant bg-surface-container-low px-3 py-1.5 text-[12.5px] text-on-surface-variant outline-none focus:border-primary sm:w-[132px]"
                   >
-                    <option value="">Rôle…</option>
-                    {COMPONENT_ROLES.map((r) => (
+                    <option value="">Rôle (facultatif)…</option>
+                    {[...COMPONENT_ROLES, ROLE_ASSEMBLAGE].map((r) => (
                       <option key={r} value={r}>
                         {r}
                       </option>
                     ))}
-                    {c.role && !(COMPONENT_ROLES as readonly string[]).includes(c.role) && (
+                    {c.role && ![...COMPONENT_ROLES, ROLE_ASSEMBLAGE].includes(c.role) && (
                       <option value={c.role}>{c.role}</option>
                     )}
                   </select>
@@ -116,9 +122,18 @@ export function ProjectStructureList({
         </>
       )}
 
+      <p className="text-[12px] text-on-surface-variant">
+        Le rôle d’une préparation est facultatif : il aide seulement l’IA à proposer une recette et à ajuster les
+        quantités.
+      </p>
       <div className="flex flex-wrap gap-3">
         <button type="button" onClick={addComponent} className={btnGhost}>
           Ajouter une préparation
+        </button>
+        {/* Étape sans recette (montage, finition) : écrite à la main, sans
+            ingrédient, et jamais « À résoudre » (JEP-403). */}
+        <button type="button" onClick={() => void addAssemblage()} className={btnGhost}>
+          Ajouter une étape d’assemblage
         </button>
       </div>
     </div>
