@@ -17,6 +17,9 @@ import { useDialog } from '@/components/Dialog';
 import { useRegisterSection, type OptionsSauvegarde, type SectionRegistry } from '@/components/projets/v2/sections';
 import { resizeFilesToDataUrls } from '@/lib/images';
 import { ImageSlot } from '@/components/ImageSlot';
+import { BoutonsOrdrePhoto } from '@/components/BoutonsOrdrePhoto';
+import { swapAt } from '@/lib/photo-reorder';
+import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { SourceFourneesProvider } from '@/components/recipe/PhotosDeMesFournees';
 import { createClient } from '@/lib/supabase/client';
 import { televerserImage } from '@/lib/storage-client';
@@ -56,6 +59,9 @@ export function PhotosEtapeProjet({
     signature,
     save: ecrire,
   });
+  // Réordonner : glisser-déposer (souris) ou flèches (doigt) — échange de deux
+  // photos du brouillon, enregistré comme le reste par l'écriture automatique.
+  const reorder = usePhotoDragReorder((de, vers) => setBrouillon((prev) => swapAt(prev, Number(de), Number(vers))));
   const maj = (k: number, patch: Partial<Photo>) =>
     setBrouillon((prev) => prev.map((x, m) => (m === k ? { ...x, ...patch } : x)));
 
@@ -139,7 +145,15 @@ export function PhotosEtapeProjet({
       <p className="mb-2 font-label-md text-label-md text-primary">Photos de l’étape</p>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {brouillon.map((p, k) => (
-          <div key={k} className="relative aspect-square overflow-hidden border border-dashed border-outline-variant">
+          <div
+            key={k}
+            className={`relative aspect-square overflow-hidden border border-dashed cursor-grab active:cursor-grabbing ${
+              reorder.overKey === String(k) ? 'border-primary ring-2 ring-primary' : 'border-outline-variant'
+            }`}
+            title="Glisser pour réordonner"
+            {...reorder.dropProps(String(k))}
+            {...reorder.dragProps(String(k))}
+          >
             <ImageSlot
               src={p.url}
               originalSrc={p.original_url}
@@ -151,6 +165,11 @@ export function PhotosEtapeProjet({
               maxWidth={800}
               aspectRatio={1}
               className="h-full w-full"
+            />
+            <BoutonsOrdrePhoto
+              index={k}
+              total={brouillon.length}
+              onDeplacer={(delta) => setBrouillon((prev) => swapAt(prev, k, k + delta))}
             />
           </div>
         ))}

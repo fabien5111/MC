@@ -21,11 +21,14 @@ import { BoutonColler } from '@/components/BoutonColler';
 import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { ImageSlot } from '@/components/ImageSlot';
+import { BoutonsOrdrePhoto } from '@/components/BoutonsOrdrePhoto';
+import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { trackEvent } from '@/lib/analytics';
 import {
   BATCH_PHOTOS_MAX,
   LEGENDE_MAX,
   PHOTO_LARGEUR,
+  ordresApresEchange,
   photosDeEtape,
   placesRestantes,
   prochainOrdre,
@@ -36,6 +39,7 @@ import {
 import {
   ajouterPhotoFournee,
   modifierLegende,
+  ordonnerPhotos,
   rattacherEtape,
   remplacerPhotoFournee,
   supprimerPhotoFournee,
@@ -51,6 +55,8 @@ type Ctx = {
   rattacher: (id: number, stepId: number | null) => Promise<void>;
   // Remplace l'image (recadrage, rotation) par une data-URL fraîche.
   remplacer: (id: number, dataUrl: string) => Promise<void>;
+  // Échange la place de deux photos d'une même étape (glisser-déposer, flèches).
+  echanger: (idA: number, idB: number) => Promise<void>;
 };
 
 const PhotosCtx = createContext<Ctx | null>(null);
@@ -190,9 +196,26 @@ export function PhotosFourneeProvider({
     [dialog, writeGuard],
   );
 
+  const echanger = useCallback(
+    async (idA: number, idB: number) => {
+      if (!writeGuard('Photo de réalisation')) return;
+      const avant = courantes.current;
+      const ordres = ordresApresEchange(avant, idA, idB);
+      if (!ordres.length) return;
+      const parId = new Map(ordres.map((o) => [o.id, o.ordre]));
+      setPhotos(avant.map((p) => (parId.has(p.id) ? { ...p, order_index: parId.get(p.id)! } : p)));
+      const erreur = await ordonnerPhotos(ordres);
+      if (erreur) {
+        setPhotos(avant);
+        await dialog.alert('L’ordre des photos n’a pas pu être enregistré.');
+      }
+    },
+    [dialog, writeGuard],
+  );
+
   const valeur = useMemo<Ctx>(
-    () => ({ photos, bloque, ajouter, supprimer, legender, rattacher, remplacer }),
-    [photos, bloque, ajouter, supprimer, legender, rattacher, remplacer],
+    () => ({ photos, bloque, ajouter, supprimer, legender, rattacher, remplacer, echanger }),
+    [photos, bloque, ajouter, supprimer, legender, rattacher, remplacer, echanger],
   );
 
   if (!initiales?.disponible) return <>{children}</>;
@@ -467,6 +490,8 @@ export function PhotosEtape({
   sansMarge?: boolean;
 }) {
   const ctx = usePhotosFournee();
+  // Glisser-déposer (souris) ; les flèches de chaque photo servent au doigt.
+  const reorder = usePhotoDragReorder((de, vers) => void ctx?.echanger(Number(de), Number(vers)));
   if (!ctx) return null;
   const photos = photosDeEtape(ctx.photos, stepId);
   if (ctx.bloque && photos.length === 0) return null;
@@ -488,8 +513,16 @@ export function PhotosEtape({
         // recadrage / zoom / rotation (crayon) et suppression par `ImageSlot`,
         // plus un emplacement vide pour en ajouter (plusieurs à la fois).
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {photos.map((p) => (
-            <div key={p.id} className="relative aspect-square overflow-hidden border border-dashed border-outline-variant">
+          {photos.map((p, k) => (
+            <div
+              key={p.id}
+              className={`relative aspect-square overflow-hidden border border-dashed ${
+                reorder.overKey === String(p.id) ? 'border-primary ring-2 ring-primary' : 'border-outline-variant'
+              } ${ctx.bloque ? '' : 'cursor-grab active:cursor-grabbing'}`}
+              title={ctx.bloque ? undefined : 'Glisser pour réordonner'}
+              {...(ctx.bloque ? null : reorder.dropProps(String(p.id)))}
+              {...(ctx.bloque ? null : reorder.dragProps(String(p.id)))}
+            >
               <ImageSlot
                 src={p.url}
                 originalSrc={p.url}
@@ -501,6 +534,13 @@ export function PhotosEtape({
                 aspectRatio={1}
                 className="h-full w-full"
               />
+              {!ctx.bloque && (
+                <BoutonsOrdrePhoto
+                  index={k}
+                  total={photos.length}
+                  onDeplacer={(delta) => void ctx.echanger(p.id, photos[k + delta].id)}
+                />
+              )}
             </div>
           ))}
           {!ctx.bloque && places > 0 && (

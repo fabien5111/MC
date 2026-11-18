@@ -1870,6 +1870,7 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   rotation (crayon) et suppression ; l'image recadrée, en mémoire, est redéposée avec
   sa vignette (`remplacerPhotoFournee`, ancien objet repris par la réconciliation).
   Un emplacement vide en fin de grille (et chaque emplacement rempli, `onFilesAdded`) accepte **plusieurs fichiers à la fois** : chacun devient une photo de l'étape.
+  **Réordonner** (19/11/2026) : glisser-déposer (souris, `usePhotoDragReorder`) ET flèches « avant / après » (`BoutonsOrdrePhoto`, pour le doigt) sur les photos d'une étape de fournée (`echanger` du fournisseur, `ordresApresEchange` pur et testé : échange des `order_index` de deux photos de la MÊME étape, renumérotation si des ordres sont en double, état local d'abord puis écriture, retour arrière avec alerte en cas d'échec) **et** sur celles d'une étape du mode projet (échange dans le brouillon, enregistré par l'écriture automatique). Pas dans le bloc général « Photos de cette fournée » (galerie en lecture). `/creer` garde le glisser-déposer seul.
   Pas d'ouverture automatique du recadrage à l'ajout. Le format carré ne se force
   pas à la prise de vue (appli photo du système) : il se cadre après coup.
 - **Photos de mes fournées pour illustrer une étape de recette** (18/11/2026) :

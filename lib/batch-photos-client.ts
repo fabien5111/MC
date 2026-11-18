@@ -91,6 +91,13 @@ export async function rattacherEtape(id: number, stepId: number | null): Promise
   return error ? error.message : null;
 }
 
+/** Écrit de nouveaux ordres (échange de photos). Renvoie un message d'erreur, `null` si tout va bien. */
+export async function ordonnerPhotos(ordres: { id: number; ordre: number }[]): Promise<string | null> {
+  const resultats = await Promise.all(ordres.map((o) => table().update({ order_index: o.ordre }).eq('id', o.id)));
+  const echec = resultats.find((r: { error: { message: string } | null }) => r.error);
+  return echec ? echec.error!.message : null;
+}
+
 // ── Photos de mes fournées d'une recette (pour illustrer une étape) ────────
 
 export type PhotoDeFournee = {
