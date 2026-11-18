@@ -2402,8 +2402,19 @@ function StepCookCard({
   // l'étape puis revenir décocher la ligne. Une ligne retirée à la main ou une
   // étape remplacée par une recette restent verrouillées.
   const rouvrable = s.done && s.replaced_by_recipe_id == null;
-  function rouvrirEtape() {
-    if (s.done) onToggleStep(s.id, false, false);
+  // Étape cochée d'un coup (case de l'en-tête) : ses lignes ne sont « cochées »
+  // que par exclusion (`done` faux en base). Rouvrir l'étape les décocherait
+  // donc TOUTES : on pose d'abord `done` sur les autres lignes visibles cochées,
+  // pour que seule celle sur laquelle on a cliqué se décoche.
+  function rouvrirEtape(sousEtapeId?: number, ingredientId?: number) {
+    if (!s.done) return;
+    substeps.forEach((su) => {
+      if (su.id !== sousEtapeId && !su.done && batchSubstepExcluded(s, su)) onToggleSub(su.id, true);
+    });
+    ingredients.forEach((it) => {
+      if (it.id !== ingredientId && !it.done && !it.removed && cookExcluded(it)) onToggleIng(it.id, true);
+    });
+    onToggleStep(s.id, false, false);
   }
 
   // Ce que le volet replié contient, annoncé sur l'en-tête : une étape
@@ -2525,7 +2536,7 @@ function StepCookCard({
                   const checked = ev.target.checked;
                   onToggleIng(ing.id, checked);
                   if (checked) maybeAutoCheckStep(new Set([ing.id]), new Set());
-                  else rouvrirEtape();
+                  else rouvrirEtape(undefined, ing.id);
                 }}
                 className={`w-6 h-6 rounded border-outline accent-primary focus:ring-primary shrink-0 ${locked ? '' : 'cursor-pointer'}`}
               />
@@ -2617,7 +2628,7 @@ function StepCookCard({
                         subIngredients.forEach((it) => onToggleIng(it.id, true));
                         maybeAutoCheckStep(new Set(subIngredients.map((it) => it.id)), new Set([su.id]));
                       } else {
-                        rouvrirEtape();
+                        rouvrirEtape(su.id);
                       }
                     }}
                     className={`w-6 h-6 rounded border-outline accent-primary focus:ring-primary shrink-0 mt-0.5 ${subLocked ? '' : 'cursor-pointer'}`}
