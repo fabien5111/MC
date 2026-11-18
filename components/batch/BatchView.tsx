@@ -59,10 +59,10 @@ import { trackEvent } from '@/lib/analytics';
 import { ARacheterButton } from '@/components/batch/ARacheterButton';
 import { type AjustementEcart, ChoixRemarque, DerniereFoisEtape, LeconsProvider, RetoursEcartEtape, RetoursAuteur, RetoursIngredient, RetoursSousEtape } from '@/components/batch/DerniereFois';
 import { ValidationFournee } from '@/components/batch/ValidationFournee';
-import { arrondiQuantite, cleRemarque, libelleEcartProduit, normaliserEcartProduit, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
+import { arrondiQuantite, cleRemarque, libelleEcartProduit, normaliserBilan, normaliserEcartProduit, remarquesDeFournee, versReference, type DecisionRemarque, type NatureRemarque } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
-import { colonneRefaisableAbsente, enregistrerRefaisable, useDemanderBilan, useDemanderRefaisable } from '@/lib/batch-lecons-client';
-import { useClotureEssai } from '@/components/batch/ClotureEssai';
+import { colonneRefaisableAbsente, enregistrerBilan, enregistrerRefaisable } from '@/lib/batch-lecons-client';
+import { EcranFinFournee, type DemandeCloture } from '@/components/batch/EcranFinFournee';
 import { PREFIXE_PROJET } from '@/lib/projects';
 import {
   fmtNum,
@@ -292,11 +292,8 @@ export function BatchView({
   const impersonationReadOnly = useReadOnly();
   const [batch, setBatch] = useState(initialBatch);
   useEffect(() => setBatch(initialBatch), [initialBatch]);
-  const demanderBilan = useDemanderBilan();
-  const demanderRefaisable = useDemanderRefaisable();
-  const clotureEssai = useClotureEssai();
-  // Écran « Fournée validée » ouvert par la clôture (la promesse rend la main à `finishBatch`).
-  const [validation, setValidation] = useState<{ fermer: () => void } | null>(null);
+  // Écran de fin de fournée (barre « Fournée prête à être clôturée » ou rail).
+  const [ecranFin, setEcranFin] = useState(false);
   const [mode, setMode] = useState<'preparer' | 'patisser'>(() => initialMode ?? defaultMode(initialBatch));
   const [busy, setBusy] = useState(false);
   // Distinct de `busy` : `router.refresh()` ne rend pas de promesse
@@ -382,52 +379,72 @@ export function BatchView({
     !essaiProjet &&
     (!myReview || (myReview.batch_id === batch.id && myReview.status === 'rejected'));
 
-  // Écriture partagée « marquer comme terminée » : rail Préparer, rail
-  // Pâtisser et proposition automatique une fois toutes les étapes cochées
-  // (cf. `PatisserView.proposeFinish`) l'appellent tous les trois, chacun
-  // avec son propre message de confirmation.
-  async function finishBatch(): Promise<boolean> {
-    if (readOnly) return false;
+  // Clôture : écrite au bouton final de l'écran de fin de fournée (jamais avant :
+  // fermer l'écran n'écrit rien). Statut, puis bilan, « Fournée validée » ou
+  // verdict de l'essai ; le rail, la barre « prête à être clôturée » et la vue
+  // « Par jour » (qui renvoie ici par `?cloture=1`) passent tous par là.
+  async function cloturer(d: DemandeCloture): Promise<void> {
+    if (readOnly) return;
     const fin = new Date().toISOString();
     setBusy(true);
-    const { error } = await createClient().from('batches').update({ status: 'terminee', date_fin: fin }).eq('id', batch.id);
-    setBusy(false);
+    const supabase = createClient();
+    const { error } = await supabase.from('batches').update({ status: 'terminee', date_fin: fin }).eq('id', batch.id);
     if (error) {
+      setBusy(false);
       dialog.alert('Erreur : ' + error.message);
-      return false;
+      return;
     }
-    setBatch((b) => ({ ...b, status: 'terminee', date_fin: fin }));
     trackEvent('terminer_fournee');
-    // Bilan de la fournée (JEP-381) : facultatif, posé après la clôture (une
-    // annulation ne la défait pas), écrit dans le commentaire global et
-    // modifiable ensuite depuis le résumé.
-    const bilan = await demanderBilan(batch.id, batch.commentaire_global);
-    if (bilan !== undefined) setBatch((b) => ({ ...b, commentaire_global: bilan }));
-    // Fournée d'essai d'un projet (JEP-403) : pas de « Fournée validée » ni
-    // d'avis, mais le verdict de l'essai (celui du bloc « Essais » du projet),
-    // puis le retour au projet, où l'on corrige la recette d'après l'essai.
-    if (essaiProjet) {
-      if (batch.recipe_id && (await clotureEssai(batch.id))) {
-        router.push(`/projets/${batch.recipe_id}`);
-        return true;
-      }
-      router.refresh();
-      return true;
+    const suite: Partial<BatchFull> = { status: 'terminee', date_fin: fin };
+    // Bilan : même champ que le « Commentaire global » du résumé.
+    if (normaliserBilan(d.bilan) !== normaliserBilan(batch.commentaire_global)) {
+      const e = await enregistrerBilan(batch.id, d.bilan);
+      if (e) dialog.alert('Le bilan de la fournée n’a pas pu être enregistré : ' + e);
+      else suite.commentaire_global = normaliserBilan(d.bilan);
     }
-    if (!(batch as { refaisable?: boolean }).refaisable && (await demanderRefaisable(batch.id))) {
-      setBatch((b) => ({ ...b, refaisable: true }) as BatchFull);
-      // Fournée validée : tri des retours à garder pour les « Refaire » suivants.
-      await new Promise<void>((resolve) => setValidation({ fermer: resolve }));
+    if (essaiProjet) {
+      if (d.verdict) {
+        const { error: ev } = await supabase.from('batches').update({ trial_verdict: d.verdict } as never).eq('id', batch.id);
+        if (ev) dialog.alert('L’appréciation n’a pas pu être enregistrée : ' + ev.message);
+      }
+    } else if (d.valide && !(batch as { refaisable?: boolean }).refaisable) {
+      const e = await enregistrerRefaisable(batch.id, true);
+      if (!e) (suite as { refaisable?: boolean }).refaisable = true;
+      else if (!colonneRefaisableAbsente(e)) dialog.alert('La marque n’a pas pu être enregistrée : ' + e);
+    }
+    setBatch((b) => ({ ...b, ...suite }) as BatchFull);
+    setEcranFin(false);
+    if (essaiProjet && d.retourProjet && batch.recipe_id) {
+      router.push(`/projets/${batch.recipe_id}`);
+      return;
     }
     router.refresh();
-    return true;
+    setBusy(false);
+    window.scrollTo(0, 0);
+    // L'avis se dépose après la clôture : on amène sur sa carte.
+    if (d.donnerAvis) setTimeout(() => document.getElementById('sec-avis')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
   }
 
-  async function markTerminee() {
-    if (!(await dialog.confirm('Terminer cette fournée ?'))) return;
-    const ok = await finishBatch();
-    if (ok) window.scrollTo(0, 0);
+  // Rail « Marquer comme terminé » : ouvre l'écran de fin (plus de confirmation séparée).
+  function markTerminee() {
+    if (!readOnly) setEcranFin(true);
   }
+
+  // Toutes les étapes cochées sur une fournée en cours : la barre le dit, sans
+  // rien ouvrir (on peut encore noter la dernière étape).
+  const pretACloturer = batch.status === 'planifiee' && !readOnly && batch.batch_steps.length > 0 && batch.batch_steps.every((s) => s.done);
+  const etapesIncompletes = batch.batch_steps.filter((s) => !s.done).length;
+  // La vue « Par jour » renvoie ici avec `?cloture=1` : l'écran s'ouvre une fois.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('cloture') !== '1') return;
+    q.delete('cloture');
+    const qs = q.toString();
+    window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+    if (batch.status === 'planifiee' && !readOnly) setEcranFin(true);
+    // Une seule fois, à l'arrivée.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Bandeau de vigilance (décision « recette de base modifiée depuis ») : la
   // fournée n'est jamais resynchronisée après sa création, donc une
@@ -594,14 +611,35 @@ export function BatchView({
       auteur={!!baseRecipe?.authorId && baseRecipe.authorId === batch.user_id}
     >
       <PhotosFourneeProvider batchId={batch.id} userId={batch.user_id ?? ''} initiales={photosFournee}>
-      {validation && (
-        <ValidationFournee
+      {ecranFin && (
+        <EcranFinFournee
+          batchId={batch.id}
+          titre={titreAffiche}
+          bilanInitial={batch.commentaire_global}
+          deja={!!(batch as { refaisable?: boolean }).refaisable}
+          essaiProjet={essaiProjet}
+          avisPossible={reviewEligible}
+          peutValider={!!batch.recipe_id}
           propres={remarquesDeFournee(versReference(batch))}
-          onClose={() => {
-            validation.fermer();
-            setValidation(null);
-          }}
+          etapesIncompletes={etapesIncompletes}
+          onCloturer={cloturer}
+          onFermer={() => setEcranFin(false)}
         />
+      )}
+      {pretACloturer && !ecranFin && (
+        <div className="no-print pointer-events-none fixed inset-x-0 z-[46] flex justify-center px-3 bottom-[calc(var(--mobile-nav-h)+12px)] lg:bottom-4">
+          <button
+            type="button"
+            onClick={() => setEcranFin(true)}
+            className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-3 rounded-2xl border border-primary bg-white px-4 py-3 text-left shadow-lg"
+          >
+            <span className="flex items-center gap-2 font-label-md text-label-md text-primary">
+              <span className="material-symbols-outlined">flag</span>
+              Fournée prête à être clôturée
+            </span>
+            <span className="rounded-pill bg-primary px-3 py-1.5 text-sm font-label-md text-on-primary">Clôturer</span>
+          </button>
+        </div>
       )}
       <div id="sec-haut" className="recipe-print-content scroll-mt-28 max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-6 pb-32">
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
@@ -818,8 +856,6 @@ export function BatchView({
             setBusy={setBusy}
             onSwitchMode={switchMode}
             onMarkTerminee={markTerminee}
-            finishBatch={finishBatch}
-            reviewEligible={reviewEligible}
             peutRacheter={droits.aRacheter}
             pointsAVerifier={baseRecipe?.pointsAVerifierBySourceStepId}
             help={readOnly ? undefined : help}
@@ -1770,8 +1806,6 @@ function PatisserView({
   setBusy,
   onSwitchMode,
   onMarkTerminee,
-  finishBatch,
-  reviewEligible,
   peutRacheter,
   pointsAVerifier,
   help,
@@ -1786,11 +1820,6 @@ function PatisserView({
   onSwitchMode: (m: 'preparer' | 'patisser') => void;
   // Rail Pâtisser : même écriture que le rail Préparer, cf. BatchView.
   onMarkTerminee: () => void;
-  // Écriture nue (sans confirmation), pour la proposition automatique
-  // ci-dessous qui pose déjà sa propre question.
-  finishBatch: () => Promise<boolean>;
-  // Un avis est-il encore possible sur cette fournée une fois terminée ?
-  reviewEligible: boolean;
   // Droit `liste_a_racheter` (JEP-379) : picto « À racheter » actif ou verrouillé.
   peutRacheter: boolean;
   help?: HelpBlocksState;
@@ -1861,25 +1890,6 @@ function PatisserView({
     if (error) dialog.alert('Sauvegarde impossible : ' + error.message);
   }
 
-  // Propose de terminer la fournée une fois toutes les étapes cochées, puis —
-  // si la réponse est oui — de laisser un avis sur la recette (cf. CLAUDE.md
-  // « Avis sur une recette »). `finishBatch` est appelé nu (sans reconfirmer,
-  // la question du dessus en tient déjà lieu) ; `onMarkTerminee`, lui, garde
-  // sa propre confirmation pour l'usage depuis le rail.
-  async function proposeFinish() {
-    const wantsFinish = await dialog.confirm('Toutes les étapes sont cochées ! Souhaitez-vous marquer cette fournée comme terminée ?');
-    if (!wantsFinish) {
-      dialog.alert('Pas de souci : vous pourrez la marquer comme terminée à tout moment depuis le menu.');
-      return;
-    }
-    const ok = await finishBatch();
-    if (!ok || !reviewEligible) return;
-    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un avis sur cette recette ?\n\nVous pourrez aussi le faire plus tard depuis cette fournée.', { okLabel: 'Oui', cancelLabel: 'Non' });
-    if (wantsReview) {
-      setTimeout(() => document.getElementById('sec-avis')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-    }
-  }
-
   // `defiler` faux : cocher l'étape ne doit pas emmener la page vers la
   // suivante (auto-coche du dernier ingrédient / de la dernière sous-étape :
   // on est encore là pour saisir une note).
@@ -1907,8 +1917,6 @@ function PatisserView({
     updateStep(id, { done: checked, done_at: checked ? new Date().toISOString() : null, ...(enAmont ? { fait_en_amont: false } : {}) });
     if (checked) {
       if (defiler) setTimeout(() => document.querySelector('[data-step-pending]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
-      const allDone = batch.batch_steps.length > 0 && batch.batch_steps.every((s) => (s.id === id ? true : s.done));
-      if (allDone && batch.status === 'planifiee' && !readOnly) proposeFinish();
     }
   }
 

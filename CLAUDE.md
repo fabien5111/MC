@@ -1677,7 +1677,7 @@ directes :
   étapes déplacées, remplacements par une sous-recette, notes) repris tel
   quel. Ça ne requête jamais la recette de base — la fournée copiée est déjà
   autonome, et ça fonctionne même si cette recette a disparu depuis. **Fenêtre dédiée** (05/11/2026, plus de `dialog.prompt`) : message « reprise à l'identique », vrai champ date (calendrier, **préremplie avec la date du jour du navigateur** — `aujourdhuiLocal`, jamais `toISOString`, qui donne la date UTC —, `min` = aujourd'hui, bouton grisé sans date) et zone « Commentaire » comme dans « Lancer une fournée », préremplie avec les notes de la fournée d'origine et modifiable (écrite dans `batches.notes` de la nouvelle fournée).
-  **Portes d'entrée et marque « Fournée validée »** (05/11/2026, libellé du 06/11/2026 ; ex- « à refaire en l'état ») : la fenêtre et la duplication vivent dans `useRefaireFournee` (`components/batch/RefaireFournee.tsx`), partagé par En cuisine (`CuisineContent`) et la fiche recette (`MesFourneesTerminees` : bouton « Refaire » sur chaque fournée terminée, bloc déplié d'office si l'une est marquée). **`batches.refaisable`** (booléen, défaut `false`, colonne posée par `psql`, nœud 216075) : case « Fournée validée : tout s'est bien passé » dans le résumé d'une fournée close (`SummaryPanel`, modifiable comme le commentaire global) et question à la clôture (`useDemanderRefaisable`, `BatchView` ET `PlanningDayView`). Pastille verte « Fournée validée » dans la fiche recette et dans « Fournées terminées » (En cuisine). **Lue à part** (`idsRefaisables`, `lib/profile.ts`) : colonne absente (migration pas jouée) → rien n'est marqué, la case est masquée, rien ne casse. « Refaire » ne recopie pas la marque. **La question de clôture dit si d'autres fournées de la recette sont déjà validées** (`autresFourneesValidees`, `phraseDejaValidee`, 06/11/2026 : « La fournée du 03/11 est déjà validée… ») pour que le membre sache s'il veut valider celle-ci aussi ; lecture best-effort, colonne absente ou échec = question d'origine, sans la phrase. **Valider ouvre l'écran de tri des retours** (06/11/2026, `components/batch/ValidationFournee.tsx`) : à la question de clôture (`BatchView.finishBatch`) comme à la case du résumé (`SummaryPanel`), une fenêtre liste les retours de CETTE fournée puis ceux hérités des précédentes, chacun avec son épingle (`ChoixRemarque`, sans confirmation à chaque clic — `PorteeEdition silencieux`). Ce qui reste épinglé est rappelé dans les « Refaire » suivants ; rien de nouveau n'est stocké (`remarques_gardees`). Absent de la clôture de `PlanningDayView` (pas de `LeconsProvider` : tout reste épinglé par défaut, le tri se refait depuis le résumé). La fournée créée s'ouvre en **mode Préparer** (`?mode=preparer`), quelle que soit la porte d'entrée.
+  **Portes d'entrée et marque « Fournée validée »** (05/11/2026, libellé du 06/11/2026 ; ex- « à refaire en l'état ») : la fenêtre et la duplication vivent dans `useRefaireFournee` (`components/batch/RefaireFournee.tsx`), partagé par En cuisine (`CuisineContent`) et la fiche recette (`MesFourneesTerminees` : bouton « Refaire » sur chaque fournée terminée, bloc déplié d'office si l'une est marquée). **`batches.refaisable`** (booléen, défaut `false`, colonne posée par `psql`, nœud 216075) : case « Fournée validée : tout s'est bien passé » dans le résumé d'une fournée close (`SummaryPanel`, modifiable comme le commentaire global) et case de l'écran de fin de fournée (cf. « Fin de fournée »). Pastille verte « Fournée validée » dans la fiche recette et dans « Fournées terminées » (En cuisine). **Lue à part** (`idsRefaisables`, `lib/profile.ts`) : colonne absente (migration pas jouée) → rien n'est marqué, la case est masquée, rien ne casse. « Refaire » ne recopie pas la marque. **L'écran de fin de fournée dit si d'autres fournées de la recette sont déjà validées** (`autresFourneesValidees`, `phraseDejaValidee`, 06/11/2026 : « La fournée du 03/11 est déjà validée… ») pour que le membre sache s'il veut valider celle-ci aussi ; lecture best-effort, colonne absente ou échec = question d'origine, sans la phrase. **Valider ouvre le tri des retours** (06/11/2026, `components/batch/ValidationFournee.tsx`) : déplié dans l'écran de fin de fournée, ou, à la case du résumé (`SummaryPanel`), une fenêtre liste les retours de CETTE fournée puis ceux hérités des précédentes, chacun avec son épingle (`ChoixRemarque`, sans confirmation à chaque clic — `PorteeEdition silencieux`). Ce qui reste épinglé est rappelé dans les « Refaire » suivants ; rien de nouveau n'est stocké (`remarques_gardees`). La fournée créée s'ouvre en **mode Préparer** (`?mode=preparer`), quelle que soit la porte d'entrée.
 - **RLS à deux couches**, motif repris de `shopping_lists` : une policy
   `<table>_proprietaire` (`FOR ALL`, rôle `public`, basée sur `owns_plan()`)
   + trois policies `impersonation_ro_*` (`RESTRICTIVE`, rôle `authenticated`)
@@ -1791,7 +1791,37 @@ ses fournées précédentes d'une recette. Plan gratuit, sans IA. Logique pure :
   d'étapes réalisées ni de jalons ; commentaires d'étape sur deux lignes
   (titre, « Mon commentaire : … ») ; ceux des sous-étapes dans un volet déplié par défaut.
   Sur une fournée close, les blocs « Ma note » vides sont omis.
-- **Bilan de la fournée à la clôture** (arbitrage du 04/11/2026, remplace « À retenir pour la prochaine fois ») : question facultative après « Terminer » (`BatchView.finishBatch` ET `PlanningDayView`, `useDemanderBilan`, `lib/batch-lecons-client.ts`), **écrite dans `batches.commentaire_global`** — le même champ que le « Commentaire global » du résumé, qui reste modifiable ensuite. Préremplie si un commentaire existe déjà (fournée reprise). Événement GA `saisir_bilan`. L'ancienne colonne `batches.lecon` reste en base, **ni lue ni écrite** (plus de nature de remarque `lecon`, plus de ligne « À retenir » dans le résumé, le tableau « Comparer » des essais ni l'export des retours) ; les épingles `lecon` déjà posées dans `remarques_gardees` sont orphelines, sans effet. « Refaire » ne recopie pas le bilan.
+- **Bilan de la fournée à la clôture** (arbitrage du 04/11/2026, remplace « À retenir pour la prochaine fois ») : champ facultatif de l'**écran de fin de fournée** (cf. « Fin de fournée » ci-dessous), **écrit dans `batches.commentaire_global`** — le même champ que le « Commentaire global » du résumé, qui reste modifiable ensuite. Prérempli si un commentaire existe déjà (fournée reprise). Événement GA `saisir_bilan`. L'ancienne colonne `batches.lecon` reste en base, **ni lue ni écrite** (plus de nature de remarque `lecon`, plus de ligne « À retenir » dans le résumé, le tableau « Comparer » des essais ni l'export des retours) ; les épingles `lecon` déjà posées dans `remarques_gardees` sont orphelines, sans effet. « Refaire » ne recopie pas le bilan.
+
+## Fin de fournée (18/11/2026)
+
+Cocher la dernière case ne ferme plus rien : la fournée n'est close qu'au bouton
+final de l'**écran de fin de fournée** (`components/batch/EcranFinFournee.tsx`).
+Avant, la dernière case ouvrait aussitôt « Terminer la fournée ? » puis le bilan,
+la validation et l'avis — sans laisser le temps de noter la dernière étape.
+
+- **Barre « Fournée prête à être clôturée »** (`BatchView`, `pretACloturer` : fournée
+  en cours, non verrouillée, toutes les étapes cochées) : posée en bas, au-dessus de la
+  barre de navigation mobile (`--mobile-nav-h`, `z-[46]`), dans les deux modes. Elle
+  n'ouvre rien d'elle-même ; son bouton « Clôturer » ouvre l'écran. Décocher une étape
+  la fait disparaître. Géométrie non vérifiée visuellement (superposition possible avec
+  la pastille « Actions » sous 701 px : à ajuster à l'aperçu).
+- **Mêmes portes d'entrée** : le rail « Marquer comme terminé » (plus de confirmation
+  séparée, une étape non cochée est signalée dans l'écran) et la vue « Par jour »
+  (`PlanningDayView` : barre équivalente, qui mène à `/fournee/<id>?mode=patisser&cloture=1` ;
+  le paramètre est retiré de l'adresse à l'ouverture). `cloturer` (`BatchView`) est le seul
+  écrivain : statut `terminee` + `date_fin`, puis bilan, `refaisable` ou `trial_verdict`.
+  Fermer l'écran (« Pas maintenant », croix, Échap) n'écrit rien.
+- **Fournée d'une recette** : bilan, case « Fournée validée » (rappelle les autres
+  fournées déjà validées, `phraseAutresValidees`) qui déplie le tri des retours
+  (`TriRetours`, extrait de `ValidationFournee`, même épingles `ChoixRemarque`), puis
+  « Terminer la fournée » ou « Terminer et donner mon avis ». **L'avis reste déposé
+  après la clôture** (la route `/api/fournee/[id]/avis` exige une fournée `terminee`) :
+  le second bouton amène sur la carte `#sec-avis`. **Essai de projet** : bilan, verdict,
+  « Terminer et retourner au projet » / « rester ici ».
+- Les anciennes fenêtres (`useDemanderBilan`, `useDemanderRefaisable`, `useClotureEssai`)
+  ont disparu ; `ValidationFournee` ne sert plus que la case « Fournée validée » du
+  résumé d'une fournée close.
 
 ## Photos de réalisation d'une fournée (JEP-382)
 
@@ -2041,7 +2071,7 @@ d'en créer une nouvelle.
   Ces deux colonnes existaient déjà et étaient déjà affichées sous le titre
   de la fiche recette ; c'est l'absence d'écriture dans `comments` qui les
   laissait à zéro jusqu'ici.
-- **Clôture d'une fournée d'essai d'un projet en cours** (JEP-403, `useClotureEssai`, `components/batch/ClotureEssai.ts`, partagé par `BatchView.finishBatch` et `PlanningDayView.proposeFinish`) : après le bilan, ni « Fournée validée » ni avis, mais le **verdict de l'essai** (À revoir / Correct / Validé → `batches.trial_verdict`, celui du bloc « Essais ») puis « Retourner au projet ». **Carte « En cuisine »** (`VignetteFournee`, `CuisineContent`) : picto `construction` sans photo, pastille « Essai » sur la photo du projet (`recipes(kind, project_stage)` lus par `getBatches` / `getActiveBatches`).
+- **Clôture d'une fournée d'essai d'un projet en cours** (JEP-403) : l'écran de fin de fournée (cf. « Fin de fournée ») propose le **verdict de l'essai** (À revoir / Correct / Validé → `batches.trial_verdict`, celui du bloc « Essais ») à la place de « Fournée validée » et de l'avis, puis « Terminer et retourner au projet » ou « Terminer et rester ici ». **Carte « En cuisine »** (`VignetteFournee`, `CuisineContent`) : picto `construction` sans photo, pastille « Essai » sur la photo du projet (`recipes(kind, project_stage)` lus par `getBatches` / `getActiveBatches`).
 - **Pas d'avis sur une fournée d'essai d'un projet en cours** : quand la recette d'origine est un projet `wizard` (`isProjectDraft`), ni la carte d'avis, ni la question à la clôture (`BatchView` `essaiProjet`, `PlanningDayView`) ne sont proposées, et `submitOrUpdateReview` refuse l'écriture (`recetteEstProjetEnCours`, `lib/reviews-data.ts`) — la route reste appelable, la règle n'est donc pas qu'un masquage. Calculé à la lecture, sans colonne : une fois le projet validé (`ready`), une fournée lancée depuis la fiche redevient ordinaire et propose l'avis. Lecture en échec : on propose comme avant.
 - **Affichage** : note + nombre d'avis sous le titre (`app/recette/[id]`,
   déjà en place), avis publiés en bas de fiche (`RecipeComments`, section

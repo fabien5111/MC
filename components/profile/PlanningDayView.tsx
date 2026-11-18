@@ -19,16 +19,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
-import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { formatTime } from '@/lib/format';
 import { groupPlanningStepsByDate, type PlanningDayGroup } from '@/lib/recipe-plan';
 import { LockedAction } from '@/components/LockedAction';
 import type { BatchListRow } from '@/lib/profile';
-import { trackEvent } from '@/lib/analytics';
-import { useDemanderBilan, useDemanderRefaisable } from '@/lib/batch-lecons-client';
-import { isProjectDraft, type ProjectMarks } from '@/lib/projects';
-import { useClotureEssai } from '@/components/batch/ClotureEssai';
 
 const dateLabel = (iso: string): string =>
   new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -48,10 +43,6 @@ export function PlanningDayView({
   canReorder?: boolean;
 }) {
   const { mutate, busy } = useMutation();
-  const dialog = useDialog();
-  const demanderBilan = useDemanderBilan();
-  const demanderRefaisable = useDemanderRefaisable();
-  const clotureEssai = useClotureEssai();
   const router = useRouter();
   // Distinct de `busy` (qui ne couvre que les écritures de `mutate`) : le
   // renvoi vers la fiche fournée après « je veux laisser un avis » est un
@@ -112,84 +103,20 @@ export function PlanningDayView({
     if (!ok) setList(prev);
   }
 
-  // Un avis existe-t-il déjà pour cette recette, déposé depuis une AUTRE
-  // fournée ? Même condition que `reviewEligible` dans BatchView, lue
-  // directement sur `comments` : la RLS n'y autorise un membre qu'à voir SA
-  // PROPRE ligne (quel que soit son statut) ou les lignes `approved` de tout
-  // le monde — filtrer par `user_id` donne donc bien « mon » avis, jamais
-  // celui d'un autre. Best-effort : une erreur ou un réseau indisponible ne
-  // doit pas empêcher de proposer l'avis, seulement risquer de le proposer à
-  // tort une fois.
-  async function alreadyReviewed(recipeId: string, batchId: number): Promise<boolean> {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const userId = session?.user.id;
-    if (!userId) return false;
-    const { data, error } = await supabase.from('comments').select('batch_id').eq('recipe_id', recipeId).eq('user_id', userId).maybeSingle();
-    if (error) return false;
-    return !!data && data.batch_id !== batchId;
-  }
-
-  // Essai d'un projet en cours : pas d'avis à proposer. Best-effort (lecture
-  // en échec → faux, on propose comme avant).
-  async function essaiProjetEnCours(recipeId: string): Promise<boolean> {
-    const { data } = await createClient().from('recipes').select('kind, project_stage').eq('id', recipeId).maybeSingle();
-    return isProjectDraft(data as ProjectMarks | null);
-  }
-
-  // Propose de terminer la fournée dès que toutes SES étapes sont cochées
-  // (toutes fournées confondues sur cet écran, pas seulement celles du jour
-  // affiché) puis, si un avis est encore possible sur la recette d'origine,
-  // de laisser une note et un avis — mêmes actions et messages que
-  // `BatchView.proposeFinish` (mode Pâtisser d'une fournée).
-  async function proposeFinish(batchRow: BatchListRow) {
-    // Posé avant même la confirmation : la question apparaît sur le même
-    // rendu que la case tout juste cochée, donc `fullyDoneBatchIds` doit déjà
-    // exclure cette fournée pour que sa journée ne s'efface pas sous le
-    // dialogue (cf. déclaration de `pendingFinish` plus haut).
+  // Toutes les étapes d'une fournée cochées : plus de question posée sur le
+  // coup. Une barre « Fournée prête à être clôturée » (en bas de page) mène à
+  // l'écran de fin de fournée, ouvert par `?cloture=1` sur la fournée. Posé
+  // avant tout rendu : `fullyDoneBatchIds` exclut cette fournée pour que sa
+  // journée ne s'efface pas (cf. déclaration de `pendingFinish`).
+  function proposeFinish(batchRow: BatchListRow) {
     setPendingFinish((prev) => new Set(prev).add(batchRow.id));
-    const wantsFinish = await dialog.confirm('Toutes les étapes sont cochées ! Souhaitez-vous marquer cette fournée comme terminée ?');
-    if (!wantsFinish) {
-      dialog.alert('Pas de souci : vous pourrez la marquer comme terminée à tout moment depuis le menu.');
-      return;
-    }
-    const ok = await mutate(() => createClient().from('batches').update({ status: 'terminee', date_fin: new Date().toISOString() }).eq('id', batchRow.id), {
-      errorLabel: 'Fin de la fournée impossible',
-    });
-    if (!ok) {
-      // Échec de l'écriture : redevient une fournée « tout coché » ordinaire,
-      // qui reproposera la question au prochain cochage.
-      setPendingFinish((prev) => {
-        const next = new Set(prev);
-        next.delete(batchRow.id);
-        return next;
-      });
-      return;
-    }
-    trackEvent('terminer_fournee');
-    setList((prev) => prev.filter((p) => p.id !== batchRow.id));
-    // Bilan de la fournée (JEP-381) — même question que
-    // `BatchView.finishBatch`, facultative.
-    await demanderBilan(batchRow.id);
-    // Fournée d'essai d'un projet en cours (JEP-403) : verdict de l'essai et
-    // retour au projet, à la place de « Fournée validée » et de l'avis.
-    if (batchRow.recipe_id && (await essaiProjetEnCours(batchRow.recipe_id))) {
-      if (await clotureEssai(batchRow.id)) {
-        setNavigating(true);
-        router.push(`/projets/${batchRow.recipe_id}`);
-      }
-      return;
-    }
-    await demanderRefaisable(batchRow.id);
-    if (!batchRow.recipe_id || (await alreadyReviewed(batchRow.recipe_id, batchRow.id))) return;
-    const wantsReview = await dialog.confirm('Souhaitez-vous laisser une note et un avis sur cette recette ?\n\nVous pourrez aussi le faire plus tard depuis cette fournée.', { okLabel: 'Oui', cancelLabel: 'Non' });
-    if (wantsReview) {
-      setNavigating(true);
-      router.push(`/fournee/${batchRow.id}?mode=preparer#sec-avis`);
-    }
   }
+
+  function ouvrirCloture(id: number) {
+    setNavigating(true);
+    router.push(`/fournee/${id}?mode=patisser&cloture=1`);
+  }
+  const pretes = list.filter((p) => pendingFinish.has(p.id) && p.status === 'planifiee' && p.batch_steps.length > 0 && p.batch_steps.every((s) => s.done));
 
   // Case cochable directement depuis cette vue, sans ouvrir la fournée : une
   // seule source de vérité (`batch_steps.done`), la même que sur la fiche et
@@ -378,6 +305,27 @@ export function PlanningDayView({
 
   return (
     <div className="flex flex-col gap-8">
+      {pretes.length > 0 && (
+        <div className="no-print pointer-events-none fixed inset-x-0 z-[46] flex flex-col items-center gap-2 px-3 bottom-[calc(var(--mobile-nav-h)+12px)] lg:bottom-4">
+          {pretes.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => ouvrirCloture(p.id)}
+              className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-3 rounded-2xl border border-primary bg-white px-4 py-3 text-left shadow-lg"
+            >
+              <span className="min-w-0 text-primary">
+                <span className="flex items-center gap-2 font-label-md text-label-md">
+                  <span className="material-symbols-outlined">flag</span>
+                  Fournée prête à être clôturée
+                </span>
+                <span className="block truncate text-xs text-on-surface-variant">{p.recipe_title}</span>
+              </span>
+              <span className="shrink-0 rounded-pill bg-primary px-3 py-1.5 text-sm font-label-md text-on-primary">Clôturer</span>
+            </button>
+          ))}
+        </div>
+      )}
       <LoadingOverlay visible={busy || navigating} label={navigating ? 'Ouverture de la fournée…' : 'Réorganisation en cours…'} />
       {pendingGroups.map((g) => (
         <div key={g.date} className="border border-outline-variant rounded-xl bg-surface-container-lowest overflow-hidden">
