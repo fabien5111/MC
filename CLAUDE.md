@@ -1812,6 +1812,16 @@ la validation et l'avis — sans laisser le temps de noter la dernière étape.
   le paramètre est retiré de l'adresse à l'ouverture). `cloturer` (`BatchView`) est le seul
   écrivain : statut `terminee` + `date_fin`, puis bilan, `refaisable` ou `trial_verdict`.
   Fermer l'écran (« Pas maintenant », croix, Échap) n'écrit rien.
+- **« Ce que vous avez noté »** (`RecapNotes`, dans l'écran, entre le bilan et la validation) :
+  par étape, son **commentaire** et sa **quantité obtenue** (`EcartProduitChamp`, extrait de
+  `BatchView`), les **commentaires de sous-étapes avec le texte de la sous-étape rappelé**, et les
+  écarts / commentaires d'ingrédients (lecture seule). Commentaires d'étape et de sous-étape
+  **modifiables**, écrits à la sortie du champ par les mêmes colonnes que le mode Pâtisser
+  (`ecrireEtapeFin`, `ecrireSousEtapeFin`). Chaque remarque porte son **épingle** (`ChoixRemarque`,
+  `PorteeEdition silencieux`) : désépingler = ne plus la rappeler aux prochaines fournées. Les étapes
+  notées à l'ouverture sont dépliées (ensemble figé : effacer une note ne fait pas disparaître sa
+  carte), les autres sont dans un volet « Ajouter une note sur une autre étape » ; de même, les
+  sous-étapes non notées sont dans « Noter une sous-étape ».
 - **Fournée d'une recette** : bilan, case « Fournée validée » (rappelle les autres
   fournées déjà validées, `phraseAutresValidees`) qui déplie le tri des retours
   (`TriRetours`, extrait de `ValidationFournee`, même épingles `ChoixRemarque`), puis

@@ -10,9 +10,20 @@
 // Essai d'un projet en cours : bilan, verdict de l'essai, retour au projet.
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { EcartProduitChamp } from '@/components/batch/EcartProduitChamp';
+import { ChoixRemarque, PorteeEdition } from '@/components/batch/DerniereFois';
 import { TriRetours } from '@/components/batch/ValidationFournee';
-import { BILAN_MAX, type Remarque } from '@/lib/batch-lecons';
+import { BILAN_MAX, cleRemarque, type Remarque } from '@/lib/batch-lecons';
 import { phraseAutresValidees } from '@/lib/batch-lecons-client';
+
+// Une étape de la fournée, avec ce qui s'y est noté (affiché et modifiable ici).
+export type EtapeFin = {
+  id: number;
+  titre: string;
+  commentaire: string | null;
+  ecart: number | null;
+  sousEtapes: { id: number; texte: string; commentaire: string | null }[];
+};
 
 export type VerdictEssai = 'to_review' | 'ok' | 'validated';
 
@@ -40,6 +51,9 @@ export function EcranFinFournee({
   peutValider,
   propres,
   etapesIncompletes,
+  etapes,
+  onEtape,
+  onSousEtape,
   onCloturer,
   onFermer,
 }: {
@@ -55,6 +69,10 @@ export function EcranFinFournee({
   propres: Remarque[];
   // Étapes pas encore cochées (clôture anticipée depuis le rail).
   etapesIncompletes: number;
+  etapes: EtapeFin[];
+  // Écritures partagées avec le mode Pâtisser (mêmes colonnes).
+  onEtape: (id: number, patch: { commentaire?: string; ecart_produit_g?: number | null }) => void;
+  onSousEtape: (id: number, commentaire: string) => void;
   onCloturer: (d: DemandeCloture) => Promise<void>;
   onFermer: () => void;
 }) {
@@ -138,6 +156,8 @@ export function EcranFinFournee({
             />
           </section>
 
+          <RecapNotes etapes={etapes} propres={propres} onEtape={onEtape} onSousEtape={onSousEtape} />
+
           {essaiProjet ? (
             <section className="flex flex-col gap-2">
               <p className="font-label-md text-label-md text-on-surface">Comment s’est passé cet essai ?</p>
@@ -208,5 +228,151 @@ export function EcranFinFournee({
       </div>
     </div>,
     document.body,
+  );
+}
+
+// « Ce que vous avez noté » : commentaires d'étape, quantité obtenue, commentaires
+// de sous-étapes (avec le texte de la sous-étape) et écarts d'ingrédients, avec
+// l'épingle pour ne pas les rappeler aux prochaines fournées. Les étapes qui
+// portent une note à l'ouverture sont dépliées ; les autres restent dans un volet,
+// pour pouvoir y ajouter une note. Les champs s'écrivent à la sortie du champ.
+function RecapNotes({
+  etapes,
+  propres,
+  onEtape,
+  onSousEtape,
+}: {
+  etapes: EtapeFin[];
+  propres: Remarque[];
+  onEtape: (id: number, patch: { commentaire?: string; ecart_produit_g?: number | null }) => void;
+  onSousEtape: (id: number, commentaire: string) => void;
+}) {
+  const a = (e: EtapeFin) => !!(e.commentaire?.trim() || e.ecart || e.sousEtapes.some((s) => s.commentaire?.trim()) || propres.some((r) => r.nature === 'ingredient' && r.etapeId === e.id));
+  // Fixé à l'ouverture : une note effacée ne fait pas disparaître l'étape sous le doigt.
+  const [avecNote] = useState(() => new Set(etapes.filter(a).map((e) => e.id)));
+  const avec = etapes.filter((e) => avecNote.has(e.id));
+  const sans = etapes.filter((e) => !avecNote.has(e.id));
+  return (
+    <section className="flex flex-col gap-3">
+      <div>
+        <p className="font-label-md text-label-md text-on-surface">Ce que vous avez noté</p>
+        <p className="text-sm text-on-surface-variant">
+          Relisez et corrigez avant de clôturer. L’épingle décide si une remarque sera rappelée à vos prochaines fournées.
+        </p>
+      </div>
+      <PorteeEdition silencieux>
+        {avec.length === 0 && <p className="text-sm italic text-on-surface-variant">Aucune note sur cette fournée pour l’instant.</p>}
+        {avec.map((e) => (
+          <CarteEtape key={e.id} e={e} propres={propres} onEtape={onEtape} onSousEtape={onSousEtape} />
+        ))}
+        {sans.length > 0 && (
+          <details className="rounded-lg border border-outline-variant">
+            <summary className="cursor-pointer px-3 py-2 text-sm text-on-surface-variant">Ajouter une note sur une autre étape ({sans.length})</summary>
+            <div className="flex flex-col gap-3 p-3">
+              {sans.map((e) => (
+                <CarteEtape key={e.id} e={e} propres={propres} onEtape={onEtape} onSousEtape={onSousEtape} />
+              ))}
+            </div>
+          </details>
+        )}
+      </PorteeEdition>
+    </section>
+  );
+}
+
+function CarteEtape({
+  e,
+  propres,
+  onEtape,
+  onSousEtape,
+}: {
+  e: EtapeFin;
+  propres: Remarque[];
+  onEtape: (id: number, patch: { commentaire?: string; ecart_produit_g?: number | null }) => void;
+  onSousEtape: (id: number, commentaire: string) => void;
+}) {
+  const [texte, setTexte] = useState(e.commentaire ?? '');
+  useEffect(() => setTexte(e.commentaire ?? ''), [e.commentaire]);
+  // Sous-étapes notées à l'ouverture (fixé : effacer une note ne la fait pas disparaître).
+  const [notees0] = useState(() => new Set(e.sousEtapes.filter((s) => s.commentaire?.trim()).map((s) => s.id)));
+  const notees = e.sousEtapes.filter((s) => notees0.has(s.id));
+  const autres = e.sousEtapes.filter((s) => !notees0.has(s.id));
+  const rEtape = propres.find((r) => r.cle === cleRemarque('etape', e.id));
+  const ingredients = propres.filter((r) => r.nature === 'ingredient' && r.etapeId === e.id);
+  const champ = 'w-full rounded border p-2 text-sm focus:ring-1 focus:ring-primary';
+  const garde = (v: string | null) => (v?.trim() ? 'border-green-700 bg-green-50' : 'border-outline-variant bg-surface-container-low');
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-outline-variant p-3">
+      <p className="font-label-md text-label-md text-primary">{e.titre || 'Étape'}</p>
+      <div className="flex items-start gap-1">
+        {rEtape && <ChoixRemarque r={rEtape} />}
+        <textarea
+          value={texte}
+          rows={2}
+          onChange={(ev) => setTexte(ev.target.value)}
+          onBlur={() => texte !== (e.commentaire ?? '') && onEtape(e.id, { commentaire: texte })}
+          placeholder="Ce qui s’est passé sur cette étape…"
+          aria-label={`Commentaire de l’étape ${e.titre}`}
+          className={`${champ} ${garde(texte)}`}
+        />
+      </div>
+      <EcartProduitChamp valeur={e.ecart} disabled={false} onChange={(v) => onEtape(e.id, { ecart_produit_g: v })} />
+      {notees.map((s) => (
+        <LigneSousEtape key={s.id} s={s} r={propres.find((r) => r.cle === cleRemarque('sous_etape', s.id))} onSousEtape={onSousEtape} garde={garde} champ={champ} />
+      ))}
+      {autres.length > 0 && (
+        <details className="text-sm">
+          <summary className="cursor-pointer text-on-surface-variant">Noter une sous-étape ({autres.length})</summary>
+          <div className="mt-2 flex flex-col gap-2">
+            {autres.map((s) => (
+              <LigneSousEtape key={s.id} s={s} r={undefined} onSousEtape={onSousEtape} garde={garde} champ={champ} />
+            ))}
+          </div>
+        </details>
+      )}
+      {ingredients.map((r) => (
+        <p key={r.cle} className="flex items-start gap-1 border-l-2 border-primary/50 pl-3 text-sm text-primary">
+          <ChoixRemarque r={r} />
+          <span>
+            <span className="font-bold not-italic">{r.libelle}</span>
+            {r.ecart && <span className="italic"> — {r.ecart}</span>}
+            {r.texte && <span className="italic"> — {r.texte}</span>}
+          </span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function LigneSousEtape({
+  s,
+  r,
+  onSousEtape,
+  garde,
+  champ,
+}: {
+  s: { id: number; texte: string; commentaire: string | null };
+  r: Remarque | undefined;
+  onSousEtape: (id: number, commentaire: string) => void;
+  garde: (v: string | null) => string;
+  champ: string;
+}) {
+  const [texte, setTexte] = useState(s.commentaire ?? '');
+  useEffect(() => setTexte(s.commentaire ?? ''), [s.commentaire]);
+  return (
+    <div className="flex flex-col gap-1 border-l-2 border-outline-variant pl-3">
+      <p className="text-sm text-on-surface-variant">{s.texte}</p>
+      <div className="flex items-start gap-1">
+        {r && <ChoixRemarque r={r} />}
+        <input
+          value={texte}
+          onChange={(ev) => setTexte(ev.target.value)}
+          onBlur={() => texte !== (s.commentaire ?? '') && onSousEtape(s.id, texte)}
+          placeholder="Note sur cette sous-étape…"
+          aria-label={`Note sur la sous-étape : ${s.texte}`}
+          className={`${champ} ${garde(texte)}`}
+        />
+      </div>
+    </div>
   );
 }
