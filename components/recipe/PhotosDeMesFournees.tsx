@@ -1,42 +1,48 @@
 'use client';
 
-// « Depuis mes fournées » : choisir, pour illustrer l'étape d'une recette (ou
+// « Mes fournées » (entrée de la fenêtre du nuage « Depuis… ») : choisir, pour illustrer l'étape d'une recette (ou
 // d'un projet), des photos de réalisation prises lors de MES fournées de cette
 // recette — celles de l'étape correspondante d'abord. Les photos sont
 // rattachées par leur adresse (aucune copie, aucun redépôt) ; l'objet reste
 // sur `jp-photos/realisations/`, et la réconciliation du stockage le garde
 // tant qu'une étape de recette le cite. Visible du seul propriétaire de la
 // recette (lecture sous RLS) ; la recette doit déjà être enregistrée.
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { photosDesFournees, type PhotoDeFournee } from '@/lib/batch-photos-client';
 
-export function PhotosDeMesFournees({
-  recipeId,
-  stepId,
-  titreEtape,
-  places,
-  onChoisir,
-  className = '',
-}: {
+// Ce que l'emplacement de photo doit savoir pour proposer « Mes fournées » :
+// la recette, l'étape, les places encore libres et ce qu'on fait des adresses
+// choisies. Posé par la grille de photos d'une étape (`/creer`, mode projet) ;
+// sans lui, le nuage n'offre pas cette entrée (avatar, photo d'en-tête…).
+export type SourceFournees = {
   recipeId: string | null | undefined;
   stepId: number | null;
   titreEtape: string;
-  // Emplacements encore libres sur l'étape.
+  /** Emplacements encore libres sur l'étape. */
   places: number;
   onChoisir: (urls: string[]) => void;
-  className?: string;
-}) {
-  const [ouvert, setOuvert] = useState(false);
+};
+
+const Contexte = createContext<SourceFournees | null>(null);
+
+export function SourceFourneesProvider({ valeur, children }: { valeur: SourceFournees; children: ReactNode }) {
+  return <Contexte.Provider value={valeur}>{children}</Contexte.Provider>;
+}
+
+export function useSourceFournees(): SourceFournees | null {
+  return useContext(Contexte);
+}
+
+export function FenetrePhotosFournees({ source, onClose }: { source: SourceFournees; onClose: () => void }) {
+  const { recipeId, stepId, titreEtape, places, onChoisir } = source;
   const [photos, setPhotos] = useState<PhotoDeFournee[] | null>(null);
   const [toutes, setToutes] = useState(false);
   const [choisies, setChoisies] = useState<number[]>([]);
 
   useEffect(() => {
-    if (!ouvert || !recipeId) return;
+    if (!recipeId) return;
     let actif = true;
-    setPhotos(null);
-    setChoisies([]);
     photosDesFournees(recipeId, stepId, titreEtape)
       .then((p) => actif && setPhotos(p))
       .catch(() => actif && setPhotos([]));
@@ -45,9 +51,7 @@ export function PhotosDeMesFournees({
     };
     // Relue à chaque ouverture seulement.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ouvert]);
-
-  if (!recipeId) return null;
+  }, []);
 
   const correspondantes = (photos ?? []).filter((p) => p.correspond);
   const affichees = toutes || correspondantes.length === 0 ? photos ?? [] : correspondantes;
@@ -55,31 +59,24 @@ export function PhotosDeMesFournees({
     setChoisies((c) => (c.includes(id) ? c.filter((x) => x !== id) : c.length < places ? [...c, id] : c));
   const valider = () => {
     const urls = (photos ?? []).filter((p) => choisies.includes(p.id)).map((p) => p.url);
-    setOuvert(false);
+    onClose();
     if (urls.length) onChoisir(urls);
   };
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOuvert(true)}
-        disabled={places <= 0}
-        className={`no-print inline-flex items-center gap-1.5 rounded-pill border border-outline-variant px-3 py-1.5 text-[13px] font-label-md text-on-surface-variant hover:border-primary hover:text-primary transition-colors disabled:opacity-50 ${className}`}
-      >
-        <span className="material-symbols-outlined text-[18px]">photo_library</span>
-        Depuis mes fournées
-      </button>
-      {ouvert &&
-        createPortal(
+  return createPortal(
           <div
             className="fixed inset-0 z-[105] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-            onClick={(e) => e.target === e.currentTarget && setOuvert(false)}
+            onClick={(e) => {
+              // Le portail propage ses clics à l'emplacement de photo, qui ouvrirait
+              // sinon le sélecteur de fichiers de l'appareil.
+              e.stopPropagation();
+              if (e.target === e.currentTarget) onClose();
+            }}
           >
             <div role="dialog" aria-modal="true" aria-label="Photos de mes fournées" className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-t-2xl bg-white shadow-xl sm:rounded-2xl">
               <div className="flex items-center justify-between gap-3 border-b border-outline-variant px-5 py-3">
                 <h3 className="font-headline-md text-[18px] text-primary">Photos de mes fournées</h3>
-                <button type="button" onClick={() => setOuvert(false)} aria-label="Fermer" className="rounded p-1 text-on-surface-variant hover:bg-surface-container">
+                <button type="button" onClick={onClose} aria-label="Fermer" className="rounded p-1 text-on-surface-variant hover:bg-surface-container">
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
@@ -134,7 +131,7 @@ export function PhotosDeMesFournees({
                 )}
               </div>
               <div className="flex justify-end gap-2 border-t border-outline-variant px-5 py-3">
-                <button type="button" onClick={() => setOuvert(false)} className="rounded-pill border border-outline-variant px-4 py-2 font-label-md text-label-md">
+                <button type="button" onClick={onClose} className="rounded-pill border border-outline-variant px-4 py-2 font-label-md text-label-md">
                   Annuler
                 </button>
                 <button
@@ -149,7 +146,5 @@ export function PhotosDeMesFournees({
             </div>
           </div>,
           document.body,
-        )}
-    </>
   );
 }

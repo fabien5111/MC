@@ -27,7 +27,7 @@ import { resizeDataUrlToThumb, resizeFilesToDataUrls } from '@/lib/images';
 import { televerserImage } from '@/lib/storage-client';
 import { estDataUrlImage } from '@/lib/storage';
 import { ImageSlot } from '@/components/ImageSlot';
-import { PhotosDeMesFournees } from '@/components/recipe/PhotosDeMesFournees';
+import { SourceFourneesProvider } from '@/components/recipe/PhotosDeMesFournees';
 import { DureeInput } from '@/components/DureeInput';
 import { swapAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
@@ -2462,18 +2462,15 @@ export function CreerForm({
                     Cliquez ou glissez — plusieurs photos à la fois sont acceptées, elles se répartissent
                     sur les emplacements libres.
                   </p>
-                  {editingId && (
-                    <div className="mb-2">
-                      <PhotosDeMesFournees
-                        recipeId={editingId}
-                        stepId={st.srcId ?? null}
-                        titreEtape={st.title}
-                        places={st.photos.filter((p) => !p).length}
-                        onChoisir={(urls) => addUrlsToStep(si, urls)}
-                      />
-                    </div>
-                  )}
-
+                  <SourceFourneesProvider
+                    valeur={{
+                      recipeId: editingId,
+                      stepId: st.srcId ?? null,
+                      titreEtape: st.title,
+                      places: st.photos.filter((p) => !p).length,
+                      onChoisir: (urls) => addUrlsToStep(si, urls),
+                    }}
+                  >
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {st.photos.map((p, pi) => {
                       const photoKey = `${si}:${pi}`;
@@ -2518,6 +2515,7 @@ export function CreerForm({
                       );
                     })}
                   </div>
+                  </SourceFourneesProvider>
 
                   <div className="mt-4">
                     <label className="font-label-md text-label-md text-outline uppercase mb-2 block">Lien vidéo (YouTube, Vimeo…)</label>

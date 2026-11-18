@@ -17,7 +17,7 @@ import { useDialog } from '@/components/Dialog';
 import { useRegisterSection, type OptionsSauvegarde, type SectionRegistry } from '@/components/projets/v2/sections';
 import { resizeFilesToDataUrls } from '@/lib/images';
 import { ImageSlot } from '@/components/ImageSlot';
-import { PhotosDeMesFournees } from '@/components/recipe/PhotosDeMesFournees';
+import { SourceFourneesProvider } from '@/components/recipe/PhotosDeMesFournees';
 import { createClient } from '@/lib/supabase/client';
 import { televerserImage } from '@/lib/storage-client';
 
@@ -123,21 +123,20 @@ export function PhotosEtapeProjet({
   }
 
   return (
+    <SourceFourneesProvider
+      valeur={{
+        recipeId,
+        stepId,
+        titreEtape: titreEtape ?? '',
+        places: PHOTOS_ETAPE_MAX - brouillon.length,
+        onChoisir: (urls) =>
+          setBrouillon((prev) =>
+            [...prev, ...urls.map((u) => ({ url: u, original_url: u, ai_retouched: false }))].slice(0, PHOTOS_ETAPE_MAX),
+          ),
+      }}
+    >
     <div className="no-print">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="font-label-md text-label-md text-primary">Photos de l’étape</p>
-        <PhotosDeMesFournees
-          recipeId={recipeId}
-          stepId={stepId}
-          titreEtape={titreEtape ?? ''}
-          places={PHOTOS_ETAPE_MAX - brouillon.length}
-          onChoisir={(urls) =>
-            setBrouillon((prev) =>
-              [...prev, ...urls.map((u) => ({ url: u, original_url: u, ai_retouched: false }))].slice(0, PHOTOS_ETAPE_MAX),
-            )
-          }
-        />
-      </div>
+      <p className="mb-2 font-label-md text-label-md text-primary">Photos de l’étape</p>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {brouillon.map((p, k) => (
           <div key={k} className="relative aspect-square overflow-hidden border border-dashed border-outline-variant">
@@ -171,5 +170,6 @@ export function PhotosEtapeProjet({
         )}
       </div>
     </div>
+    </SourceFourneesProvider>
   );
 }

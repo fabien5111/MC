@@ -1873,9 +1873,8 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   Pas d'ouverture automatique du recadrage à l'ajout. Le format carré ne se force
   pas à la prise de vue (appli photo du système) : il se cadre après coup.
 - **Photos de mes fournées pour illustrer une étape de recette** (18/11/2026) :
-  bouton « Depuis mes fournées » (`components/recipe/PhotosDeMesFournees.tsx`,
-  `photosDesFournees`, `lib/batch-photos-client.ts`) sur les photos d'étape de
-  `/creer` (recette enregistrée) et de la vue des étapes du mode projet. Liste les
+  entrée « Mes fournées » de la **fenêtre du nuage « Depuis… »** (19/11/2026 ; ex-bouton à part « Depuis mes fournées »), `components/recipe/PhotosDeMesFournees.tsx` (`SourceFourneesProvider` posé autour de la grille de photos d'une étape, `FenetrePhotosFournees`, `photosDesFournees` de `lib/batch-photos-client.ts`), sur les photos d'étape de
+  `/creer` (recette enregistrée) et de la vue des étapes du mode projet. **Ouverte à toutes les formules** : ce sont les photos du membre, pas un service tiers ; sans le droit `stockage_en_ligne`, le nuage s'ouvre quand même, avec « Mes fournées » active et les stockages en ligne grisés (cadenas, renvoi vers `/plans`). Le nuage n'offre l'entrée que sous ce fournisseur : avatar, photo d'en-tête, import n'en ont pas. Liste les
   photos de MES fournées de la recette (RLS), celles de l'étape correspondante
   d'abord (`batch_steps.source_step_id`, à défaut même titre normalisé : les id
   d'étape changent à chaque enregistrement de l'éditeur) ; case pour voir aussi les
