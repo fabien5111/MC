@@ -7,6 +7,7 @@
 //  - Photos : `photospicker.mediaitems.readonly`, seule portée encore offerte
 //    depuis 2025 (l'API de bibliothèque a été fermée aux applications tierces).
 import {
+  trierParDate,
   MAX_OCTETS_SOURCE,
   TYPES_IMAGE,
   dureeGoogleMs,
@@ -255,7 +256,7 @@ export function ouvrirGooglePhotos(session: SessionPhotos): void {
   window.open(`${session.pickerUri.replace(/\/$/, '')}/autoclose`, '_blank');
 }
 
-type MediaBrut = { id: string; type?: string; mediaFile?: { baseUrl?: string; mimeType?: string; filename?: string } };
+type MediaBrut = { id: string; type?: string; createTime?: string; mediaFile?: { baseUrl?: string; mimeType?: string; filename?: string } };
 
 /**
  * Pause entre deux interrogations de Google, écourtée dès que le membre revient
@@ -311,7 +312,10 @@ export async function recupererGooglePhotos(
       suite = page.nextPageToken ?? null;
     } while (suite && medias.length < max);
 
-    const photos = medias.filter((m) => m.type !== 'VIDEO' && m.mediaFile?.baseUrl).slice(0, max);
+    // Google ne donne pas l'ordre des clics : on trie par date de prise de vue
+    // (croissante), ce qui est prévisible. Date absente ou illisible : l'ordre
+    // rendu par Google est gardé (le tri est stable).
+    const photos = trierParDate(medias.filter((m) => m.type !== 'VIDEO' && m.mediaFile?.baseUrl)).slice(0, max);
     if (!photos.length) throw new ErreurStockage('Aucune photo choisie (les vidéos ne sont pas prises en charge).');
     avantTelechargement();
 

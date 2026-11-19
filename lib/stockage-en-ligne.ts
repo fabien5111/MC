@@ -292,3 +292,15 @@ export function lireRetourOAuth(recherche: string): RetourOAuth | null {
   const erreur = p.get('error_description') || p.get('error');
   return { state, code: p.get('code'), erreur: erreur || null };
 }
+
+/**
+ * Photos de Google Photos triées par date de prise de vue croissante
+ * (`createTime`) : le sélecteur ne rend pas l'ordre des clics, la date est le
+ * seul repère prévisible. Si UNE date manque ou est illisible, l'ordre rendu
+ * par Google est gardé tel quel (mieux vaut ne rien trier qu'un tri incohérent).
+ */
+export function trierParDate<T extends { createTime?: string }>(medias: T[]): T[] {
+  const dates = medias.map((m) => (m.createTime ? Date.parse(m.createTime) : NaN));
+  if (dates.some((d) => Number.isNaN(d))) return medias;
+  return medias.map((m, i) => ({ m, i })).sort((a, b) => dates[a.i] - dates[b.i] || a.i - b.i).map((x) => x.m);
+}
