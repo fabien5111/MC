@@ -127,7 +127,6 @@ export function ComponentResolver({
   onReset,
   etapesRelues = false,
   rangInitial,
-  utensilNames = [],
 }: {
   projectId: string;
   projectTitle: string;
@@ -185,9 +184,6 @@ export function ComponentResolver({
   // Rang de l'étape d'où l'on vient (crayon d'une sous-étape, bandeau collant,
   // JEP-403) : l'éditeur s'ouvre défilé jusqu'à sa carte. 0 / absent : en haut.
   rangInitial?: number;
-  // Noms du référentiel des ustensiles : suggestions du bloc « Ustensiles de
-  // cette préparation » (JEP-419).
-  utensilNames?: string[];
 }) {
   useAutoGrowOnResize();
   const dialog = useDialog();
@@ -234,12 +230,6 @@ export function ComponentResolver({
   // relit avant d'enregistrer.
   const [draft, setDraft] = useState<ComponentStepDraft[]>(initialDraft ?? []);
   const [draftKind, setDraftKind] = useState<ComponentSourceKind>(initialDraftKind ?? 'manual');
-  // Ustensiles de la préparation (JEP-419) : saisis ici pour TOUTE la
-  // préparation (la base ne rattache pas un ustensile à une étape), mémorisés
-  // sur elle et ajoutés à la liste globale de la recette à l'enregistrement.
-  const [ustensiles, setUstensiles] = useState<{ name: string; comment: string; ref_id: number | null }[]>(() =>
-    (component.utensils ?? []).map((u) => ({ name: u.name, comment: u.comment ?? '', ref_id: u.ref_id ?? null })),
-  );
 
   // Numéro de la dernière recherche lancée : une réponse plus ancienne,
   // arrivée après une plus récente, est ignorée — sans quoi une frappe
@@ -351,8 +341,8 @@ export function ComponentResolver({
     kind: ComponentSourceKind,
     source: { recipeId: string | null; authorId: string | null; title: string | null; authorName: string | null },
     // Copie d'une recette existante seulement : ses ustensiles, mémorisés sur
-    // la préparation et ajoutés à la liste globale (sans doublon). Fournis aussi
-    // par l'éditeur (JEP-419) : ustensiles saisis pour toute la préparation.
+    // la préparation et ajoutés à la liste globale (sans doublon). Absent pour
+    // une proposition de l'IA, une saisie ou une modification : on n'y touche pas.
     utensils?: ComponentUtensil[],
   ) {
     if (!steps.length) {
@@ -1098,57 +1088,6 @@ export function ComponentResolver({
               </button>
             </div>
 
-            {/* Ustensiles de la préparation (JEP-419) : pour toutes ses étapes,
-                y compris une étape d'assemblage sans recette ni ingrédient. */}
-            <section id="projet-ustensiles" className="mb-8 rounded-xl border border-outline-variant bg-surface-container-low p-5">
-              <h3 className="font-headline-md text-[18px] text-primary">Ustensiles de cette préparation</h3>
-              <p className="mb-3 mt-1 text-[13px] text-on-surface-variant">
-                Ils sont ajoutés à la liste complète des ustensiles de la recette. Retirer un ustensile ici ne le retire pas de
-                cette liste : il se supprime dans le bloc « Ustensiles, difficulté et temps ».
-              </p>
-              <ul className="space-y-2">
-                {ustensiles.map((u, i) => (
-                  <li key={i} className="flex flex-wrap items-center gap-2">
-                    <input
-                      value={u.name}
-                      onChange={(e) =>
-                        setUstensiles((prev) => prev.map((x, k) => (k === i ? { ...x, name: e.target.value, ref_id: null } : x)))
-                      }
-                      list={`dl-ustensiles-composant-${component.id}`}
-                      placeholder="Cercle à entremets"
-                      className={`${champ} min-w-0 flex-[2]`}
-                    />
-                    <input
-                      value={u.comment}
-                      onChange={(e) => setUstensiles((prev) => prev.map((x, k) => (k === i ? { ...x, comment: e.target.value } : x)))}
-                      placeholder="Commentaire (optionnel)"
-                      className={`${champ} min-w-0 flex-1`}
-                    />
-                    <button
-                      type="button"
-                      title="Retirer"
-                      onClick={() => setUstensiles((prev) => prev.filter((_, k) => k !== i))}
-                      className="p-1"
-                    >
-                      <span className="material-symbols-outlined text-[20px] text-error">delete</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                onClick={() => setUstensiles((prev) => [...prev, { name: '', comment: '', ref_id: null }])}
-                className="mt-2 text-[12.5px] font-semibold text-primary"
-              >
-                + Ajouter un ustensile
-              </button>
-              <datalist id={`dl-ustensiles-composant-${component.id}`}>
-                {utensilNames.map((n) => (
-                  <option key={n} value={n} />
-                ))}
-              </datalist>
-            </section>
-
             {ingredientRefs.length > 0 && (
               <datalist id={datalistId}>
                 {ingredientRefs.map((r) => (
@@ -1189,9 +1128,6 @@ export function ComponentResolver({
                       }),
                     draftKind,
                     initialSource ?? { recipeId: null, authorId: null, title: null, authorName: null },
-                    ustensiles
-                      .map((u) => ({ name: u.name.trim(), ref_id: u.ref_id, comment: u.comment.trim() || null }))
-                      .filter((u) => u.name),
                   )
                 }
                 className={btnPrimary}

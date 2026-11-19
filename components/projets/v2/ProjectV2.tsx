@@ -1708,7 +1708,6 @@ export function ProjectV2({
           unitRefs={unitRefs}
           referenceAllergenes={referenceAllergenes}
           tagsReference={tags}
-          utensilNames={utensilNames}
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
           initialMode={resolvingInit?.mode}
