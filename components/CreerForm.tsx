@@ -43,6 +43,19 @@ import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
 import { ADVANCE_NOTE_MAX, noteAvance } from '@/lib/recipe-view';
+import { BoutonRedaction, FenetreCompletion, RedactionIAProvider, libelleCompletion } from '@/components/redaction/RedactionIA';
+import {
+  ajouterNoteAvance,
+  ajouterTexte,
+  champsVides,
+  coutCompletion,
+  ligneIngredient,
+  minutes,
+  texteTemps,
+  type PropositionRedaction,
+  type RecetteRedaction,
+  type EtatRedaction,
+} from '@/lib/redaction-ia';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { estimateWeightGrams, resolveIngredientRefId, type ConversionRef, type IngredientRefOption } from '@/lib/ingredient-conversions';
 import { buildIngredientsRecap } from '@/lib/ingredients-recap';
@@ -223,6 +236,7 @@ export function CreerForm({
   helpBlocks,
   remarques = null,
   userId = '',
+  redactionIA = null,
 }: {
   tags: Tag[];
   units: Unit[];
@@ -260,6 +274,9 @@ export function CreerForm({
   // recette déjà enregistrée ; `null` : rien à afficher.
   remarques?: DonneesRemarques | null;
   userId?: string;
+  // Rédaction des textes par IA (JEP-414) : droit et solde, lus par la page.
+  // `null` : aucun bouton.
+  redactionIA?: EtatRedaction | null;
 }) {
   useAutoGrowOnResize();
   const router = useRouter();
@@ -1291,7 +1308,68 @@ export function CreerForm({
     [signatureRetours],
   );
 
-  return (
+  // Rédaction par IA (JEP-414) : la recette telle qu'elle est à l'écran, lue
+  // au clic par le bouton du champ ou par « Compléter avec l'IA ».
+  const recetteIA: RecetteRedaction = {
+    titre: title.trim(),
+    description: description.trim(),
+    rendement: qtyAmount ? `${qtyAmount} ${qtyUnit === 'unite' ? 'unité(s)' : qtyUnit}` : '',
+    etapes: steps.map((st) => ({
+      titre: st.title.trim(),
+      texte: (st.subSteps ? st.subSteps.filter((x) => x.trim()).join('\n') : st.description).trim(),
+      ingredients: st.ings.map((i) => ligneIngredient(i)).filter(Boolean),
+      temps: texteTemps({ prep: minutes(st.prep), cook: minutes(st.cook), wait: minutes(st.wait), temp: minutes(st.temp) }),
+      conseils: st.tips.trim(),
+      avance: st.prepAhead,
+      avanceNote: st.prepAheadNote.trim(),
+    })),
+    conseils: tips.trim(),
+    degustation: servingAdvice.trim(),
+  };
+  const completionIA = redactionIA ? champsVides(recetteIA) : null;
+  const [completionOuverte, setCompletionOuverte] = useState(false);
+
+  // Propositions retenues dans « Compléter avec l'IA » : chacune rejoint son
+  // champ (vide, ou complété entre-temps : `ajouterTexte` garde l'existant).
+  function appliquerPropositions(ps: PropositionRedaction[]) {
+    for (const p of ps) {
+      if (p.champ === 'description') setDescription((v) => ajouterTexte(v, p.texte));
+      else if (p.champ === 'conseils') setTips((v) => ajouterTexte(v, p.texte));
+      else if (p.champ === 'degustation') setServingAdvice((v) => ajouterTexte(v, p.texte));
+    }
+    const parEtape = ps.filter((p) => p.etape != null);
+    if (parEtape.length) {
+      setSteps((prev) =>
+        prev.map((st, i) => {
+          let next = st;
+          for (const p of parEtape) {
+            if (p.etape !== i) continue;
+            if (p.champ === 'conseil_etape') next = { ...next, tips: ajouterTexte(next.tips, p.texte) };
+            if (p.champ === 'avance_etape' && p.possible !== false)
+              next = { ...next, prepAhead: true, prepAheadNote: ajouterNoteAvance(next.prepAheadNote, p.texte) };
+          }
+          return next;
+        }),
+      );
+    }
+  }
+
+  // Action du rail : toujours affichée quand la page fournit l'état (sans le
+  // droit, la fenêtre explique et renvoie vers les formules).
+  const actionCompletion = redactionIA
+    ? [
+        {
+          id: 'completer-ia',
+          icon: 'auto_awesome',
+          label: libelleCompletion(completionIA ? { nbChamps: completionIA.cibles.length, cout: coutCompletion(completionIA.cibles.length) } : null),
+          variant: 'outline' as const,
+          onClick: () => setCompletionOuverte(true),
+          disabled: busy || leaving,
+        },
+      ]
+    : [];
+
+  const contenu = (
     <LeconsProvider
       reference={remarques?.reference ?? null}
       decisions={remarques?.decisions ?? AUCUNE_DECISION_RETOURS}
@@ -1330,6 +1408,7 @@ export function CreerForm({
               // choisir, seulement enregistrer ou non (cf. `submit(status, stay,
               // keepStatus)` et `handleDiscardLeave`).
               [
+                ...actionCompletion,
                 {
                   id: 'leave',
                   icon: 'close',
@@ -1348,6 +1427,7 @@ export function CreerForm({
                 },
               ]
             : [
+                ...actionCompletion,
                 { id: 'leave', icon: 'close', label: 'Quitter', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
                 {
                   id: 'save',
@@ -1596,6 +1676,7 @@ export function CreerForm({
               className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors resize-none overflow-hidden"
               placeholder="Décrivez votre recette en quelques mots"
             />
+            <BoutonRedaction className="mt-2" cible={{ champ: 'description' }} valeur={description} onAppliquer={setDescription} />
           </div>
           <div className="lg:col-span-12 grid grid-cols-1 gap-6">
             <div>
@@ -2095,6 +2176,11 @@ export function CreerForm({
                       </span>
                     </div>
                   )}
+                  <BoutonRedaction
+                    cible={{ champ: 'avance_etape', etape: si }}
+                    valeur={st.prepAhead ? st.prepAheadNote : ''}
+                    onAppliquer={(t) => patchStep(si, { prepAhead: true, prepAheadNote: t })}
+                  />
 
                   <div className="flex flex-col">
                     {/* En-tête « INGRÉDIENTS » (+ miroirs quantité/unité,
@@ -2558,6 +2644,7 @@ export function CreerForm({
                         placeholder="Une astuce particulière pour cette étape ?"
                         rows={4}
                       />
+                      <BoutonRedaction className="mt-2" cible={{ champ: 'conseil_etape', etape: si }} valeur={st.tips} onAppliquer={(t) => patchStep(si, { tips: t })} />
                     </div>
                   </details>
                 </div>
@@ -2593,6 +2680,7 @@ export function CreerForm({
             placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)..."
             rows={4}
           />
+          <BoutonRedaction cible={{ champ: 'conseils' }} valeur={tips} onAppliquer={setTips} />
         </section>
 
         {/* Conseils de dégustation et de conservation */}
@@ -2609,6 +2697,7 @@ export function CreerForm({
             placeholder="Comment déguster et conserver cette recette (température de dégustation, durée et mode de conservation)..."
             rows={4}
           />
+          <BoutonRedaction cible={{ champ: 'degustation' }} valeur={servingAdvice} onAppliquer={setServingAdvice} />
         </section>
 
         {/* Planning de préparation (aperçu) */}
@@ -2861,7 +2950,15 @@ export function CreerForm({
       {/* Enregistrement en cours (écriture puis navigation ou bascule en mode
           édition) : overlay « Le Fouet » plein écran, cf. CLAUDE.md. */}
       <LoadingOverlay visible={busy || leaving} label={leaving ? 'Retour au profil…' : 'Enregistrement de la recette…'} />
+      <FenetreCompletion ouvert={completionOuverte} onFermer={() => setCompletionOuverte(false)} onAppliquer={appliquerPropositions} />
       </PorteeEdition>
     </LeconsProvider>
+  );
+
+  if (!redactionIA) return contenu;
+  return (
+    <RedactionIAProvider acces={redactionIA.acces} credits={redactionIA.credits} recette={recetteIA}>
+      {contenu}
+    </RedactionIAProvider>
   );
 }

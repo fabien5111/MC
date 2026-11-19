@@ -35,7 +35,9 @@ import { televerserImage } from '@/lib/storage-client';
 import { estDataUrlImage } from '@/lib/storage';
 import type { RecipeFull } from '@/lib/recipes';
 import { stepTimeSums } from '@/lib/recipe-view';
-import { autoGrow } from '@/lib/auto-grow';
+import { autoGrow, regrowAll } from '@/lib/auto-grow';
+import { BoutonRedaction } from '@/components/redaction/RedactionIA';
+import { ajouterTexte } from '@/lib/redaction-ia';
 import { useRegisterSection, type OptionsSauvegarde, type SectionRegistry } from '@/components/projets/v2/sections';
 
 type Mutate = ReturnType<typeof useMutation>['mutate'];
@@ -633,11 +635,15 @@ export function ConseilsEditor({
   recipe,
   mutate,
   sections,
+  ajouts = null,
 }: {
   recipe: RecipeFull;
   mutate: Mutate;
   busy?: boolean;
   sections?: SectionRegistry;
+  // Propositions retenues dans « Compléter avec l'IA » (JEP-414) : ajoutées à
+  // la saisie (chaque nouvel `id` une fois), puis enregistrées automatiquement.
+  ajouts?: { id: number; tips?: string; serving?: string } | null;
 }) {
   const init = {
     tips: recipe.tips ?? '',
@@ -651,6 +657,17 @@ export function ConseilsEditor({
   const [base, setBase] = useState(() => JSON.stringify(init));
   useRegisterSection(sections, 'conseils', { label: 'Conseils et source', dirty: signature !== base, signature, save: enregistrer });
   const maj = (k: keyof typeof init) => (e: { target: { value: string } }) => setV((p) => ({ ...p, [k]: e.target.value }));
+  const dernierAjout = useRef(0);
+  useEffect(() => {
+    if (!ajouts || ajouts.id === dernierAjout.current) return;
+    dernierAjout.current = ajouts.id;
+    setV((p) => ({
+      ...p,
+      tips: ajouts.tips ? ajouterTexte(p.tips, ajouts.tips) : p.tips,
+      serving: ajouts.serving ? ajouterTexte(p.serving, ajouts.serving) : p.serving,
+    }));
+    regrowAll();
+  }, [ajouts]);
 
   async function enregistrer(options?: OptionsSauvegarde) {
     const sigAppel = signature;
@@ -674,10 +691,12 @@ export function ConseilsEditor({
       <div>
         <label className={etiquette}>CONSEILS</label>
         <textarea ref={autoGrow} value={v.tips} onChange={(e) => { maj('tips')(e); autoGrow(e.target); }} rows={3} className={`${champ} resize-none overflow-hidden`} placeholder="Astuces de réalisation, conservation…" />
+        <BoutonRedaction className="mt-2" cible={{ champ: 'conseils' }} valeur={v.tips} onAppliquer={(t) => setV((p) => ({ ...p, tips: t }))} />
       </div>
       <div>
         <label className={etiquette}>CONSEILS DE SERVICE</label>
         <textarea ref={autoGrow} value={v.serving} onChange={(e) => { maj('serving')(e); autoGrow(e.target); }} rows={2} className={`${champ} resize-none overflow-hidden`} placeholder="Température de dégustation, accompagnement…" />
+        <BoutonRedaction className="mt-2" cible={{ champ: 'degustation' }} valeur={v.serving} onAppliquer={(t) => setV((p) => ({ ...p, serving: t }))} />
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>

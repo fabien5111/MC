@@ -3720,6 +3720,54 @@ au-dessus (relevé `ai_usage` du 11/11/2026).
 - **Aide** : bloc `reglages.credits_ia` (« Comment marchent les crédits IA »,
   contenu à saisir dans Admin → Blocs d'aide), à côté de l'historique.
 
+## Rédaction des textes par IA (JEP-414)
+
+Bouton **« Proposer avec l'IA »** sous cinq champs — description, conseils de la
+recette, dégustation et conservation, conseils d'une étape, préparation à
+l'avance d'une étape — et action de rail **« Compléter avec l'IA »** (tous les
+champs vides en un appel), dans `/creer`, la relecture d'import et le mode
+projet (description et conseils de la page, conseils et préparation à l'avance
+dans « Modifier cette préparation » ; « Compléter » écrit directement les
+étapes du projet en base, puis resynchronise). Droit **`redaction_ia`** (oui /
+non : PLUS, PRO, essai PRO). Logique pure et testée : `lib/redaction-ia.ts` ;
+invite : `lib/ai/redaction.ts` ; route : `POST /api/recette/rediger` ;
+composants : `components/redaction/RedactionIA.tsx` ; droit et solde lus par la
+page : `etatRedaction` (`lib/redaction-ia-data.ts`).
+
+- **Coût** (`lib/credits-ia.ts`) : 1 crédit par champ (`redaction_champ`) ;
+  « Compléter » (`redaction_completion`) = 1 crédit par tranche de 3 champs
+  vides, 2 au minimum, au plus 12 étapes par appel. **Le serveur recompte les
+  champs vides** sur la recette reçue (`champsVides`) : le navigateur ne peut
+  pas payer moins en en annonçant moins. Modèle `IMPORT_MODEL` (Haiku).
+  Crédits rendus si l'appel échoue. Coût à remesurer sur `ai_usage`
+  (`feature = 'redaction_ia'`).
+- **L'IA propose, le membre décide** : proposition modifiable, puis
+  « Ajouter » (champ vide → le texte seul ; sinon l'existant, **une ligne
+  vide**, puis l'ajout — pas de trait : il s'afficherait sur la fiche),
+  « Remplacer » ou « Annuler ». Préparation à l'avance : l'IA dit d'abord si
+  l'étape s'y prête (« impossible » est une réponse affichée, rien à ajouter) ;
+  « Ajouter » coche la case et complète la note si l'ensemble tient en
+  200 caractères, la remplace sinon. Rien n'est enregistré par la route : le
+  formulaire l'est par son bouton (ou l'enregistrement automatique du projet).
+- **Aucune marque « IA » sur la recette publiée** (arbitrage du 19/11/2026) :
+  le texte ajouté devient celui de l'auteur, qui en répond (CGU § 6 et § 9,
+  CGV § 15, version du 19/11/2026). D'où l'avertissement sous chaque
+  proposition, renforcé pour la conservation, et la consigne de prudence de
+  l'invite (durées courtes, chaîne du froid).
+- **Le contexte envoyé** est la recette telle qu'elle est À L'ÉCRAN (titre,
+  rendement, étapes, ingrédients, temps, textes déjà saisis) — un champ déjà
+  rempli est COMPLÉTÉ, sans répétition. Mode projet : la recette de la page lit
+  les étapes en base ; la fenêtre « Modifier cette préparation » monte son
+  propre fournisseur, sur le brouillon.
+- **Sans fournisseur** (back-office, autres écrans), aucun bouton ; sans le
+  droit, `LockedAction` sous chaque champ et une fenêtre qui renvoie vers
+  `/plans` depuis le rail.
+- **Migration préalable** (sinon la route refuse tout) : ligne `redaction_ia`
+  dans `features` / `plan_features` (pgweb), code `redaction_ia` dans
+  `ai_features` (pgweb), et la contrainte CHECK de
+  `ai_credit_movements.action` doit accepter `redaction_champ` et
+  `redaction_completion` (`psql`, nœud 216075).
+
 ## Routes IA (API Anthropic)
 
 - `POST /api/import-url` — analyse un texte de recette collé et produit un

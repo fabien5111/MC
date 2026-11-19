@@ -16,6 +16,7 @@ import { resizeFilesToDataUrls } from '@/lib/images';
 import { DureeInput } from '@/components/DureeInput';
 import type { ComponentStepDraft } from '@/lib/projects';
 import { ADVANCE_NOTE_MAX } from '@/lib/recipe-view';
+import { BoutonRedaction } from '@/components/redaction/RedactionIA';
 import { autoGrow } from '@/lib/auto-grow';
 
 type Ingredient = ComponentStepDraft['ingredients'][number];
@@ -284,6 +285,11 @@ export function StepEditorCard({
           </span>
         </div>
       )}
+      <BoutonRedaction
+        cible={{ champ: 'avance_etape', etape: index }}
+        valeur={step.can_prepare_ahead ? step.advance_note ?? '' : ''}
+        onAppliquer={(t) => onChange({ can_prepare_ahead: true, advance_note: t })}
+      />
 
       <div className="flex flex-col">
         <div className="border-l-2 border-transparent pl-4 min-[1232px]:border-l-0 min-[1232px]:pl-0 flex items-center gap-4 mb-2">
@@ -706,6 +712,7 @@ export function StepEditorCard({
             placeholder="Une astuce particulière pour cette étape ?"
             rows={4}
           />
+          <BoutonRedaction className="mt-2" cible={{ champ: 'conseil_etape', etape: index }} valeur={step.tips ?? ''} onAppliquer={(t) => onChange({ tips: t })} />
         </div>
       </details>
         </div>

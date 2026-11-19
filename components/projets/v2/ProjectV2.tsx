@@ -20,6 +20,18 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useImpersonation } from '@/components/ImpersonationProvider';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { BoutonRedaction, FenetreCompletion, RedactionIAProvider, libelleCompletion } from '@/components/redaction/RedactionIA';
+import {
+  ajouterNoteAvance,
+  ajouterTexte,
+  champsVides,
+  coutCompletion,
+  ligneIngredient,
+  texteTemps,
+  type EtatRedaction,
+  type PropositionRedaction,
+  type RecetteRedaction,
+} from '@/lib/redaction-ia';
 import { SCALING_OPTIONS } from '@/components/projets/StepEditorCard';
 import { useMutation } from '@/lib/use-mutation';
 import { useDialog } from '@/components/Dialog';
@@ -156,6 +168,7 @@ export function ProjectV2({
   difficultyId,
   peutCreerTag = false,
   helpBlocks = [],
+  redactionIA = null,
 }: {
   project: ProjectFull;
   // `null` si la recette du projet n'a pas pu être lue : les blocs de recette
@@ -187,6 +200,8 @@ export function ProjectV2({
   // Blocs d'aide de la page `projet` (JEP-373). Jamais passés en lecture seule :
   // `ProjectReadOnly` ne monte pas ce composant.
   helpBlocks?: VisibleHelpBlock[];
+  // Rédaction des textes par IA (JEP-414) : droit et solde, lus par la page.
+  redactionIA?: EtatRedaction | null;
 }) {
   useAutoGrowOnResize();
   const router = useRouter();
@@ -1164,7 +1179,83 @@ export function ProjectV2({
   };
   const tocSteps =
     states.etapes.unlocked && recipe ? steps.map((st, i) => ({ key: String(st.id), title: st.title || `Étape ${i + 1}` })) : [];
+  // ── Rédaction par IA (JEP-414) ─────────────────────────────────────────
+  // La recette du projet telle qu'enregistrée (étapes, conseils), avec le nom et
+  // la description en cours de saisie. Les conseils de la recette sont ceux de
+  // la base : l'enregistrement automatique les y écrit en deux secondes.
+  const etapesIA = steps;
+  const recetteIA: RecetteRedaction = {
+    titre: title.trim(),
+    description: description.trim(),
+    rendement: formatLabel ?? '',
+    etapes: etapesIA.map((st) => ({
+      titre: (st.title ?? '').trim(),
+      texte: (Array.isArray(st.sous_etapes) && st.sous_etapes.length ? st.sous_etapes.map(String).join('\n') : st.description ?? '').trim(),
+      ingredients: (groupByOrder.get(st.order_index ?? -1)?.ingredients ?? [])
+        .map((it) => ligneIngredient({ name: it.name, qty: it.quantity, unit: it.unit, comment: it.comment }))
+        .filter(Boolean),
+      temps: texteTemps({ prep: st.prep_time, cook: st.cook_time, wait: st.wait_time, temp: st.cook_temp }),
+      conseils: (st.tips ?? '').trim(),
+      avance: st.can_prepare_ahead === true,
+      avanceNote: (st.advance_note ?? '').trim(),
+    })),
+    conseils: (recipe?.tips ?? '').trim(),
+    degustation: (recipe?.serving_advice ?? '').trim(),
+  };
+  const completionIA = redactionIA && recipe ? champsVides(recetteIA) : null;
+  const [completionOuverte, setCompletionOuverte] = useState(false);
+  // Propositions destinées à l'éditeur « Conseils et source », qui tient sa
+  // propre saisie (et son enregistrement automatique).
+  const [ajoutsConseils, setAjoutsConseils] = useState<{ id: number; tips?: string; serving?: string } | null>(null);
+
+  async function appliquerPropositions(ps: PropositionRedaction[]) {
+    const desc = ps.find((p) => p.champ === 'description');
+    if (desc) setDescription((v) => ajouterTexte(v, desc.texte).slice(0, 2000));
+    const tips = ps.find((p) => p.champ === 'conseils')?.texte;
+    const serving = ps.find((p) => p.champ === 'degustation')?.texte;
+    if (tips || serving) setAjoutsConseils((a) => ({ id: (a?.id ?? 0) + 1, tips, serving }));
+    // Étapes : écrites tout de suite (elles ne sont éditées que dans « Modifier
+    // cette préparation »), puis la page est resynchronisée.
+    const parEtape = new Map<number, { tips?: string | null; can_prepare_ahead?: boolean; advance_note?: string }>();
+    for (const p of ps) {
+      if (p.etape == null) continue;
+      const st = etapesIA[p.etape];
+      if (!st) continue;
+      const maj = parEtape.get(st.id) ?? {};
+      if (p.champ === 'conseil_etape') maj.tips = ajouterTexte(st.tips, p.texte);
+      if (p.champ === 'avance_etape' && p.possible !== false) {
+        maj.can_prepare_ahead = true;
+        maj.advance_note = ajouterNoteAvance(st.can_prepare_ahead ? st.advance_note : '', p.texte);
+      }
+      parEtape.set(st.id, maj);
+    }
+    if (!parEtape.size) return;
+    await mutate(
+      async () => {
+        const supabase = createClient();
+        for (const [id, maj] of parEtape) {
+          const { error } = await supabase.from('recipe_steps').update(maj as never).eq('id', id);
+          if (error) return { error };
+        }
+        return { error: null };
+      },
+      { errorLabel: 'Ajout des propositions aux étapes' },
+    );
+  }
+
   const tocActions: TocAction[] = [
+    ...(redactionIA && recipe
+      ? [
+          {
+            id: 'completer-ia',
+            icon: 'auto_awesome',
+            label: libelleCompletion(completionIA ? { nbChamps: completionIA.cibles.length, cout: coutCompletion(completionIA.cibles.length) } : null),
+            variant: 'outline' as const,
+            onClick: () => setCompletionOuverte(true),
+            disabled: busy || leaving,
+          },
+        ]
+      : []),
     { id: 'quitter', icon: 'close', label: 'Quitter', variant: 'outline', onClick: () => void quitter(), disabled: busy || leaving },
     {
       id: 'brouillon',
@@ -1186,7 +1277,7 @@ export function ProjectV2({
 
   const sansRecette = <p className="text-sm text-on-surface-variant">La recette du projet n’a pas pu être lue.</p>;
 
-  return (
+  const contenu = (
     <LeconsProvider
       reference={remarques?.reference ?? null}
       decisions={remarques?.decisions ?? []}
@@ -1386,6 +1477,7 @@ export function ProjectV2({
                   placeholder="Ce qui rend ce dessert unique, l’occasion, le goût recherché…"
                   className={`${champ} resize-none overflow-hidden`}
                 />
+                <BoutonRedaction className="mt-2" cible={{ champ: 'description' }} valeur={description} onAppliquer={(t) => setDescription(t.slice(0, 2000))} />
               </div>
             </div>
             {recipe && (
@@ -1641,7 +1733,7 @@ export function ProjectV2({
           ),
         )}
 
-        {bloc('conseils', recipe ? <ConseilsEditor recipe={recipe} mutate={mutate} busy={busy} sections={sectionRegistry} /> : sansRecette)}
+        {bloc('conseils', recipe ? <ConseilsEditor recipe={recipe} mutate={mutate} busy={busy} sections={sectionRegistry} ajouts={ajoutsConseils} /> : sansRecette)}
 
         {/* Second exemplaire du « Reste à faire », juste avant la validation :
             mêmes `todo`, même écriture, donc synchronisé avec celui du haut.
@@ -1736,7 +1828,15 @@ export function ProjectV2({
         />
         </PorteeEdition>
       )}
+      <FenetreCompletion ouvert={completionOuverte} onFermer={() => setCompletionOuverte(false)} onAppliquer={(ps) => void appliquerPropositions(ps)} />
     </>
     </LeconsProvider>
+  );
+
+  if (!redactionIA) return contenu;
+  return (
+    <RedactionIAProvider acces={redactionIA.acces} credits={redactionIA.credits} recette={recetteIA}>
+      {contenu}
+    </RedactionIAProvider>
   );
 }

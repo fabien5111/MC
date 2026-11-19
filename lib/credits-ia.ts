@@ -32,6 +32,8 @@ export const ACTIONS_CREDITS = [
   'import_pdf',
   'import_photo_page',
   'import_photo_structuration',
+  'redaction_champ',
+  'redaction_completion',
 ] as const;
 export type ActionCredits = (typeof ACTIONS_CREDITS)[number];
 
@@ -44,6 +46,9 @@ export const DROIT_ACTION: Record<ActionCredits, string> = {
   import_pdf: 'import_ia_mensuel',
   import_photo_page: 'import_ia_mensuel',
   import_photo_structuration: 'import_ia_mensuel',
+  // JEP-414 : clé à part, pour ouvrir la rédaction indépendamment des autres.
+  redaction_champ: 'redaction_ia',
+  redaction_completion: 'redaction_ia',
 };
 
 /** Libellé lisible d'une action (historique, messages). */
@@ -55,6 +60,8 @@ export const LIBELLE_ACTION: Record<ActionCredits, string> = {
   import_pdf: 'Import d’un PDF',
   import_photo_page: 'Import photo : lecture d’une page',
   import_photo_structuration: 'Import photo : mise en forme de la recette',
+  redaction_champ: 'Rédaction d’un texte par IA',
+  redaction_completion: 'Rédaction des champs vides par IA',
 };
 
 // ── Grille ──────────────────────────────────────────────────
@@ -64,6 +71,24 @@ export const COUT_PROJET_STRUCTURE = 1;
 export const COUT_PROJET_COMPOSANT = 2;
 export const COUT_PHOTO_PAGE = 3;
 export const COUT_PHOTO_STRUCTURATION = 2;
+
+/**
+ * Rédaction des textes d'une recette (JEP-414) : un champ à la demande coûte
+ * 1 crédit ; « Compléter avec l'IA » envoie la recette UNE fois pour tous les
+ * champs vides, d'où 1 crédit par tranche de 3 champs, 2 au minimum (relevé
+ * estimé : ~0,018 $ au p90 pour 15 champs avec Haiku — à remesurer).
+ */
+export const COUT_REDACTION_CHAMP = 1;
+export const CHAMPS_PAR_CREDIT = 3;
+export const COUT_COMPLETION_MIN = 2;
+/** Étapes traitées par « Compléter avec l'IA » (les suivantes sont ignorées). */
+export const ETAPES_MAX_COMPLETION = 12;
+
+/** Crédits de « Compléter avec l'IA » pour `nbChamps` champs vides. */
+export function coutCompletion(nbChamps: number): number {
+  const n = Number.isFinite(nbChamps) && nbChamps > 0 ? Math.floor(nbChamps) : 0;
+  return Math.max(COUT_COMPLETION_MIN, Math.ceil(n / CHAMPS_PAR_CREDIT));
+}
 
 /** Plafond de pages d'un import photo, tenu côté serveur (`mc_debiter_credits`). */
 export const PAGES_PHOTO_MAX = 8;
@@ -157,6 +182,15 @@ export function lignesCoutIA(featureKey: string): LigneCout[] | null {
             Math.max(COUT_PROJET_STRUCTURE, COUT_PROJET_COMPOSANT),
           ),
           precision: `${COUT_PROJET_STRUCTURE} par proposition de structure, ${COUT_PROJET_COMPOSANT} par préparation`,
+        },
+      ];
+    case 'redaction_ia':
+      return [
+        { label: 'Rédaction d’un texte', texte: fourchette(COUT_REDACTION_CHAMP, COUT_REDACTION_CHAMP), precision: 'description, conseils, conservation…' },
+        {
+          label: 'Compléter les champs vides',
+          texte: `${libelleCredits(COUT_COMPLETION_MIN)} IA et plus`,
+          precision: `1 crédit par tranche de ${CHAMPS_PAR_CREDIT} champs, ${COUT_COMPLETION_MIN} au minimum`,
         },
       ];
     default:

@@ -1,6 +1,7 @@
 import { StockageEnLigneProvider } from '@/components/stockage/StockageEnLigneProvider';
 import { stockageEnLigne } from '@/lib/stockage-en-ligne-data';
 import { getEntitlements } from '@/lib/entitlements-data';
+import { etatRedaction } from '@/lib/redaction-ia-data';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { requireUser, isAdmin } from '@/lib/auth';
@@ -122,6 +123,7 @@ export default async function CreerPage({ searchParams }: SearchParams) {
           helpBlocks={helpBlocks}
           remarques={remarques}
           userId={user.id}
+          redactionIA={await etatRedaction(user.id)}
         />
       </main>
       </StockageEnLigneProvider>

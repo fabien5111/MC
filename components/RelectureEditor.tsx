@@ -21,6 +21,19 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ImageSlot, PHOTO_DND_TYPE } from '@/components/ImageSlot';
 import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL, ADVANCE_NOTE_MAX, noteAvance } from '@/lib/recipe-view';
+import { BoutonRedaction, FenetreCompletion, RedactionIAProvider, libelleCompletion } from '@/components/redaction/RedactionIA';
+import {
+  ajouterNoteAvance,
+  ajouterTexte,
+  champsVides,
+  coutCompletion,
+  ligneIngredient,
+  minutes,
+  texteTemps,
+  type EtatRedaction,
+  type PropositionRedaction,
+  type RecetteRedaction,
+} from '@/lib/redaction-ia';
 import { RecipeToc, RELECTURE_SECTIONS, stepAnchorId } from '@/components/recipe/RecipeToc';
 import { fixOeufLigature } from '@/lib/text';
 import { resolveIngredientRefId, type ConversionRef, type IngredientRefOption, type UnitRef } from '@/lib/ingredient-conversions';
@@ -239,6 +252,7 @@ export function RelectureEditor({
   conversions,
   ingredientRefIds,
   helpBlocks,
+  redactionIA = null,
 }: {
   importRow: ImportFull;
   units: string[];
@@ -254,6 +268,8 @@ export function RelectureEditor({
   conversions: ConversionRef[];
   ingredientRefIds: IngredientRefOption[];
   helpBlocks?: VisibleHelpBlock[];
+  // Rédaction des textes par IA (JEP-414) : droit et solde, lus par la page.
+  redactionIA?: EtatRedaction | null;
 }) {
   useAutoGrowOnResize();
   const router = useRouter();
@@ -1241,7 +1257,50 @@ export function RelectureEditor({
   // donc jamais). Remplacer la classe de couleur au lieu de l'additionner.
   const champErr = (invalid: boolean) => (invalid ? champ.replace('border-outline-variant', 'border-2 border-error') : champ);
 
-  return (
+  // Rédaction par IA (JEP-414) : la recette telle qu'elle est à l'écran.
+  const recetteIA: RecetteRedaction = {
+    titre: titre.trim(),
+    description: description.trim(),
+    rendement: rendementLabel.trim(),
+    etapes: sps.map((sp) => ({
+      titre: sp.nom.trim(),
+      texte: sp.etapes.map((e) => e.texte.trim()).filter(Boolean).join('\n'),
+      ingredients: sp.ings.map((i) => ligneIngredient({ name: i.nom, qty: i.qte, unit: i.unite, comment: i.note })).filter(Boolean),
+      temps: texteTemps({ prep: minutes(sp.prep), cook: minutes(sp.cuisson), wait: minutes(sp.attente), temp: minutes(sp.temp) }),
+      conseils: sp.tips.trim(),
+      avance: sp.avance,
+      avanceNote: sp.avanceNote.trim(),
+    })),
+    conseils: notes.trim(),
+    degustation: servingAdvice.trim(),
+  };
+  const completionIA = redactionIA ? champsVides(recetteIA) : null;
+  const [completionOuverte, setCompletionOuverte] = useState(false);
+
+  function appliquerPropositions(ps: PropositionRedaction[]) {
+    for (const p of ps) {
+      if (p.champ === 'description') setDescription((v) => ajouterTexte(v, p.texte));
+      else if (p.champ === 'conseils') setNotes((v) => ajouterTexte(v, p.texte));
+      else if (p.champ === 'degustation') setServingAdvice((v) => ajouterTexte(v, p.texte));
+    }
+    const parEtape = ps.filter((p) => p.etape != null);
+    if (parEtape.length) {
+      setSps((prev) =>
+        prev.map((sp, i) => {
+          let next = sp;
+          for (const p of parEtape) {
+            if (p.etape !== i) continue;
+            if (p.champ === 'conseil_etape') next = { ...next, tips: ajouterTexte(next.tips, p.texte) };
+            if (p.champ === 'avance_etape' && p.possible !== false)
+              next = { ...next, avance: true, avanceNote: ajouterNoteAvance(next.avanceNote, p.texte) };
+          }
+          return next;
+        }),
+      );
+    }
+  }
+
+  const contenu = (
     <>
       {/* `mobile="drawer"` : même bascule que /creer et que la fiche recette —
           sous 700 px, le bouton flottant porte le sommaire et ces actions, à la
@@ -1269,6 +1328,18 @@ export function RelectureEditor({
             disabled: busy || leaving,
           },
           { id: 'save', icon: 'save', label: 'Enregistrer les corrections', variant: 'outline-strong', onClick: onSave, disabled: busy || leaving },
+          ...(redactionIA
+            ? [
+                {
+                  id: 'completer-ia',
+                  icon: 'auto_awesome',
+                  label: libelleCompletion(completionIA ? { nbChamps: completionIA.cibles.length, cout: coutCompletion(completionIA.cibles.length) } : null),
+                  variant: 'outline' as const,
+                  onClick: () => setCompletionOuverte(true),
+                  disabled: busy || leaving,
+                },
+              ]
+            : []),
           { id: 'leave', icon: 'close', label: 'Quitter', variant: 'outline', onClick: handleLeave, disabled: busy || leaving },
           ...(canAbandon
             ? [{ id: 'abandon', icon: 'delete_forever', label: "Abandonner l'import", variant: 'outline-danger' as const, onClick: handleAbandon, disabled: busy || leaving }]
@@ -1444,6 +1515,7 @@ export function RelectureEditor({
             <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Description rapide</span>
             <textarea ref={autoGrow} value={description} onChange={(e) => { setDescription(e.target.value); autoGrow(e.target); }} rows={2} className={`${champ} resize-none overflow-hidden`} />
           </label>
+          <BoutonRedaction cible={{ champ: 'description' }} valeur={description} onAppliquer={setDescription} />
           <div className="flex flex-col gap-1">
             <span className="flex items-center justify-between gap-2 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
               Taille / Nombre de portions
@@ -1869,6 +1941,12 @@ export function RelectureEditor({
                   </span>
                 </div>
               )}
+              <BoutonRedaction
+                className="basis-full"
+                cible={{ champ: 'avance_etape', etape: si }}
+                valeur={sp.avance ? sp.avanceNote : ''}
+                onAppliquer={(t) => patchSp(si, { avance: true, avanceNote: t })}
+              />
             </div>
 
             <div className="p-6">
@@ -2167,6 +2245,7 @@ export function RelectureEditor({
                   className={`${champ} resize-none overflow-hidden`}
                   placeholder="Une astuce particulière pour cette étape ?"
                 />
+                <BoutonRedaction className="mt-2" cible={{ champ: 'conseil_etape', etape: si }} valeur={sp.tips} onAppliquer={(t) => patchSp(si, { tips: t })} />
               </div>
             </div>
             </>
@@ -2197,6 +2276,7 @@ export function RelectureEditor({
           className={`${champ} resize-none overflow-hidden`}
           placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)…"
         />
+        <BoutonRedaction className="mt-2" cible={{ champ: 'conseils' }} valeur={notes} onAppliquer={setNotes} />
       </section>
 
       {/* Conseils de dégustation et de conservation (fin de recette) */}
@@ -2213,6 +2293,7 @@ export function RelectureEditor({
           className={`${champ} resize-none overflow-hidden`}
           placeholder="Température de dégustation, durée et mode de conservation…"
         />
+        <BoutonRedaction className="mt-2" cible={{ champ: 'degustation' }} valeur={servingAdvice} onAppliquer={setServingAdvice} />
       </section>
 
       {/* Récap global */}
@@ -2391,6 +2472,14 @@ export function RelectureEditor({
       {/* Écriture en cours (corrections ou création de la recette, suivie
           d'une navigation) : overlay « Le Fouet » plein écran, cf. CLAUDE.md. */}
       <LoadingOverlay visible={busy || leaving} label={leaving ? 'Retour à la liste des imports…' : undefined} />
+      <FenetreCompletion ouvert={completionOuverte} onFermer={() => setCompletionOuverte(false)} onAppliquer={appliquerPropositions} />
     </>
+  );
+
+  if (!redactionIA) return contenu;
+  return (
+    <RedactionIAProvider acces={redactionIA.acces} credits={redactionIA.credits} recette={recetteIA}>
+      {contenu}
+    </RedactionIAProvider>
   );
 }
