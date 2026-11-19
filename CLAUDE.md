@@ -1996,6 +1996,7 @@ adaptateurs du navigateur : `components/stockage/sources/`.
   impossible** (page non sécurisée…) : pas de bouton, Ctrl+V reste là. Firefox et
   Safari ne connaissent pas cette permission : état « inconnu », bouton toujours
   visible.
+- **Google Photos : photos triées par date de prise de vue** (19/11/2026, `trierParDate`, `lib/stockage-en-ligne.ts`, testé) : le sélecteur ne rend pas l'ordre des clics (aucun rang dans l'API), la date `createTime` est le seul repère prévisible. Une seule date manquante ou illisible : l'ordre de Google est gardé. L'ordre exact se règle ensuite par glisser-déposer / flèches.
 - **Google Photos : l'attente se réveille au retour sur l'onglet** (`attendreOuReveil`, `google.ts`) : pendant le choix chez Google, l'onglet du site est en arrière-plan et le navigateur y retarde les minuteries ; sans réveil sur `visibilitychange` / `focus`, la fenêtre d'attente restait affichée jusqu'à une minute après la validation.
 - **Mêmes contrôles qu'un fichier local** : formats (`TYPES_IMAGE`, HEIC refusé —
   Google Photos est demandé en JPEG borné, jamais l'original), 30 Mo par fichier,

@@ -10,6 +10,7 @@ import {
   nomPdfDepuisWord,
   notionBlocsEnTexte,
   sourcesPour,
+  trierParDate,
   titrePageNotion,
   urlMediaPhotos,
   type BlocNotion,
@@ -176,5 +177,20 @@ describe('lireRetourOAuth', () => {
   });
   it('ignore un retour sans état', () => {
     expect(lireRetourOAuth('?code=abc')).toBeNull();
+  });
+});
+
+describe('trierParDate', () => {
+  it('trie par date croissante, de façon stable', () => {
+    const l = [
+      { id: 'c', createTime: '2026-03-01T10:00:00Z' },
+      { id: 'a', createTime: '2026-01-01T10:00:00Z' },
+      { id: 'b', createTime: '2026-01-01T10:00:00Z' },
+    ];
+    expect(trierParDate(l).map((m) => m.id)).toEqual(['a', 'b', 'c']);
+  });
+  it("garde l'ordre d'origine si une date manque ou est illisible", () => {
+    const l = [{ id: 'b', createTime: '2026-03-01T10:00:00Z' }, { id: 'a' }, { id: 'c', createTime: 'xx' }];
+    expect(trierParDate(l).map((m) => m.id)).toEqual(['b', 'a', 'c']);
   });
 });
