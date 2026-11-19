@@ -14,7 +14,7 @@ import { ImageSlot } from '@/components/ImageSlot';
 import { useDialog } from '@/components/Dialog';
 import { resizeFilesToDataUrls } from '@/lib/images';
 import { DureeInput } from '@/components/DureeInput';
-import type { ComponentStepDraft } from '@/lib/projects';
+import type { ComponentStepDraft, ComponentUtensil } from '@/lib/projects';
 import { ADVANCE_NOTE_MAX } from '@/lib/recipe-view';
 import { autoGrow } from '@/lib/auto-grow';
 
@@ -55,6 +55,7 @@ export function StepEditorCard({
   count,
   units,
   datalistId,
+  utensilsDatalistId,
   allergenNames,
   refAllergens,
   collapsed,
@@ -79,6 +80,8 @@ export function StepEditorCard({
   units: string[];
   // Liste de suggestions d'ingrédients (datalist), absente si pas de référentiel.
   datalistId?: string;
+  // Liste de suggestions d'ustensiles (datalist), absente si pas de référentiel.
+  utensilsDatalistId?: string;
   // Allergènes du référentiel (menu + pastilles, comme dans l'éditeur) et
   // allergènes par ingrédient du référentiel (pré-remplissage au choix du nom).
   // Absents : champ texte libre.
@@ -120,6 +123,9 @@ export function StepEditorCard({
   const [popup, setPopup] = useState<number | null>(null);
   const [draggingStep, setDraggingStep] = useState(false);
 
+  const ustensiles = step.utensils ?? [];
+  const majUstensile = (k: number, patch: Partial<ComponentUtensil>) =>
+    onChange({ utensils: ustensiles.map((u, m) => (m === k ? { ...u, ...patch, ref_id: null } : u)) });
   const majSous = (liste: string[]) => onChange({ sous_etapes: liste });
   const idStep = `projet-etape-${index}`;
 
@@ -633,6 +639,61 @@ export function StepEditorCard({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Ustensiles de l'étape : alimentent la liste globale de la recette à
+          l'enregistrement (rien n'y est jamais retiré). Même présentation que
+          la liste globale (nom + commentaire). */}
+      <div className="space-y-3">
+        <span className={label}>USTENSILES DE L&apos;ÉTAPE</span>
+        {ustensiles.map((u, k) => (
+          <div key={k} className="flex items-start gap-4">
+            <div className="grid flex-grow grid-cols-1 items-start gap-x-6 gap-y-1 md:grid-cols-2">
+              <input
+                list={utensilsDatalistId}
+                data-name-utensil-step={index}
+                value={u.name}
+                onChange={(e) => majUstensile(k, { name: e.target.value })}
+                className="editorial-input text-on-surface w-full"
+                placeholder="Nom de l'ustensile"
+                autoComplete="off"
+              />
+              <input
+                value={u.comment ?? ''}
+                onChange={(e) => majUstensile(k, { comment: e.target.value || null })}
+                onKeyDown={(e) => {
+                  // Tab depuis le dernier champ de la dernière ligne : nouvelle ligne.
+                  if (e.key === 'Tab' && !e.shiftKey && k === ustensiles.length - 1) {
+                    e.preventDefault();
+                    onChange({ utensils: [...ustensiles, { name: '', ref_id: null, comment: null }] });
+                    setTimeout(() => {
+                      const noms = document.querySelectorAll<HTMLInputElement>(`[data-name-utensil-step="${index}"]`);
+                      noms[noms.length - 1]?.focus();
+                    }, 0);
+                  }
+                }}
+                className="editorial-input text-on-surface w-full"
+                placeholder="Commentaire (optionnel)"
+              />
+            </div>
+            <button
+              type="button"
+              tabIndex={-1}
+              title="Supprimer"
+              onClick={() => onChange({ utensils: ustensiles.filter((_, m) => m !== k) })}
+              className="p-1 text-error hover:opacity-70 shrink-0 mt-1"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete</span>
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => onChange({ utensils: [...ustensiles, { name: '', ref_id: null, comment: null }] })}
+          className="flex items-center gap-2 text-secondary font-label-md text-label-md hover:underline"
+        >
+          <span className="material-symbols-outlined">add</span> Ajouter un ustensile
+        </button>
       </div>
 
       <div>

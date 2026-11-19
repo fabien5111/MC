@@ -1706,6 +1706,7 @@ export function ProjectV2({
           ingredientRefs={ingredientRefs}
           conversions={conversions}
           unitRefs={unitRefs}
+          utensilNames={utensilNames}
           referenceAllergenes={referenceAllergenes}
           tagsReference={tags}
           peutGenererIA={peutGenererIA}
