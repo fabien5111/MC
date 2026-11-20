@@ -646,6 +646,9 @@ export function StepEditorCard({
           la liste globale (nom + commentaire). */}
       <div className="space-y-3">
         <span className={label}>USTENSILES DE L&apos;ÉTAPE</span>
+        <p className="text-[13px] italic text-on-surface-variant">
+          Les ustensiles ajoutés ici sont ajoutés à la liste complète des ustensiles de la recette.
+        </p>
         {ustensiles.map((u, k) => (
           <div key={k} className="flex items-start gap-4">
             <div className="grid flex-grow grid-cols-1 items-start gap-x-6 gap-y-1 md:grid-cols-2">
