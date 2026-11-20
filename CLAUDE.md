@@ -3722,7 +3722,7 @@ au-dessus (relevé `ai_usage` du 11/11/2026).
 
 ## Rédaction des textes par IA (JEP-414)
 
-Bouton **« Proposer avec l'IA »** sous cinq champs — description, conseils de la
+Bouton **« Proposer avec l'IA »** à côté du libellé de cinq champs — description, conseils de la
 recette, dégustation et conservation, conseils d'une étape, préparation à
 l'avance d'une étape — et action de rail **« Compléter avec l'IA »** (tous les
 champs vides en un appel), dans `/creer`, la relecture d'import et le mode
@@ -3731,7 +3731,7 @@ dans « Modifier cette préparation » ; « Compléter » écrit directement les
 étapes du projet en base, puis resynchronise). Droit **`redaction_ia`** (oui /
 non : PLUS, PRO, essai PRO). Logique pure et testée : `lib/redaction-ia.ts` ;
 invite : `lib/ai/redaction.ts` ; route : `POST /api/recette/rediger` ;
-composants : `components/redaction/RedactionIA.tsx` ; droit et solde lus par la
+composants : `components/redaction/RedactionIA.tsx` (`ZoneRedaction` rend le bouton et le panneau de relecture séparément : le bouton va dans l'en-tête du champ, y compris dans un `<summary>` — son clic rouvre le volet sans le basculer —, le panneau sous le champ) ; droit et solde lus par la
 page : `etatRedaction` (`lib/redaction-ia-data.ts`).
 
 - **Coût** (`lib/credits-ia.ts`) : 1 crédit par champ (`redaction_champ`) ;
@@ -3760,7 +3760,7 @@ page : `etatRedaction` (`lib/redaction-ia-data.ts`).
   les étapes en base ; la fenêtre « Modifier cette préparation » monte son
   propre fournisseur, sur le brouillon.
 - **Sans fournisseur** (back-office, autres écrans), aucun bouton ; sans le
-  droit, `LockedAction` sous chaque champ et une fenêtre qui renvoie vers
+  droit, `LockedAction` à la place du bouton et une fenêtre qui renvoie vers
   `/plans` depuis le rail.
 - **Migration préalable** (sinon la route refuse tout) : ligne `redaction_ia`
   dans `features` / `plan_features` (pgweb), code `redaction_ia` dans
