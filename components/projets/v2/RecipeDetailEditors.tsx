@@ -36,7 +36,7 @@ import { estDataUrlImage } from '@/lib/storage';
 import type { RecipeFull } from '@/lib/recipes';
 import { stepTimeSums } from '@/lib/recipe-view';
 import { autoGrow, regrowAll } from '@/lib/auto-grow';
-import { BoutonRedaction } from '@/components/redaction/RedactionIA';
+import { ZoneRedaction } from '@/components/redaction/RedactionIA';
 import { ajouterTexte } from '@/lib/redaction-ia';
 import { useRegisterSection, type OptionsSauvegarde, type SectionRegistry } from '@/components/projets/v2/sections';
 
@@ -688,16 +688,30 @@ export function ConseilsEditor({
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className={etiquette}>CONSEILS</label>
-        <textarea ref={autoGrow} value={v.tips} onChange={(e) => { maj('tips')(e); autoGrow(e.target); }} rows={3} className={`${champ} resize-none overflow-hidden`} placeholder="Astuces de réalisation, conservation…" />
-        <BoutonRedaction className="mt-2" cible={{ champ: 'conseils' }} valeur={v.tips} onAppliquer={(t) => setV((p) => ({ ...p, tips: t }))} />
-      </div>
-      <div>
-        <label className={etiquette}>CONSEILS DE SERVICE</label>
-        <textarea ref={autoGrow} value={v.serving} onChange={(e) => { maj('serving')(e); autoGrow(e.target); }} rows={2} className={`${champ} resize-none overflow-hidden`} placeholder="Température de dégustation, accompagnement…" />
-        <BoutonRedaction className="mt-2" cible={{ champ: 'degustation' }} valeur={v.serving} onAppliquer={(t) => setV((p) => ({ ...p, serving: t }))} />
-      </div>
+      <ZoneRedaction cible={{ champ: 'conseils' }} valeur={v.tips} onAppliquer={(t: string) => setV((p) => ({ ...p, tips: t }))}>
+        {(boutonIA, panneauIA) => (
+          <div>
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <label className="font-label-md text-label-md text-outline">CONSEILS</label>
+              {boutonIA}
+            </div>
+            <textarea ref={autoGrow} value={v.tips} onChange={(e) => { maj('tips')(e); autoGrow(e.target); }} rows={3} className={`${champ} resize-none overflow-hidden`} placeholder="Astuces de réalisation, conservation…" />
+            {panneauIA}
+          </div>
+        )}
+      </ZoneRedaction>
+      <ZoneRedaction cible={{ champ: 'degustation' }} valeur={v.serving} onAppliquer={(t: string) => setV((p) => ({ ...p, serving: t }))}>
+        {(boutonIA, panneauIA) => (
+          <div>
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <label className="font-label-md text-label-md text-outline">CONSEILS DE SERVICE</label>
+              {boutonIA}
+            </div>
+            <textarea ref={autoGrow} value={v.serving} onChange={(e) => { maj('serving')(e); autoGrow(e.target); }} rows={2} className={`${champ} resize-none overflow-hidden`} placeholder="Température de dégustation, accompagnement…" />
+            {panneauIA}
+          </div>
+        )}
+      </ZoneRedaction>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <label className={etiquette}>SOURCE</label>

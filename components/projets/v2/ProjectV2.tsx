@@ -20,7 +20,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useImpersonation } from '@/components/ImpersonationProvider';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { BoutonRedaction, FenetreCompletion, RedactionIAProvider, libelleCompletion } from '@/components/redaction/RedactionIA';
+import { ZoneRedaction, FenetreCompletion, RedactionIAProvider, libelleCompletion } from '@/components/redaction/RedactionIA';
 import {
   ajouterNoteAvance,
   ajouterTexte,
@@ -1464,8 +1464,13 @@ export function ProjectV2({
                   className={champ}
                 />
               </div>
+              <ZoneRedaction cible={{ champ: 'description' }} valeur={description} onAppliquer={(t: string) => setDescription(t.slice(0, 2000))}>
+              {(boutonIA, panneauIA) => (
               <div>
-                <label className={etiquette}>DESCRIPTION</label>
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                  <label className="font-label-md text-label-md text-outline">DESCRIPTION</label>
+                  {boutonIA}
+                </div>
                 <textarea
                   ref={autoGrow}
                   value={description}
@@ -1477,8 +1482,10 @@ export function ProjectV2({
                   placeholder="Ce qui rend ce dessert unique, l’occasion, le goût recherché…"
                   className={`${champ} resize-none overflow-hidden`}
                 />
-                <BoutonRedaction className="mt-2" cible={{ champ: 'description' }} valeur={description} onAppliquer={(t) => setDescription(t.slice(0, 2000))} />
+                {panneauIA}
               </div>
+              )}
+              </ZoneRedaction>
             </div>
             {recipe && (
               <TagsEditor recipe={recipe} tags={tags} mutate={mutate} busy={busy} sections={sectionRegistry} peutCreer={peutCreerTag} />

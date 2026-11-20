@@ -16,7 +16,7 @@
 // Le texte ajouté devient celui de l'auteur, sans marque « IA » sur la fiche
 // (arbitrage du 19/11/2026) : c'est pourquoi chaque proposition rappelle
 // qu'elle peut contenir des erreurs (CGU § 6).
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { LockedAction } from '@/components/LockedAction';
@@ -135,44 +135,60 @@ function texteSolde(credits: EtatCredits | null): string {
 // ── Un champ ────────────────────────────────────────────────
 
 /**
- * Bouton « Proposer avec l'IA » et, une fois la réponse arrivée, le bloc de
- * relecture. À poser juste sous le champ. `valeur` : le texte actuel du champ
- * (pour choisir entre « Ajouter » et « Ajouter / Remplacer »).
+ * Bouton « Proposer avec l'IA » et bloc de relecture de la proposition, rendus
+ * à DEUX endroits : le bouton à côté du libellé du champ, le bloc sous le champ.
+ * D'où une fonction-enfant `(bouton, panneau)` plutôt qu'un hook : elle porte
+ * l'état et s'emploie aussi dans la boucle des étapes. Sans fournisseur, les
+ * deux valent `null`.
  *
- * Préparation à l'avance (`cible.champ === 'avance_etape'`) : `onAppliquer`
- * reçoit la note finale ; l'éditeur coche aussi la case.
+ * `valeur` : le texte actuel du champ (« Ajouter » seul, ou « Ajouter /
+ * Remplacer »). Préparation à l'avance (`cible.champ === 'avance_etape'`) :
+ * `onAppliquer` reçoit la note finale ; l'éditeur coche aussi la case.
+ *
+ * Bouton posé dans un `<summary>` : son clic n'ouvre ni ne ferme le volet, mais
+ * le rouvre s'il était fermé, sans quoi la proposition y resterait cachée.
  */
-export function BoutonRedaction({
+export function ZoneRedaction({
   cible,
   valeur,
   onAppliquer,
-  className = '',
+  children,
 }: {
   cible: CibleRedaction;
   valeur: string;
   onAppliquer: (texte: string) => void;
-  className?: string;
+  children: (bouton: ReactNode, panneau: ReactNode) => ReactNode;
 }) {
   const ctx = useRedactionIA();
   const [proposition, setProposition] = useState<PropositionRedaction | null>(null);
   const [texte, setTexte] = useState('');
-  if (!ctx) return null;
+  if (!ctx) return <>{children(null, null)}</>;
 
   const libelle = 'Proposer avec l’IA';
   if (!ctx.acces) {
     return (
-      <div className={`flex justify-end no-print ${className}`}>
-        <LockedAction label={libelle} message={MESSAGE_VERROU_REDACTION}>
-          {libelle}
-        </LockedAction>
-      </div>
+      <>
+        {children(
+          <span className="no-print shrink-0 normal-case tracking-normal" onClick={(e) => e.stopPropagation()}>
+            <LockedAction label={libelle} message={MESSAGE_VERROU_REDACTION}>
+              {libelle}
+            </LockedAction>
+          </span>,
+          null,
+        )}
+      </>
     );
   }
 
   const avance = cible.champ === 'avance_etape';
   const suffisant = soldeSuffisant(ctx.credits, COUT_REDACTION_CHAMP);
 
-  async function proposer() {
+  async function proposer(e: MouseEvent<HTMLButtonElement>) {
+    // Dans un <summary> : ne pas basculer le volet, mais l'ouvrir s'il est fermé.
+    e.preventDefault();
+    e.stopPropagation();
+    const volet = e.currentTarget.closest('details');
+    if (volet && !volet.open) volet.open = true;
     if (!ctx) return;
     const res = await ctx.demander({ cible });
     if (!res) return;
@@ -198,87 +214,84 @@ export function BoutonRedaction({
 
   const aDeja = valeur.trim().length > 0;
 
-  return (
-    <div className={`no-print ${className}`}>
-      {!proposition && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={proposer}
-            disabled={ctx.occupe || !suffisant}
-            title={suffisant ? texteSolde(ctx.credits) || undefined : 'Crédits IA insuffisants ce mois-ci.'}
-            className="inline-flex items-center gap-1.5 rounded-full border border-primary/60 px-3 py-1 font-label-md text-[12px] text-primary hover:bg-primary/5 disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
-              auto_awesome
-            </span>
-            {libelle} · {libelleCredits(COUT_REDACTION_CHAMP)} IA
-          </button>
-        </div>
-      )}
-      {proposition && (
-        <div className="mt-2 rounded-lg border border-primary/40 bg-primary/5 p-3 flex flex-col gap-2">
-          <p className="font-label-md text-[11px] uppercase tracking-widest text-primary flex items-center gap-1">
-            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
-              auto_awesome
-            </span>
-            Proposition de l&apos;IA
-          </p>
-          {avance && proposition.possible === false ? (
-            <p className="text-body-md text-on-surface">
-              Selon l&apos;IA, cette étape ne se prête pas à une préparation à l&apos;avance (appareil à utiliser
-              aussitôt).
-            </p>
-          ) : (
-            <textarea
-              value={texte}
-              onChange={(e) => setTexte(avance ? e.target.value.replace(/\n/g, ' ') : e.target.value)}
-              maxLength={LONGUEUR_MAX[cible.champ]}
-              rows={avance ? 2 : Math.min(8, Math.max(3, Math.ceil(texte.length / 80)))}
-              className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-body-md"
-              aria-label="Texte proposé, modifiable avant l’ajout"
-            />
-          )}
-          <p className="text-[12px] italic text-on-surface-variant">
-            {AVERTISSEMENT}
-            {(avance || cible.champ === 'degustation') && ` ${AVERTISSEMENT_CONSERVATION}`}
-          </p>
-          {avance && proposition.possible !== false && aDeja && (
-            <p className="text-[12px] text-on-surface-variant">
-              « Ajouter » complète la note actuelle si l&apos;ensemble tient en 200 caractères, sinon la remplace.
-            </p>
-          )}
-          <div className="flex flex-wrap justify-end gap-2">
-            <button type="button" onClick={fermer} className="rounded-full px-4 py-1.5 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container">
-              {avance && proposition.possible === false ? 'Fermer' : 'Annuler'}
-            </button>
-            {!(avance && proposition.possible === false) && (
-              <>
-                {aDeja && (
-                  <button
-                    type="button"
-                    onClick={() => appliquer('remplacer')}
-                    disabled={!texte.trim()}
-                    className="rounded-full border border-primary px-4 py-1.5 font-label-md text-label-md text-primary hover:bg-primary/5 disabled:opacity-50"
-                  >
-                    Remplacer
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => appliquer('ajouter')}
-                  disabled={!texte.trim()}
-                  className="rounded-full bg-primary px-4 py-1.5 font-label-md text-label-md text-on-primary hover:opacity-90 disabled:opacity-50"
-                >
-                  Ajouter
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+  const bouton = (
+    <button
+      type="button"
+      onClick={proposer}
+      disabled={ctx.occupe || !suffisant || proposition != null}
+      title={suffisant ? texteSolde(ctx.credits) || undefined : 'Crédits IA insuffisants ce mois-ci.'}
+      className="no-print shrink-0 inline-flex items-center gap-1.5 rounded-full border border-primary/60 px-3 py-1 font-label-md text-[12px] normal-case tracking-normal text-primary hover:bg-primary/5 disabled:opacity-50"
+    >
+      <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
+        auto_awesome
+      </span>
+      {libelle} · {libelleCredits(COUT_REDACTION_CHAMP)} IA
+    </button>
   );
+
+  const panneau = proposition ? (
+    <div className="no-print mt-2 rounded-lg border border-primary/40 bg-primary/5 p-3 flex flex-col gap-2">
+      <p className="font-label-md text-[11px] uppercase tracking-widest text-primary flex items-center gap-1">
+        <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
+          auto_awesome
+        </span>
+        Proposition de l&apos;IA
+      </p>
+      {avance && proposition.possible === false ? (
+        <p className="text-body-md text-on-surface">
+          Selon l&apos;IA, cette étape ne se prête pas à une préparation à l&apos;avance (appareil à utiliser
+          aussitôt).
+        </p>
+      ) : (
+        <textarea
+          value={texte}
+          onChange={(e) => setTexte(avance ? e.target.value.replace(/\n/g, ' ') : e.target.value)}
+          maxLength={LONGUEUR_MAX[cible.champ]}
+          rows={avance ? 2 : Math.min(8, Math.max(3, Math.ceil(texte.length / 80)))}
+          className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-body-md"
+          aria-label="Texte proposé, modifiable avant l’ajout"
+        />
+      )}
+      <p className="text-[12px] italic text-on-surface-variant">
+        {AVERTISSEMENT}
+        {(avance || cible.champ === 'degustation') && ` ${AVERTISSEMENT_CONSERVATION}`}
+      </p>
+      {avance && proposition.possible !== false && aDeja && (
+        <p className="text-[12px] text-on-surface-variant">
+          « Ajouter » complète la note actuelle si l&apos;ensemble tient en 200 caractères, sinon la remplace.
+        </p>
+      )}
+      <div className="flex flex-wrap justify-end gap-2">
+        <button type="button" onClick={fermer} className="rounded-full px-4 py-1.5 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container">
+          {avance && proposition.possible === false ? 'Fermer' : 'Annuler'}
+        </button>
+        {!(avance && proposition.possible === false) && (
+          <>
+            {aDeja && (
+              <button
+                type="button"
+                onClick={() => appliquer('remplacer')}
+                disabled={!texte.trim()}
+                className="rounded-full border border-primary px-4 py-1.5 font-label-md text-label-md text-primary hover:bg-primary/5 disabled:opacity-50"
+              >
+                Remplacer
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => appliquer('ajouter')}
+              disabled={!texte.trim()}
+              className="rounded-full bg-primary px-4 py-1.5 font-label-md text-label-md text-on-primary hover:opacity-90 disabled:opacity-50"
+            >
+              Ajouter
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  ) : null;
+
+  return <>{children(bouton, panneau)}</>;
 }
 
 // ── Tous les champs vides ───────────────────────────────────

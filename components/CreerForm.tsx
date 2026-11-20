@@ -43,7 +43,7 @@ import type { MoldType } from '@/lib/admin';
 import type { Unit } from '@/lib/profile';
 import type { RecipeFull } from '@/lib/recipes';
 import { ADVANCE_NOTE_MAX, noteAvance } from '@/lib/recipe-view';
-import { BoutonRedaction, FenetreCompletion, RedactionIAProvider, libelleCompletion } from '@/components/redaction/RedactionIA';
+import { ZoneRedaction, FenetreCompletion, RedactionIAProvider, libelleCompletion } from '@/components/redaction/RedactionIA';
 import {
   ajouterNoteAvance,
   ajouterTexte,
@@ -1663,8 +1663,13 @@ export function CreerForm({
               )}
             </div>
           </div>
+          <ZoneRedaction cible={{ champ: 'description' }} valeur={description} onAppliquer={setDescription}>
+            {(boutonIA, panneauIA) => (
           <div className="lg:col-span-12">
-            <label className="font-label-md text-label-md text-outline uppercase mb-2 block">Description rapide</label>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <label className="font-label-md text-label-md text-outline uppercase block">Description rapide</label>
+              {boutonIA}
+            </div>
             <textarea
               ref={autoGrow}
               value={description}
@@ -1676,8 +1681,10 @@ export function CreerForm({
               className="w-full bg-surface-container-low border border-outline-variant p-4 font-body-md text-body-md focus:border-primary outline-none transition-colors resize-none overflow-hidden"
               placeholder="Décrivez votre recette en quelques mots"
             />
-            <BoutonRedaction className="mt-2" cible={{ champ: 'description' }} valeur={description} onAppliquer={setDescription} />
+            {panneauIA}
           </div>
+            )}
+          </ZoneRedaction>
           <div className="lg:col-span-12 grid grid-cols-1 gap-6">
             <div>
               <label className="font-label-md text-label-md text-outline uppercase mb-2 block">Source</label>
@@ -2141,6 +2148,14 @@ export function CreerForm({
                     <HelpBlockSlot blockKey="creer.jour_et_avance" help={help} className="ml-auto" />
                   </div>
 
+                  <ZoneRedaction
+                    cible={{ champ: 'avance_etape', etape: si }}
+                    valeur={st.prepAhead ? st.prepAheadNote : ''}
+                    onAppliquer={(t) => patchStep(si, { prepAhead: true, prepAheadNote: t })}
+                  >
+                  {(boutonIA, panneauIA) => (
+                  <>
+                  <div className="flex flex-wrap items-center gap-3">
                   <label className="flex items-center gap-3 cursor-pointer w-fit">
                     <input
                       type="checkbox"
@@ -2151,6 +2166,8 @@ export function CreerForm({
                     <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
                     <span className="font-label-md text-label-md text-outline">PEUT ÊTRE PRÉPARÉE À L&apos;AVANCE</span>
                   </label>
+                  {boutonIA}
+                  </div>
                   {st.prepAhead && (
                     <div className="flex flex-col gap-1">
                       <textarea
@@ -2176,11 +2193,10 @@ export function CreerForm({
                       </span>
                     </div>
                   )}
-                  <BoutonRedaction
-                    cible={{ champ: 'avance_etape', etape: si }}
-                    valeur={st.prepAhead ? st.prepAheadNote : ''}
-                    onAppliquer={(t) => patchStep(si, { prepAhead: true, prepAheadNote: t })}
-                  />
+                  {panneauIA}
+                  </>
+                  )}
+                  </ZoneRedaction>
 
                   <div className="flex flex-col">
                     {/* En-tête « INGRÉDIENTS » (+ miroirs quantité/unité,
@@ -2622,15 +2638,20 @@ export function CreerForm({
                     />
                   </div>
 
+                  <ZoneRedaction cible={{ champ: 'conseil_etape', etape: si }} valeur={st.tips} onAppliquer={(t) => patchStep(si, { tips: t })}>
+                  {(boutonIA, panneauIA) => (
                   <details open className="group border-b border-outline-variant">
-                    <summary className="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">
+                    <summary className="flex justify-between items-center gap-3 py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">
                       <span>
                         Conseils &amp; Astuces de l&apos;étape{' '}
                         <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
                           (Ces informations seront affichées lors de la réalisation de la recette)
                         </span>
                       </span>
-                      <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+                      <span className="flex items-center gap-2">
+                        {boutonIA}
+                        <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+                      </span>
                     </summary>
                     <div className="pb-6">
                       <textarea
@@ -2644,9 +2665,11 @@ export function CreerForm({
                         placeholder="Une astuce particulière pour cette étape ?"
                         rows={4}
                       />
-                      <BoutonRedaction className="mt-2" cible={{ champ: 'conseil_etape', etape: si }} valeur={st.tips} onAppliquer={(t) => patchStep(si, { tips: t })} />
+                      {panneauIA}
                     </div>
                   </details>
+                  )}
+                  </ZoneRedaction>
                 </div>
               )}
             </div>
@@ -2667,8 +2690,13 @@ export function CreerForm({
         {/* Ancre « Conseils de la recette/dégustation » du sommaire : elle
             couvre cette section et la suivante (dégustation et conservation),
             qui se suivent immédiatement. */}
+        <ZoneRedaction cible={{ champ: 'conseils' }} valeur={tips} onAppliquer={setTips}>
+          {(boutonIA, panneauIA) => (
         <section id="sec-conseils" className="scroll-mt-28 space-y-8">
-          <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary border-b border-primary pb-4">Conseils et astuces de la recette</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary pb-4">
+            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Conseils et astuces de la recette</h2>
+            {boutonIA}
+          </div>
           <textarea
             ref={autoGrow}
             value={tips}
@@ -2680,12 +2708,19 @@ export function CreerForm({
             placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)..."
             rows={4}
           />
-          <BoutonRedaction cible={{ champ: 'conseils' }} valeur={tips} onAppliquer={setTips} />
+          {panneauIA}
         </section>
+          )}
+        </ZoneRedaction>
 
         {/* Conseils de dégustation et de conservation */}
+        <ZoneRedaction cible={{ champ: 'degustation' }} valeur={servingAdvice} onAppliquer={setServingAdvice}>
+          {(boutonIA, panneauIA) => (
         <section className="space-y-8">
-          <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary border-b border-primary pb-4">Conseils de dégustation et de conservation</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary pb-4">
+            <h2 className="font-headline-lg text-[20px] leading-[28px] font-semibold md:text-headline-lg text-primary">Conseils de dégustation et de conservation</h2>
+            {boutonIA}
+          </div>
           <textarea
             ref={autoGrow}
             value={servingAdvice}
@@ -2697,8 +2732,10 @@ export function CreerForm({
             placeholder="Comment déguster et conserver cette recette (température de dégustation, durée et mode de conservation)..."
             rows={4}
           />
-          <BoutonRedaction cible={{ champ: 'degustation' }} valeur={servingAdvice} onAppliquer={setServingAdvice} />
+          {panneauIA}
         </section>
+          )}
+        </ZoneRedaction>
 
         {/* Planning de préparation (aperçu) */}
         <section id="sec-planning" className="scroll-mt-28 space-y-8">

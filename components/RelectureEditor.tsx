@@ -21,7 +21,7 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ImageSlot, PHOTO_DND_TYPE } from '@/components/ImageSlot';
 import { PhotoBank, type PhotoBanque } from '@/components/relecture/PhotoBank';
 import { MOLD_FORME_DIMS, DIM_LABELS, UNITS_LBL, ADVANCE_NOTE_MAX, noteAvance } from '@/lib/recipe-view';
-import { BoutonRedaction, FenetreCompletion, RedactionIAProvider, libelleCompletion } from '@/components/redaction/RedactionIA';
+import { ZoneRedaction, FenetreCompletion, RedactionIAProvider, libelleCompletion } from '@/components/redaction/RedactionIA';
 import {
   ajouterNoteAvance,
   ajouterTexte,
@@ -1511,11 +1511,18 @@ export function RelectureEditor({
               </div>
             )}
           </div>
-          <label className="flex flex-col gap-1">
-            <span className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Description rapide</span>
-            <textarea ref={autoGrow} value={description} onChange={(e) => { setDescription(e.target.value); autoGrow(e.target); }} rows={2} className={`${champ} resize-none overflow-hidden`} />
-          </label>
-          <BoutonRedaction cible={{ champ: 'description' }} valeur={description} onAppliquer={setDescription} />
+          <ZoneRedaction cible={{ champ: 'description' }} valeur={description} onAppliquer={setDescription}>
+            {(boutonIA, panneauIA) => (
+              <div className="flex flex-col gap-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label htmlFor="relecture-description" className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Description rapide</label>
+                  {boutonIA}
+                </div>
+                <textarea id="relecture-description" ref={autoGrow} value={description} onChange={(e) => { setDescription(e.target.value); autoGrow(e.target); }} rows={2} className={`${champ} resize-none overflow-hidden`} />
+                {panneauIA}
+              </div>
+            )}
+          </ZoneRedaction>
           <div className="flex flex-col gap-1">
             <span className="flex items-center justify-between gap-2 font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">
               Taille / Nombre de portions
@@ -1915,6 +1922,14 @@ export function RelectureEditor({
                   <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
                 </span>
               </label>
+              <ZoneRedaction
+                cible={{ champ: 'avance_etape', etape: si }}
+                valeur={sp.avance ? sp.avanceNote : ''}
+                onAppliquer={(t) => patchSp(si, { avance: true, avanceNote: t })}
+              >
+              {(boutonIA, panneauIA) => (
+              <>
+              <span className="self-end pb-0.5">{boutonIA}</span>
               <HelpBlockSlot blockKey="relecture.jour_et_avance" help={help} className="ml-auto self-center" />
               {sp.avance && (
                 <div className="basis-full flex flex-col gap-1">
@@ -1941,12 +1956,10 @@ export function RelectureEditor({
                   </span>
                 </div>
               )}
-              <BoutonRedaction
-                className="basis-full"
-                cible={{ champ: 'avance_etape', etape: si }}
-                valeur={sp.avance ? sp.avanceNote : ''}
-                onAppliquer={(t) => patchSp(si, { avance: true, avanceNote: t })}
-              />
+              {panneauIA && <div className="basis-full">{panneauIA}</div>}
+              </>
+              )}
+              </ZoneRedaction>
             </div>
 
             <div className="p-6">
@@ -2232,8 +2245,13 @@ export function RelectureEditor({
               </div>
 
               {/* Conseils & astuces de l'étape */}
+              <ZoneRedaction cible={{ champ: 'conseil_etape', etape: si }} valeur={sp.tips} onAppliquer={(t) => patchSp(si, { tips: t })}>
+              {(boutonIA, panneauIA) => (
               <div className="mt-6">
-                <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Conseils &amp; astuces de l&apos;étape</p>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-label-md text-[10px] uppercase tracking-widest text-on-surface-variant">Conseils &amp; astuces de l&apos;étape</p>
+                  {boutonIA}
+                </div>
                 <textarea
                   ref={autoGrow}
                   value={sp.tips}
@@ -2245,8 +2263,10 @@ export function RelectureEditor({
                   className={`${champ} resize-none overflow-hidden`}
                   placeholder="Une astuce particulière pour cette étape ?"
                 />
-                <BoutonRedaction className="mt-2" cible={{ champ: 'conseil_etape', etape: si }} valeur={sp.tips} onAppliquer={(t) => patchSp(si, { tips: t })} />
+                {panneauIA}
               </div>
+              )}
+              </ZoneRedaction>
             </div>
             </>
             )}
@@ -2263,8 +2283,13 @@ export function RelectureEditor({
       {/* Conseils et astuces de la recette.
           Ancre « Conseils recette/dégustation » du sommaire : elle couvre cette
           section et la suivante, qui se suivent immédiatement. */}
+      <ZoneRedaction cible={{ champ: 'conseils' }} valeur={notes} onAppliquer={setNotes}>
+      {(boutonIA, panneauIA) => (
       <section id="sec-conseils" className="scroll-mt-28 mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
-        <h2 className="font-headline-md text-[22px] text-primary mb-4">Conseils et astuces de la recette</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-headline-md text-[22px] text-primary">Conseils et astuces de la recette</h2>
+          {boutonIA}
+        </div>
         <textarea
           ref={autoGrow}
           value={notes}
@@ -2276,12 +2301,19 @@ export function RelectureEditor({
           className={`${champ} resize-none overflow-hidden`}
           placeholder="Partagez vos secrets pour réussir cette recette à coup sûr (conservation, variantes, erreurs à éviter)…"
         />
-        <BoutonRedaction className="mt-2" cible={{ champ: 'conseils' }} valeur={notes} onAppliquer={setNotes} />
+        {panneauIA}
       </section>
+      )}
+      </ZoneRedaction>
 
       {/* Conseils de dégustation et de conservation (fin de recette) */}
+      <ZoneRedaction cible={{ champ: 'degustation' }} valeur={servingAdvice} onAppliquer={setServingAdvice}>
+      {(boutonIA, panneauIA) => (
       <section className="mt-12 bg-surface-container-low border border-outline-variant rounded-xl p-6">
-        <h2 className="font-headline-md text-[22px] text-primary mb-4">Conseils de dégustation et de conservation</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-headline-md text-[22px] text-primary">Conseils de dégustation et de conservation</h2>
+          {boutonIA}
+        </div>
         <textarea
           ref={autoGrow}
           value={servingAdvice}
@@ -2293,8 +2325,10 @@ export function RelectureEditor({
           className={`${champ} resize-none overflow-hidden`}
           placeholder="Température de dégustation, durée et mode de conservation…"
         />
-        <BoutonRedaction className="mt-2" cible={{ champ: 'degustation' }} valeur={servingAdvice} onAppliquer={setServingAdvice} />
+        {panneauIA}
       </section>
+      )}
+      </ZoneRedaction>
 
       {/* Récap global */}
       <section id="sec-indications" className="scroll-mt-28 mt-12 bg-primary text-white rounded-xl p-6 md:p-8">
