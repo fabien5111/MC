@@ -35,7 +35,7 @@ import { useHelpBlocks, type HelpBlocksState } from '@/components/help/useHelpBl
 import type { VisibleHelpBlock } from '@/lib/help';
 import { BatchNotes } from '@/components/recipe/BatchNotes';
 import { BatchReview } from '@/components/batch/BatchReview';
-import { PhotosEtape, PhotosFourneeBloc, PhotosFourneeProvider } from '@/components/batch/PhotosFournee';
+import { PhotosEtape, PhotosFourneeBloc, PhotosFourneeProvider, usePrendrePhotoEtape } from '@/components/batch/PhotosFournee';
 import type { PhotosFourneeInitiales } from '@/lib/batch-photos';
 import type { MyRecipeReview } from '@/lib/reviews-data';
 import { BatchStepIngredients } from '@/components/recipe/BatchIngredientsEditor';
@@ -1856,6 +1856,8 @@ function PatisserView({
 }) {
   const dialog = useDialog();
   const router = useRouter();
+  // « Prendre une photo » du menu Actions : null sur ordinateur ou fournée close.
+  const prendrePhoto = usePrendrePhotoEtape();
   const seuilsPatisser = useSeuilsArrondi();
   const commentTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const wakeLock = useRef<WakeLockSentinel | null>(null);
@@ -2059,6 +2061,9 @@ function PatisserView({
   // à cette vue et absente du reste de l'application.
   const tocActions: TocAction[] = [
     { id: 'switch-preparer', icon: 'tune', label: 'Passer en mode Préparer', variant: 'outline-strong', onClick: () => onSwitchMode('preparer') },
+    ...(prendrePhoto
+      ? [{ id: 'prendre-photo', icon: 'photo_camera', label: 'Prendre une photo', variant: 'outline-strong' as const, onClick: prendrePhoto }]
+      : []),
     ...(readOnly
       ? []
       : [
@@ -2724,8 +2729,11 @@ function StepCookCard({
           une étape terminée et repliée. */}
       <div className="px-4 pb-4 pt-3">
         <textarea
-          rows={2}
-          placeholder="Ce qui s'est passé sur cette étape (sauvegardé automatiquement)…"
+          rows={3}
+          // Hauteur minimale explicite : sur mobile le champ s'affichait écrasé
+          // à une demi-ligne (le texte du repère était coupé).
+          style={{ minHeight: 84 }}
+          placeholder="Ce qui s'est passé sur cette étape…"
           disabled={readOnly}
           value={s.commentaire || ''}
           onChange={(ev) => onStepComment(s.id, ev.target.value)}
@@ -2733,7 +2741,7 @@ function StepCookCard({
           // les laisser se signaler et pas celle-ci ferait lire l'absence de
           // vert comme « rien de saisi » sur une étape justement commentée.
           // Champ contrôlé, ici : le vert suit la frappe.
-          className={`w-full border rounded px-3 py-2 font-body-md text-sm focus:ring-1 focus:ring-primary ${
+          className={`block w-full resize-y border rounded px-3 py-2 font-body-md text-sm focus:ring-1 focus:ring-primary ${
             s.commentaire ? 'border-green-700 bg-green-50' : 'border-outline-variant bg-surface-container-low'
           }`}
         />
