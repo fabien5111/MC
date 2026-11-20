@@ -1,7 +1,7 @@
 // Accès Jira en ligne de commande, pour lire une spec ou un bug depuis
 // Claude Code (lot 1 de l'outillage Jira — cf. `docs/outillage-jira.md`).
 //
-// Six verbes : `lire`, `chercher`, `commenter`, et trois verbes de
+// Sept verbes : `lire`, `chercher`, `commenter`, `decrire`, et trois verbes de
 // transition étroitement bornés, `demarrer`, `envoyer-en-test` et
 // `a-deployer`. Toujours pas de passe-plat REST générique : un besoin
 // nouveau s'ajoute au script, avec son garde-fou, plutôt que de se
@@ -190,6 +190,22 @@ async function commenter(cle, texte) {
   console.log(`Commentaire publié sur ${cle} — ${config.baseUrl}/browse/${cle}`);
 }
 
+/**
+ * Remplace la DESCRIPTION d'un ticket (la spec), à la demande de
+ * l'utilisateur. Garde-fou : l'ancienne description est imprimée avant
+ * d'être remplacée, pour qu'elle reste dans la trace de la session — Jira
+ * garde aussi l'historique du champ.
+ */
+async function decrire(cle, texte) {
+  const config = lireConfig();
+  if (!texte.trim()) echouer('Description vide : rien à écrire.');
+  const issue = await appelJira(config, `/rest/api/3/issue/${encodeURIComponent(cle)}?fields=description`);
+  const ancienne = adfVersTexte(issue.fields?.description).trim();
+  console.log(`── Ancienne description de ${cle} ──\n${ancienne || '(vide)'}\n`);
+  await appelJira(config, `/rest/api/3/issue/${encodeURIComponent(cle)}`, 'PUT', { fields: { description: texteVersAdf(texte) } });
+  console.log(`Description mise à jour sur ${cle} — ${config.baseUrl}/browse/${cle}`);
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Transitions bornées (`demarrer`, `envoyer-en-test`)
 // ─────────────────────────────────────────────────────────────────────────
@@ -291,6 +307,7 @@ const USAGE = `Usage :
   node scripts/jira.mjs lire <CLE> [--commentaires N]
   node scripts/jira.mjs chercher "<JQL>" [--max N]
   node scripts/jira.mjs commenter <CLE> "<texte>"     (ou "-" pour lire l'entrée standard)
+  node scripts/jira.mjs decrire <CLE> -               (remplace la description, lue sur l'entrée standard)
   node scripts/jira.mjs demarrer <CLE>                (→ JIRA_STATUS_IN_PROGRESS, défaut « En cours »)
   node scripts/jira.mjs envoyer-en-test <CLE>         (→ JIRA_STATUS_IN_TEST, défaut « Revue en cours »)
   node scripts/jira.mjs a-deployer <CLE>              (→ JIRA_STATUS_TO_DEPLOY, défaut « A déployer »)
@@ -355,6 +372,14 @@ async function main(argv) {
     const reste = args.join(' ').trim();
     if (!cle || !reste) echouer(`Clé de ticket ou texte manquant.\n\n${USAGE}`);
     await commenter(cle, reste === '-' ? await lireEntreeStandard() : reste);
+    return;
+  }
+
+  if (verbe === 'decrire') {
+    const cle = args.shift();
+    const reste = args.join(' ').trim();
+    if (!cle || !reste) echouer(`Clé de ticket ou texte manquant.\n\n${USAGE}`);
+    await decrire(cle, reste === '-' ? await lireEntreeStandard() : reste);
     return;
   }
 

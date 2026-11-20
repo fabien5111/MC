@@ -11,10 +11,10 @@
 // `PseudoChooser`, deux Client Components.
 
 /** Version en vigueur — la date de mise à jour du texte, au format ISO. */
-export const CGU_VERSION = '2026-09-30';
+export const CGU_VERSION = '2026-11-19';
 
 /** Date de mise à jour, telle qu'affichée en tête de la page. */
-export const CGU_DATE_AFFICHEE = '30 septembre 2026';
+export const CGU_DATE_AFFICHEE = '19 novembre 2026';
 
 /** Chemin public de la page. */
 export const CGU_CHEMIN = '/cgu';

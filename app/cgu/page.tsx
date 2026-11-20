@@ -211,7 +211,8 @@ export default function CguPage() {
         <Section id="ia" title="6. Contenus générés par intelligence artificielle">
           <p>
             Certaines fonctionnalités s&apos;appuient sur une intelligence artificielle (import de recette,
-            ajustement des quantités, propositions du mode projet). Leurs résultats sont des{' '}
+            ajustement des quantités, propositions du mode projet, rédaction de descriptions et de conseils). Leurs
+            résultats sont des{' '}
             <Fort>propositions indicatives</Fort>, susceptibles d&apos;erreurs de lecture, de quantité ou
             d&apos;unité, que le membre doit vérifier. Il reste responsable des contenus qu&apos;il enregistre ou
             publie à partir de ces propositions.
@@ -239,6 +240,10 @@ export default function CguPage() {
             sont fournis <Fort>à titre indicatif</Fort>. Les informations relatives aux allergènes sont une aide au
             tri : <Fort>elles ne constituent en aucun cas une garantie de sécurité alimentaire</Fort>. Il appartient à
             chacun de vérifier la composition réelle des ingrédients qu&apos;il utilise.
+          </p>
+          <p>
+            Les conseils de conservation sont fournis <Fort>à titre indicatif</Fort> et ne remplacent pas les règles
+            d&apos;hygiène alimentaire.
           </p>
           <p>Chaque membre est seul responsable des contenus qu&apos;il publie.</p>
         </Section>

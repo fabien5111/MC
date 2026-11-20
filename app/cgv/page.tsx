@@ -132,7 +132,8 @@ export default async function CgvPage() {
           <p>
             Les formules payantes donnent accès à des fonctionnalités supplémentaires, notamment : import de recette
             par intelligence artificielle (texte, photo, PDF), ajustement des quantités par intelligence artificielle,
-            mode projet assisté par intelligence artificielle, listes de recettes personnelles, carnet au format de
+            mode projet assisté par intelligence artificielle, rédaction de descriptions et de conseils par
+            intelligence artificielle, listes de recettes personnelles, carnet au format de
             l&apos;examen du CAP Pâtissier, extraction d&apos;étapes en nouvelle recette, liste de courses « À
             racheter », navigation sans publicité, ainsi que des limites d&apos;usage plus élevées (recettes,
             favoris, fournées, listes de courses).
@@ -348,7 +349,8 @@ export default async function CgvPage() {
         <Section id="ia" title="15. Intelligence artificielle — limites">
           <p>
             Certaines fonctionnalités s&apos;appuient sur des modèles d&apos;intelligence artificielle. Les résultats
-            produits (recettes importées, quantités, coefficients d&apos;ajustement, propositions de composants, etc.)
+            produits (recettes importées, quantités, coefficients d&apos;ajustement, propositions de composants,
+            descriptions et conseils rédigés, etc.)
             sont des <strong className="text-on-surface">propositions à vérifier</strong>. Ils peuvent contenir des
             erreurs, notamment de lecture, de quantité ou d&apos;unité.
           </p>
@@ -358,6 +360,13 @@ export default async function CgvPage() {
               cas une garantie.
             </strong>{' '}
             Il appartient au Membre de vérifier la composition réelle des ingrédients qu&apos;il utilise.
+          </p>
+          <p>
+            <strong className="text-on-surface">
+              Les conseils de conservation proposés sont indicatifs et ne remplacent pas les règles d&apos;hygiène
+              alimentaire.
+            </strong>{' '}
+            Le Membre reste responsable des textes qu&apos;il ajoute à ses recettes à partir de ces propositions.
           </p>
         </Section>
 

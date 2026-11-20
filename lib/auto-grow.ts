@@ -37,3 +37,18 @@ export function useAutoGrowOnResize() {
     return () => window.removeEventListener('resize', surRedimensionnement);
   }, []);
 }
+
+/**
+ * Recalcule, à l'image suivante, la hauteur de toutes les zones passées par
+ * `autoGrow` : à appeler après une valeur posée par le code (proposition de
+ * l'IA, JEP-414), qui ne déclenche pas le `onChange` du champ.
+ */
+export function regrowAll() {
+  if (typeof window === 'undefined') return;
+  // Deux images : la première laisse React appliquer la nouvelle valeur.
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() =>
+      document.querySelectorAll<HTMLTextAreaElement>(`textarea[${MARQUE}]`).forEach((el) => autoGrow(el)),
+    ),
+  );
+}

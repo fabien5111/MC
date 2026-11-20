@@ -16,6 +16,7 @@ import { resizeFilesToDataUrls } from '@/lib/images';
 import { DureeInput } from '@/components/DureeInput';
 import type { ComponentStepDraft, ComponentUtensil } from '@/lib/projects';
 import { ADVANCE_NOTE_MAX } from '@/lib/recipe-view';
+import { ZoneRedaction } from '@/components/redaction/RedactionIA';
 import { autoGrow } from '@/lib/auto-grow';
 
 type Ingredient = ComponentStepDraft['ingredients'][number];
@@ -255,6 +256,14 @@ export function StepEditorCard({
       </div>
 
       {/* JEP-19 — même case que l'éditeur /creer (deux copies à garder alignées). */}
+      <ZoneRedaction
+        cible={{ champ: 'avance_etape', etape: index }}
+        valeur={step.can_prepare_ahead ? step.advance_note ?? '' : ''}
+        onAppliquer={(t: string) => onChange({ can_prepare_ahead: true, advance_note: t })}
+      >
+      {(boutonIA, panneauIA) => (
+      <>
+      <div className="flex flex-wrap items-center gap-3">
       <label className="flex items-center gap-3 cursor-pointer w-fit">
         <input
           type="checkbox"
@@ -265,6 +274,8 @@ export function StepEditorCard({
         <span className="material-symbols-outlined text-[18px] text-primary">event_upcoming</span>
         <span className={label}>PEUT ÊTRE PRÉPARÉE À L&apos;AVANCE</span>
       </label>
+      {boutonIA}
+      </div>
       {step.can_prepare_ahead === true && (
         <div className="flex flex-col gap-1">
           <textarea
@@ -290,6 +301,10 @@ export function StepEditorCard({
           </span>
         </div>
       )}
+      {panneauIA}
+      </>
+      )}
+      </ZoneRedaction>
 
       <div className="flex flex-col">
         <div className="border-l-2 border-transparent pl-4 min-[1232px]:border-l-0 min-[1232px]:pl-0 flex items-center gap-4 mb-2">
@@ -748,15 +763,20 @@ export function StepEditorCard({
         </div>
       </div>
 
+      <ZoneRedaction cible={{ champ: 'conseil_etape', etape: index }} valeur={step.tips ?? ''} onAppliquer={(t: string) => onChange({ tips: t })}>
+      {(boutonIA, panneauIA) => (
       <details open={!!step.tips} className="group border-b border-outline-variant">
-        <summary className="flex justify-between items-center py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">
+        <summary className="flex justify-between items-center gap-3 py-4 cursor-pointer list-none font-label-md text-label-md text-primary uppercase">
           <span>
             Conseils &amp; Astuces de l&apos;étape{' '}
             <span className="italic normal-case font-normal font-body-md text-on-surface-variant">
               (Ces informations seront affichées lors de la réalisation de la recette)
             </span>
           </span>
-          <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+          <span className="flex items-center gap-2">
+            {boutonIA}
+            <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+          </span>
         </summary>
         <div className="pb-6">
           <textarea
@@ -770,8 +790,11 @@ export function StepEditorCard({
             placeholder="Une astuce particulière pour cette étape ?"
             rows={4}
           />
+          {panneauIA}
         </div>
       </details>
+      )}
+      </ZoneRedaction>
         </div>
       )}
 
