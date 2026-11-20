@@ -3763,6 +3763,19 @@ page : `etatRedaction` (`lib/redaction-ia-data.ts`).
   modèle écrive le général en sachant ce qu'il a dit étape par étape ; la route
   remet les propositions dans l'ordre de l'éditeur. Pas de « revue du chef » en
   second appel (doublerait le coût) : sa checklist est dans l'invite.
+- **Deux modèles (v3, 20/11/2026)** : les champs de **conservation** (`degustation`,
+  `avance_etape`, `estChampConservation`) passent par `REDACTION_CONSERVATION_MODEL`
+  (défaut `claude-sonnet-5`, tarif 2 $ / 10 $ par million de jetons), les autres par
+  `IMPORT_MODEL` (Haiku) : une durée fausse peut rendre malade, et ces champs sont le
+  plus souvent vides (le modèle raisonne seul) ou à vérifier. Un appel par groupe, en
+  parallèle ; un groupe en échec n'annule pas l'autre (crédits rendus seulement si rien
+  n'est revenu). **Coût inchangé : 1 crédit par champ**, à remesurer sur `ai_usage` (grille
+  à relever si l'écart pèse). **Ce que l'auteur a écrit PRIME** : une durée déjà écrite
+  n'est jamais raccourcie ni contredite, et la note de préparation à l'avance n'est pas
+  « complétée » (l'IA la reprend telle quelle) ; la prudence « durée la plus courte » ne vaut
+  que pour une durée que l'IA doit proposer elle-même. Cause du décalage avec la compétence
+  `fiche-composant` (note « 5 jours » contredite par une proposition « 1 jour ») : consignes
+  de prudence contraires à la note existante, envoyée en « complément ».
 - **Le contexte envoyé** est la recette telle qu'elle est À L'ÉCRAN (titre,
   rendement, étapes, ingrédients, temps, textes déjà saisis) — un champ déjà
   rempli est COMPLÉTÉ, sans répétition. Mode projet : la recette de la page lit

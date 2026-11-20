@@ -15,7 +15,7 @@ import {
   type RecetteRedaction,
 } from '@/lib/redaction-ia';
 import { lignesCoutIA, DROIT_ACTION } from '@/lib/credits-ia';
-import { buildRedaction } from '@/lib/ai/redaction';
+import { buildRedaction, estChampConservation } from '@/lib/ai/redaction';
 
 const etape = (p: Partial<RecetteRedaction['etapes'][number]> = {}) => ({
   titre: 'Crème pâtissière',
@@ -179,5 +179,17 @@ describe('mise en texte', () => {
     expect(p).toContain('Ne parle pas de conservation');
     expect(p).toContain('PENDANT qu\'il réalise');
     expect(p).toContain('VÉRIFICATION AVANT DE RÉPONDRE');
+  });
+  it('v3 : la note de l\u2019auteur fait foi, jamais « complétée » ; conservation = autre modèle', () => {
+    const r = recette({ etapes: [etape({ avance: true, avanceNote: 'Se garde 5 jours au frais, filmé au contact' })] });
+    const p = buildRedaction(r, [{ champ: 'avance_etape', etape: 0 }]);
+    expect(p).toContain("Note actuelle de l'auteur : « Se garde 5 jours au frais, filmé au contact »");
+    expect(p).toContain('ne propose jamais une autre durée');
+    expect(p).not.toContain('COMPLÉMENT');
+    expect(p).toContain('PRIME');
+    expect(estChampConservation({ champ: 'degustation' })).toBe(true);
+    expect(estChampConservation({ champ: 'avance_etape', etape: 0 })).toBe(true);
+    expect(estChampConservation({ champ: 'conseil_etape', etape: 0 })).toBe(false);
+    expect(estChampConservation({ champ: 'conseils' })).toBe(false);
   });
 });

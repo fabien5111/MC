@@ -12,8 +12,8 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { isReadOnlySession } from '@/lib/impersonation';
-import { callClaude, parseStrictJson } from '@/lib/ai/claude';
-import { buildRedaction, jetonsMax, VERSION_INVITE_REDACTION } from '@/lib/ai/redaction';
+import { callClaude, parseStrictJson, IMPORT_MODEL, REDACTION_CONSERVATION_MODEL } from '@/lib/ai/claude';
+import { buildRedaction, estChampConservation, jetonsMax, VERSION_INVITE_REDACTION } from '@/lib/ai/redaction';
 import { collecteurAppelsIa, enregistrerAppelsIa } from '@/lib/ai/usage-log';
 import { estRefusCredits, reserverCredits } from '@/lib/quota-route';
 import { COUT_REDACTION_CHAMP, coutCompletion } from '@/lib/credits-ia';
@@ -77,8 +77,28 @@ export async function POST(req: Request) {
 
   const { sink, appels } = collecteurAppelsIa();
   try {
-    const raw = await callClaude(apiKey, buildRedaction(recette, cibles), jetonsMax(cibles.length), 50_000, undefined, undefined, undefined, sink);
-    const propositions = normaliserPropositions(parseStrictJson(raw.text), cibles);
+    // Deux groupes, deux modèles : la conservation (dégustation, préparation à
+    // l'avance) passe par un modèle plus fort, le reste par le modèle rapide.
+    // Un seul appel quand tous les champs sont du même groupe.
+    const groupes = [
+      { modele: REDACTION_CONSERVATION_MODEL, cibles: cibles.filter(estChampConservation) },
+      { modele: IMPORT_MODEL, cibles: cibles.filter((c) => !estChampConservation(c)) },
+    ].filter((g) => g.cibles.length);
+    const reponses = await Promise.allSettled(
+      groupes.map(async (g) => {
+        const raw = await callClaude(apiKey, buildRedaction(recette, g.cibles), jetonsMax(g.cibles.length), 50_000, g.modele, undefined, undefined, sink);
+        return normaliserPropositions(parseStrictJson(raw.text), g.cibles);
+      }),
+    );
+    // Un groupe en échec n'annule pas l'autre : les crédits ne sont rendus
+    // que si rien n'est revenu.
+    reponses.forEach((r) => {
+      if (r.status === 'rejected') console.error('recette/rediger:', (r.reason as Error)?.message);
+    });
+    const propositions = normaliserPropositions(
+      { propositions: reponses.flatMap((r) => (r.status === 'fulfilled' ? r.value : [])) },
+      cibles,
+    );
     if (!propositions.length) {
       await quota.rendre();
       return NextResponse.json({ erreur: "L'IA n'a rien proposé, réessayez." }, { status: 502 });

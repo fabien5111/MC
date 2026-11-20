@@ -13,7 +13,7 @@ import {
 } from '@/lib/redaction-ia';
 
 /** Version de l'invite, journalisée avec chaque appel (comparaisons futures). */
-export const VERSION_INVITE_REDACTION = 'v2';
+export const VERSION_INVITE_REDACTION = 'v3';
 
 // Répartition des rôles reprise de la compétence `fiche-composant` (19/11/2026) :
 // le conseil d'ÉTAPE porte tout ce qui aide à réussir cette étape (il s'affiche
@@ -33,6 +33,11 @@ const CONSIGNE: Record<CibleRedaction['champ'], string> = {
     "Préparation à l'avance de l'étape : indique si le résultat de cette étape peut RÉELLEMENT être préparé à l'avance, d'après la recette, et conservé avant la suite (« possible »). Si oui, une note d'une seule ligne qui décrit l'étape elle-même, pas le dessert fini : durée courte, lieu et emballage (ex. « 48 h au réfrigérateur, filmée au contact »). Si non (appareil à utiliser aussitôt : blancs montés, caramel, pâte levée en cours de pousse…) ou en cas de doute, « possible » vaut false et le texte est vide.",
 };
 
+/** Champs de conservation : traités par un modèle plus fort (cf. `REDACTION_CONSERVATION_MODEL`). */
+export function estChampConservation(c: CibleRedaction): boolean {
+  return c.champ === 'degustation' || c.champ === 'avance_etape';
+}
+
 /**
  * Invite complète. `cibles` : les champs demandés, dans l'ordre de l'éditeur.
  * Un champ qui contient déjà du texte est COMPLÉTÉ : la proposition ne doit
@@ -47,7 +52,11 @@ export function buildRedaction(r: RecetteRedaction, cibles: CibleRedaction[]): s
   const ordonnees = [...cibles.filter((c) => c.etape != null), ...cibles.filter((c) => c.etape == null)];
   const demandes = ordonnees.map((c) => {
     const deja = valeurActuelle(r, c);
-    const complement = deja
+    // Préparation à l'avance : la note de l'auteur FAIT FOI, elle n'est jamais
+    // « complétée » (une phrase en plus entrait en concurrence avec la sienne).
+    const complement = deja && c.champ === 'avance_etape'
+      ? ` Note actuelle de l'auteur : « ${deja.slice(0, 300)} ». Elle fait foi : si l'étape s'y prête, « possible » vaut true et le texte reprend cette note telle quelle (reformulée au plus court, sans en changer la durée ni les conditions) ; ne propose jamais une autre durée.`
+      : deja
       ? ` Le champ contient déjà : « ${deja.slice(0, 600)} » — propose uniquement un COMPLÉMENT, sans le répéter.`
       : '';
     const cle = c.etape == null ? `{"champ": "${c.champ}"}` : `{"champ": "${c.champ}", "etape": ${c.etape}} (ÉTAPE ${c.etape + 1})`;
@@ -62,7 +71,8 @@ RÈGLES
 - Chaque champ a son rôle et un contenu n'apparaît qu'à UN endroit : conseils d'étape (réalisation de l'étape), conseils de la recette (général), dégustation et conservation (conservation), description (envie de goûter). Ne répète pas d'un champ à l'autre, ni ce que la recette contient déjà.
 - Style d'une fiche recette : phrases simples, à l'infinitif ou au vouvoiement, sans emoji, sans titre, sans markdown.
 - Le texte sera relu par l'auteur avant d'être ajouté : propose un texte prêt à l'emploi, pas une liste d'options.
-- Sécurité alimentaire : œufs crus, crèmes, refroidissement, chaîne du froid. Reste prudent sur toute durée de conservation ; en cas de doute, choisis la plus courte.
+- Ce que la recette ou l'auteur a déjà écrit PRIME : une durée, une température ou une précision de conservation déjà écrite (dans la recette ou dans une note de l'auteur) n'est jamais raccourcie, rallongée ni contredite.
+- Sécurité alimentaire : œufs crus, crèmes, refroidissement, chaîne du froid. Pour une durée que tu dois proposer toi-même (la recette n'en dit rien), reste prudent et, en cas de doute, choisis la plus courte.
 - Les numéros d'étape ("etape") partent de 0 dans la réponse : l'étape 1 est "etape": 0.
 
 RECETTE
@@ -75,7 +85,7 @@ RÉPONSE
 Uniquement un objet JSON, sans texte autour :
 {"propositions": [{"champ": "...", "etape": 0, "texte": "...", "possible": true}]}
 - Une entrée par champ demandé, avec le même "champ" (et le même "etape" pour un champ d'étape ; pas de "etape" pour un champ de la recette).
-- "possible" seulement pour "avance_etape".
+- "possible" seulement pour "avance_etape". Son "texte" est la note seule, sur une ligne, sans préambule (pas de « Possible… », pas de nom d'étape).
 
 VÉRIFICATION AVANT DE RÉPONDRE
 JSON valide ; une entrée par champ demandé ; aucun chiffre ni geste qui contredise la recette ; aucun conseil de recette qui répète un conseil d'étape ; aucune conservation hors du champ dégustation et conservation ; durées de conservation prudentes ; chaque texte dans sa limite de caractères.`;
