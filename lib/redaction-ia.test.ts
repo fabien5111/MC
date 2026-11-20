@@ -165,4 +165,19 @@ describe('mise en texte', () => {
     expect(p).toContain('{"champ": "avance_etape", "etape": 0} (ÉTAPE 1)');
     expect(p).toContain('COMPLÉMENT');
   });
+  it('répartit les rôles : conseils d’étape avant ceux de la recette, sans doublon ni conservation', () => {
+    const p = buildRedaction(recette(), [
+      { champ: 'description' },
+      { champ: 'conseils' },
+      { champ: 'degustation' },
+      { champ: 'conseil_etape', etape: 0 },
+    ]);
+    // L'étape est demandée avant les champs de la recette.
+    expect(p.indexOf('"champ": "conseil_etape"')).toBeLessThan(p.indexOf('"champ": "conseils"'));
+    expect(p.indexOf('"champ": "conseil_etape"')).toBeLessThan(p.indexOf('"champ": "degustation"'));
+    expect(p).toContain('Ne répète AUCUN conseil d\'étape');
+    expect(p).toContain('Ne parle pas de conservation');
+    expect(p).toContain('PENDANT qu\'il réalise');
+    expect(p).toContain('VÉRIFICATION AVANT DE RÉPONDRE');
+  });
 });

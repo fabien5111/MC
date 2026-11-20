@@ -3754,6 +3754,15 @@ page : `etatRedaction` (`lib/redaction-ia-data.ts`).
   CGV § 15, version du 19/11/2026). D'où l'avertissement sous chaque
   proposition, renforcé pour la conservation, et la consigne de prudence de
   l'invite (durées courtes, chaîne du froid).
+- **Répartition des rôles dans l'invite** (v2, 20/11/2026, reprise de la compétence
+  `fiche-composant`) : le conseil d'ÉTAPE est lu en mode Pâtisser pendant la
+  réalisation (court, actionnable, propre à l'étape) ; les conseils de la RECETTE
+  restent généraux et ne répètent aucun conseil d'étape, déjà saisi ou proposé dans
+  la même réponse ; la conservation n'apparaît que dans son champ. Les champs
+  d'étape sont demandés AVANT ceux de la recette (`buildRedaction`), pour que le
+  modèle écrive le général en sachant ce qu'il a dit étape par étape ; la route
+  remet les propositions dans l'ordre de l'éditeur. Pas de « revue du chef » en
+  second appel (doublerait le coût) : sa checklist est dans l'invite.
 - **Le contexte envoyé** est la recette telle qu'elle est À L'ÉCRAN (titre,
   rendement, étapes, ingrédients, temps, textes déjà saisis) — un champ déjà
   rempli est COMPLÉTÉ, sans répétition. Mode projet : la recette de la page lit
