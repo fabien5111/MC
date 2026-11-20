@@ -2543,6 +2543,7 @@ commentaire » que la liste globale, suggestions du référentiel (`dl-utensils`
   `CreerForm` (mêmes lignes que la liste globale, qui se met à jour à l'écran) et
   `writeComponentContent` → `ajouterUstensilsGlobaux` (`lib/projects-write.ts`,
   partagé avec `attachComponentUtensils`).
+- **Le lien avec la liste globale est dit à l'écran** (JEP-419) : une phrase en italique sous « USTENSILES DE L'ÉTAPE », dans `CreerForm` et `StepEditorCard` — deux copies à garder alignées.
 - **Consultation inchangée** : la fiche recette n'affiche que la liste globale ;
   `RecipeStep` ne lit pas la colonne.
 - **Avant la migration, rien ne casse** : la colonne n'est écrite que si l'étape a
