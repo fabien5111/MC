@@ -250,6 +250,57 @@ function useTactile(): boolean {
   return tactile;
 }
 
+/**
+ * Étape « affichée à l'écran » : la dernière carte d'étape (`#etape-<id>`) dont
+ * le haut est passé sous l'en-tête du site ; à défaut la première visible.
+ */
+function etapeAffichee(): number | null {
+  const cartes = Array.from(document.querySelectorAll<HTMLElement>('[id^="etape-"]')).filter((el) => /^etape-\d+$/.test(el.id));
+  const seuil = 120;
+  let choisie: HTMLElement | null = null;
+  for (const el of cartes) {
+    const r = el.getBoundingClientRect();
+    if (r.height === 0) continue;
+    if (r.top <= seuil && r.bottom > seuil) choisie = el;
+  }
+  if (!choisie) choisie = cartes.find((el) => el.getBoundingClientRect().bottom > seuil) ?? null;
+  return choisie ? Number(choisie.id.slice('etape-'.length)) : null;
+}
+
+/**
+ * Action « Prendre une photo » du menu Actions (mode Pâtisser, téléphone et
+ * tablette). Rend `null` quand elle n'a pas lieu d'être (ordinateur, fournée
+ * verrouillée, photos indisponibles) ; sinon la fonction à appeler au clic.
+ * Le champ fichier est créé et cliqué dans le geste de l'utilisateur (sinon le
+ * navigateur bloque l'appareil photo), puis retiré. Plafond atteint : message.
+ */
+export function usePrendrePhotoEtape(): (() => void) | null {
+  const ctx = usePhotosFournee();
+  const tactile = useTactile();
+  const dialog = useDialog();
+  if (!ctx || ctx.bloque || !tactile) return null;
+  return () => {
+    if (placesRestantes(ctx.photos) <= 0) {
+      void dialog.alert(`${BATCH_PHOTOS_MAX} photos au plus par fournée : supprimez-en une pour en ajouter une autre.`);
+      return;
+    }
+    const stepId = etapeAffichee();
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.setAttribute('capture', 'environment');
+    input.style.display = 'none';
+    input.onchange = () => {
+      const files = Array.from(input.files ?? []);
+      input.remove();
+      if (files.length) void ctx.ajouter(files, stepId);
+    };
+    input.addEventListener('cancel', () => input.remove());
+    document.body.appendChild(input);
+    input.click();
+  };
+}
+
 export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | null; compact?: boolean }) {
   const ctx = usePhotosFournee();
   const camera = useRef<HTMLInputElement>(null);
