@@ -362,6 +362,11 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
               </button>
             </>
           )}
+          {!plein && (
+            // Coller l'image copiée sous l'étape, comme dans le bloc général :
+            // visible seulement si une image est copiée (cf. BoutonColler).
+            <BoutonColler className="!px-2.5 !py-1 !text-[12px]" onFichiers={(fs) => void ctx.ajouter(fs, stepId)} />
+          )}
         </>
       ) : (
         // Un seul bouton : sur un téléphone, le sélecteur du système propose
