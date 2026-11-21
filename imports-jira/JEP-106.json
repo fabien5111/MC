@@ -1,0 +1,248 @@
+{
+  "ticket": "JEP-106",
+  "recette": {
+    "titre": "Cookies pistache façon Cédric Grolet",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une interprétation ultra-gourmande du cookie signature à la pistache de Cédric Grolet, associant une pâte fondante cuite en cercle, un cœur coulant de caramel à la vanille, un praliné/pâte de pistache crue maison et des pistaches entières caramélisées sur le dessus.",
+    "rendement": "15 cookies",
+    "ustensiles": [
+      "Robot pâtissier muni de la feuille (ou cul-de-poule et spatule)",
+      "Robot mixeur / robot-coupe",
+      "Casserole à fond large",
+      "Casserole standard",
+      "Plaque de cuisson et papier sulfurisé",
+      "Cercles à pâtisserie ou emporte-pièces forme fleur (ou ronds)",
+      "Couteau d'office",
+      "Balance de précision",
+      "Spatule maryse",
+      "Poches à douille (optionnelles)"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Torréfaction des pistaches (pour la pâte)",
+        "page": null,
+        "temps_preparation_minutes": 2,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Pistaches",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Répartir les 50 g de pistaches sur une plaque recouverte de papier sulfurisé.",
+          "Enfourner à 150 °C pendant 15 minutes.",
+          "Laisser refroidir totalement à température ambiante avant l'incorporation dans la pâte."
+        ],
+        "conseils_etape": "Ne pas incorporer les pistaches chaudes dans l'appareil à cookies sous peine de faire fondre le beurre."
+      },
+      {
+        "nom_etape": "Pâte de pistache maison",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Pistaches (non torréfiées)",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile neutre (pépins de raisin ou tournesol, si nécessaire)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Déposer les pistaches crues et le sucre glace dans la cuve du robot-coupe.",
+          "Mixer par impulsions pour éviter la surchauffe jusqu'à obtention d'une pâte fine et fluide.",
+          "Ajouter un filet d'huile neutre si les lames peinent à lier la masse.",
+          "Débarrasser et réserver à température ambiante."
+        ],
+        "conseils_etape": "Peut être réalisée jusqu'à 3 jours avant. Conserver les pistaches crues pour garder une couleur verte éclatante."
+      },
+      {
+        "nom_etape": "Caramel onctueux vanille et fleur de sel",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 45,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre en poudre",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30 % MG",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 0.5,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Fendre et gratter la demi-gousse de vanille dans la crème liquide.",
+          "Chauffer la crème vanillée au micro-ondes jusqu'à frémissement.",
+          "Verser le sucre dans une casserole à fond large sur feu moyen et laisser fondre à sec sans remuer avant la fonte partielle.",
+          "Dès coloration ambrée, ajouter le beurre froid en une fois hors du feu pour décuire.",
+          "Verser la crème bien chaude progressivement en fouettant vivement pour éviter les projections et les blocs.",
+          "Cuire 1 minute à petits bouillons jusqu'à texture nappante.",
+          "Débarrasser dans un bol, ajouter la fleur de sel, mélanger et laisser tiédir à température ambiante."
+        ],
+        "conseils_etape": "Éviter un passage trop long au réfrigérateur qui durcit excessivement le caramel et complique le dressage."
+      },
+      {
+        "nom_etape": "Pistaches caramélisées",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Pistaches (non torréfiées)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre en poudre (QS)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Mettre les pistaches et le sucre dans une casserole sur feu doux.",
+          "Laisser le sucre fondre et sabler puis caraméliser en remuant pour bien enrober les fruits secs.",
+          "Débarrasser sur un tapis silicone ou une feuille sulfurisée en séparant les pistaches.",
+          "Laisser refroidir totalement."
+        ],
+        "conseils_etape": "Maintenir un feu très doux pour caraméliser sans brûler l'intérieur de la pistache."
+      },
+      {
+        "nom_etape": "Pâte à cookies",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (pommade)",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre roux",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre de coco",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre en poudre",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de pistache 100 %",
+            "quantite": 7,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers battus",
+            "quantite": 38,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Bicarbonate de soude",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de pistaches",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Crémer à la feuille le beurre pommade avec le sucre roux, le sucre de coco et le sucre semoule.",
+          "Incorporer la purée de pistache et la poudre de pistaches.",
+          "Ajouter l'œuf battu (38 g) et mélanger brièvement pour émulsionner.",
+          "Ajouter la farine tamisée avec le bicarbonate et la fleur de sel, puis mélanger sans corser la pâte.",
+          "Intégrer les 50 g de pistaches torréfiées refroidies (de l'étape 1)."
+        ],
+        "conseils_etape": "Ne pas trop travailler la pâte après ajout de la farine pour préserver une texture fondante."
+      },
+      {
+        "nom_etape": "Façonnage, cuisson et finition",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 5,
+        "temps_cuisson_minutes": 13,
+        "temperature_cuisson_celsius": 165,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Préchauffer le four à 165 °C en chaleur tournante.",
+          "Former des portions de pâte et les étaler légèrement au fond des cercles posés sur plaque sulfurisée.",
+          "Remplir au maximum à la moitié de la hauteur du cercle.",
+          "Cuire à 165 °C pendant 13 minutes.",
+          "Dès la sortie du four, sur le cookie encore très chaud, pocher ou déposer au centre une généreuse pointe de caramel et de pâte de pistache.",
+          "Parsemer de pistaches caramélisées sur le dessus.",
+          "Laisser tiédir quelques instants pour que le caramel fonde légèrement, puis retirer les cercles."
+        ],
+        "conseils_etape": "Garnir impérativement à la sortie immédiate du four : la chaleur résiduelle fluidifie le caramel et la pâte de pistache pour créer le cœur coulant."
+      }
+    ],
+    "astuces_recette": [
+      "Distinction purée / pâte : utiliser une vraie purée 100 % pistache sans sucre ni arôme dans la pâte à cookie pour apporter la structure et le gras sans déséquilibrer la teneur en sucre.",
+      "Texture du caramel : si le caramel a été préparé à l'avance et stocké au frais, le ramener impérativement à température ambiante 1 heure avant le dressage pour faciliter le pochage.",
+      "Cuisson en cercle : l'emploi de cercles (ronds ou formes spécifiques) est indispensable pour canaliser le développement de la pâte et obtenir des bords nets et un centre fondant."
+    ],
+    "conseils_conservation": "À déguster idéalement tiède, 10 à 15 minutes après la sortie du four, pour un contraste thermique parfait entre la croûte du biscuit et le cœur coulant. Se conservent 48 heures dans une boîte hermétique à température ambiante. Pour retrouver l'effet coulant, réchauffer 2 à 3 minutes à 150 °C au four avant consommation."
+  }
+}

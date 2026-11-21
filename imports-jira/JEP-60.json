@@ -1,0 +1,233 @@
+{
+  "ticket": "JEP-60",
+  "recette": {
+    "titre": "Bûche façon Kinder Bueno sans moule",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une bûche de Noël régressive et élégante imitant le célèbre goût du Kinder Bueno, composée d'un biscuit viennois au cacao, d'un insert coulant de pâte de noisettes, de noisettes caramélisées et de deux ganaches onctueuses au chocolat et à la noisette, le tout sans nécessiter de moule à bûche spécifique.",
+    "rendement": "1 bûche pour 6 à 8 personnes",
+    "ustensiles": [
+      "Robot pâtissier chauffant (type Cooking Chef) ou fouet électrique et casserole",
+      "Batteur électrique ou robot coupe",
+      "Tapis à génoises (ou plaque recouverte de papier sulfurisé)",
+      "Spatule (palette)",
+      "Papier rhodoïd et scotch",
+      "Corne à pâtisserie",
+      "Mixeur plongeant (optionnel)",
+      "Poche à douille munie d'une douille lisse de 10 mm"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Pâte de noisettes (Insert)",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Noisettes",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire torréfier les noisettes au four pendant 30 minutes à 150°C puis les laisser refroidir.",
+          "Mixer les noisettes refroidies dans un robot coupe avec le sucre glace jusqu'à l'obtention d'une pâte de noisette bien lisse.",
+          "Réaliser un tube à l'aide de papier rhodoïd scotché et en fermer une extrémité avec du film plastique.",
+          "Remplir le tube de pâte de noisette sur toute sa longueur et placer au congélateur toute une nuit pour qu'il durcisse."
+        ],
+        "conseils_etape": "Assurez-vous que le tube de rhodoïd est bien fermé sur les côtés pour éviter les fuites de pâte avant congélation."
+      },
+      {
+        "nom_etape": "Ganache choco-noisette",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 65,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 11,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de noisettes (prélevée sur la préparation précédente ou du commerce)",
+            "quantite": 15,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat au lait (au robot chauffant ou au bain-marie).",
+          "Faire chauffer la crème liquide avec le glucose sur feu moyen jusqu'à ce qu'elle soit bien fumante.",
+          "Verser la pâte de noisettes et ajouter progressivement la crème chaude en plusieurs fois sur le chocolat fondu pour réaliser une émulsion.",
+          "Mixer éventuellement au mixeur plongeant pour parfaire la texture, puis filmer au contact et réserver au réfrigérateur pendant 2 heures minimum."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Biscuit viennois",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 4,
+        "temperature_cuisson_celsius": 230,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Jaunes d'oeufs",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeufs entiers",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre cassonade (divisé en deux pesées)",
+            "quantite": 114,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'oeufs",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisettes",
+            "quantite": 10,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans le bol du robot, fouetter les oeufs entiers, les jaunes d'oeufs et une première partie du sucre cassonade pendant environ 10 minutes jusqu'à obtenir une texture mousseuse et aérienne.",
+          "Dans un autre récipient, monter les blancs d'oeufs en incorporant progressivement la deuxième pesée de sucre cassonade jusqu'à l'obtention d'une mousse légère formée de vagues.",
+          "Incorporer délicatement le premier mélange dans les blancs montés à l'aide d'une maryse.",
+          "Ajouter délicatement la poudre de noisettes, le cacao en poudre tamisé et la farine.",
+          "Verser la préparation sur un tapis à génoises préalablement graissé et étaler uniformément à l'aide d'une palette sans briser les bulles d'air.",
+          "Enfourner pendant 4 minutes à 230°C, puis démouler le biscuit sur un papier sulfurisé dès sa sortie du four après un léger refroidissement."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Noisettes caramélisées",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 175,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Noisettes",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 70,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser les noisettes et le sucre glace dans le bol du robot chauffant (ou dans une casserole).",
+          "Chauffer à 175°C en activant la vitesse de mélange lente (vitesse 1) pour enrober et caraméliser les noisettes de manière autonome.",
+          "Retirer et laisser refroidir une fois le caramel bien formé autour des noisettes."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Montage de la bûche",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Étaler une couche régulière de ganache choco-noisette sur le biscuit viennois.",
+          "Parsemer par-dessus les noisettes caramélisées.",
+          "Démouler l'insert de pâte de noisettes gelé et le disposer au centre du biscuit.",
+          "Rouler fermement le biscuit à l'aide du papier sulfurisé et d'une corne pour obtenir un rouleau bien rond.",
+          "Placer la bûche au congélateur jusqu'à ce qu'elle soit bien dure."
+        ],
+        "conseils_etape": null
+      },
+      {
+        "nom_etape": "Ganache noisettes (Finition) et Décoration",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 159,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de noisettes",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace (pour la décoration)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Faire chauffer la crème liquide à feu moyen dans une casserole jusqu'à ce qu'elle soit fumante.",
+          "Verser la crème chaude en plusieurs fois sur le chocolat blanc fondu mélangé à la pâte de noisettes, en réalisant une émulsion vigoureuse à la maryse.",
+          "Filmer au contact et réserver au réfrigérateur.",
+          "Sortir la bûche congelée du congélateur, parer les extrémités pour qu'elles soient nettes.",
+          "Attendre la décongélation partielle de la bûche, puis pocher la ganache à la noisette sur le dessus en diagonale avec une douille lisse de 10 mm en écrasant les boules pour un effet graphique.",
+          "Saupoudrer légèrement de sucre glace pour imiter la neige."
+        ],
+        "conseils_etape": null
+      }
+    ],
+    "astuces_recette": [
+      "Respectez bien les temps de repos au frais pour les ganaches afin d'obtenir des textures de pochage et d'émulsion stables.",
+      "L'utilisation d'un robot chauffant simplifie grandement la réalisation des étapes de caramélisation et de fonte sans surveillance constante."
+    ],
+    "conseils_conservation": "Conserver la bûche au réfrigérateur et la consommer dans les 48 heures suivant sa décongélation complète. Laisser la bûche décongeler au minimum 4 heures au réfrigérateur ou 2 heures à température ambiante avant de servir pour profiter pleinement de l'insert coulant et du moelleux du biscuit."
+  }
+}

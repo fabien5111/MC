@@ -1,0 +1,194 @@
+{
+  "ticket": "JEP-51",
+  "recette": {
+    "titre": "Brownie quadruple chocolat et caramel",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Brownie composé d'une base chocolat noir avec des éclats de chocolats blanc, blond et au lait, refermant un coeur de caramel coulant infusé à la vanille et à la cannelle.",
+    "rendement": "Environ 6 à 8 gâteaux individuels selon le diamètre des emporte-pièces",
+    "ustensiles": [
+      "Plaque de cuisson",
+      "Toile en silicone",
+      "Bols",
+      "Robot pâtissier avec fouet",
+      "Maryse",
+      "Cadre à pâtisserie ou tapis à génoise",
+      "Papier sulfurisé",
+      "Casserole à fond large",
+      "Tamis",
+      "Emporte-pièces"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Torréfaction des fruits à coque",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Noisettes",
+            "quantite": 145,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Placer les noisettes sur une plaque allant au four.",
+          "Torréfier jusqu'à ce que la peau se retire facilement.",
+          "Laisser refroidir les noisettes à température ambiante.",
+          "Découper grossièrement les noisettes pour les concasser."
+        ],
+        "conseils_etape": "Le refroidissement des noisettes est essentiel pour ne pas faire fondre les chocolats lors du mélange."
+      },
+      {
+        "nom_etape": "Appareil à brownie",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir (type Valrhona pour un résultat optimal)",
+            "quantite": 105,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 195,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeufs",
+            "quantite": 175,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre roux",
+            "quantite": 210,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel (1 pincée)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Farine",
+            "quantite": 46,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 11.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 37,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blond",
+            "quantite": 37,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 37,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le beurre et le chocolat noir au micro-ondes ou au bain-marie.",
+          "Découper le trio de chocolats (blanc, blond, lait) en petits éclats s'il ne s'agit pas de pistoles.",
+          "Dans la cuve du robot, mélanger les oeufs et le sucre roux à l'aide du fouet.",
+          "Ajouter le mélange fondu de beurre et de chocolat noir, puis incorporer la fleur de sel.",
+          "Arrêter le robot, ajouter la farine et le cacao en poudre, puis relancer le fouet jusqu'à obtention d'un mélange homogène.",
+          "Incorporer délicatement les noisettes torréfiées et concassées à l'aide d'une maryse.",
+          "Couler l'appareil sur environ 1 cm d'épaisseur dans un cadre préalablement graissé et chemisé avec du papier sulfurisé, ou sur un tapis à génoise.",
+          "Parsemer le dessus de la pâte avec les éclats des trois chocolats restants.",
+          "Enfourner, puis laisser refroidir le biscuit à la sortie du four."
+        ],
+        "conseils_etape": "Assurer une épaisseur de pâte homogène pour une cuisson régulière."
+      },
+      {
+        "nom_etape": "Caramel vanille cannelle",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 190,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de vanille (ou une gousse grattée)",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Bâton de cannelle (ou 2g en poudre)",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 190,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser la crème liquide, la vanille et la cannelle dans une casserole.",
+          "Porter à ébullition, puis stopper le feu, couvrir et laisser infuser pendant environ 15 minutes.",
+          "Verser le glucose et une première partie du sucre dans une grande casserole à fond large.",
+          "Laisser caraméliser à sec en ajoutant le reste du sucre progressivement dès que la partie précédente est fondue, en mélangeant uniquement les zones liquides.",
+          "Décuire le caramel fondu en ajoutant le beurre à température ambiante, hors du feu.",
+          "Passer la crème infusée au tamis et l'incorporer au caramel.",
+          "Remettre sur le feu et laisser cuire le mélange pendant environ 1 minute en remuant légèrement."
+        ],
+        "conseils_etape": "A réaliser environ 10 minutes avant la fin du refroidissement du brownie. Utiliser une casserole très large pour faciliter la fonte du sucre à sec sans créer d'amas. Pousser la cuisson du caramel pour obtenir une couleur ambrée foncée qui équilibrera le sucre de la recette."
+      },
+      {
+        "nom_etape": "Montage",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Découper un nombre pair de portions de brownie refroidi à l'aide des emporte-pièces.",
+          "Couler le caramel encore chaud et liquide sur la moitié des portions, sur environ 1 cm d'épaisseur.",
+          "Placer immédiatement les portions de brownie restantes sur le dessus pour former des sandwichs.",
+          "Placer l'ensemble au congélateur pendant au moins 2 heures.",
+          "Découper éventuellement les bords pour une finition plus nette."
+        ],
+        "conseils_etape": "Les parures découpées lors de la finition sont comestibles et peuvent être conservées."
+      }
+    ],
+    "astuces_recette": [
+      "Le contraste entre la quantité de sucre et les éléments bruts (chocolat noir, noisettes) nécessite de conserver les proportions initiales de la recette pour garantir la texture finale.",
+      "Cette fiche recette trouvera parfaitement sa place dans l'application Je pâtisse ! afin de pouvoir adapter automatiquement les quantités au volume de vos différents cadres de montage."
+    ],
+    "conseils_conservation": "Laisser les brownies revenir à température ambiante après la sortie du congélateur pour obtenir un coeur coulant optimal. A conserver dans une boîte hermétique au réfrigérateur jusqu'à 4 jours."
+  }
+}

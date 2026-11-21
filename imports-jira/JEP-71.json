@@ -1,0 +1,199 @@
+{
+  "ticket": "JEP-71",
+  "recette": {
+    "titre": "Le Cake Marbré Chocolat Cacahuète",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un cake ultra gourmand signé Nicolas Paciello, associant un appareil moelleux au chocolat et aux cacahuètes grillées, recouvert d'un glaçage marbré en deux chocolats.",
+    "rendement": "1 cake (environ 6 à 8 personnes)",
+    "ustensiles": [
+      "Robot pâtissier (ou fouet à main)",
+      "Casseroles",
+      "Cul-de-poule",
+      "Moule à cake",
+      "Maryse",
+      "Pichets",
+      "Mixeur plongeant",
+      "Film alimentaire",
+      "Couteau à dent et couteau d'office",
+      "Poche à douille munie d'une douille lisse très fine"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Préparation et cuisson de l'appareil à cake",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 45,
+        "temperature_cuisson_celsius": 165,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Œufs",
+            "quantite": 4,
+            "unite": null
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amandes",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide (30% de MG, à température ambiante)",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre fondu (à température ambiante)",
+            "quantite": 65,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir fondu",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacahuètes salées et grillées hachées",
+            "quantite": 80,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans la cuve du robot muni du fouet, mélanger les œufs et le sucre semoule jusqu'à consistance homogène.",
+          "Ajouter le miel et mélanger.",
+          "Incorporer la poudre d'amandes, puis la farine, le cacao en poudre et la levure chimique.",
+          "Verser la crème liquide à température ambiante, puis le beurre fondu refroidi, et terminer par le chocolat noir fondu.",
+          "Ajouter les cacahuètes hachées et mélanger délicatement à la maryse.",
+          "Verser la préparation dans un moule à cake préalablement beurré et fariné.",
+          "Enfourner à 165 °C pendant environ 45 minutes selon le four.",
+          "Démouler et laisser refroidir à température ambiante."
+        ],
+        "conseils_etape": "S'assurer que la crème et le beurre sont bien à température ambiante pour ne pas figer le chocolat fondu dans l'appareil."
+      },
+      {
+        "nom_etape": "Ganache chocolat noir",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Crème liquide (30% de MG)",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir",
+            "quantite": 170,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux (à température ambiante)",
+            "quantite": 15,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Chauffer la crème liquide et le miel dans une casserole jusqu'à ébullition.",
+          "Verser la crème bouillante en trois fois sur le chocolat noir préalablement fondu, en réalisant des cercles au centre avec une maryse pour émulsionner.",
+          "Verser dans un pichet, ajouter le beurre doux et mixer au mixeur plongeant pour parfaire l'émulsion et la fluidité.",
+          "Filmer au contact et laisser réserver à température ambiante."
+        ],
+        "conseils_etape": "Le pichet et le mixeur plongeant garantissent un glaçage parfaitement brillant et fluide."
+      },
+      {
+        "nom_etape": "Ganache chocolat au lait",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Crème liquide (30% de MG)",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 135,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 13,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux (à température ambiante)",
+            "quantite": 8,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire chauffer la crème liquide et le miel dans une casserole jusqu'à légère ébullition.",
+          "Verser en trois fois sur le chocolat au lait préalablement fondu en émulsionnant au centre du récipient.",
+          "Ajouter le beurre à température ambiante et mixer au mixeur plongeant pour obtenir une texture brillante.",
+          "Laisser descendre les deux ganaches à la même température d'utilisation, soit environ 28 °C à 30 °C."
+        ],
+        "conseils_etape": "Veiller à ce que les deux ganaches atteignent la même température avant l'étape du glaçage."
+      },
+      {
+        "nom_etape": "Glaçage et finition",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Parer le dessus du cake à l'aide d'un couteau à dent pour obtenir une surface bien plane, puis le retourner.",
+          "Napper entièrement le cake refroidi avec la ganache au chocolat noir à 28-30 °C.",
+          "Remplir une poche à douille munie d'une douille fine avec la ganache au chocolat au lait et tracer des lignes régulières sur le dessus du cake.",
+          "Passer un couteau perpendiculairement aux traits de chocolat au lait pour créer l'effet marbré."
+        ],
+        "conseils_etape": "Travailler rapidement avec les ganaches à bonne température pour éviter qu'elles ne figent trop vite pendant le marbrage."
+      }
+    ],
+    "astuces_recette": [
+      "Utiliser des chocolats de qualité (tels que Valrhona) pour garantir la rondeur et la brillance des ganaches.",
+      "Pour accentuer encore le goût de fruit à coque, il est possible de remplacer la poudre d'amandes de l'appareil à cake par de la poudre de cacahuètes mixée maison."
+    ],
+    "conseils_conservation": "Déguster le cake à température ambiante pour profiter de la texture fondante de la ganache et du moelleux du biscuit. Conserver le cake à température ambiante sous une cloche ou bien filmé pour préserver le moelleux du biscuit et l'onctuosité des ganaches."
+  }
+}

@@ -1,0 +1,247 @@
+{
+  "ticket": "JEP-97",
+  "recette": {
+    "titre": "Choux poire et fève tonka",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=kY3hJqE186s",
+    "description": "Choux croustillants surmontés d'un craquelin, garnis d'une compotée fondante de poires caramélisées et d'une ganache montée légère parfumée à la fève tonka et à la poire.",
+    "rendement": "6 choux individuels",
+    "ustensiles": [
+      "Casseroles",
+      "Culs-de-poule",
+      "Fouet à main",
+      "Spatule / maryse",
+      "Râpe fine (type Microplane)",
+      "Mixeur plongeant",
+      "Rouleau à pâtisserie",
+      "Papier cuisson",
+      "Emporte-pièces ronds (3 cm et 4 cm)",
+      "Plaque de cuisson",
+      "Batteur électrique ou robot pâtissier avec fouet",
+      "Poches à douille",
+      "Douille unie (ou cannelée) pour le pochage des choux",
+      "Douille petits fours",
+      "Poêle",
+      "Couteau d'office"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache montée poire-tonka",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 24,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30% (à chauffer)",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Fève tonka",
+            "quantite": 0.5,
+            "unite": null
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de poire (ou jus de poire)",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30% froide",
+            "quantite": 200,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans l'eau très froide pendant 15 minutes au réfrigérateur.",
+          "Chauffer les 80 g de crème liquide dans une casserole avec la demi-fève de tonka finement râpée.",
+          "Faire fondre le chocolat blanc au bain-marie ou au micro-ondes à faible puissance.",
+          "Verser la crème chaude infusée en deux ou trois fois sur le chocolat blanc fondu en créant une émulsion par petits cercles au centre à l'aide d'une maryse.",
+          "Ajouter la gélatine hydratée (avec son eau) et mélanger jusqu'à dissolution complète.",
+          "Incorporer la purée de poire puis les 200 g de crème liquide bien froide.",
+          "Mixer l'ensemble au mixeur plongeant pour parfaire l'émulsion sans incorporer de bulles d'air.",
+          "Verser dans un récipient large, filmer au contact et réserver au réfrigérateur pendant au moins 4 heures."
+        ],
+        "conseils_etape": "Utiliser un récipient plat et large pour accélérer le refroidissement de la ganache avant foisonnement. À réaliser la veille, ou au moins 4 heures avant le montage."
+      },
+      {
+        "nom_etape": "Craquelin",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux (pommade)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 62,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger du bout des doigts dans un cul-de-poule le beurre pommade, la cassonade et la farine jusqu'à formation d'une pâte homogène.",
+          "Étaler la pâte entre deux feuilles de papier cuisson sur une épaisseur régulière de 3 mm.",
+          "Détailler des disques à l'aide d'un emporte-pièce de 4 cm de diamètre sans les décoller.",
+          "Placer la feuille à plat au congélateur pendant au moins 30 minutes pour rigidifier les disques."
+        ],
+        "conseils_etape": "Conserver les disques de craquelin au congélateur jusqu'au moment exact de les poser sur les choux dressés."
+      },
+      {
+        "nom_etape": "Pâte à choux et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 7,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Porter à ébullition dans une casserole l'eau, le lait, le beurre coupé en morceaux, le sucre et le sel.",
+          "Retirer du feu dès ébullition et verser la farine tamisée en une seule fois.",
+          "Mélanger vigoureusement hors du feu jusqu'à absorption complète, puis remettre sur feu doux à moyen.",
+          "Dessécher la panade pendant environ 1 minute à la spatule en remuant sans arrêt jusqu'à ce qu'elle se détache des parois.",
+          "Débarrasser dans un cul-de-poule et laisser tiédir une à deux minutes.",
+          "Battre les œufs en omelette et les incorporer en trois à quatre fois, en mélangeant parfaitement entre chaque ajout jusqu'à obtenir une pâte souple formant une crête (« bec d'oiseau »).",
+          "Transvaser la pâte dans une poche munie d'une douille unie ou cannelée.",
+          "Dresser sur une plaque recouverte de papier cuisson 6 choux réguliers d'environ 3 cm de diamètre.",
+          "Déposer un disque de craquelin congelé de 4 cm sur chaque chou.",
+          "Enfourner à 180°C en chaleur statique pendant 15 minutes, puis baisser à 160°C pendant 10 minutes supplémentaires sans ouvrir la porte du four.",
+          "Laisser refroidir les choux sur une grille."
+        ],
+        "conseils_etape": "Ne jamais ouvrir le four durant les 20 premières minutes pour éviter que les choux ne retombent sous l'effet du choc thermique."
+      },
+      {
+        "nom_etape": "Poires caramélisées",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Poires",
+            "quantite": 4,
+            "unite": null
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre roux",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Éplucher les poires, retirer le cœur et couper la chair en dés d'environ 1 cm de côté (en réserver une petite poignée crue pour le décor si souhaité).",
+          "Faire fondre le beurre dans une poêle jusqu'à ce qu'il commence à blondir (beurre noisette).",
+          "Ajouter les dés de poires et les faire revenir 2 minutes.",
+          "Saupoudrer le sucre roux progressivement tout en mélangeant pour enrober les fruits.",
+          "Cuire à feu moyen jusqu'à l'obtention d'un caramel ambré et de fruits tendres et compotés.",
+          "Ajouter la fleur de sel, mélanger puis débarrasser dans un récipient plat pour laisser refroidir à température ambiante."
+        ],
+        "conseils_etape": "Surveiller la cuisson des poires afin de conserver un léger maintien sans les réduire totalement en purée. À réaliser pendant le refroidissement des choux."
+      },
+      {
+        "nom_etape": "Montée de la ganache et dressage final",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [],
+        "instructions": [
+          "Verser la ganache bien froide dans la cuve du robot munie du fouet (idéalement pré-refroidis).",
+          "Monter à vitesse moyenne jusqu'à obtention d'une texture ferme et onctueuse tenant au fouet (bec d'oiseau).",
+          "Transvaser la ganache montée dans une poche munie d'une douille petits fours.",
+          "Découper le tiers ou la moitié supérieure des choux refroidis à l'aide d'un couteau-scie.",
+          "Recouper éventuellement les chapeaux avec un emporte-pièce de 3 cm pour une finition nette.",
+          "Garnir généreusement la base de chaque chou avec la compotée de poires refroidie.",
+          "Pocher une rosace volumineuse de ganache montée sur la compotée.",
+          "Râper un léger voile de fève tonka sur la ganache, déposer le chapeau de craquelin puis ajouter quelques petits cubes de poires fraîches en finition."
+        ],
+        "conseils_etape": "Monter la crème à vitesse modérée pour obtenir une texture fine et éviter de la faire grainer. À réaliser 1 à 2 heures maximum avant le service."
+      }
+    ],
+    "astuces_recette": [
+      "Dosage du sucre : la recette offre un profil très doux ; il est possible de réduire la cassonade des poires à 70 g ou 80 g pour équilibrer la sucrosité globale apportée par le chocolat blanc et le craquelin.",
+      "Fève tonka : son arôme est puissant, un râpage léger suffit pour éviter d'écraser la finesse de la poire.",
+      "Cuisson optimale : laisser les choux sécher quelques minutes dans le four éteint avec la porte entrouverte en fin de cuisson renforce leur croustillant."
+    ],
+    "conseils_conservation": "Servir frais mais sorti du réfrigérateur 10 minutes avant pour libérer les arômes du beurre et du caramel. Les choux garnis se conservent au maximum 24 heures au réfrigérateur (le craquelin perdra progressivement de son croustillant sous l'humidité de la garniture). Pour une organisation optimale, cuire les choux et préparer la compotée à l'avance, puis monter la ganache et garnir au dernier moment."
+  }
+}

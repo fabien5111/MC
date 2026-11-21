@@ -1,0 +1,227 @@
+{
+  "ticket": "JEP-47",
+  "recette": {
+    "titre": "Brioches Gianduja façon Rocher",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Brioches individuelles moelleuses, fourrées d'une ganache onctueuse au gianduja, recouvertes d'un glaçage rocher croustillant et parsemées de noisettes torréfiées.",
+    "rendement": "10 brioches individuelles",
+    "ustensiles": [
+      "Robot pâtissier avec crochet",
+      "Cul-de-poule",
+      "Casserole",
+      "Moule à fond large",
+      "Film alimentaire",
+      "Mixeur",
+      "Tamis",
+      "Poêle",
+      "Pinceau",
+      "Moules individuels (ou cannelés)",
+      "Poche à douille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Pâte à brioche",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 765,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Farine de Gruau T45",
+            "quantite": 210,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 39,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeufs",
+            "quantite": 125,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure fraîche",
+            "quantite": 8,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur d'oranger",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Rhum brun",
+            "quantite": 6,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans le bol du robot, placer le sel et le sucre, puis recouvrir avec la farine.",
+          "Ajouter la levure fraîche et les oeufs (idéalement bien froids).",
+          "Mélanger en première vitesse jusqu'à l'obtention d'une pâte homogène formant une seule boule.",
+          "Passer en deuxième vitesse pendant 4 minutes.",
+          "Ajouter la fleur d'oranger, le rhum et le beurre coupé en cubes à température ambiante.",
+          "Mélanger en première vitesse jusqu'à l'incorporation complète du beurre.",
+          "Passer en deuxième vitesse pendant 4 à 5 minutes (ne pas dépasser une température de pâte de 24 degrés).",
+          "Laisser pousser 45 minutes à température ambiante.",
+          "Avec des doigts farinés, effectuer des rabats en tirant la pâte et en la ramenant vers le centre.",
+          "Filmer la pâte au contact et placer au réfrigérateur pour la nuit."
+        ],
+        "conseils_etape": "Utiliser des oeufs très froids pour compenser l'échauffement de la pâte lors du pétrissage."
+      },
+      {
+        "nom_etape": "Ganache Gianduja",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Gianduja lait",
+            "quantite": 99,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de noisettes",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans un cul-de-poule, réunir la pâte de noisettes, le gianduja préalablement fondu et la fleur de sel.",
+          "Dans une casserole, porter la crème liquide et le lait à léger frémissement.",
+          "Verser le liquide chaud en deux ou trois fois sur le mélange au gianduja.",
+          "Réaliser une émulsion en effectuant de petits cercles au centre du cul-de-poule.",
+          "Verser la ganache dans un moule à fond large.",
+          "Recouvrir d'un film alimentaire au contact pour éviter qu'elle ne sèche.",
+          "Placer au réfrigérateur pendant 4 heures minimum."
+        ],
+        "conseils_etape": "L'émulsion doit être lisse et brillante pour garantir la bonne texture de la ganache."
+      },
+      {
+        "nom_etape": "Façonnage, dorure, décoration et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Oeuf (dorure)",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre grains",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Récupérer le pâton de brioche et détailler des boules d'environ 35 grammes (ou 70 grammes si utilisation de moules cannelés).",
+          "Dégazer en écrasant chaque boule avec la paume de la main et rabattre les quatre côtés vers le centre.",
+          "Retourner le pâton et le bouler sur un plan de travail très légèrement fariné.",
+          "Déposer les boules dans les moules préalablement graissés.",
+          "Laisser pousser pendant environ 1 heure à température ambiante.",
+          "Dans le mixeur, placer les noisettes et mixer pour obtenir des éclats.",
+          "Tamiser les noisettes pour retirer la poudre et ne garder que les morceaux.",
+          "Torréfier les éclats de noisettes quelques minutes dans une poêle chaude, puis les laisser refroidir et les mélanger au sucre grains.",
+          "Préparer la dorure en mélangeant l'oeuf et la crème liquide.",
+          "Dorer les brioches au pinceau en évitant d'en faire couler sur les bords du moule.",
+          "Saupoudrer généreusement le dessus des brioches avec le mélange noisettes et sucre grains.",
+          "Cuire au four pendant environ 15 minutes à 160 degrés."
+        ],
+        "conseils_etape": "Ne pas mettre de dorure sur les bords des moules pour éviter que la brioche n'accroche et faciliter le démoulage."
+      },
+      {
+        "nom_etape": "Glaçage Rocher et Montage",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de pépins de raisin",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes (torréfiées et concassées)",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Dans un cul-de-poule, mélanger le chocolat au lait fondu, l'huile de pépins de raisin et les noisettes torréfiées concassées.",
+          "Réserver ce glaçage rocher à température ambiante.",
+          "Démouler les brioches une fois qu'elles sont tièdes.",
+          "Fourrer le coeur des brioches avec la ganache gianduja à l'aide d'une poche à douille.",
+          "Plonger le dessus des brioches fourrées dans le glaçage rocher (remis à 35 degrés si besoin).",
+          "Laisser figer le glaçage.",
+          "Saupoudrer de sucre glace avant le service."
+        ],
+        "conseils_etape": "Attendre que les brioches tiédissent avant le démoulage pour ne pas les casser."
+      }
+    ],
+    "astuces_recette": [
+      "Le contrôle de la température est l'élément technique le plus important : ne pas dépasser 24 degrés lors du pétrissage de la pâte à brioche pour ne pas altérer la levure et le réseau glutineux.",
+      "Le passage au froid toute une nuit est indispensable pour développer les arômes et manipuler la pâte plus facilement le lendemain."
+    ],
+    "conseils_conservation": "A déguster tiède ou à température ambiante le jour même pour profiter du contraste optimal entre le croustillant du glaçage et le coeur fondant. Les brioches se conservent 24 à 48 heures dans une boîte hermétique à température ambiante, à l'abri de l'humidité."
+  }
+}

@@ -1,0 +1,297 @@
+{
+  "ticket": "JEP-96",
+  "recette": {
+    "titre": "Choux noisette",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=s5ZhyzO3B-o",
+    "description": "Petits choux garnis d'un craquelin croustillant à la noisette, d'un cœur coulant de praliné pur, d'une crème diplomate onctueuse au praliné et d'un disque de chocolat au lait craquant pour apporter du relief à la dégustation.",
+    "rendement": "Environ 8 à 10 choux individuels",
+    "ustensiles": [
+      "Casseroles",
+      "Culs-de-poule",
+      "Fouet",
+      "Maryse",
+      "Mixeur plongeant",
+      "Robot-coupe (ou mixeur puissant)",
+      "Rouleau à pâtisserie",
+      "Papier sulfurisé",
+      "Feuilles guitare",
+      "Poches à douille",
+      "Douille unie de 10 mm",
+      "Douille unie de 20 mm",
+      "Emporte-pièces ronds (4 cm et 4-5 cm)",
+      "Moule en silicone demi-sphères (petites empreintes)",
+      "Tapis silicone type Silpat",
+      "Plaque de cuisson",
+      "Thermomètre de cuisine"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Praliné noisette",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 35,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Noisettes",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Disposer les noisettes sur un tapis en silicone et les torréfier au four à 150 °C pendant 30 minutes.",
+          "Réaliser un caramel à sec à feu doux avec le sucre semoule jusqu'à obtenir une belle couleur ambrée.",
+          "Couler le caramel sur le tapis en silicone et laisser refroidir complètement jusqu'à durcissement complet.",
+          "Casser le caramel froid en morceaux et le placer avec les noisettes torréfiées dans le bol d'un robot-coupe.",
+          "Mixer par impulsions puis en continu jusqu'à l'obtention d'une pâte de praliné bien fluide et lisse.",
+          "Débarrasser dans un bol, incorporer la fleur de sel et mélanger soigneusement pour l'homogénéiser.",
+          "Couler la préparation dans des moules à demi-sphères et bloquer au congélateur pendant toute une nuit."
+        ],
+        "conseils_etape": "Ne pas écourter la torréfaction des noisettes, clé aromatique d'un praliné puissant. Laisser figer totalement au congélateur pour faciliter le démoulage et le montage. À réaliser la veille ou l'avant-veille."
+      },
+      {
+        "nom_etape": "Craquelin noisette",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Farine",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisettes",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux (pommade ou tempéré)",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Rassembler la farine, la poudre de noisettes, la cassonade, le beurre doux et la fleur de sel dans un cul-de-poule, puis sabler et amalgamer le tout à la main jusqu'à obtenir une pâte homogène.",
+          "Placer la pâte entre deux feuilles de papier sulfurisé et l'étaler au rouleau à pâtisserie sur 2 à 3 mm d'épaisseur.",
+          "Retirer la feuille supérieure et détailler des disques à l'aide d'un emporte-pièce de 4 cm de diamètre sans les décoller.",
+          "Glisser la plaque au congélateur pendant 15 à 20 minutes pour raffermir la pâte.",
+          "Retourner sur une planche, retirer le second papier sulfurisé et réserver les disques découpés au congélateur jusqu'au pochage."
+        ],
+        "conseils_etape": "Étaler de manière bien régulière pour garantir un développement bien symétrique du chou en cuisson. Peut être réalisé la veille."
+      },
+      {
+        "nom_etape": "Pâte à choux et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 7,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 120,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser le lait, l'eau, le miel, le sel et le beurre dans une casserole, puis porter à ébullition douce jusqu'à fonte totale du beurre.",
+          "Retirer du feu, verser la farine en une seule fois et mélanger vigoureusement à la maryse.",
+          "Remettre sur feu doux à moyen pour dessécher la panade pendant 2 à 3 minutes jusqu'à ce qu'elle se détache bien des parois.",
+          "Débarrasser dans un cul-de-poule et incorporer les œufs battus petit à petit en mélangeant énergiquement entre chaque ajout jusqu'à formation du ruban (« la crête » ou « vague » au bout de la maryse).",
+          "Verser dans une poche munie d'une douille unie de 10 mm et pocher des choux réguliers d'environ 3 cm de diamètre sur une plaque garnie d'un tapis silicone.",
+          "Déposer immédiatement un disque de craquelin congelé sur chaque chou en exerçant une très légère pression.",
+          "Enfourner à 180 °C pendant 15 minutes sans jamais ouvrir la porte, puis baisser à 160 °C et poursuivre la cuisson 10 minutes pour bien les sécher."
+        ],
+        "conseils_etape": "Ne pas ouvrir le four durant les 20 premières minutes de cuisson sous peine de voir les choux retomber immédiatement."
+      },
+      {
+        "nom_etape": "Crème diplomate noisette",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 220,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 37,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre (200 Bloom)",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau froide (hydratation)",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Fécule de maïs (Maïzena)",
+            "quantite": 18,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné noisette (prélevé sur la production ou en pâte)",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30 % (bien froide)",
+            "quantite": 75,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réhydrater la gélatine en poudre dans l'eau froide pendant 15 minutes au réfrigérateur.",
+          "Blanchir vivement au fouet les jaunes d'œufs et le sucre pendant 20 secondes, puis ajouter la fécule de maïs et mélanger.",
+          "Porter le lait entier à légère ébullition dans une casserole, en verser la moitié sur l'appareil à base d'œufs en fouettant, puis reverser le tout dans la casserole.",
+          "Cuire sur feu moyen en fouettant sans discontinuer jusqu'à épaississement, puis poursuivre la cuisson pendant 1 min 30 à 2 minutes après les premières bulles.",
+          "Hors du feu, incorporer la gélatine hydratée au fouet.",
+          "Ajouter le praliné noisette et le beurre froid coupé en dés, puis mixer au mixeur plongeant pour créer une émulsion fine.",
+          "Filmer au contact et placer au réfrigérateur pendant 4 heures minimum.",
+          "Monter la crème liquide froide en chantilly souple (bec d'oiseau).",
+          "Fouetter brièvement la crème pâtissière froide pour la détendre, puis incorporer délicatement la crème montée à la maryse en une seule fois.",
+          "Débarrasser en poche munie d'une douille de 20 mm et réserver au frais jusqu'au montage."
+        ],
+        "conseils_etape": "Ne pas monter la crème liquide trop ferme pour conserver une texture soyeuse et facile à pocher sans trancher au mélange. Commencer 4 à 5 heures avant le montage, ou préparer la base pâtissière la veille."
+      },
+      {
+        "nom_etape": "Décor en chocolat au lait tempéré",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 25,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 45,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait de couverture",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao en poudre (Mycryo)",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat au lait au bain-marie jusqu'à atteindre 45 °C.",
+          "Laisser redescendre la température hors du feu en mélangeant jusqu'à 34-35 °C.",
+          "Ajouter le beurre de cacao Mycryo, remuer pour le dissoudre parfaitement et laisser refroidir jusqu'à 30 °C.",
+          "Verser le chocolat entre deux feuilles guitare et l'abaisser finement et régulièrement au rouleau à pâtisserie.",
+          "Laisser cristalliser à température ambiante 10 à 15 minutes jusqu'à texture pâteuse sous le doigt.",
+          "Détailler des disques de 4 à 5 cm de diamètre à l'emporte-pièce directement à travers la feuille supérieure.",
+          "Bloquer au réfrigérateur pendant 10 à 15 minutes pour figer la cristallisation, puis décoller délicatement les palets."
+        ],
+        "conseils_etape": "Éviter les passages répétés du rouleau sur la feuille guitare pour éviter d'emprisonner des bulles d'air et conserver une surface brillante. Courbe de tempérage : 45 °C / 34 °C / 30 °C."
+      },
+      {
+        "nom_etape": "Montage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Noisettes entières torréfiées concassées (quelques-unes, pour la finition)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Découper le tiers supérieur de chaque chou cuit à l'aide d'un couteau-scie.",
+          "Garnir le fond du chou à mi-hauteur avec la crème diplomate noisette.",
+          "Démouler et insérer une demi-sphère de praliné congelée au cœur de la crème.",
+          "Poser un disque de chocolat au lait tempéré sur le chou.",
+          "Pocher une généreuse boule de crème diplomate noisette à la douille de 20 mm par-dessus le disque de chocolat.",
+          "Parsemer de quelques éclats de noisettes torréfiées."
+        ],
+        "conseils_etape": "Insérer le praliné bien congelé pour éviter qu'il ne coule sur les parois au moment de positionner le disque de chocolat. À réaliser 1 à 2 heures avant le service."
+      }
+    ],
+    "astuces_recette": [
+      "Le secret d'une belle découpe réside dans le tempérage du disque de chocolat : un chocolat bien tempéré apporte un contraste net sans s'écraser sous la dent.",
+      "Ne pas hésiter à préparer le praliné plusieurs jours à l'avance ; conservé en bocal hermétique ou déjà moulé au congélateur, il conserve toutes ses qualités organoleptiques."
+    ],
+    "conseils_conservation": "Conserver impérativement au réfrigérateur et consommer dans les 24 heures pour préserver le croustillant de la pâte à choux et du craquelin. Laisser reposer les choux montés environ 15 minutes au réfrigérateur avant de servir pour permettre à l'insert praliné de décongeler tout en gardant une diplomate ferme."
+  }
+}

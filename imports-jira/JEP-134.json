@@ -1,0 +1,407 @@
+{
+  "ticket": "JEP-134",
+  "recette": {
+    "titre": "Entremets vanille et fraise façon Yann Couvreur",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=F4_9jBsnK0Q",
+    "description": "Un entremets très vanillé inspiré d'une recette du chef Yann Couvreur, composé d'un biscuit moelleux vanille façon cake imbibé de sirop, d'un crémeux vanille intense, d'une compotée mi-cuite mi-fraîche de fraises à la vanille, d'une mousse sabayon vanillée à la crème épaisse et recouvert d'un glaçage miroir blanc vanille.",
+    "rendement": "Entremets rond de 18 cm de diamètre, pour 6 à 8 personnes",
+    "ustensiles": [
+      "1 cercle à pâtisserie de 16 cm de diamètre",
+      "1 cercle à pâtisserie de 18 cm de diamètre (hauteur 4,5 ou 5 cm)",
+      "Film alimentaire étirable",
+      "Mixeur plongeant (girafe)",
+      "Robot culinaire avec lame (robot-coupe) ou hachoir",
+      "Batteur électrique ou robot pâtissier sur socle",
+      "Casseroles",
+      "Cul-de-poule et récipients larges",
+      "Thermomètre de cuisson",
+      "Chinois / tamis fin",
+      "Spatule maryse",
+      "Réglettes de découpe de 1 cm d'épaisseur",
+      "Couteau scie à génoise",
+      "Petite spatule coudée ou palette",
+      "Grille à glacer et plat de récupération",
+      "Sèche-cheveux ou chalumeau de cuisine",
+      "Boule à thé ou petite passette"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crémeux vanille (insert)",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 420,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 84,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30 %",
+            "quantite": 168,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousses de vanille",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 46,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Masse gélatine (3 g de gélatine en poudre + 18 g d'eau froide hydratée 10 min)",
+            "quantite": 22,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Fendre et gratter les 2 gousses de vanille.",
+          "Porter la crème liquide à léger frémissement dans une casserole avec les gousses et les grains, puis couper le feu.",
+          "Verser la crème chaude avec les gousses dans un pichet et mixer au mixeur plongeant pendant plusieurs minutes jusqu'à ce que la crème commence à brunir.",
+          "Passer la crème vanillée au tamis pour retirer les résidus de gousses non mixés.",
+          "Fouetter vivement les jaunes d'œufs et le sucre dans un cul-de-poule pendant 20 secondes.",
+          "Verser la crème chaude vanillée sur le mélange jaunes/sucre en fouettant, puis reverser le tout dans la casserole.",
+          "Cuire à feu doux/moyen à la nappe jusqu'à atteindre 84°C (texture crème anglaise).",
+          "Hors du feu, incorporer la masse gélatine et mélanger pour la faire fondre.",
+          "Débarrasser dans un récipient large, filmer au contact et placer au réfrigérateur plusieurs heures jusqu'à gélification.",
+          "Détendre le crémeux refroidi au mixeur plongeant pour lisser la texture.",
+          "Couler le crémeux sur environ 1 cm de hauteur dans un cercle de 16 cm chemisé de film étirable à sa base, lisser et placer au congélateur jusqu'à durcissement."
+        ],
+        "conseils_etape": "Mixer les gousses entières dans la crème chaude décuple les arômes et intensifie le parfum vanillé. À réaliser à J-2 (avant-veille). Attente : 3 à 4 heures au frais, puis congélation complète (minimum 3 heures)."
+      },
+      {
+        "nom_etape": "Compotée fraises-vanille (insert)",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": 100,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Fraises",
+            "quantite": 180,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Pectine NH",
+            "quantite": 1.2,
+            "unite": "g"
+          },
+          {
+            "nom": "Agar-agar",
+            "quantite": 1.8,
+            "unite": "g"
+          },
+          {
+            "nom": "Fraises fraîches",
+            "quantite": 60,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Couper les 180 g de fraises et les 60 g de fraises fraîches en dés d'environ 1 cm de côté.",
+          "Mettre les 180 g de fraises en morceaux dans une casserole avec une partie du sucre et les grains de la gousse de vanille, puis laisser compoter à feu moyen.",
+          "Mélanger intimement le reste du sucre avec l'agar-agar et la pectine NH.",
+          "Verser les poudres en pluie sur la compotée frémissante, mélanger au fouet et maintenir une ébullition franche pendant 30 secondes à 1 minute.",
+          "Retirer du feu, mixer très brièvement au mixeur plongeant pour homogénéiser tout en conservant quelques morceaux.",
+          "Ajouter immédiatement les 60 g de dés de fraises fraîches crues hors du feu.",
+          "Filmer au contact, laisser tiédir puis refroidir complètement au réfrigérateur.",
+          "Détendre légèrement la compotée à la cuillère, puis la couler sur 5 à 6 mm d'épaisseur directement sur le disque de crémeux vanille congelé dans le cercle de 16 cm.",
+          "Remettre l'insert complet (crémeux + compotée) au congélateur."
+        ],
+        "conseils_etape": "Toujours mélanger l'agar-agar et la pectine avec un peu de sucre avant versement pour éviter les grumeaux. À réaliser à J-2 (avant-veille, après la prise du crémeux)."
+      },
+      {
+        "nom_etape": "Biscuit vanille",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Miel",
+            "quantite": 22,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs",
+            "quantite": 66,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30 %",
+            "quantite": 39,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 6,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amandes",
+            "quantite": 52,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousses de vanille",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Beurre",
+            "quantite": 22,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 170°C.",
+          "Faire fondre le beurre et le laisser tiédir.",
+          "Mettre dans le bol d'un robot-coupe : la farine, la levure chimique, le sel, le sucre, la poudre d'amandes, la crème liquide, le miel, les œufs et les grains des 2 gousses de vanille.",
+          "Mixer par impulsions jusqu'à l'obtention d'un appareil homogène.",
+          "Ajouter le beurre fondu tiède et mixer brièvement pour l'incorporer.",
+          "Poser un cercle de 18 cm de diamètre sur une plaque munie d'un tapis silicone ou de papier cuisson graissé.",
+          "Couler l'appareil à biscuit et enfourner pour 25 minutes à 170°C (chaleur tournante).",
+          "Laisser refroidir sur grille après cuisson."
+        ],
+        "conseils_etape": "Cuire dans un cercle de 18 cm permet d'anticiper la rétractation du biscuit à la cuisson avant de le redécouper proprement à 16 cm. À réaliser à J-1 (veille)."
+      },
+      {
+        "nom_etape": "Sirop d'imbibition",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": 100,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 46,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 14,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de vanille",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mettre l'eau, le sucre et la poudre de vanille dans une petite casserole.",
+          "Porter à ébullition jusqu'à dissolution complète du sucre.",
+          "Retirer du feu et laisser refroidir à température ambiante jusqu'au montage."
+        ],
+        "conseils_etape": "Imbiber le biscuit avec un sirop froid ou à peine tiède pour éviter de faire fondre la mousse lors de l'assemblage. À réaliser à J-1 (veille)."
+      },
+      {
+        "nom_etape": "Mousse vanille",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 60,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30 % très froide",
+            "quantite": 204,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaune d'œuf",
+            "quantite": 32,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 46,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème épaisse",
+            "quantite": 170,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 8,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousses de vanille",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Masse gélatine (environ 5,7 g de gélatine + 34,3 g d'eau)",
+            "quantite": 40,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Monter les 204 g de crème liquide bien froide en chantilly souple au batteur, puis la réserver au frais.",
+          "Fouetter les jaunes d'œufs et le sucre au bain-marie jusqu'à obtenir un sabayon mousseux et épaissi, sans dépasser 60°C.",
+          "Verser le sabayon chaud dans la cuve du robot muni du fouet et battre à vitesse moyenne jusqu'à complet refroidissement.",
+          "Faire tiédir la masse gélatine pour la liquéfier.",
+          "Dans un bol, mélanger la crème épaisse, les grains de 2 gousses de vanille, le sucre glace et la gélatine fondue.",
+          "Verser la crème épaisse vanillée dans le sabayon refroidi et fouetter délicatement pour homogénéiser.",
+          "Incorporer la crème montée réservée en 2 ou 3 fois à la maryse, par mouvements circulaires du bas vers le haut."
+        ],
+        "conseils_etape": "Ne pas trop monter la crème chantilly (la garder mousseuse) afin de faciliter son émulsion avec le sabayon sans faire grainer la préparation. À réaliser à J-1 (veille), juste avant le montage, qui suit immédiatement."
+      },
+      {
+        "nom_etape": "Montage de l'entremets",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Araser le biscuit vanille à l'aide de réglettes de 1 cm d'épaisseur et d'un couteau scie.",
+          "Détailler un disque net de 16 cm dans ce biscuit à l'aide du cercle de 16 cm.",
+          "Préparer le cercle de 18 cm en tendant un film plastique bien tendu sur le fond.",
+          "Déposer le disque de biscuit au fond du cercle de 18 cm, centré, et l'imbiber généreusement de sirop vanille au pinceau.",
+          "Démouler l'insert congelé (crémeux + compotée) du cercle de 16 cm en réchauffant les parois au sèche-cheveux ou chalumeau, puis le réserver un instant.",
+          "Pocher ou couler une première couche de mousse vanille sur le biscuit en insistant bien sur les contours pour chasser l'air.",
+          "Déposer l'insert congelé au centre, côté compotée vers le bas (ou vers le haut selon préférence, compotée côté biscuit) et l'enfoncer délicatement jusqu'au contact du biscuit.",
+          "Combler les côtés et le dessus avec le restant de mousse vanille.",
+          "Lisser la surface à ras du cercle avec une grande spatule, en partant de l'extérieur vers le centre.",
+          "Bloquer au congélateur pendant toute une nuit."
+        ],
+        "conseils_etape": "Bien plaquer la mousse contre la paroi du cercle avant d'insérer le disque congelé pour éviter les bulles d'air disgracieuses au démoulage. Utilise le biscuit vanille, le sirop vanille, l'insert congelé (crémeux + compotée) et la mousse vanille préparés. À réaliser à J-1 (veille)."
+      },
+      {
+        "nom_etape": "Glaçage miroir blanc vanille",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": 100,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30 %",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Nappage neutre",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Masse gélatine (environ 5 g de gélatine + 29,5 g d'eau)",
+            "quantite": 34.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 152,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de vanille (selon goût)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Déposer le chocolat blanc en morceaux (ou pistoles) et la masse gélatine dans un pichet haut.",
+          "Dans une casserole, porter à ébullition la crème liquide avec la poudre de vanille.",
+          "Couper le feu, ajouter le nappage neutre et mélanger jusqu'à fonte complète.",
+          "Verser le liquide chaud sur le chocolat blanc et la gélatine.",
+          "Mixer au mixeur plongeant en maintenant le pied immergé pour ne pas incorporer de bulles d'air, jusqu'à émulsion lisse et brillante.",
+          "Filmer au contact et réserver au réfrigérateur pendant une nuit."
+        ],
+        "conseils_etape": "Préparer le glaçage 24 h à l'avance permet de chasser l'air et de stabiliser le réseau gélifié pour un nappage plus éclatant et régulier. À réaliser à J-1 (veille)."
+      },
+      {
+        "nom_etape": "Finitions et décor",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 360,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 30,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Fraises fraîches entières",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Nappage neutre (pour lustrer)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Poudre de vanille",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Réchauffer doucement le glaçage miroir au bain-marie ou micro-ondes sans dépasser 35°C, puis le mixer délicatement pour lisser sa texture.",
+          "Laisser redescendre la température du glaçage entre 28°C et 30°C.",
+          "Démouler l'entremets congelé en chauffant brièvement la paroi métallique du cercle au sèche-cheveux ou au chalumeau, puis pousser l'entremets par le dessous.",
+          "Placer l'entremets congelé sur un support surélevé posé au-dessus d'un plat de récupération.",
+          "Couler le glaçage uniformément d'un geste franc sur l'entremets gelé.",
+          "Passer une spatule sous la base de l'entremets pour couper les coulures de glaçage nettes.",
+          "Transférer délicatement le gâteau sur le plat de service.",
+          "Couper des fraises fraîches en deux, les lustrer au pinceau avec un peu de nappage neutre tiédi, et les disposer sur l'entremets.",
+          "Saupoudrer un voile de poudre de vanille à l'aide d'une boule à thé sur le dessus du gâteau.",
+          "Laisser décongeler au réfrigérateur 4 à 6 heures avant dégustation."
+        ],
+        "conseils_etape": "Glacer impérativement sur un entremets sortant directement du congélateur pour figer le nappage instantanément. À réaliser le jour J (4 à 6 heures avant le service)."
+      }
+    ],
+    "astuces_recette": [
+      "La qualité des gousses de vanille est primordiale : privilégier des vanilles grasses, humides et charnues (Bourbon de Madagascar ou Tahiti) pour soutenir l'équilibre avec la fraise.",
+      "L'association de l'agar-agar et de la pectine NH dans la compotée offre une tenue parfaite à la coupe tout en conservant une texture fondante et non gélatineuse.",
+      "Si des bulles d'air apparaissent dans le glaçage miroir lors du réchauffage, tapoter le pichet sur le plan de travail et passer le liquide au chinois avant de glacer."
+    ],
+    "conseils_conservation": "Laisser décongeler l'entremets glacé au réfrigérateur pendant 4 à 6 heures minimum avant la dégustation pour que le cœur retrouve son onctuosité. Se conserve 48 heures au réfrigérateur entre 2°C et 4°C sous cloche pour éviter qu'il n'absorbe les odeurs. Ne jamais recongeler un entremets décongelé."
+  }
+}

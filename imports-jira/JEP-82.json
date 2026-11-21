@@ -1,0 +1,277 @@
+{
+  "ticket": "JEP-82",
+  "recette": {
+    "titre": "Cake façon Kinder Bueno Maison",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un cake façon Kinder Bueno revisité en version 2.0 associant un cake moelleux à la noisette, un cœur garni de cubes de crunchy praliné, le tout recouvert d'une ganache montée au gianduja maison et d'un flocage chocolat-beurre de cacao.",
+    "rendement": "1 cake (pour environ 6 à 8 personnes)",
+    "ustensiles": [
+      "Robot coupe (ou mixeur)",
+      "Casseroles",
+      "Cul-de-poule / Saladiers",
+      "Maryse",
+      "Moule à cake de 15 cm de long",
+      "Film alimentaire",
+      "Couteau",
+      "Poche à douille (optionnel)",
+      "Pistolet à peinture (pour le flocage)"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Le Gianduja Maison",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Torréfier les noisettes pendant 30 minutes à 150°C dans un four préchauffé.",
+          "Placer les noisettes torréfiées avec le chocolat au lait et le chocolat blanc dans le bol du robot coupe.",
+          "Mixer le tout jusqu'à obtenir une pâte de gianduja bien lisse et homogène."
+        ],
+        "conseils_etape": "S'assurer que le mixage est mené jusqu'à l'obtention d'une texture parfaitement fluide."
+      },
+      {
+        "nom_etape": "La Ganache Montée Gianduja",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 480,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30% (à chauffer)",
+            "quantite": 105,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (froide)",
+            "quantite": 185,
+            "unite": "g"
+          },
+          {
+            "nom": "Gianduja (réalisé à l'étape 1)",
+            "quantite": 165,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 18,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine en poudre dans l'eau froide et placer 15 minutes au réfrigérateur.",
+          "Verser le glucose (préalablement réchauffé au micro-ondes) et les 105g de crème liquide dans une casserole, puis chauffer sur feu moyen jusqu'à obtenir une crème bien fumante.",
+          "Verser la préparation chaude en 2 ou 3 fois sur le gianduja fondu, en émulsionnant bien au centre avec une maryse en faisant de petits cercles pour éviter de trancher la ganache.",
+          "Ajouter la gélatine hydratée dans le mélange bien chaud et mélanger jusqu'à ce qu'elle soit complètement fondue.",
+          "Ajouter les 185g de crème liquide froide en une fois, puis mixer au mixeur plongeant pendant environ 30 secondes (ou mélanger soigneusement à la maryse).",
+          "Filmer au contact avec un film alimentaire et placer au réfrigérateur pendant minimum 8 heures (idéalement une nuit)."
+        ],
+        "conseils_etape": "Bien émulsionner au centre dès les premiers ajouts pour lier la matière grasse et le liquide sans former de grumeaux."
+      },
+      {
+        "nom_etape": "Le Crunchy Noisette",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Praliné noisette",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de noisettes",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuilletine",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes concassées",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans un cul-de-poule, mélanger le chocolat au lait avec le beurre fondu (revenu à température ambiante).",
+          "Ajouter les noisettes concassées, le praliné noisette, la pâte de noisette et la feuilletine.",
+          "Mélanger le tout délicatement à l'aide d'une maryse.",
+          "Tasser le mélange dans un cadre ou un moule adapté, puis placer 20 minutes au congélateur.",
+          "Démouler et découper en jolis cubes bien réguliers, puis réserver au réfrigérateur."
+        ],
+        "conseils_etape": "Tasser fermement le croustillant pour faciliter la découpe nette des cubes après passage au congélateur."
+      },
+      {
+        "nom_etape": "Le Cake Noisette",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 45,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Oeuf",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Sucre cassonade",
+            "quantite": 175,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de noisette",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisette",
+            "quantite": 17,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de noisette",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Vanille en poudre",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réaliser un beurre noisette : mettre le beurre à fondre dans une casserole sur feu doux à moyen pendant environ 5 minutes jusqu'à obtenir une couleur, une odeur et un goût de noisette. Le réserver dans un bol et le laisser refroidir environ 10 minutes.",
+          "Dans un cul-de-poule, casser l'œuf, ajouter le sucre cassonade et fouetter vigoureusement pendant une vingtaine de secondes pour éviter que le sucre ne brûle l'œuf.",
+          "Ajouter la vanille en poudre, la levure chimique tamisée, le sel fin, la pâte de noisette et la poudre de noisette, puis mélanger.",
+          "Incorporer la farine tamisée en alternant avec la crème liquide pour conserver une texture souple et homogène.",
+          "Terminer en versant l'huile de noisette et le beurre noisette (revenu à température ambiante), puis mélanger délicatement en grattant bien le fond du bol.",
+          "Laisser reposer l'appareil à cake environ 1 heure au réfrigérateur (ou le placer en poche à douille).",
+          "Tapisser le tiers inférieur d'un moule à cake (préalablement beurré et fariné) avec l'appareil à cake, insérer quelques cubes de crunchy noisette, puis alterner les couches successivement.",
+          "Enfourner pour environ 45 minutes à 150°C. Laisser légèrement refroidir avant de démouler, puis laisser refroidir complètement."
+        ],
+        "conseils_etape": "Veiller à ce que le beurre noisette soit bien tiède/tempéré avant incorporation pour ne pas trancher l'appareil à base d'œufs."
+      },
+      {
+        "nom_etape": "Le Flocage et le Montage Final",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 60,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 45,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre de cacao",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes torréfiées (pour le décor)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Cacao en poudre (pour le décor)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Faire fondre au bain-marie le chocolat au lait avec le beurre de cacao doucement jusqu'à l'obtention d'un mélange homogène, puis réserver à température ambiante (à 45°C pour l'utilisation au pistolet).",
+          "Récupérer la ganache montée gianduja (bien prise) et la fouetter à vitesse moyenne jusqu'à obtenir une texture souple et légèrement montée.",
+          "S'assurer que le cake noisette est bien froid (légèrement congelé pour faciliter la manipulation sans casse).",
+          "Mettre la ganache montée dans un grand moule à cake (ou la répartir à l'aide d'une maryse), puis y plonger le cake ou le recouvrir généreusement. Façonner des vagues sur le dessus avec la maryse pour un effet voluptueux de mousse.",
+          "Placer le tout au congélateur pendant au moins 1 heure.",
+          "Sortir le gâteau congelé et appliquer le flocage chocolat-beurre de cacao à l'aide d'un pistolet à peinture.",
+          "Terminer en saupoudrant un voile de cacao en poudre et en disposant quelques noisettes torréfiées sur le dessus."
+        ],
+        "conseils_etape": "Le gâteau doit être très froid/légèrement congelé avant de recevoir la ganache et le flocage pour garantir une tenue parfaite de l'ensemble."
+      }
+    ],
+    "astuces_recette": [
+      "Pour accentuer le goût typique du Kinder Bueno, il est possible d'ajouter un glaçage chocolaté intermédiaire ou d'incorporer davantage de praliné et de noisettes entières au cœur du cake pour renforcer le profil gourmand et croustillant.",
+      "Le respect des températures (notamment pour le beurre noisette et la ganache) est primordial pour éviter de faire trancher les appareils."
+    ],
+    "conseils_conservation": "Conserver le cake au réfrigérateur et le sortir 15 à 20 minutes avant la dégustation pour profiter pleinement de la souplesse de la ganache montée et des textures internes. À consommer idéalement dans les 2 à 3 jours suivant le montage."
+  }
+}

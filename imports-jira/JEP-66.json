@@ -1,0 +1,274 @@
+{
+  "ticket": "JEP-66",
+  "recette": {
+    "titre": "Bûche coco framboise",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Bûche roulée composée d'un biscuit viennois imbibé, d'un confit de framboise et d'une ganache montée à la noix de coco, le tout enrobé d'un glaçage rocher au chocolat blanc et amandes.",
+    "rendement": "1 bûche pour 6 à 8 personnes",
+    "ustensiles": [
+      "Casseroles",
+      "Micro-ondes",
+      "Mixeur plongeant",
+      "Récipients et cul-de-poule",
+      "Film alimentaire",
+      "Robot pâtissier muni d'un fouet",
+      "Plaque à génoise ou moule à rebords",
+      "Papier sulfurisé",
+      "Planche à découper",
+      "Cordelette",
+      "Grille de glaçage",
+      "Thermomètre de cuisine",
+      "Feuille de papier guitare",
+      "Spatule ou palette",
+      "Cure-dents",
+      "Poche à douille et douille de 20 mm",
+      "Cuillère à pomme parisienne",
+      "Chalumeau"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "La ganache montée coco",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 260,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 18,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% (à chauffer)",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée de coco",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30% froide",
+            "quantite": 200,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Verser l'eau sur la gélatine en poudre et laisser gonfler 20 minutes au réfrigérateur.",
+          "Chauffer dans une casserole la crème liquide, la purée de coco et le glucose jusqu'à une légère ébullition.",
+          "Verser le mélange chaud sur le chocolat blanc et la masse de gélatine hydratée en une seule fois.",
+          "Mixer au mixeur plongeant jusqu'à obtenir une émulsion parfaitement lisse et homogène.",
+          "Ajouter la crème froide en une seule fois et mixer à nouveau pour homogénéiser.",
+          "Filmer au contact et réserver au réfrigérateur pendant 4 heures minimum."
+        ],
+        "conseils_etape": "Réchauffer légèrement la purée de coco et le glucose au micro-ondes si nécessaire pour faciliter leur manipulation."
+      },
+      {
+        "nom_etape": "Le biscuit viennois",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": 210,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Jaune d'œuf",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf entier",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (total, 2/3 pour les œufs et le reste pour les blancs)",
+            "quantite": 115,
+            "unite": "g"
+          },
+          {
+            "nom": "Blanc d'œuf",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 60,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Placer dans le bol du robot muni du fouet les œufs entiers, le jaune d'œuf et les deux tiers du sucre semoule, puis fouetter jusqu'à ce que le mélange triple de volume.",
+          "Monter les blancs d'œufs en neige dans un cul-de-poule en ajoutant progressivement le reste du sucre pour obtenir une meringue souple.",
+          "Incorporer délicatement un premier tiers de la meringue au mélange mousseux avec une maryse, du centre vers l'extérieur.",
+          "Ajouter la farine tamisée délicatement, puis incorporer le reste de la meringue de la même manière.",
+          "Verser la préparation sur une plaque ou un moule à génoise préalablement graissé et lisser sur une hauteur de 1 cm.",
+          "Enfourner à 210°C pendant 7 minutes.",
+          "Retirer immédiatement le biscuit de la plaque, laisser refroidir, puis le retourner sur une planche à découper pour le démouler."
+        ],
+        "conseils_etape": "Effectuer les mouvements à la maryse avec douceur pour préserver l'air incorporé."
+      },
+      {
+        "nom_etape": "Le confit de framboise",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 1,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 1,
+            "unite": "feuille"
+          },
+          {
+            "nom": "Framboises surgelées",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine NH",
+            "quantite": 5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la feuille de gélatine dans un bol d'eau bien froide pendant au moins 15 minutes.",
+          "Mélanger intimement la pectine NH dans le sucre semoule.",
+          "Verser les framboises surgelées et le jus de citron dans une casserole et chauffer jusqu'à l'obtention d'un mélange légèrement fumant.",
+          "Ajouter la première moitié du mélange sucre-pectine, incorporer, puis ajouter la seconde moitié.",
+          "Porter le tout à ébullition pendant environ une minute tout en remuant.",
+          "Retirer du feu, incorporer la gélatine essorée pour qu'elle fonde, puis verser dans un grand récipient.",
+          "Filmer au contact et laisser refroidir complètement."
+        ],
+        "conseils_etape": "Bien mélanger la pectine avec le sucre avant de l'ajouter pour éviter la formation de grumeaux."
+      },
+      {
+        "nom_etape": "Le sirop d'imbibage, assemblage et roulage",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réaliser le sirop en portant à ébullition dans une casserole l'eau, le jus de citron et le sucre semoule.",
+          "Imbiber généreusement le biscuit encore tiède avec le sirop légèrement refroidi.",
+          "Étaler généreusement le confit de framboise sur le biscuit.",
+          "Monter la majeure partie de la ganache montée au bec d'oiseau (réserver le reste pour le décor final).",
+          "Pocher des cordons de ganache montée sur environ la moitié de la longueur du biscuit et lisser sur un centimètre et demi d'épaisseur.",
+          "Rouler délicatement la bûche sur elle-même sans aller trop loin pour conserver le bon diamètre, et réserver les chutes.",
+          "Envelopper la bûche dans du papier sulfurisé et utiliser une cordelette pour la serrer et lui donner une forme bien ronde.",
+          "Placer au congélateur pour une nuit entière."
+        ],
+        "conseils_etape": "Conserver les chutes de biscuit et de garniture pour confectionner de petits roulés individuels."
+      },
+      {
+        "nom_etape": "Le glaçage rocher et finitions",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 30,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de pépin de raisin",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Amandes hachées (préalablement torréfiées)",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Colorant blanc liposoluble",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Chocolat blanc (pour le décor)",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Mycryo (pour le tempérage)",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat blanc au bain-marie, ajouter l'huile de pépins de raisin, les amandes concassées torréfiées et le colorant blanc liposoluble, puis réserver.",
+          "Sortir la bûche du congélateur, parer les extrémités pour avoir des bords nets, et placer la bûche sur une grille de glaçage.",
+          "Napper généreusement la bûche avec le glaçage rocher à 30°C, frotter sous la grille pour enlever l'excédent et placer au réfrigérateur.",
+          "Tempérer le chocolat blanc pour le décor en le faisant fondre au bain-marie à 80%, le retirer pour descendre entre 33 et 34°C, ajouter le beurre de cacao mycryo, et l'utiliser à 29°C.",
+          "Étaler le chocolat tempéré sur une feuille de papier guitare sur environ 1 mm d'épaisseur, laisser devenir légèrement pâteux, puis découper des embouts de bûche à l'aide d'un cure-dents et des chutes.",
+          "Monter le reste de la ganache réservée au bec d'oiseau, la placer en poche munie d'une douille de 2 cm et pocher cinq boules sur le dessus de la bûche.",
+          "Chauffer une cuillère à pomme parisienne avec un chalumeau et creuser de petits cratères dans les boules de ganache.",
+          "Remplir les cratères avec un peu de confit de framboise.",
+          "Coller les décors en chocolat sur les faces de la bûche à l'aide d'un peu de ganache montée."
+        ],
+        "conseils_etape": "Torréfier les amandes au préalable pour accentuer le goût du glaçage rocher."
+      }
+    ],
+    "astuces_recette": [
+      "Utiliser un mixeur plongeant pour la ganache permet d'obtenir une texture parfaitement lisse.",
+      "Adapter la quantité de confit de framboise selon la préférence pour l'acidité et le peps."
+    ],
+    "conseils_conservation": "Conserver la bûche au réfrigérateur après le glaçage et la décongélation. Déguster bien frais pour apprécier l'équilibre entre la douceur de la coco et la fraîcheur acidulée de la framboise."
+  }
+}

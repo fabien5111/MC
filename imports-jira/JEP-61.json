@@ -1,0 +1,361 @@
+{
+  "ticket": "JEP-61",
+  "recette": {
+    "titre": "Bûche de Noël façon Ferrero Rocher",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une bûche de Noël 100% gourmande et faite maison aux saveurs de l'enfance, associant un biscuit pâte à choux, un praliné noisette, une ganache chocolat, une ganache montée noisette-chocolat, un croustillant et un glaçage rocher aux éclats de noisettes.",
+    "rendement": "1 bûche (6 à 8 parts)",
+    "ustensiles": [
+      "Four",
+      "Casserole",
+      "Mixeur plongeant",
+      "Robot coupe",
+      "Cul-de-poule",
+      "Robot pâtissier avec fouet",
+      "Tapis en silicone",
+      "Moule à génoise",
+      "Plaque de cuisson",
+      "Papier sulfurisé",
+      "Spatule/corne",
+      "Moule à bûche",
+      "Palette",
+      "Tamis",
+      "Pinceau"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Noisettes torréfiées",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 30,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Noisettes (quantité totale de la recette utilisée pour les différentes étapes)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Étaler les noisettes sur une plaque et les faire torréfier au four à 150 °C pendant environ 30 minutes."
+        ],
+        "conseils_etape": "Bien surveiller la coloration pour développer tous les arômes sans brûler les noisettes."
+      },
+      {
+        "nom_etape": "Ganache montée",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Lait",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes torréfiées (réservées de l'étape 1)",
+            "quantite": 48,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir",
+            "quantite": 32,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 32,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation pour la gélatine",
+            "quantite": 18,
+            "unite": "g"
+          },
+          {
+            "nom": "Pâte de noisettes",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 259,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans l'eau bien froide pendant environ 15 minutes au réfrigérateur.",
+          "Faire chauffer le lait dans une casserole jusqu'à légère ébullition, puis le verser sur une partie des noisettes torréfiées.",
+          "Mixer le tout au mixeur plongeant jusqu'à obtention d'un mélange homogène et laisser infuser 10 minutes.",
+          "Disposer le chocolat fondu, la pâte de noisettes, le chocolat au lait et le chocolat noir dans un cul-de-poule, puis verser le lait infusé en trois fois en émulsionnant au centre.",
+          "Ajouter la gélatine bien hydratée et mélanger pour la fondre.",
+          "Ajouter la crème liquide froide d'un coup tout en émulsionnant, puis parfaire l'émulsion au mixeur plongeant.",
+          "Verser dans un récipient à fond large, filmer au contact et placer au réfrigérateur minimum 4 heures."
+        ],
+        "conseils_etape": "Assurer une bonne émulsion en versant le liquide en plusieurs fois pour une texture soyeuse."
+      },
+      {
+        "nom_etape": "Praliné noisette",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 15,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Noisettes torréfiées (réservées de l'étape 1)",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 2,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Réaliser un caramel à sec dans une casserole en faisant fondre le sucre semoule sur feu doux à moyen.",
+          "Retirer le caramel de la casserole une fois la couleur atteinte et le laisser refroidir.",
+          "Placer les noisettes torréfiées refroidies avec le caramel dans le robot coupe et mixer pour obtenir un praliné avec du relief (non totalement lisse).",
+          "Ajouter la fleur de sel et mélanger uniformément."
+        ],
+        "conseils_etape": "Ne pas sur-mixer pour conserver des petits morceaux et du croustillant."
+      },
+      {
+        "nom_etape": "Ganache chocolat",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 30,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger le chocolat au lait fondu et le chocolat noir fondu dans un cul-de-poule.",
+          "Chauffer la crème liquide avec le glucose au micro-ondes jusqu'à ce que ce soit très fumant.",
+          "Verser en deux ou trois fois sur le mélange de chocolats en émulsionnant à la maryse par des cercles au centre.",
+          "Verser dans un récipient à fond large, filmer au contact et laisser reposer minimum 2 heures au réfrigérateur."
+        ],
+        "conseils_etape": "Respecter l'incorporation en plusieurs fois pour développer la brillance et l'onctuosité de la ganache."
+      },
+      {
+        "nom_etape": "Biscuit pâte à choux",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 14,
+        "temperature_cuisson_celsius": 190,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Eau",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de noisettes",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre (pour la pâte à choux)",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre (pour monter les blancs)",
+            "quantite": 77,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeufs entiers",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'oeufs",
+            "quantite": 150,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans une casserole, chauffer le beurre, l'eau, le lait, les 3g de sucre et le sel fin sur feu doux à moyen jusqu'à ébullition du beurre.",
+          "Retirer du feu, ajouter la farine en une fois, mélanger grossièrement et dessécher la pâte environ 1 minute sur le feu.",
+          "Hors du feu, incorporer les oeufs battus progressivement en 3 ou 4 fois, puis ajouter l'huile de noisettes.",
+          "Monter les blancs d'oeufs en neige en incorporant progressivement les 77g de sucre jusqu'à obtenir une texture de mousse à raser.",
+          "Incorporer délicatement les blancs montés au premier appareil à la maryse ou au fouet sans chasser l'air.",
+          "Étaler la préparation sur un tapis en silicone (ou moule à génoise bien graissé).",
+          "Enfourner à 190 °C pendant 14 minutes.",
+          "Démouler immédiatement sur du papier sulfurisé.",
+          "Garnir le biscuit en étalant une fine couche de praliné, puis de ganache chocolat et parsemer de noisettes torréfiées concassées.",
+          "Rouler le biscuit en serrant bien à l'aide d'une corne et placer au congélateur une nuit."
+        ],
+        "conseils_etape": "Ne pas casser les blancs montés lors du mélange pour garder un biscuit moelleux."
+      },
+      {
+        "nom_etape": "Croustillant",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Feuilletine",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat noir",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger la feuilletine avec le chocolat au lait fondu et le chocolat noir fondu.",
+          "Étaler la préparation entre deux feuilles de papier sulfurisé sur environ 3 mm d'épaisseur.",
+          "Placer au congélateur quelques minutes.",
+          "Découper une bande aux dimensions de la base du moule à bûche et replacer au congélateur jusqu'à utilisation."
+        ],
+        "conseils_etape": "Travailler rapidement le croustillant avant qu'il ne fige complètement pour faciliter la découpe."
+      },
+      {
+        "nom_etape": "Montage final",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Monter la ganache montée bien froide au robot avec le fouet à vitesse moyenne jusqu'à consistance de ruban.",
+          "Garnir le fond et les bords du moule à bûche avec la ganache montée.",
+          "Disposer le biscuit roulé découpé au centre en appuyant bien, puis rajouter de la ganache montée presque jusqu'en haut.",
+          "Disposer le rectangle de croustillant sur le dessus et lisser.",
+          "Placer au congélateur pour toute une nuit."
+        ],
+        "conseils_etape": "Bien tasser la ganache sur les côtés du moule pour éviter les bulles d'air au démoulage."
+      },
+      {
+        "nom_etape": "Glaçage rocher et décoration",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": 45,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat lait 40% Jivara Valrhona",
+            "quantite": 450,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de noisette",
+            "quantite": 53,
+            "unite": "g"
+          },
+          {
+            "nom": "Noisettes torréfiées",
+            "quantite": 135,
+            "unite": "g"
+          },
+          {
+            "nom": "Feuilletine",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait (pour la décoration effet emballage)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Poudre d'or",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Mixer grossièrement les noisettes torréfiées et les passer au tamis pour retirer la poudre.",
+          "Émietter la feuilletine, puis y ajouter le chocolat au lait fondu, l'huile de noisette et les éclats de noisettes pour former le glaçage rocher (porté à 45 °C).",
+          "Démouler la bûche congelée et la napper du glaçage rocher à 45 °C.",
+          "Étaler du chocolat au lait fondu sur une feuille de papier sulfurisé et y enrober la bûche encore froide pour créer l'effet d'emballage façon Ferrero Rocher.",
+          "Retirer le papier après quelques minutes de réfrigération.",
+          "Appliquer de la poudre d'or à l'aide d'un pinceau sur toute la surface."
+        ],
+        "conseils_etape": "Utiliser un glaçage à la bonne température (45 °C) pour qu'il se fige idéalement au contact de la bûche congelée."
+      }
+    ],
+    "astuces_recette": [
+      "Anticiper les préparations en réalisant les étapes de ganaches et de biscuits en amont pour gérer sereinement le temps de congélation requis entre chaque étape.",
+      "Utiliser des ingrédients de qualité (comme le chocolat Valrhona et de bonnes noisettes) pour se rapprocher au maximum du goût emblématique du véritable Ferrero Rocher."
+    ],
+    "conseils_conservation": "Sortir la bûche du congélateur et la placer au réfrigérateur au moins 4 à 6 heures avant la dégustation pour assurer une décongélation à cœur optimale et une texture fondante. Conserver la bûche au réfrigérateur et la consommer dans les 48 heures suivant sa décongélation."
+  }
+}

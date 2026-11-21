@@ -1,0 +1,164 @@
+{
+  "ticket": "JEP-83",
+  "recette": {
+    "titre": "Cake Tropézien de Nicolas Bernardé",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un cake moelleux et aérien aux zestes d'orange, surmonté de sucre grain, garni d'une crème montée onctueuse à la fleur d'oranger et au chocolat blanc, inspiré de la célèbre tarte tropézienne.",
+    "rendement": "1 cake de 18 cm (environ 6 à 8 parts)",
+    "ustensiles": [
+      "Casserole",
+      "Maryse",
+      "Cul de poule",
+      "Robot pâtissier avec fouet",
+      "Film alimentaire",
+      "Moule à cake (18 cm)",
+      "Grille de refroidissement",
+      "Couteau à dents",
+      "Poche à douille",
+      "Douille cannelée de 18 mm"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache montée",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau de fleur d'oranger",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Zestes d'1 orange bio",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Verser la crème liquide et les zestes d'orange dans une casserole.",
+          "Porter l'ensemble à un léger frémissement sans faire bouillir.",
+          "Verser la crème chaude en deux ou trois fois sur le chocolat blanc préalablement fondu.",
+          "Réaliser une émulsion à l'aide d'une maryse en effectuant de petits cercles au centre du récipient.",
+          "Filmer la ganache au contact avec un film alimentaire.",
+          "Placer au réfrigérateur pour une nuit."
+        ],
+        "conseils_etape": "Ne pas faire bouillir la crème pour éviter de développer l'amertume des zestes d'orange. L'eau de fleur d'oranger est incorporée au montage."
+      },
+      {
+        "nom_etape": "Confection et cuisson du biscuit cake",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 75,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre pommade",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (divisé en 80g et 16g)",
+            "quantite": 96,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeufs entiers",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Poudre d'amandes",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'oeufs",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Zeste d'1 orange bio",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Farine",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre grain",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Placer dans le bol du robot le beurre pommade, le sel, le zeste d'une orange et 80g de sucre semoule, puis fouetter à vitesse moyenne jusqu'à obtention d'une texture crémeuse.",
+          "Ajouter les deux œufs entiers un à un en alternant avec la poudre d'amandes.",
+          "Incorporer la farine et mélanger jusqu'à l'obtention d'un appareil homogène.",
+          "Nettoyer le bol du robot, y verser les blancs d'œufs et battre à vitesse moyenne jusqu'à l'apparition de bulles.",
+          "Ajouter un premier tiers des 16g de sucre restants, puis un deuxième tiers lorsque des vagues se forment, et enfin le reste du sucre en battant à pleine vitesse pour obtenir un bec d'oiseau.",
+          "Détendre l'appareil à biscuit en y incorporant une première partie des blancs d'œufs de façon énergique.",
+          "Ajouter délicatement le reste des blancs en soulevant la masse à l'aide d'un fouet ou d'une maryse pour ne pas casser les blancs.",
+          "Verser l'appareil aérien dans un moule à cake bien beurré et graissé, puis égaliser la surface.",
+          "Saupoudrer généreusement de sucre grain sur le dessus.",
+          "Enfourner pour 15 minutes à 160°C, puis poursuivre la cuisson pendant 1 heure à 145°C.",
+          "Démouler le cake dès la sortie du four et le placer sur une grille pour qu'il refroidisse complètement."
+        ],
+        "conseils_etape": "Saupoudrer le sucre grain de manière très généreuse pour accentuer l'effet brioché tropézien. Adapter les températures selon les spécificités de son four."
+      },
+      {
+        "nom_etape": "Montage et finition",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre glace",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Verser la ganache bien froide dans le bol du robot et la fouetter à pleine vitesse en incorporant l'eau de fleur d'oranger pour l'alléger.",
+          "Transférer la crème montée dans une poche munie d'une douille cannelée de 18 mm.",
+          "Couper la partie supérieure (le chapeau) du cake à l'aide d'un couteau à dents.",
+          "Pocher des boules de crème généreuses sur toute la longueur du biscuit.",
+          "Repositionner le chapeau du cake par-dessus la crème.",
+          "Saupoudrer légèrement de sucre glace avant de servir."
+        ],
+        "conseils_etape": "Fouetter la ganache à pleine vitesse permet d'y incorporer un maximum d'air pour obtenir une texture mousseuse idéale."
+      }
+    ],
+    "astuces_recette": [
+      "Pour un équilibre parfait, veillez à utiliser des oranges bio afin d'exploiter pleinement les zestes sans résidus de pesticides.",
+      "Si vous êtes particulièrement amateur de garniture crémeuse, n'hésitez pas à doubler la proportion de crème tropézienne lors du pochage."
+    ],
+    "conseils_conservation": "À consommer bien frais pour apprécier la dualité entre la densité moelleuse du biscuit aux amandes et la fraîcheur aérienne de la crème à la fleur d'oranger. Conserver au réfrigérateur, de préférence dans une boîte hermétique, et consommer dans les 48 heures suivant le montage en raison de la présence de crème fraîche."
+  }
+}

@@ -1,0 +1,303 @@
+{
+  "ticket": "JEP-58",
+  "recette": {
+    "titre": "Bûche Griotte-Tonka de Cyril Lignac",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Une bûche de Noël élégante et gourmande aux saveurs de griotte acidulée, de fève tonka subtilement vanillée-amandée, de biscuit cacao moelleux et d'un croustillant gianduja.",
+    "rendement": "Une bûche de 25 cm (8 à 10 personnes)",
+    "ustensiles": [
+      "Maryse",
+      "Fouet",
+      "Casserole",
+      "Cul-de-poule",
+      "Batteur électrique",
+      "Mixeur plongeant",
+      "Papier sulfurisé",
+      "Plaque de cuisson",
+      "Moule à bûche 25 cm",
+      "Grille",
+      "Tamis"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache montée tonka",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide chaude",
+            "quantite": 225,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide froide",
+            "quantite": 225,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 4,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Fève tonka",
+            "quantite": 1,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Hydrater les feuilles de gélatine dans de l'eau froide pendant 10 minutes.",
+          "Faire chauffer la crème liquide chaude dans une casserole en y râpant la fève tonka, puis porter à ébullition.",
+          "Verser la crème chaude en trois fois sur le chocolat blanc préalablement fondu pour réaliser une émulsion.",
+          "Essorer la gélatine et l'incorporer dans la ganache chaude en mélangeant bien.",
+          "Ajouter la crème liquide froide en une fois, filmer au contact dans un grand récipient et placer au réfrigérateur pour 4 heures minimum."
+        ],
+        "conseils_etape": "S'assurer que la ganache est bien filmée au contact pour éviter toute condensation."
+      },
+      {
+        "nom_etape": "Glaçage miroir",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": 103,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour le sirop)",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait concentré sucré",
+            "quantite": 93,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en poudre",
+            "quantite": 11,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau (pour la gélatine)",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Colorant rouge hydrosoluble",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Réhydrater la gélatine en poudre dans son volume d'eau froide.",
+          "Réaliser un sirop avec l'eau, le sucre et le glucose en chauffant jusqu'à 103 degrés.",
+          "Verser le lait concentré sucré dans le sirop bouillant pour faire redescendre la température.",
+          "Ajouter la gélatine réhydratée lorsque le mélange atteint 65 degrés et bien la faire fondre.",
+          "Verser en trois fois sur le chocolat blanc fondu en émulsionnant, puis ajouter le colorant rouge.",
+          "Mixer au mixeur plongeant en maintenant la lame au fond pour éviter d'incorporer des bulles d'air, filmer au contact et réserver au frais une nuit."
+        ],
+        "conseils_etape": "Ne pas soulever le mixeur plongeant pendant le mixage pour garantir un glaçage sans bulles."
+      },
+      {
+        "nom_etape": "Biscuit viennois cacao",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": 4,
+        "temperature_cuisson_celsius": 230,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Jaunes d'oeufs",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeufs entiers",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule (divisé)",
+            "quantite": 57.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'oeufs",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 15,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Battre les œufs entiers, les jaunes et la moitié du sucre au batteur pendant 5 à 10 minutes jusqu'à obtention d'une texture ruban bien blanchie.",
+          "Monter les blancs d'œufs en neige à la main en incorporant le reste du sucre en trois fois.",
+          "Incorporer un tiers des blancs d'œufs montés dans le mélange d'œufs battus.",
+          "Tamiser la farine et le cacao en poudre par-dessus, puis mélanger délicatement à la maryse en tournant d'un quart de tour.",
+          "Ajouter le reste des blancs d'œufs délicatement pour préserver le côté aérien.",
+          "Étaler sur une plaque garnie de papier sulfurisé sur une épaisseur d'environ un centimètre.",
+          "Cuire à 230 degrés pendant 4 minutes, puis débarrasser immédiatement sur une grille pour stopper la cuisson."
+        ],
+        "conseils_etape": "Ne pas trop cuire pour garder le moelleux nécessaire au roulage."
+      },
+      {
+        "nom_etape": "Compotée de griottes",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 2,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Purée de griotte",
+            "quantite": 230,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de citron",
+            "quantite": 6.66,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 33.3,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine",
+            "quantite": 3.3,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger la pectine avec une partie du sucre semoule pour éviter les grumeaux.",
+          "Chauffer la purée de griotte et le jus de citron dans une casserole.",
+          "Verser la moitié du mélange sucre-pectine à ébullition, mélanger, puis ajouter le reste.",
+          "Laisser bouillir pendant environ deux minutes pour activer la pectine.",
+          "Verser dans un plat, filmer au contact et placer au réfrigérateur."
+        ],
+        "conseils_etape": "Respecter les deux minutes d'ébullition pour que la pectine prenne correctement."
+      },
+      {
+        "nom_etape": "Biscuit gianduja croustillant",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Beurre doux pommade",
+            "quantite": 37.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 12.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel (une pincée)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 52.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Oeuf",
+            "quantite": 7.5,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de noisettes",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat gianduja fondu",
+            "quantite": 72.5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Travailler le beurre pommade avec la feuille du robot ou à la main, puis ajouter la farine, le cacao en poudre, la fleur de sel, le sucre, l'œuf et la poudre de noisettes pour former une pâte sablée.",
+          "Étaler la pâte sur une épaisseur de 4 mm et cuire 10 minutes à 180 degrés.",
+          "Laisser refroidir, puis émietter le sablé obtenu.",
+          "Mélanger les miettes avec le chocolat gianduja fondu.",
+          "Étaler le tout sur une feuille de papier sulfurisé à une épaisseur de 3 mm et bloquer au congélateur."
+        ],
+        "conseils_etape": "Ne pas trop travailler la pâte sablée pour éviter de développer le gluten."
+      },
+      {
+        "nom_etape": "Montage et glaçage final",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 840,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [],
+        "instructions": [
+          "Découper un rectangle de biscuit viennois aux dimensions du moule, y étaler généreusement la compotée de griottes et rouler serré pour former l'insert.",
+          "Placer l'insert roulé au congélateur pendant au moins deux heures.",
+          "Monter la ganache tonka au batteur pour obtenir une consistance souple de type ruban.",
+          "Garnir le fond et les parois du moule à bûche avec la ganache montée pour chasser l'air.",
+          "Placer l'insert roulé de griottes au centre en l'enfonçant légèrement, puis recouvrir d'une couche de ganache et terminer par le socle en biscuit croustillant gianduja.",
+          "Laisser prendre la bûche au congélateur toute une nuit.",
+          "Le lendemain, réchauffer le glaçage miroir entre 30 et 35 degrés, mixer, tamiser, démouler la bûche glacée et la napper généreusement sur une grille."
+        ],
+        "conseils_etape": "Travailler avec des éléments bien congelés pour un démoulage net et un nappage régulier."
+      }
+    ],
+    "astuces_recette": [
+      "Anticiper la préparation en réalisant la ganache et le glaçage la veille pour garantir des temps de repos indispensables.",
+      "Veiller à respecter scrupuleusement les températures indiquées, notamment pour le sirop du glaçage et sa redescente à 30-35 degrés."
+    ],
+    "conseils_conservation": "Conserver la bûche au réfrigérateur après glaçage et la sortir 15 à 20 minutes avant la dégustation pour profiter de la souplesse de la ganache. Ne pas recongeler un produit décongelé."
+  }
+}

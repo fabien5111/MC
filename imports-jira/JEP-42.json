@@ -1,0 +1,190 @@
+{
+  "ticket": "JEP-42",
+  "recette": {
+    "titre": "Cake marbré choco-coco façon Bounty",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Un cake marbré alliant l'intensité du cacao et la douceur de la noix de coco, surmonté d'une ganache montée lisse à la noix de coco pour rappeler les saveurs du célèbre snack.",
+    "rendement": "1 cake (environ 6 à 8 personnes)",
+    "ustensiles": [
+      "Cul de poule",
+      "Fouet",
+      "Tamis",
+      "Casserole",
+      "Mixeur plongeant",
+      "Récipient à fond large",
+      "Film alimentaire",
+      "Poche à douille",
+      "Douille lisse de 12 mm",
+      "Spatule type maryse",
+      "Couteau",
+      "Moule à cake"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Ganache coco",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 255,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait de coco",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème de coco",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Coco râpée",
+            "quantite": 10,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire chauffer le lait de coco, la crème liquide, la crème de coco et la coco râpée dans une casserole jusqu'à l'apparition d'un léger frémissement.",
+          "Retirer du feu, couvrir la casserole et laisser infuser pendant 15 minutes.",
+          "Faire fondre le chocolat blanc.",
+          "Réchauffer le mélange liquide jusqu'au frémissement, puis le passer à travers un tamis pour retirer la coco râpée.",
+          "Verser le liquide chaud filtré sur le chocolat blanc fondu.",
+          "Mixer l'ensemble à l'aide d'un mixeur plongeant jusqu'à obtenir une texture parfaitement lisse.",
+          "Verser la ganache dans un récipient à fond large, filmer au contact et placer au réfrigérateur pendant au moins 4 heures."
+        ],
+        "conseils_etape": "Filmer au contact empêche la formation d'une croûte à la surface de la ganache pendant le refroidissement."
+      },
+      {
+        "nom_etape": "Appareil à cake",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 45,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Oeuf",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 112,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre de coco",
+            "quantite": 38,
+            "unite": "g"
+          },
+          {
+            "nom": "Purée d'amandes",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Levure chimique",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre de coco",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait de coco",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Huile de coco",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 7,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans un cul de poule, fouetter vivement l'oeuf avec le sucre semoule et le sel.",
+          "Ajouter le sucre de coco, la purée d'amande, la levure chimique, la poudre de coco et le lait de coco, puis mélanger.",
+          "Tamiser la farine.",
+          "Incorporer la farine et la crème liquide en alternance pour faciliter le mélange et éviter les grumeaux.",
+          "Faire tiédir le beurre doux et l'ajouter à la préparation.",
+          "Terminer en incorporant l'huile de coco.",
+          "Séparer la pâte en deux parts égales dans deux culs de poule.",
+          "Dans l'une des moitiés, ajouter le cacao en poudre (avec éventuellement une goutte de crème liquide supplémentaire pour homogénéiser les textures).",
+          "Dans le moule à cake, dresser alternativement des cordons de pâte nature et de pâte au cacao, jusqu'aux trois quarts de la hauteur du moule.",
+          "Plonger la lame d'un couteau dans la pâte et réaliser des mouvements circulaires de bas en haut pour créer les marbrures.",
+          "Enfourner pendant 45 minutes.",
+          "Démouler le cake lorsqu'il est tiède."
+        ],
+        "conseils_etape": "Ne démoulez pas le cake lorsqu'il est encore très chaud, il risquerait de se briser."
+      },
+      {
+        "nom_etape": "Montage",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Coco râpée (pour l'enrobage final)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Placer la ganache bien froide dans une poche munie d'une douille lisse de 12 mm.",
+          "Pocher la ganache sur le dessus du cake refroidi.",
+          "Lisser la ganache à l'aide d'une spatule pour former un dôme, en veillant à garder des arêtes nettes sur les côtés.",
+          "Plonger entièrement le dessus du cake (la partie couverte de ganache) dans la coco râpée pour l'enrober."
+        ],
+        "conseils_etape": "Le cake doit être parfaitement froid avant le pochage, sinon la ganache fondra au contact de la chaleur."
+      }
+    ],
+    "astuces_recette": [
+      "Si vous ne possédez pas de sucre de coco, remplacez-le par du sucre muscovado ou du sucre roux. Il est possible de personnaliser ce cake en ajoutant une coque en chocolat noir ou lait façon glaçage rocher sur l'extérieur."
+    ],
+    "conseils_conservation": "Ce cake se déguste aussi bien au petit-déjeuner qu'au goûter. Il doit être conservé dans une boîte hermétique au réfrigérateur en raison de la présence de la ganache. Pensez à le sortir 20 à 30 minutes avant la dégustation pour que la mie retrouve tout son moelleux."
+  }
+}

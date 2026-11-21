@@ -1,0 +1,265 @@
+{
+  "ticket": "JEP-95",
+  "recette": {
+    "titre": "Choux chocolat caramel",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": null,
+    "description": "Choux ultra-gourmands au cacao recouverts d'un craquelin chocolat, garnis d'une crème pâtissière onctueuse au chocolat noir et au lait, cachant en leur cœur un mini-chou garni de caramel au beurre salé coulant.",
+    "rendement": "6 choux individuels (6 personnes)",
+    "ustensiles": [
+      "Culs-de-poule",
+      "Casseroles",
+      "Maryse et fouet",
+      "Rouleau à pâtisserie (idéalement avec anneaux de guidage de 2 à 3 mm)",
+      "Papier sulfurisé ou tapis de cuisson silicone",
+      "Emporte-pièce rond de 5 cm de diamètre",
+      "Emporte-pièce rond de 3 cm de diamètre",
+      "Poches à douille",
+      "Douille unie de 10 mm",
+      "Douille fine à garnir (ou petite douille unie)",
+      "Douille petits fours (cannelée) de 14 mm",
+      "Mixeur plongeant",
+      "Plat large (pour refroidissement rapide)",
+      "Film alimentaire étirable"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Craquelin cacao",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Beurre doux pommade",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Cassonade (ou sucre roux)",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 12,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mélanger dans un cul-de-poule le beurre pommade, la cassonade, la farine et le cacao en poudre du bout des doigts jusqu'à l'obtention d'une pâte homogène.",
+          "Étaler la pâte entre deux feuilles de papier sulfurisé à l'aide du rouleau à pâtisserie sur une épaisseur de 2 à 3 mm.",
+          "Retirer la feuille supérieure et découper des disques à l'aide de l'emporte-pièce de 5 cm de diamètre.",
+          "Placer la feuille avec les disques au congélateur pendant au moins 30 minutes."
+        ],
+        "conseils_etape": "Utiliser des cales ou des anneaux d'épaisseur sur le rouleau pour garantir une épaisseur régulière de 2 mm afin que le craquelin se développe uniformément à la cuisson. Peut être préparé la veille et stocké au congélateur."
+      },
+      {
+        "nom_etape": "Pâte à choux cacao et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 37,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Lait",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 62,
+            "unite": "g"
+          },
+          {
+            "nom": "Miel",
+            "quantite": 7,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Farine",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Cacao en poudre",
+            "quantite": 15,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers (environ 2 œufs)",
+            "quantite": 100,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Mettre dans une casserole le lait, l'eau, le miel, le sel fin et le beurre, puis chauffer sur feu moyen jusqu'à ce que le beurre soit entièrement fondu.",
+          "Porter à léger bouillon sur feu un peu plus vif, retirer immédiatement du feu et verser d'un seul coup la farine et le cacao en poudre.",
+          "Mélanger vigoureusement à la maryse hors du feu jusqu'à la formation d'une boule de pâte homogène.",
+          "Remettre la casserole sur feu doux à moyen et dessécher la panade sans cesser de remuer pendant environ 1 minute 30.",
+          "Débarrasser la panade dans un cul-de-poule, puis incorporer les 100 g d'œufs battus en 3 à 4 fois, en mélangeant bien entre chaque ajout jusqu'à ce que la pâte soit lisse et souple.",
+          "Mettre la pâte à choux en poche munie d'une douille unie de 10 mm.",
+          "Marquer 6 cercles de 5 cm de diamètre à l'aide de l'emporte-pièce sur un tapis en silicone ou papier sulfurisé, puis pocher 6 gros choux légèrement plus petits que le repère.",
+          "Pocher également sur une plaque séparée au moins 6 petits choux d'environ 1,5 cm de diamètre (sans craquelin).",
+          "Déposer un disque de craquelin congelé de 5 cm sur le dessus de chaque gros chou.",
+          "Cuire les gros choux à 180°C pendant 25 minutes, puis baisser à 160°C pendant 12 minutes (sans ouvrir la porte du four).",
+          "Débarrasser immédiatement les choux sur une grille dès la sortie du four pour éviter qu'ils ne s'affaissent.",
+          "Cuire les petits choux à 180°C pendant 15 minutes, puis baisser à 160°C pendant 10 minutes, puis débarrasser sur grille."
+        ],
+        "conseils_etape": "Ne jamais ouvrir la porte du four pendant les 25 premières minutes de cuisson sous peine de faire retomber les choux. Le débarrassage immédiat sur grille évite l'accumulation d'humidité sous les choux."
+      },
+      {
+        "nom_etape": "Caramel au beurre salé",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre doux",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30 % de matière grasse",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Fleur de sel",
+            "quantite": 1,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Chauffer la crème liquide au micro-ondes afin qu'elle soit très fumante.",
+          "Dans une casserole à fond épais, verser le sucre semoule et le faire fondre sur feu moyen à doux à sec jusqu'à obtenir une coloration ambrée homogène.",
+          "Décuire le caramel en ajoutant le beurre en une seule fois hors du feu ou sur feu doux, puis mélanger pour l'incorporer.",
+          "Verser la crème liquide bien chaude en plusieurs fois tout en remuant.",
+          "Cuire à petits bouillons pendant quelques minutes jusqu'à épaississement nappant.",
+          "Verser dans un récipient haut et mixer au mixeur plongeant pour lisser et faire briller.",
+          "Ajouter la fleur de sel, mélanger, verser dans un récipient à fond plat et filmer au contact.",
+          "Laisser refroidir à température ambiante ou au réfrigérateur."
+        ],
+        "conseils_etape": "Bien chauffer la crème avant de l'incorporer pour limiter les projections et éviter les chocs thermiques qui cristallisent le caramel."
+      },
+      {
+        "nom_etape": "Crème pâtissière chocolat",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 2,
+            "unite": null
+          },
+          {
+            "nom": "Sucre roux (ou cassonade)",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Fécule de maïs (ou fécule de pomme de terre)",
+            "quantite": 10,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 220,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30 % de matière grasse",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat noir et le chocolat au lait ensemble dans un cul-de-poule.",
+          "Dans un second cul-de-poule, fouetter vigoureusement les jaunes d'œufs et le sucre roux pendant 20 secondes, puis ajouter la fécule et mélanger jusqu'à consistance homogène.",
+          "Chauffer le lait entier et la crème liquide dans une casserole jusqu'à frémissement.",
+          "Verser la moitié du liquide chaud sur l'appareil aux jaunes d'œufs tout en fouettant, puis reverser le tout dans la casserole.",
+          "Cuire sur feu moyen sans cesser de fouetter jusqu'à ébullition, puis maintenir l'ébullition pendant 1 minute complète pour bien pasteuriser et épaissir la crème.",
+          "Verser la crème chaude sur les chocolats fondus en 3 fois, en créant une émulsion élastique à la maryse entre chaque ajout.",
+          "Mixer au mixeur plongeant pour obtenir une texture parfaitement lisse et brillante.",
+          "Débarrasser dans un plat large, filmer au contact et réserver au réfrigérateur au moins 2 heures."
+        ],
+        "conseils_etape": "L'émulsion en trois fois est indispensable pour lier les matières grasses du chocolat à la crème sans faire trancher l'appareil."
+      },
+      {
+        "nom_etape": "Montage et finitions",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Grué de cacao (quantité suffisante pour le décor)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Détendre la crème pâtissière bien froide au fouet et la transférer dans une poche munie d'une douille petits fours de 14 mm.",
+          "Mettre le caramel refroidi dans une poche munie d'une petite douille lisse à garnir.",
+          "Percer le dessous des petits choux et les garnir généreusement de caramel au beurre salé.",
+          "Découper les gros choux au tiers supérieur pour retirer les chapeaux.",
+          "Déposer une noix de crème pâtissière au chocolat au fond du gros chou, puis enfoncer le petit chou garni de caramel au centre.",
+          "Pocher la crème pâtissière chocolat tout autour et par-dessus le petit chou en réalisant 4 spires ascendantes régulières à la douille petits fours.",
+          "Creuser un petit puits au sommet de la crème et ajouter une touche de caramel coulant supplémentaire.",
+          "Saupoudrer de grué de cacao pour apporter du croquant.",
+          "Découper un disque net dans les chapeaux réservés à l'aide de l'emporte-pièce de 3 cm, puis poser ce chapeau sur le dôme de crème en appuyant légèrement."
+        ],
+        "conseils_etape": "Retirer délicatement le chapeau du chou avant de trancher la pièce à la dégustation pour éviter d'écraser le pochage."
+      }
+    ],
+    "astuces_recette": [
+      "Maîtrise du pochage : utiliser l'emporte-pièce trempé dans un peu de farine pour marquer les cercles repères sur votre tapis de cuisson avant de pocher.",
+      "Lissage au mixeur : ne sautez pas l'étape du mixeur plongeant pour le caramel et la crème pâtissière ; cela élimine les éventuels micro-grumeaux et donne un fini de vitrine professionnelle.",
+      "Gestion de l'humidité : éviter de garnir les choux trop longtemps à l'avance si le réfrigérateur est très humide, afin de préserver le croustillant du craquelin."
+    ],
+    "conseils_conservation": "Laisser reposer les choux montés 2 à 3 heures au réfrigérateur pour que la crème fige et prenne sa tenue idéale avant de servir bien frais. Choux garnis : 24 à 48 heures maximum au réfrigérateur à l'abri des odeurs. Coques vides : se conservent 48 heures dans une boîte hermétique à température ambiante (à repasser quelques minutes à 150°C pour les déshydrater si elles ramollissent) ou plusieurs semaines au congélateur."
+  }
+}

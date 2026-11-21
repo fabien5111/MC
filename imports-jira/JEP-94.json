@@ -1,0 +1,307 @@
+{
+  "ticket": "JEP-94",
+  "recette": {
+    "titre": "Le cheesecake pamplemousse de François Perret",
+    "auteur_origine": "Chaîne Youtube de Charles et Ava",
+    "video_url": "https://www.youtube.com/watch?v=F07N18H93oQ",
+    "description": "Un entremets individuel tout en fraîcheur composé d'un sablé reconstitué croustillant, d'une mousse légère au cream cheese renfermant un insert de marmelade de pamplemousse confit, le tout recouvert d'un glaçage miroir rose pomelo et décoré de pulpe fraîche de pomelo chinois.",
+    "rendement": "3 cheesecakes individuels (3 personnes)",
+    "ustensiles": [
+      "Économe",
+      "Couteau d'office bien aiguisé",
+      "Passoire fine",
+      "Casseroles",
+      "Mixeur plongeant",
+      "Tapis ou feuille en silicone",
+      "Récipient haut (pichet)",
+      "Fouet",
+      "Batteur électrique ou robot pâtissier avec feuille et fouet",
+      "Cul-de-poule",
+      "Maryse",
+      "Poches à douille",
+      "Cercles individuels à entremets",
+      "Emporte-pièce rond (plus petit que les cercles)",
+      "Film alimentaire",
+      "Papier sulfurisé",
+      "Thermomètre de cuisine",
+      "Grille à pâtisserie",
+      "Spatule coudée / palette",
+      "Chalumeau de cuisine",
+      "Cure-dents ou piques en bois"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Marmelade de pamplemousse",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 120,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 2,
+        "ingredients": [
+          {
+            "nom": "Pamplemousse (pour 37 g de zestes et 115 g de pulpe)",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Gélatine",
+            "quantite": 0.5,
+            "unite": "feuille"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 45,
+            "unite": "g"
+          },
+          {
+            "nom": "Pectine jaune",
+            "quantite": 1.5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Prélever 37 g de zestes de pamplemousse à l'économe en évitant soigneusement la peau blanche (le ziste).",
+          "Blanchir les zestes 3 fois de suite : les plonger dans une casserole d'eau froide, porter à ébullition, égoutter dans une passoire, puis recommencer avec de l'eau froide propre.",
+          "Faire hydrater la demi-feuille de gélatine dans un bol d'eau très froide pendant 10 minutes.",
+          "Peler le pamplemousse à vif avec un couteau bien aiguisé pour prélever 115 g de suprêmes et de pulpe sans aucune partie blanche, puis hacher grossièrement la chair.",
+          "Mélanger le sucre semoule et la pectine jaune à sec dans un petit bol.",
+          "Réunir dans une casserole la pulpe hachée, les zestes blanchis et le mélange sucre-pectine.",
+          "Porter l'ensemble à ébullition en remuant régulièrement.",
+          "Mixer la préparation à l'aide d'un mixeur plongeant hors du feu.",
+          "Ajouter la gélatine réhydratée et essorée, puis mixer à nouveau pour l'incorporer parfaitement.",
+          "Couler et étaler la marmelade sur une feuille en silicone sur environ 2 mm d'épaisseur.",
+          "Placer au congélateur pendant au moins 2 heures."
+        ],
+        "conseils_etape": "Blanchir 3 fois permet d'éliminer l'excès d'amertume des zestes. Ne pas oublier d'ajouter la gélatine immédiatement après avoir mixé la compotée chaude pour assurer une bonne tenue à la découpe. À réaliser la veille ou l'avant-veille."
+      },
+      {
+        "nom_etape": "Glaçage miroir pomelo rose",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 720,
+        "temps_cuisson_minutes": 3,
+        "temperature_cuisson_celsius": 103,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 3.5,
+            "unite": "feuille"
+          },
+          {
+            "nom": "Chocolat blanc",
+            "quantite": 115,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait concentré non sucré",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Glucose",
+            "quantite": 110,
+            "unite": "g"
+          },
+          {
+            "nom": "Jus de pamplemousse",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Colorant rouge (2 gouttes)",
+            "quantite": null,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Mettre les feuilles de gélatine à réhydrater dans un grand récipient d'eau froide pendant 10 minutes.",
+          "Dans une casserole, verser l'eau, le sucre semoule et le sirop de glucose.",
+          "Faire chauffer jusqu'à atteindre 103 °C (ou retirer du feu 2 secondes après l'apparition d'une franche ébullition).",
+          "Hors du feu, incorporer le lait concentré non sucré pour faire tiédir le sirop, puis verser le jus de pamplemousse.",
+          "Dans un pichet haut, réunir le chocolat blanc haché ou fondu, la gélatine essorée et 2 gouttes de colorant rouge.",
+          "Verser le sirop chaud par-dessus et mixer longuement au mixeur plongeant en maintenant le pied au fond sans introduire de bulles d'air.",
+          "Filmer au contact et réserver au réfrigérateur pendant une nuit entière."
+        ],
+        "conseils_etape": "Ne pas faire remonter le mixeur pour éviter les bulles. Si la teinte paraît trop claire au coulage le lendemain, il est tout à fait possible d'appliquer 2 couches successives."
+      },
+      {
+        "nom_etape": "Mousse cheesecake et montage de l'insert",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 2,
+            "unite": "feuille"
+          },
+          {
+            "nom": "Fromage frais (type cream cheese)",
+            "quantite": 95,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 32,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide entière 30 %",
+            "quantite": 117,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 6,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans un bol d'eau froide pendant 10 minutes.",
+          "Au bain-marie, faire chauffer doucement le fromage frais avec le sucre semoule jusqu'à ce que le mélange devienne lisse et dépasse légèrement 30 °C.",
+          "Essorer la gélatine, l'incorporer dans le fromage chaud et fouetter pour la dissoudre totalement. Laisser tiédir aux alentours de 25 °C.",
+          "Monter la crème liquide froide en chantilly mousseuse dans un bol froid en ajoutant progressivement le sucre glace (la crème doit rester souple et pas trop ferme).",
+          "Incorporer délicatement la crème montée au mélange de fromage frais tiédi à la maryse.",
+          "Verser la mousse dans une poche à douille.",
+          "Détailler 3 disques de marmelade congelée à l'aide d'un emporte-pièce de diamètre inférieur à celui des cercles.",
+          "Chemiser le fond des 3 cercles individuels avec du film alimentaire bien tendu.",
+          "Pocher une première couche de mousse cheesecake au fond des cercles.",
+          "Déposer un disque de marmelade congelée au centre en appuyant légèrement.",
+          "Recouvrir avec le reste de mousse cheesecake jusqu'en haut, puis lisser la surface.",
+          "Placer les cercles au congélateur pendant 4 heures minimum (idéalement une nuit)."
+        ],
+        "conseils_etape": "Ne pas trop serrer la chantilly : une texture mousseuse garantit une mousse finale aérienne. Vérifier que la préparation au fromage soit descendue à environ 25 °C pour ne pas faire grainer ou retomber la crème."
+      },
+      {
+        "nom_etape": "Pâte sucrée",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 20,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre glace",
+            "quantite": 90,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre demi-sel",
+            "quantite": 130,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amandes",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf",
+            "quantite": 1,
+            "unite": null
+          },
+          {
+            "nom": "Poudre de vanille (1 pointe de couteau)",
+            "quantite": null,
+            "unite": null
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 250,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dans la cuve du batteur avec la feuille, crémer le beurre pommade avec la poudre de vanille.",
+          "Ajouter le sucre glace et mélanger pour obtenir une texture crémeuse.",
+          "Ajouter la poudre d'amandes et mélanger quelques instants.",
+          "Incorporer l'œuf préalablement battu.",
+          "Ajouter la farine en pluie et faire tourner en première vitesse le moins longtemps possible, juste assez pour agglomérer la pâte sans corser le gluten.",
+          "Étaler la pâte entre deux feuilles de papier sulfurisé sur 2 à 3 mm d'épaisseur.",
+          "Retirer la feuille supérieure et enfourner à 180 °C pendant 20 minutes jusqu'à belle coloration dorée.",
+          "Laisser complètement refroidir."
+        ],
+        "conseils_etape": "Arrêter le pétrissage dès l'amalgame des éléments pour éviter que la pâte ne se rétracte ou ne durcisse excessivement à la cuisson."
+      },
+      {
+        "nom_etape": "Sablé reconstitué",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 7,
+        "temperature_cuisson_celsius": 170,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Pâte sucrée cuite (issue de l'étape précédente)",
+            "quantite": 185,
+            "unite": "g"
+          },
+          {
+            "nom": "Beurre pommade",
+            "quantite": 30,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Émietter 185 g de pâte sucrée cuite et refroidie en petits éclats réguliers de 2 à 3 mm.",
+          "Mettre les miettes dans la cuve du robot munie de la feuille, ajouter 30 g de beurre pommade et mélanger jusqu'à ce que les miettes soient bien enrobées.",
+          "Poser les 3 cercles de montage sur une plaque recouverte de papier sulfurisé.",
+          "Répartir le mélange dans les 3 cercles et tasser régulièrement à la base sur 1,5 cm d'épaisseur environ.",
+          "Cuire au four pendant 7 minutes à 170 °C.",
+          "Dès la sortie du four, décercler délicatement et réserver les sablés au réfrigérateur pour qu'ils figent."
+        ],
+        "conseils_etape": "Tasser uniformément pour garantir un support stable sans le compacter excessivement afin de conserver le croquant sous la dent."
+      },
+      {
+        "nom_etape": "Glaçage, montage final et décor",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 180,
+        "temps_cuisson_minutes": 1,
+        "temperature_cuisson_celsius": 28,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Pomelo chinois frais",
+            "quantite": 1,
+            "unite": null
+          }
+        ],
+        "instructions": [
+          "Réchauffer le glaçage miroir au bain-marie ou au micro-ondes très doux jusqu'à environ 28 °C, puis le mixer à nouveau au pied plongeant sans bulles si nécessaire.",
+          "Sortir les entremets du congélateur, retirer le film plastique, chauffer rapidement le pourtour des cercles au chalumeau pour démouler et lisser les arêtes au doigt.",
+          "Placer les cylindres de mousse congelée sur une grille au-dessus d'un plat récupérateur.",
+          "Napper généreusement de glaçage à 28 °C, passer un coup léger de spatule sur le dessus pour affiner et renouveler l'opération d'une seconde fine couche si la transparence est trop marquée.",
+          "Racler le dessous des mousses à l'aide d'une petite palette et d'un cure-dent pour couper les coulures.",
+          "Déposer délicatement chaque cylindre glacé sur un disque de sablé reconstitué bien froid.",
+          "Éplucher le pomelo chinois, prélever les vésicules de pulpe et en disposer une quantité généreuse en dôme sur le dessus pour former un bouquet en relief.",
+          "Laisser décongeler au réfrigérateur pendant 2 à 3 heures avant dégustation."
+        ],
+        "conseils_etape": "Utiliser un pique en bois planté discrètement sur le dessus ou le côté pour manier l'entremets lors du transfert vers la base sablée sans marquer le glaçage."
+      }
+    ],
+    "astuces_recette": [
+      "Respecter scrupuleusement la suppression des membranes blanches du pamplemousse afin de doser harmonieusement amertume et sucres.",
+      "Utiliser un cream cheese de qualité supérieure (ex. fromage frais artisanal ou de Bresse) pour apporter du caractère et contrer la vivacité de l'agrume.",
+      "La température de coulage du glaçage (autour de 28 °C) sur un gâteau sortant directement du grand froid (-18 °C) conditionne la brillance et la finesse de la couverture."
+    ],
+    "conseils_conservation": "Servir bien frais dès la sortie du réfrigérateur pour profiter du contraste thermique entre le crémeux tempéré et la pulpe juteuse éclatante. Les entremets montés se conservent jusqu'à 48 heures au réfrigérateur sous cloche. Ne pas recongeler un entremets déjà décongelé."
+  }
+}
