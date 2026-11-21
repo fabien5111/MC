@@ -29,7 +29,10 @@ import { IngredientsRecapList } from '@/components/IngredientsRecapList';
 import { useDialog } from '@/components/Dialog';
 import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
-import { moveAt } from '@/lib/photo-reorder';
+import { moveAt, swapAt } from '@/lib/photo-reorder';
+import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
+import { BoutonsOrdrePhoto } from '@/components/BoutonsOrdrePhoto';
+import { resizeFilesToDataUrls } from '@/lib/images';
 import { demanderVignettes, televerserImage } from '@/lib/storage-client';
 import { connexionHref } from '@/lib/nav';
 import { autoGrow, useAutoGrowOnResize } from '@/lib/auto-grow';
@@ -617,6 +620,41 @@ export function RelectureEditor({
         k === si ? { ...sp, etapes: sp.etapes.map((e, j) => (j === ei ? { ...e, ...patch } : e)) } : sp,
       ),
     );
+  // Plusieurs photos reçues d'un coup (sélection multiple, glisser-déposer,
+  // stockage en ligne, collage) : réparties sur les emplacements libres de
+  // l'étape, surplus signalé — même geste que `/creer`.
+  const addPhotosToStep = async (si: number, files: File[]) => {
+    const { urls, rejected } = await resizeFilesToDataUrls(files, 800, 'image/jpeg');
+    if (rejected) await dialog.alert(`${rejected} fichier${rejected > 1 ? 's' : ''} ignoré${rejected > 1 ? 's' : ''} (format non supporté).`);
+    if (!urls.length) return;
+    const libres = (sps[si]?.photos ?? []).filter((p) => !p).length;
+    setSps((prev) =>
+      prev.map((sp, k) => {
+        if (k !== si) return sp;
+        const photos = [...sp.photos];
+        let ri = 0;
+        for (let i = 0; i < photos.length && ri < urls.length; i++) {
+          if (!photos[i]) {
+            photos[i] = { url: urls[ri], original_url: urls[ri], ai_retouched: false };
+            ri++;
+          }
+        }
+        return { ...sp, photos };
+      }),
+    );
+    const surplus = urls.length - libres;
+    if (surplus > 0) await dialog.alert(`${surplus} photo${surplus > 1 ? 's' : ''} non ajoutée${surplus > 1 ? 's' : ''} : plus assez d'emplacements libres sur cette étape.`);
+  };
+  // Réordonner les photos d'une étape (glisser-déposer ; flèches au doigt) :
+  // clés `${étape}:${emplacement}`, échange au sein d'une même étape seulement.
+  const stepPhotoReorder = usePhotoDragReorder((from, to) => {
+    const [siFrom, piFrom] = from.split(':').map(Number);
+    const [siTo, piTo] = to.split(':').map(Number);
+    if (siFrom !== siTo) return;
+    setSps((prev) => prev.map((sp, k) => (k === siFrom ? { ...sp, photos: swapAt(sp.photos, piFrom, piTo) } : sp)));
+  });
+  const deplacerPhoto = (si: number, pi: number, delta: -1 | 1) =>
+    setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, photos: swapAt(sp.photos, pi, pi + delta) } : sp)));
   const patchPhoto = (si: number, pi: number, url: string | null) => {
     // La photo évincée de l'emplacement retourne dans la banque (import PDF),
     // pour rester disponible sur une autre étape.
@@ -2107,9 +2145,17 @@ export function RelectureEditor({
 
               {/* Photos de l'étape */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                {sp.photos.map((p, pi) => (
-                  <div key={pi} className="space-y-1.5">
-                    <div className="relative aspect-square border border-dashed border-outline-variant overflow-hidden rounded-lg">
+                {sp.photos.map((p, pi) => {
+                  const cle = `${si}:${pi}`;
+                  return (
+                  <div key={pi} className="space-y-1.5" {...stepPhotoReorder.dropProps(cle)}>
+                    <div
+                      className={`relative aspect-square border border-dashed overflow-hidden rounded-lg ${
+                        stepPhotoReorder.overKey === cle ? 'border-primary ring-2 ring-primary' : 'border-outline-variant'
+                      } ${p ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                      title={p ? 'Glisser pour réordonner' : undefined}
+                      {...(p ? stepPhotoReorder.dragProps(cle) : null)}
+                    >
                       <ImageSlot
                         src={p?.url ?? null}
                         originalSrc={p?.original_url}
@@ -2119,12 +2165,20 @@ export function RelectureEditor({
                         onAiRetouchedChange={(v) => patchPhotoAi(si, pi, v)}
                         onOriginalChange={(url) => patchPhotoOriginal(si, pi, url)}
                         onClear={() => patchPhoto(si, pi, null)}
+                        onFilesAdded={(files) => void addPhotosToStep(si, files)}
                         shape="rect"
                         maxWidth={800}
                         aspectRatio={1}
                         placeholder={`Visuel ${pi + 1} — taille idéale : 800 × 800 px`}
                         className="w-full h-full"
                       />
+                      {p && (
+                        <BoutonsOrdrePhoto
+                          index={pi}
+                          total={sp.photos.length}
+                          onDeplacer={(delta) => deplacerPhoto(si, pi, delta)}
+                        />
+                      )}
                     </div>
                     {p && (
                       <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer">
@@ -2138,7 +2192,8 @@ export function RelectureEditor({
                       </label>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Lien vidéo de l'étape */}

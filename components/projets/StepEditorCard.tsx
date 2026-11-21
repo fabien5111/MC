@@ -13,6 +13,9 @@ import { createPortal } from 'react-dom';
 import { ImageSlot } from '@/components/ImageSlot';
 import { useDialog } from '@/components/Dialog';
 import { resizeFilesToDataUrls } from '@/lib/images';
+import { swapAt } from '@/lib/photo-reorder';
+import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
+import { BoutonsOrdrePhoto } from '@/components/BoutonsOrdrePhoto';
 import { DureeInput } from '@/components/DureeInput';
 import type { ComponentStepDraft, ComponentUtensil } from '@/lib/projects';
 import { ADVANCE_NOTE_MAX } from '@/lib/recipe-view';
@@ -118,6 +121,10 @@ export function StepEditorCard({
     const surplus = urls.length - retenues.length;
     if (surplus > 0) await dialogPhotos.alert(`${surplus} photo${surplus > 1 ? 's' : ''} non ajoutée${surplus > 1 ? 's' : ''} : plus assez d'emplacements libres sur cette étape.`);
   };
+  // Réordonner les photos (glisser-déposer ; flèches au doigt), comme dans la
+  // vue des étapes du projet.
+  const deplacerPhotos = (de: number, vers: number) => onChange({ photos: swapAt(photos, de, vers) });
+  const photoReorder = usePhotoDragReorder((de, vers) => deplacerPhotos(Number(de), Number(vers)));
   const sous = step.sous_etapes;
   const modeListe = Array.isArray(sous) && sous.length > 0;
   const [popup, setPopup] = useState<number | null>(null);
@@ -703,8 +710,14 @@ export function StepEditorCard({
         <p className="mb-2 text-[12px] text-on-surface-variant">Cliquez ou glissez — plusieurs photos à la fois sont acceptées, elles se répartissent sur les emplacements libres.</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {photos.map((p, k) => (
-            <div key={k} className="space-y-1.5">
-              <div className="relative aspect-square border border-dashed border-outline-variant overflow-hidden">
+            <div key={k} className="space-y-1.5" {...photoReorder.dropProps(String(k))}>
+              <div
+                className={`relative aspect-square border border-dashed overflow-hidden cursor-grab active:cursor-grabbing ${
+                  photoReorder.overKey === String(k) ? 'border-primary ring-2 ring-primary' : 'border-outline-variant'
+                }`}
+                title="Glisser pour réordonner"
+                {...photoReorder.dragProps(String(k))}
+              >
                 <ImageSlot
                   src={p.url}
                   originalSrc={p.original_url}
@@ -714,11 +727,13 @@ export function StepEditorCard({
                   onAiRetouchedChange={(v) => onChange({ photos: photos.map((x, m) => (m === k ? { ...x, ai_retouched: v } : x)) })}
                   onOriginalChange={(url) => onChange({ photos: photos.map((x, m) => (m === k ? { ...x, original_url: url } : x)) })}
                   onClear={() => onChange({ photos: photos.filter((_, m) => m !== k) })}
+                  onFilesAdded={(files) => void ajouterPlusieurs(files)}
                   shape="rect"
                   maxWidth={800}
                   aspectRatio={1}
                   className="w-full h-full"
                 />
+                <BoutonsOrdrePhoto index={k} total={photos.length} onDeplacer={(delta) => deplacerPhotos(k, k + delta)} />
               </div>
               <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer">
                 <input
