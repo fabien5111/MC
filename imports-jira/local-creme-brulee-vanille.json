@@ -1,0 +1,93 @@
+{
+  "ticket": "local-creme-brulee-vanille",
+  "recette": {
+    "titre": "Crème brûlée à la vanille",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Une crème onctueuse parfumée à la vanille, cuite tout doucement, sous une fine couche de sucre caramélisé qui craque sous la cuillère.",
+    "rendement": "6 ramequins de 12 cm de diamètre (6 personnes)",
+    "ustensiles": [
+      "6 ramequins plats de 12 cm",
+      "Casserole",
+      "Fouet",
+      "Chinois",
+      "Chalumeau de cuisine",
+      "Plaque de cuisson"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Appareil à crème brûlée",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 260,
+        "temps_cuisson_minutes": 50,
+        "temperature_cuisson_celsius": 100,
+        "anticipation_jours": 1,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Les crèmes cuites se gardent 2 jours au frais, filmées.",
+        "ingredients": [
+          {
+            "nom": "Crème liquide",
+            "quantite": 500,
+            "unite": "g",
+            "commentaire": "35 % MG"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 1,
+            "unite": "unité"
+          },
+          {
+            "nom": "Jaune d'œuf",
+            "quantite": 120,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 90,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Fendre la gousse de vanille et gratter les graines.",
+          "Porter la crème et le lait à frémissement avec la gousse et les graines, couvrir et laisser infuser 20 minutes.",
+          "Mélanger les jaunes et le sucre au fouet, sans les faire blanchir.",
+          "Verser le mélange crème et lait sur les jaunes en remuant doucement, puis filtrer au chinois.",
+          "Répartir dans les ramequins et cuire 50 minutes à 100 °C, jusqu'à ce que le centre soit à peine tremblotant.",
+          "Laisser refroidir, puis réserver au moins 4 heures au frais."
+        ],
+        "conseils_etape": "Mélanger sans fouetter vigoureusement : les bulles d'air laisseraient des trous à la surface de la crème."
+      },
+      {
+        "nom_etape": "Caramélisation",
+        "page": null,
+        "temps_preparation_minutes": 5,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Cassonade",
+            "quantite": 60,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Saupoudrer chaque crème d'une fine couche régulière de cassonade.",
+          "Caraméliser au chalumeau jusqu'à une couleur ambrée, et servir aussitôt."
+        ],
+        "conseils_etape": "Caraméliser au dernier moment : au réfrigérateur, le caramel ramollit et perd son craquant."
+      }
+    ],
+    "astuces_recette": [
+      "Pour une note différente, infuser la crème avec un zeste d'orange ou quelques grains de café à la place de la vanille."
+    ],
+    "conseils_conservation": "Les crèmes non caramélisées se conservent 2 jours au réfrigérateur ; une fois caramélisées, elles se dégustent tout de suite."
+  }
+}
