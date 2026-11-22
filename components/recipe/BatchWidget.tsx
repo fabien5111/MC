@@ -45,6 +45,7 @@ import { useHelpBlocks } from '@/components/help/useHelpBlocks';
 import type { VisibleHelpBlock } from '@/lib/help';
 import { libelleAjustement, lireAjustementIA, lireAjustementIngredient, type AjustementIA } from '@/lib/batch-ai';
 import { RetoursAuteur } from '@/components/batch/DerniereFois';
+import { ingredientKey } from '@/lib/ingredient-name';
 
 const num = (v: string | number | null | undefined): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -67,6 +68,29 @@ async function rescaleBatchIngredients(supabase: Supabase, batch: BatchFull, fac
       if (error) throw error;
     }
   }
+}
+
+// Quantité ACTUELLE d'un ingrédient dans la fournée (somme de ses lignes issues
+// de la recette, même filtre que `ingredientsDeBase` de BatchView) : en
+// modification, c'est elle qu'on propose dans « Quantité disponible » — le
+// membre pèse ce qu'il a face à ce que la fournée demande, pas face à la
+// recette d'origine. Le coefficient reste calculé sur la quantité d'origine
+// (saisie ÷ base), donc la ligne retombe exactement sur la quantité saisie.
+function quantiteDansFournee(batch: BatchFull, m: MergedIngredient | undefined): number | null {
+  if (!m) return null;
+  const cle = ingredientKey(m.name);
+  const unite = m.unit || '';
+  let total = 0;
+  let trouve = false;
+  for (const it of batch.batch_ingredients) {
+    if (it.added || it.removed || !(Number(it.base_quantity) > 0)) continue;
+    if (ingredientKey(it.name) !== cle || (it.unit || '') !== unite) continue;
+    const q = it.quantity != null ? Number(it.quantity) : Number(it.base_quantity) * (Number(batch.factor) || 1);
+    if (!Number.isFinite(q)) continue;
+    total += q;
+    trouve = true;
+  }
+  return trouve ? Math.round(total * 100) / 100 : null;
 }
 
 export function BatchWidget({
@@ -188,8 +212,15 @@ export function BatchWidget({
       if (recipe.measure_type === 'units' && parIngredient && idx >= 0) {
         setUMode('ing');
         setIngIdx(idx);
-        setIngQty(parIngredient.quantite.replace(',', '.'));
-      } else if (label.startsWith('IA :')) {
+        setIngQty(String(quantiteDansFournee(existingBatch, numeric[idx]) ?? parIngredient.quantite.replace(',', '.')));
+      } else if (recipe.measure_type === 'units' && numeric.length > 0) {
+        // Mode d'origine sans ingrédient de référence : le champ part de la
+        // quantité de la fournée pour le premier ingrédient de la liste.
+        setIngIdx(0);
+        const enFournee = quantiteDansFournee(existingBatch, numeric[0]);
+        setIngQty(String(enFournee ?? (num(numeric[0]?.qty) || '')));
+      }
+      if (label.startsWith('IA :')) {
         const detail = lireAjustementIA((existingBatch as { adjust_ai?: unknown }).adjust_ai);
         if (recipe.measure_type === 'units') setUMode('ia');
         else if (recipe.measure_type === 'mold') setMMode('ia');
@@ -681,7 +712,8 @@ export function BatchWidget({
                     onChange={(e) => {
                       const i = Number(e.target.value);
                       setIngIdx(i);
-                      setIngQty(String(num(numeric[i]?.qty) || ''));
+                      const enFournee = editMode && existingBatch ? quantiteDansFournee(existingBatch, numeric[i]) : null;
+                      setIngQty(String(enFournee ?? (num(numeric[i]?.qty) || '')));
                     }}
                     className={`${INPUT} max-w-full`}
                     style={{ minWidth: 'min(14rem, 100%)' }}
@@ -698,6 +730,11 @@ export function BatchWidget({
                   <input type="number" min={0} step="any" value={ingQty} onChange={(e) => setIngQty(e.target.value)} className={INPUT} style={{ width: '8rem' }} />
                 </div>
                 <span className="font-body-md text-on-surface-variant pb-2">{numeric[ingIdx]?.unit || ''}</span>
+                {editMode && existingBatch && numeric[ingIdx] && (
+                  <p className="w-full font-body-md text-xs italic text-on-surface-variant">
+                    Recette d&apos;origine : {fmtNum(num(numeric[ingIdx].qty) || 0)} {numeric[ingIdx].unit || ''}
+                  </p>
+                )}
               </div>
             )}
           </div>
