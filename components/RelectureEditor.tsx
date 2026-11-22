@@ -1832,6 +1832,7 @@ export function RelectureEditor({
                       inputClassName={`${champ} text-center`}
                       inputStyle={{ width: '4rem' }}
                       ariaLabel="Attente"
+                      heuresDes90
                     />
                   </div>
                 ) : (

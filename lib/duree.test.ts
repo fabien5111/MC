@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { depuisMinutes, uniteParDefaut, versMinutes } from '@/lib/duree';
+import { depuisMinutes, heuresMinutesTexte, uniteImport, uniteParDefaut, versMinutes } from '@/lib/duree';
 
 describe('versMinutes', () => {
   it('convertit les heures, virgule ou point', () => {
@@ -46,5 +46,30 @@ describe('depuisMinutes', () => {
       const u = uniteParDefaut(m);
       expect(versMinutes(depuisMinutes(m, u), u)).toBe(m);
     }
+  });
+});
+
+describe('uniteImport', () => {
+  it('heures au-delà de 90 min, même hors demi-heure', () => {
+    expect(uniteImport(260)).toBe('h');
+    expect(uniteImport(91)).toBe('h');
+  });
+  it('règle ordinaire sinon', () => {
+    expect(uniteImport(90)).toBe('h');
+    expect(uniteImport(78)).toBe('min');
+    expect(uniteImport(null)).toBe('min');
+  });
+  it('aller-retour sans perte', () => {
+    for (let m = 91; m <= 3000; m++) {
+      expect(versMinutes(depuisMinutes(m, 'h'), 'h')).toBe(m);
+    }
+  });
+});
+
+describe('heuresMinutesTexte', () => {
+  it('rend h et minutes', () => {
+    expect(heuresMinutesTexte(260)).toBe('4 h 20');
+    expect(heuresMinutesTexte(125)).toBe('2 h 05');
+    expect(heuresMinutesTexte(120)).toBe('2 h');
   });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type CSSProperties } from 'react';
-import { DUREE_NUIT_MIN, depuisMinutes, uniteParDefaut, versMinutes, type UniteDuree } from '@/lib/duree';
+import { DUREE_NUIT_MIN, depuisMinutes, heuresMinutesTexte, uniteImport, uniteParDefaut, versMinutes, type UniteDuree } from '@/lib/duree';
 
 // Champ de durée en minutes OU en heures (JEP-20) : un nombre et un sélecteur
 // « min / h ». Le parent ne voit que des MINUTES (texte, '' si vide) — ses
@@ -20,6 +20,7 @@ export function DureeInput({
   nuit = true,
   ariaLabel,
   pleineLargeur = false,
+  heuresDes90 = false,
 }: {
   value: string;
   onChange: (minutes: string) => void;
@@ -32,11 +33,14 @@ export function DureeInput({
   // Occupe toute la largeur de sa cellule (grille de l'éditeur des temps du
   // mode projet) au lieu de se caler sur la largeur du champ.
   pleineLargeur?: boolean;
+  // Relecture d'import : au-delà de 90 min, ouvrir en heures même hors de la
+  // demi-heure (`uniteImport`), avec la valeur exacte « soit 4 h 20 » dessous.
+  heuresDes90?: boolean;
 }) {
   const minutesExt = lireMinutes(value);
   // Champ vide : l'unité suit la valeur suggérée (« Repos » vide, somme des
   // étapes = 720 → placeholder « 12 » en h, jamais « 720 » en min).
-  const uniteNaturelle = (m: number | null) => uniteParDefaut(m ?? placeholderMinutes);
+  const uniteNaturelle = (m: number | null) => (heuresDes90 ? uniteImport : uniteParDefaut)(m ?? placeholderMinutes);
   const [unite, setUnite] = useState<UniteDuree>(() => uniteNaturelle(minutesExt));
   const [texte, setTexte] = useState(() => depuisMinutes(minutesExt, uniteNaturelle(minutesExt)));
 
@@ -89,6 +93,11 @@ export function DureeInput({
           <option value="h">h</option>
         </select>
       </span>
+      {unite === 'h' && minutesExt != null && minutesExt % 30 !== 0 && (
+        <span className="text-[11.5px] text-on-surface-variant whitespace-nowrap">
+          soit {heuresMinutesTexte(minutesExt)}
+        </span>
+      )}
       {nuit && (
         <button
           type="button"

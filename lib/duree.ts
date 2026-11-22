@@ -26,6 +26,22 @@ export function uniteParDefaut(minutes: number | null | undefined): UniteDuree {
   return minutes != null && minutes >= 60 && minutes % 30 === 0 ? 'h' : 'min';
 }
 
+// Variante de la relecture d'import (22/11/2026) : l'IA rend souvent des
+// attentes en minutes brutes (« 260 min ») que l'auteur n'a pas choisies. Au-
+// delà de 90 min, on les présente en heures, même hors de la demi-heure
+// (260 → 4,33 h, `heuresMinutesTexte` en donne la valeur exacte). L'aller-
+// retour reste sans perte : 2 décimales d'heure = 0,3 min d'écart au plus.
+export function uniteImport(minutes: number | null | undefined): UniteDuree {
+  return minutes != null && minutes > 90 ? 'h' : uniteParDefaut(minutes);
+}
+
+// « 4 h 20 » / « 4 h » — rappel exact d'une durée affichée en heures décimales.
+export function heuresMinutesTexte(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h} h ${String(m).padStart(2, '0')}` : `${h} h`;
+}
+
 // Minutes → texte du champ dans l'unité donnée (point décimal : c'est ce
 // qu'attend un `<input type="number">`).
 export function depuisMinutes(minutes: number | null | undefined, unite: UniteDuree): string {

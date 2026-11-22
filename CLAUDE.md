@@ -1121,7 +1121,7 @@ préparation du mode projet (`StepEditorCard`) et « Repos » de
 ses conversions à l'enregistrement sont inchangés. Conversion pure et testée
 dans `lib/duree.ts` : une durée enregistrée s'ouvre en heures dès 1 h si elle
 tombe sur la demi-heure (720 → 12 h, 90 → 1,5 h), en minutes sinon ; changer
-d'unité garde le nombre tapé (on corrige « 12 min » en « 12 h »). **Préparation
+d'unité garde le nombre tapé (on corrige « 12 min » en « 12 h »). **Relecture d'import** (22/11/2026, sans ticket) : l'IA rendant des minutes brutes, une attente de **plus de 90 min** s'y ouvre en heures même hors de la demi-heure (`uniteImport`, prop `heuresDes90` de `DureeInput` : 260 → « 4,33 h »), avec la valeur exacte dessous (« soit 4 h 20 », `heuresMinutesTexte`, affichée dès qu'une durée en heures ne tombe pas sur la demi-heure) ; aller-retour sans perte. `/creer` et le mode projet gardent la règle de la demi-heure : l'auteur y choisit son unité. **Préparation
 et cuisson restent en minutes** (arbitrage du 19/10/2026). Le raccourci « une
 nuit » ne touche pas au jour de l'étape (`day_offset`) : deux notions
 distinctes.
