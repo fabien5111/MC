@@ -1830,7 +1830,7 @@ export function RelectureEditor({
                       value={String(sp.attente ?? '')}
                       onChange={(v) => patchSp(si, { attente: v })}
                       inputClassName={`${champ} text-center`}
-                      inputStyle={{ width: '4rem' }}
+                      inputStyle={{ width: '5.5rem' }}
                       ariaLabel="Attente"
                       heuresDes90
                     />
@@ -1845,7 +1845,7 @@ export function RelectureEditor({
                       value={sp[field]}
                       onChange={(e) => patchSp(si, { [field]: e.target.value } as Partial<SpState>)}
                       className={`${champ} text-center`}
-                      style={{ width: '4rem' }}
+                      style={{ width: '5.5rem' }}
                     />
                     <span className="text-xs text-on-surface-variant">{unit}</span>
                   </span>
@@ -1854,7 +1854,7 @@ export function RelectureEditor({
               )}
               <label className="flex flex-col items-center text-center gap-1">
                 <span className="font-label-md text-[9px] uppercase tracking-widest text-on-surface-variant">Total</span>
-                <span className="font-label-md text-primary" style={{ width: '4rem', textAlign: 'center' }}>
+                <span className="font-label-md text-primary" style={{ width: '5.5rem', textAlign: 'center' }}>
                   {spTotals[si] ? fmtDuree(spTotals[si]) : '—'}
                 </span>
               </label>
