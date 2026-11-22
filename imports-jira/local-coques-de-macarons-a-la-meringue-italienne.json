@@ -1,0 +1,136 @@
+{
+  "ticket": "local-coques-de-macarons-a-la-meringue-italienne",
+  "recette": {
+    "titre": "Coques de macarons à la meringue italienne",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Coques lisses et brillantes, croustillantes en surface et moelleuses à cœur, avec une collerette régulière. La meringue italienne leur donne une tenue stable, idéale pour garnir de ganache, de crème au beurre ou de confit.",
+    "rendement": "64 coques Ø 3,5 cm (32 macarons) sur 2 plaques 40 x 30 cm — environ 525 g d'appareil à macarons utilisable (598 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Mixeur",
+      "Tamis",
+      "Cul-de-poule",
+      "Corne",
+      "Casserole",
+      "Thermomètre sonde",
+      "Batteur sur socle",
+      "Maryse",
+      "Poche à douille",
+      "Douille unie 10 mm",
+      "Plaques de cuisson",
+      "Papier cuisson",
+      "Four"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Tant pour tant",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 55,
+            "unite": "g",
+            "commentaire": "à température ambiante"
+          }
+        ],
+        "instructions": [
+          "Mixer la poudre d'amande et le sucre glace par brèves impulsions pendant 10 à 15 secondes.",
+          "Tamiser le mélange dans un cul-de-poule et écarter les grains restés dans le tamis.",
+          "Verser les blancs d'œufs sur le tant pour tant.",
+          "Mélanger à la corne jusqu'à obtenir une pâte épaisse et homogène, sans poudre visible."
+        ],
+        "conseils_etape": "Mixer par impulsions courtes : trop longtemps, l'amande rend son huile et les coques deviennent grasses et tachées. Des blancs vieillis de 24 à 48 h au frais puis ramenés à température ambiante donnent une meilleure tenue."
+      },
+      {
+        "nom_etape": "Meringue italienne",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 8,
+        "temperature_cuisson_celsius": 118,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Sucre semoule",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 38,
+            "unite": "g"
+          },
+          {
+            "nom": "Blancs d'œufs",
+            "quantite": 55,
+            "unite": "g",
+            "commentaire": "à température ambiante"
+          }
+        ],
+        "instructions": [
+          "Porter l'eau et le sucre semoule à ébullition dans une casserole, sonde du thermomètre plongée dans le sirop.",
+          "Commencer à fouetter les blancs d'œufs à vitesse moyenne au batteur sur socle quand le sirop atteint 110 °C.",
+          "Retirer le sirop du feu à 118 °C.",
+          "Verser le sirop en filet sur les blancs mousseux, le long de la paroi de la cuve, en fouettant à vitesse moyenne.",
+          "Fouetter à vitesse rapide jusqu'à ce que la meringue soit lisse, brillante et redescendue vers 45 à 50 °C."
+        ],
+        "conseils_etape": "Les blancs doivent être mousseux, pas fermes, quand le sirop est versé : trop montés, ils deviennent granuleux. Verser le sirop sans toucher le fouet, qui le projetterait en filaments durcis sur les parois."
+      },
+      {
+        "nom_etape": "Macaronage et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 14,
+        "temperature_cuisson_celsius": 150,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Colorant en poudre",
+            "quantite": null,
+            "unite": "g",
+            "commentaire": "facultatif"
+          }
+        ],
+        "instructions": [
+          "Incorporer un tiers de la meringue tiède au tant pour tant à la maryse pour l'assouplir, avec le colorant éventuel.",
+          "Ajouter le reste de la meringue et macaronner en raclant le fond et les parois jusqu'à ce que l'appareil retombe en ruban épais et continu.",
+          "Garnir la poche munie de la douille unie 10 mm et dresser des disques de 3,5 cm sur les plaques couvertes de papier cuisson, en quinconce.",
+          "Taper les plaques sur le plan de travail pour lisser la surface et chasser les bulles.",
+          "Laisser croûter 30 minutes à l'air libre, jusqu'à ce que la surface ne colle plus au doigt, en préchauffant le four ventilé à 150 °C.",
+          "Cuire au four ventilé à 150 °C pendant 13 à 14 minutes, une plaque à la fois.",
+          "Laisser refroidir complètement les coques sur la plaque avant de les décoller."
+        ],
+        "conseils_etape": "Le macaronage fait tout : pas assez, les coques restent bombées et craquelées ; trop, l'appareil coule et la collerette disparaît. Une coque cuite se décolle sans laisser de cœur sur le papier ; si elle colle, prolonger la cuisson d'une minute."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Macarons classiques Ø 3,5 cm : ≈ 8 g par coque, soit 64 coques (32 macarons) avec la recette entière, ×1.",
+      "Utilisation — Mini macarons Ø 2,5 cm : ≈ 4 g par coque, soit environ 125 coques (62 mini macarons) avec la recette entière, ×1.",
+      "Utilisation — Macarons Ø 4 cm : ≈ 10,5 g par coque, soit environ 48 coques (24 macarons) avec la recette entière, ×1.",
+      "Utilisation — Macarons individuels Ø 5 cm : ≈ 16,5 g par coque, soit environ 30 coques (15 macarons) avec la recette entière, ×1.",
+      "Utilisation — Disque de macaron Ø 16 cm, dressé en spirale (fond ou couvercle d'entremets) : ≈ 170 g d'appareil, soit ×0,32 de la recette.",
+      "Utilisation — Disque de macaron Ø 20 cm, dressé en spirale (fond ou couvercle d'entremets) : ≈ 270 g d'appareil, soit ×0,51 de la recette.",
+      "Utilisation — Disque de macaron Ø 24 cm, dressé en spirale (fond ou couvercle d'entremets) : ≈ 385 g d'appareil, soit ×0,73 de la recette.",
+      "Utilisation — Décor de bûche 20 x 7 cm : 16 coques Ø 2,5 cm (8 mini macarons) posées sur le dessus, ≈ 65 g d'appareil, soit ×0,12 de la recette.",
+      "Variante — Coques au cacao : remplacer 20 g de sucre glace par 20 g de cacao en poudre non sucré, tamisé avec le tant pour tant.",
+      "Variante — Coques à la pistache : remplacer 50 g de poudre d'amande par 50 g de poudre de pistache."
+    ],
+    "conseils_conservation": "Coques non garnies : 3 jours au réfrigérateur en boîte hermétique, ou 2 mois au congélateur ; décongeler 30 minutes à température ambiante dans la boîte fermée. Une fois garnis, laisser maturer les macarons 24 h au réfrigérateur avant dégustation ; ils se gardent 4 jours au frais."
+  }
+}
