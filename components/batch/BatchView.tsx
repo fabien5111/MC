@@ -748,7 +748,7 @@ export function BatchView({
         <p className="text-on-surface-variant text-sm mb-4">
           {[
             dateTxt ? `Fournée du ${dateTxt}` : '',
-            mode === 'preparer' ? (batch.factor && Number(batch.factor) !== 1 ? `× ${String(batch.factor).replace('.', ',')}` : libelleAjustement(batch.adjust_label) || '') : '',
+            mode === 'preparer' ? (batch.factor && Number(batch.factor) !== 1 ? `× ${fmtNum(Number(batch.factor))}` : libelleAjustement(batch.adjust_label) || '') : '',
           ]
             .filter(Boolean)
             .join(' — ')}

@@ -36,7 +36,7 @@ import { formatDate, formatTime } from '@/lib/format';
 import { PlanningDayView } from '@/components/profile/PlanningDayView';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { ArchivedShoppingLists } from '@/components/cuisine/ArchivedShoppingLists';
-import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, TERMINEES_PAGE_SIZE, type BatchFull } from '@/lib/recipe-plan';
+import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, TERMINEES_PAGE_SIZE, fmtNum, type BatchFull } from '@/lib/recipe-plan';
 import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/profile';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
@@ -52,7 +52,7 @@ type PlanningView = 'jours' | 'recettes';
 function coefficientTexte(factor: number | string | null | undefined): string {
   const n = Number(factor);
   if (!factor || !Number.isFinite(n) || n === 1) return '';
-  return 'Coefficient ×' + String(n).replace('.', ',');
+  return 'Coefficient ×' + fmtNum(n);
 }
 
 export function CuisineContent({

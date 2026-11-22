@@ -33,7 +33,7 @@ import { insertMaterializedBatch, recipeContentColumns } from '@/lib/batch-write
 import { UNITS_LBL, moldMetrics, moldLbl, yieldInfo, MOLD_FORME_DIMS, DIM_LABELS } from '@/lib/recipe-view';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import type { RecipeFull } from '@/lib/recipes';
-import { scalingCoef, scaleFromBase, type BatchFull } from '@/lib/recipe-plan';
+import { fmtNum, scalingCoef, scaleFromBase, type BatchFull } from '@/lib/recipe-plan';
 import { usePlanCtx } from '@/components/recipe/PlanContext';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { translateQuotaError } from '@/lib/quota-message-client';
@@ -406,7 +406,7 @@ export function BatchWidget({
     const dateTxt = new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const lines = [editing ? `Modifier cette fournée de « ${recipe.title} » pour le ${dateTxt} ?` : `Lancer une fournée de « ${recipe.title} » pour le ${dateTxt} ?`];
     if (res.label) lines.push(res.label);
-    if (res.factor !== 1) lines.push(`Les quantités seront multipliées par ${fr(res.factor)}.`);
+    if (res.factor !== 1) lines.push(`Les quantités seront multipliées par ${fmtNum(res.factor)}.`);
     if (adjustmentChanged) lines.push('Les quantités individuellement modifiées dans le détail des ingrédients seront réinitialisées selon ce nouvel ajustement.');
     if (adjustmentChanged && etapesCochees > 0)
       lines.push(`Attention : ${etapesCochees} étape${etapesCochees > 1 ? 's sont déjà cochées' : ' est déjà cochée'} — les quantités de leurs ingrédients seront recalculées elles aussi.`);
