@@ -33,7 +33,7 @@ import { insertMaterializedBatch, recipeContentColumns } from '@/lib/batch-write
 import { UNITS_LBL, moldMetrics, moldLbl, yieldInfo, MOLD_FORME_DIMS, DIM_LABELS } from '@/lib/recipe-view';
 import type { MergedIngredient } from '@/lib/recipe-view';
 import type { RecipeFull } from '@/lib/recipes';
-import { scalingCoef, scaleFromBase, fmtNum, type BatchFull } from '@/lib/recipe-plan';
+import { scalingCoef, scaleFromBase, type BatchFull } from '@/lib/recipe-plan';
 import { usePlanCtx } from '@/components/recipe/PlanContext';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { translateQuotaError } from '@/lib/quota-message-client';
@@ -50,9 +50,6 @@ const num = (v: string | number | null | undefined): number | null => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
   return isNaN(n) ? null : n;
 };
-// Valeur d'un champ de saisie : jamais arrondie (on ne retouche pas ce que le
-// membre a tapé). Pour un coefficient AFFICHÉ, `fmtNum` (2 décimales) : sans lui,
-// 165 g ÷ 110 g s'annonçait « multipliées par 1,363636 ».
 const fr = (n: number): string => String(n).replace('.', ',');
 
 type Supabase = ReturnType<typeof createClient>;
@@ -409,7 +406,7 @@ export function BatchWidget({
     const dateTxt = new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const lines = [editing ? `Modifier cette fournée de « ${recipe.title} » pour le ${dateTxt} ?` : `Lancer une fournée de « ${recipe.title} » pour le ${dateTxt} ?`];
     if (res.label) lines.push(res.label);
-    if (res.factor !== 1) lines.push(`Les quantités seront multipliées par ${fmtNum(res.factor)}.`);
+    if (res.factor !== 1) lines.push(`Les quantités seront multipliées par ${fr(res.factor)}.`);
     if (adjustmentChanged) lines.push('Les quantités individuellement modifiées dans le détail des ingrédients seront réinitialisées selon ce nouvel ajustement.');
     if (adjustmentChanged && etapesCochees > 0)
       lines.push(`Attention : ${etapesCochees} étape${etapesCochees > 1 ? 's sont déjà cochées' : ' est déjà cochée'} — les quantités de leurs ingrédients seront recalculées elles aussi.`);
@@ -573,7 +570,7 @@ export function BatchWidget({
               )}
               {aiDetail.complement && <p className="font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{aiDetail.complement}</p>}
               {num(aiCoef) !== aiDetail.coefficient && (
-                <span className="text-xs text-on-surface-variant">Calculé pour le coefficient ×{fmtNum(aiDetail.coefficient)} proposé par l&apos;IA.</span>
+                <span className="text-xs text-on-surface-variant">Calculé pour le coefficient ×{fr(aiDetail.coefficient)} proposé par l&apos;IA.</span>
               )}
             </div>
           )}
