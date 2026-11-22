@@ -239,6 +239,7 @@ export function RelectureEditor({
   moldTypes,
   tags,
   isAdmin,
+  highlightUnknownRefs,
   conversions,
   ingredientRefIds,
   helpBlocks,
@@ -254,6 +255,11 @@ export function RelectureEditor({
   moldTypes: MoldType[];
   tags: Tag[];
   isAdmin: boolean;
+  // Cadre rouge sur un ingrédient/ustensile hors référentiel : admin, ou
+  // session « en tant que » — même règle que `CreerForm`. Un membre ordinaire
+  // ne peut rien y faire (seul l'admin ajoute au référentiel) : le rouge lui
+  // ferait croire à une erreur de saisie.
+  highlightUnknownRefs: boolean;
   conversions: ConversionRef[];
   ingredientRefIds: IngredientRefOption[];
   helpBlocks?: VisibleHelpBlock[];
@@ -1663,8 +1669,8 @@ export function RelectureEditor({
                       list="dl-utensils"
                       value={m.nom}
                       onChange={(e) => patchUtensil(mi, { nom: e.target.value })}
-                      className={champErr(!!(m.nom.trim() && !known))}
-                      title={m.nom.trim() && !known ? 'Ustensile absent de la table de référence' : undefined}
+                      className={champErr(highlightUnknownRefs && !!(m.nom.trim() && !known))}
+                      title={highlightUnknownRefs && m.nom.trim() && !known ? 'Ustensile absent de la table de référence' : undefined}
                       placeholder="Nom de l'ustensile"
                       autoComplete="off"
                     />
@@ -1960,8 +1966,8 @@ export function RelectureEditor({
                                 patchIng(si, ii, { nom });
                               }
                             }}
-                            className={`${champErr(!!(g.nom.trim() && !known))} col-span-3 lg:col-span-1`}
-                            title={g.nom.trim() && !known ? 'Ingrédient absent de la table de référence' : undefined}
+                            className={`${champErr(highlightUnknownRefs && !!(g.nom.trim() && !known))} col-span-3 lg:col-span-1`}
+                            title={highlightUnknownRefs && g.nom.trim() && !known ? 'Ingrédient absent de la table de référence' : undefined}
                             placeholder="Farine"
                             autoComplete="off"
                           />

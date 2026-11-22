@@ -1142,6 +1142,11 @@ et les allergènes** (`lib/ingredient-ref-lookup.ts`, 15/11/2026) — libellé e
 puis clé en repli. Comparés au seul libellé exact, « Œuf » restait rouge et sans
 allergène face à « Œufs » ; l'ajouter au référentiel créait un doublon
 qu'Éléments inconnus proposait aussitôt de refusionner.
+**Le cadre rouge n'est montré qu'à l'admin** (ou en session « en tant que »,
+`highlightUnknownRefs`), dans `/creer` comme dans la relecture d'import
+(22/11/2026) : un membre ne peut rien ajouter au référentiel, le rouge lui
+ferait croire à une erreur de saisie. Le rouge d'une unité manquante, lui,
+reste visible de tous.
 
 **Courses : fusion automatique avec conversion, comme la fiche recette.** Tout
 article qui entre dans une liste — ajout depuis une recette ou une fournée

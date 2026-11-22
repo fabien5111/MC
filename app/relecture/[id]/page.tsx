@@ -3,7 +3,7 @@ import { stockageEnLigne } from '@/lib/stockage-en-ligne-data';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireUser, isAdmin } from '@/lib/auth';
-import { requireWritableSession } from '@/lib/impersonation';
+import { getImpersonationContext, requireWritableSession } from '@/lib/impersonation';
 import {
   getImport,
   getIngredientRefNames,
@@ -63,6 +63,10 @@ export default async function RelecturePage({ params }: Params) {
   // recettes, lui, est tenu en base par `mc_enforce_stock` : la publication
   // sera refusée si la formule est pleine, quoi qu'affiche cette page.
   const peutRelire = canAccess(droits, 'ecran_relecture_import');
+
+  // Cadre rouge sur un nom hors référentiel : admin, ou session « en tant
+  // que » (seul un admin complet peut en ouvrir une) — même règle que /creer.
+  const highlightUnknownRefs = admin || (await getImpersonationContext()) !== null;
 
   // Compte des recettes seulement sur ce chemin dégradé : `getUsageReport`
   // vaut cinq comptages (§ « réservé aux écrans de jauges »), à ne pas
@@ -139,6 +143,7 @@ export default async function RelecturePage({ params }: Params) {
               moldTypes={moldTypes}
               tags={tags}
               isAdmin={admin}
+              highlightUnknownRefs={highlightUnknownRefs}
               conversions={conversions}
               ingredientRefIds={ingredientRefIds}
               helpBlocks={helpBlocks}
