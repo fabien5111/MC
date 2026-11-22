@@ -601,7 +601,7 @@ export function BatchWidget({
               )}
               {aiDetail.complement && <p className="font-body-md text-body-md italic text-on-surface-variant whitespace-pre-line">{aiDetail.complement}</p>}
               {num(aiCoef) !== aiDetail.coefficient && (
-                <span className="text-xs text-on-surface-variant">Calculé pour le coefficient ×{fr(aiDetail.coefficient)} proposé par l&apos;IA.</span>
+                <span className="text-xs text-on-surface-variant">Calculé pour le coefficient ×{fmtNum(aiDetail.coefficient)} proposé par l&apos;IA.</span>
               )}
             </div>
           )}
