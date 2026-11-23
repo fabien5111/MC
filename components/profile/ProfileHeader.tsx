@@ -125,17 +125,23 @@ export function ProfileHeader({
 
       <div className="px-8 relative z-10 md:flex md:items-start md:gap-8">
         {/* Avatar */}
-        <div className="w-32 h-32 md:w-40 md:h-40 relative -mt-16 mx-auto md:mx-0 shrink-0">
-          <div className="w-full h-full rounded-full border-4 border-background overflow-hidden bg-surface-container shadow-lg">
+        <div className="w-32 h-32 md:w-40 md:h-40 relative -mt-16 mx-auto md:mx-0 mb-6 md:mb-0 shrink-0">
+          {/* Pas d'`overflow-hidden` ici : la barre coller / stockage / recadrer
+              d'`ImageSlot` (`actionsSousCadre`) déborde sous le cercle. L'arrondi
+              est porté par la photo elle-même. */}
+          <div className="w-full h-full rounded-full border-4 border-background bg-surface-container shadow-lg">
             <ImageSlot
               src={avatar}
               onChange={(d) => saveImage('avatar_url', d)}
               shape="circle"
               maxWidth={400}
+              aspectRatio={1}
+              recadrerAvantValidation
+              actionsSousCadre
               placeholder="Photo"
               className="w-full h-full"
-              editTitle="Changer la photo de profil"
-              editButtonClassName="bottom-1 right-1 w-9 h-9"
+              editTitle="Importer une photo depuis cet appareil"
+              editButtonClassName="top-0 right-0 w-9 h-9"
             />
           </div>
         </div>

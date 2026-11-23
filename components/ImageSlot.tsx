@@ -96,6 +96,20 @@ export type ImageSlotProps = {
    * multiple dans le sélecteur de fichiers du système.
    */
   onFilesAdded?: (files: File[]) => void;
+  /**
+   * Emplacement rond (avatar) : coller / stockage en ligne / recadrer sont
+   * posés en barre SOUS le cercle (deux pastilles sur 128 px recouvriraient la
+   * photo) ; le cercle ne rogne alors plus ses enfants, c'est la photo qui est
+   * arrondie. Sans effet hors `shape="circle"`.
+   */
+  actionsSousCadre?: boolean;
+  /**
+   * Avec `aspectRatio` : une photo *nouvelle* n'est remontée par `onChange`
+   * qu'une fois le recadrage validé (annuler l'abandonne). Évite qu'un parent
+   * qui enregistre à chaque `onChange` (avatar : dépôt sur Swift puis écriture
+   * en base) n'enregistre d'abord la photo brute, puis la photo recadrée.
+   */
+  recadrerAvantValidation?: boolean;
 };
 
 export function ImageSlot({
@@ -119,6 +133,8 @@ export function ImageSlot({
   promptAiRetouched = false,
   onAiRetouchedChange,
   onFilesAdded,
+  actionsSousCadre = false,
+  recadrerAvantValidation = false,
 }: ImageSlotProps) {
   const dialog = useDialog();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -127,7 +143,12 @@ export function ImageSlot({
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState(false);
+  // Photo nouvelle en attente de recadrage (`recadrerAvantValidation`).
+  const [brouillon, setBrouillon] = useState<string | null>(null);
   const readOnly = !onChange;
+  const sousCadre = actionsSousCadre && shape === 'circle';
+  const differe = recadrerAvantValidation && !!aspectRatio;
+  const affichee = brouillon ?? src;
   const racineRef = useRef<HTMLDivElement>(null);
   const survole = useRef(false);
 
@@ -141,7 +162,8 @@ export function ImageSlot({
       setBusy(true);
       try {
         const dataUrl = await resizeImageToDataUrl(file, maxWidth, mime);
-        onChange?.(dataUrl);
+        if (differe) setBrouillon(dataUrl);
+        else onChange?.(dataUrl);
         onOriginalChange?.(dataUrl);
         // Une photo tout juste chargée n'a pas encore été cadrée : on ouvre
         // l'édition par défaut plutôt que d'attendre un clic sur le crayon.
@@ -152,7 +174,7 @@ export function ImageSlot({
         setBusy(false);
       }
     },
-    [maxWidth, mime, onChange, onOriginalChange, aspectRatio],
+    [maxWidth, mime, onChange, onOriginalChange, aspectRatio, differe],
   );
 
   // Plusieurs fichiers reçus d'un coup (sélection multiple, stockage en ligne,
@@ -215,7 +237,7 @@ export function ImageSlot({
               }
             }
       }
-      className={`relative block overflow-hidden bg-surface-container ${
+      className={`relative block ${sousCadre ? '' : 'overflow-hidden'} bg-surface-container ${
         readOnly ? '' : 'cursor-pointer'
       } ${dragOver ? 'ring-2 ring-primary' : ''} ${className}`}
       style={{ borderRadius: radius, ...style }}
@@ -243,7 +265,8 @@ export function ImageSlot({
               setDragOver(false);
               const dataUrl = e.dataTransfer.getData(PHOTO_DND_TYPE);
               if (dataUrl) {
-                onChange?.(dataUrl);
+                if (differe) setBrouillon(dataUrl);
+                else onChange?.(dataUrl);
                 onOriginalChange?.(dataUrl);
                 if (aspectRatio) setEditingPhoto(true);
                 return;
@@ -254,17 +277,17 @@ export function ImageSlot({
       role={readOnly ? undefined : 'button'}
       aria-label={readOnly ? undefined : placeholder}
     >
-      {src ? (
+      {affichee ? (
         // eslint-disable-next-line @next/next/no-img-element -- data-URL / cross-origin variés
         <img
-          src={src}
+          src={affichee}
           alt={alt}
           className="w-full h-full"
-          style={{ objectFit: fit }}
+          style={{ objectFit: fit, borderRadius: sousCadre ? radius : undefined }}
         />
       ) : null}
-      {src && aiRetouched && <AiPhotoBadge />}
-      {!src && (
+      {affichee && aiRetouched && <AiPhotoBadge />}
+      {!affichee && (
         <div className="w-full h-full flex flex-col items-center justify-center text-center p-2 text-on-surface-variant">
           <span className="material-symbols-outlined text-3xl opacity-60">image</span>
           <span className="text-xs mt-1 opacity-80">{placeholder}</span>
@@ -272,7 +295,10 @@ export function ImageSlot({
       )}
 
       {busy && (
-        <div className="absolute inset-0 flex items-center justify-center bg-surface/60 text-xs text-primary">
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-surface/60 text-xs text-primary"
+          style={sousCadre ? { borderRadius: radius } : undefined}
+        >
           Traitement…
         </div>
       )}
@@ -313,7 +339,33 @@ export function ImageSlot({
         </div>
       )}
 
-      {!readOnly && aspectRatio && src && (
+      {!readOnly && !busy && sousCadre && (
+        // Avatar : barre sous le cercle, mêmes gestes que les photos de
+        // recette (coller, stockage en ligne, recadrer). Chaque bouton
+        // s'efface de lui-même quand il n'a pas lieu d'être.
+        <div className="absolute left-1/2 -translate-x-1/2 -bottom-4 z-20 flex gap-1.5">
+          <BoutonColler variante="pastille" onFichiers={recevoir} />
+          <DepuisStockage usage="image" max={1} variante="pastille" onFichiers={recevoir} />
+          {aspectRatio && affichee && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingPhoto(true);
+              }}
+              title="Recadrer la photo (zoom, rotation, position)"
+              aria-label="Recadrer la photo"
+              className="w-8 h-8 rounded-full bg-surface/90 text-on-surface flex items-center justify-center shadow-md hover:bg-primary hover:text-on-primary transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]" aria-hidden>
+                crop
+              </span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {!readOnly && !sousCadre && aspectRatio && src && (
         <button
           type="button"
           onClick={(e) => {
@@ -341,14 +393,18 @@ export function ImageSlot({
         </button>
       )}
 
-      {!readOnly && editingPhoto && src && aspectRatio && (
+      {!readOnly && editingPhoto && affichee && aspectRatio && (
         <PhotoEditorModal
-          src={originalSrc || src}
+          src={brouillon || originalSrc || affichee}
           aspectRatio={aspectRatio}
           maxWidth={maxWidth}
           mime={mime}
-          onCancel={() => setEditingPhoto(false)}
+          onCancel={() => {
+            setBrouillon(null);
+            setEditingPhoto(false);
+          }}
           onSave={(dataUrl) => {
+            setBrouillon(null);
             onChange?.(dataUrl);
             setEditingPhoto(false);
             if (promptAiRetouched) {

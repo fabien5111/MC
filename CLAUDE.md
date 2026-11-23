@@ -59,6 +59,12 @@ le service managé.
   `lib/images.ts` / composant `ImageSlot`. (Les data-URL en base sont
   l'ancien modèle, entièrement repris par le lot B ; il n'en reste que dans
   `articles.content`, hors périmètre.)
+- **Photo de profil (avatar)** : mêmes gestes que les photos de recette — coller
+  (Ctrl+V ou bouton), stockage en ligne, recadrage carré (`PhotoEditorModal`).
+  `ImageSlot` rond : `actionsSousCadre` pose les boutons en barre sous le cercle,
+  `recadrerAvantValidation` ne remonte la photo (`onChange`) qu'une fois le
+  recadrage validé — sans quoi `ProfileHeader.saveImage` déposait sur Swift la
+  photo brute puis la recadrée. Annuler le recadrage abandonne la photo.
 - **Ne jamais recharger une image déjà sur Swift dans un `<canvas>`** (via
   `resizeDataUrlToThumb`/`chargerImageDepuisSrc`, `lib/images.ts`) **si elle
   n'a pas changé** : `crossOrigin="anonymous"` exige un en-tête CORS sur la
