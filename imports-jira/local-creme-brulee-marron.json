@@ -1,0 +1,76 @@
+{
+  "ticket": "local-creme-brulee-marron",
+  "recette": {
+    "titre": "Crème brûlée marron",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème brûlée onctueuse et fondante, parfumée à la crème de marrons, cuite doucement sans caramélisation puis congelée. Elle sert d'insert crémeux au goût de châtaigne dans un entremets ou une bûche.",
+    "rendement": "1 cercle Ø 20 cm, 1 cm de hauteur — environ 315 g de crème brûlée utilisable (340 g d'ingrédients, perte ≈ 8 %)",
+    "ustensiles": [
+      "Cercle à entremets Ø 20 cm",
+      "Film alimentaire",
+      "Plaque à pâtisserie",
+      "Tapis de cuisson",
+      "Casserole",
+      "Fouet",
+      "Chinois",
+      "Thermomètre sonde"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crème brûlée marron",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 255,
+        "temps_cuisson_minutes": 45,
+        "temperature_cuisson_celsius": 95,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se prépare jusqu'à 3 mois à l'avance : cuite, refroidie puis congelée filmée à -18 °C, dans son cercle ou démoulée.",
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 225,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème de marrons",
+            "quantite": 35,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 20,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 95 °C en chaleur statique.",
+          "Filmer le fond d'un cercle Ø 20 cm en tirant bien le film, puis le poser sur une plaque recouverte d'un tapis de cuisson.",
+          "Chauffer la crème liquide avec la crème de marrons jusqu'à 80 °C en fouettant pour dissoudre la crème de marrons.",
+          "Mélanger les jaunes et le sucre au fouet, sans les blanchir ni faire mousser.",
+          "Verser la crème chaude sur les jaunes en fouettant doucement, sans incorporer d'air.",
+          "Passer l'appareil au chinois et retirer la mousse en surface.",
+          "Verser tout l'appareil (environ 315 g) dans le cercle et cuire 45 minutes à 95 °C, jusqu'à ce que le centre tremble légèrement (82-84 °C à cœur) sans coloration.",
+          "Laisser tiédir 15 minutes à température ambiante, puis congeler au moins 4 heures avant de démouler."
+        ],
+        "conseils_etape": "Ne pas dépasser 100 °C au four : au-delà, l'appareil gonfle, se grumelle et prend un goût d'œuf. Ne pas fouetter à l'incorporation de la crème pour éviter les bulles, et cuire à mi-hauteur, en chaleur statique, pour une surface lisse sans caramélisation. Utiliser de la crème de marrons nature, pour un goût net et une texture lisse."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, insert de 1 cm de hauteur : ≈ 200 g d'appareil, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, insert de 1 cm de hauteur : ≈ 315 g d'appareil, soit ×1 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, insert de 1 cm de hauteur : ≈ 455 g d'appareil, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, insert de 1 cm de hauteur : ≈ 40 g par pièce, soit 8 pièces avec la recette entière.",
+      "Utilisation — Individuels en cercles Ø 8 cm, insert de 1 cm de hauteur : ≈ 50 g par pièce, soit 6 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert de 18 x 5 cm sur 1,5 cm de hauteur : ≈ 135 g d'appareil, soit ×0,43 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, insert de 1 cm de hauteur : ≈ 325 g d'appareil, soit ×1,03 de la recette."
+    ],
+    "conseils_conservation": "Après cuisson et refroidissement, 2 jours au réfrigérateur sous film au contact. Se congèle jusqu'à 3 mois à -18 °C, filmée, dans son cercle ou démoulée. À utiliser congelée dans le montage, directement démoulée ; en entremets, monter l'entremets avec l'insert encore congelé, puis le laisser décongeler 8 à 12 h au réfrigérateur avant la dégustation."
+  }
+}
