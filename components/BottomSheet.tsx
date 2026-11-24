@@ -51,6 +51,10 @@ const BREAKPOINTS = {
   lg: { hide: 'lg:hidden', query: '(min-width: 1024px)' },
   // Sommaire de recette : au-dessus, c'est le rail latéral (`.recipe-toc`).
   rail: { hide: 'rail:hidden', query: '(min-width: 701px)' },
+  // Aucun seuil : la feuille reste disponible à toutes les largeurs. Sert aux
+  // tablettes tactiles en paysage (≥ 1024 px), qui n'ont pas de souris pour
+  // l'équivalent « bureau » (planning par jour : Monter / Descendre).
+  aucun: { hide: '', query: 'not all' },
 } as const;
 
 export type BottomSheetBreakpoint = keyof typeof BREAKPOINTS;

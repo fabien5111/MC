@@ -270,8 +270,10 @@ export function PlanningDayView({
           </span>
           {texteTemps(it)}
         </Link>
-        {/* Dès 1024 px : les deux modes en accès direct, libellés. */}
-        <span className="no-print hidden lg:flex shrink-0 items-center gap-1 pl-2">
+        {/* Dès 1024 px et à la souris : les deux modes en accès direct,
+            libellés. Une tablette tactile en paysage garde le « ⋯ » : sans
+            souris, c'est sa seule porte vers Monter / Descendre. */}
+        <span className={`no-print hidden shrink-0 items-center gap-1 pl-2${tactile ? '' : ' lg:flex'}`}>
           <Link href={preparer} title="Ouvrir cette étape en mode Préparer" className="flex w-14 flex-col items-center gap-0.5 rounded-lg py-1 text-[10px] font-semibold text-primary hover:bg-surface-container">
             <span className="material-symbols-outlined text-[22px]">checklist</span>
             Préparer
@@ -281,13 +283,13 @@ export function PlanningDayView({
             Pâtisser
           </Link>
         </span>
-        {/* Sous 1024 px : feuille d'actions. */}
+        {/* Sous 1024 px, et sur tout appareil tactile : feuille d'actions. */}
         <button
           type="button"
           onClick={() => setFeuilleId(it.stepId)}
           aria-label={`Actions de l'étape ${it.title || it.number}`}
           aria-haspopup="dialog"
-          className="no-print flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-container lg:hidden"
+          className={`no-print flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-container${tactile ? '' : ' lg:hidden'}`}
         >
           <span className="material-symbols-outlined">more_vert</span>
         </button>
@@ -405,7 +407,7 @@ export function PlanningDayView({
           </div>
         </details>
       )}
-      <BottomSheet open={feuilleItem !== null} onClose={() => setFeuilleId(null)} breakpoint="lg" label="Actions de l'étape">
+      <BottomSheet open={feuilleItem !== null} onClose={() => setFeuilleId(null)} breakpoint={tactile ? 'aucun' : 'lg'} label="Actions de l'étape">
         {feuilleItem && (
           <div className="flex flex-col gap-1 px-4 pt-2 pb-[calc(16px+env(safe-area-inset-bottom,0px))]">
             <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-outline-variant" aria-hidden />
