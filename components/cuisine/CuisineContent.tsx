@@ -37,7 +37,7 @@ import { PlanningDayView } from '@/components/profile/PlanningDayView';
 import { PlanningIcon, DISC } from '@/components/PlanningIcon';
 import { ArchivedShoppingLists } from '@/components/cuisine/ArchivedShoppingLists';
 import { BATCH_FULL_SELECT, BATCH_STATUS_LBL, TERMINEES_PAGE_SIZE, fmtNum, type BatchFull } from '@/lib/recipe-plan';
-import type { BatchListRow, ShoppingListSummary, ActiveBatchRow } from '@/lib/profile';
+import type { BatchListRow, ShoppingListSummary } from '@/lib/profile';
 import { translateQuotaError } from '@/lib/quota-message-client';
 import type { ConversionRef, UnitRef } from '@/lib/ingredient-conversions';
 import { useRefaireFournee } from '@/components/batch/RefaireFournee';
@@ -59,7 +59,6 @@ function coefficientTexte(factor: number | string | null | undefined): string {
 export function CuisineContent({
   planning,
   batchesTerminees,
-  activeBatches,
   shoppingLists,
   droits,
   conversions,
@@ -73,7 +72,6 @@ export function CuisineContent({
   // repli d'affichage, pour rester un vrai second sort plutôt qu'une case
   // oubliée du planning actif.
   batchesTerminees: BatchListRow[];
-  activeBatches: ActiveBatchRow[];
   shoppingLists: ShoppingListSummary[];
   // Droits d'abonnement (§4) : fusion de listes de courses, réordonnancement
   // des étapes dans le planning du jour.
@@ -312,9 +310,6 @@ export function CuisineContent({
   const aDesArchives = terminees.length > 0 || archivedShoppingLists.length > 0;
   const sommaire: TocSections = {
     before: [
-      ...(activeBatches.length > 0
-        ? [{ id: 'sec-en-cours', label: `Fournées en cours (${activeBatches.length})`, icon: 'local_fire_department', level: 1 as const }]
-        : []),
       { id: 'sec-fournees', label: `Mes fournées (${planningList.length})`, icon: 'event', level: 1 },
       // Les deux vues de « Mes fournées » : l'entrée bascule la vue (`ouvrirSection`)
       // puis défile vers l'ancre posée en tête de la section.
@@ -365,20 +360,15 @@ export function CuisineContent({
       role: 'principale',
       onClick: creerListeVide,
     },
-    // Fournées en cours de cuisson ; à défaut (aucune ne tourne), la liste « Par
-    // fournée » des fournées planifiées.
+    // La liste « Par fournée » des fournées planifiées.
     {
       id: 'voir-en-cours',
       icon: 'local_fire_department',
       label: 'Voir mes fournées en cours',
       variant: 'outline',
       onClick: () => {
-        if (activeBatches.length > 0) {
-          allerA('sec-en-cours');
-        } else {
-          switchPlanningView('recettes');
-          allerA('sec-fournees');
-        }
+        switchPlanningView('recettes');
+        allerA('sec-fournees');
       },
     },
     // Le planning = la vue « Par jour » (étapes cochables, toutes fournées confondues).
@@ -441,32 +431,6 @@ export function CuisineContent({
                 : 'Traitement en cours…'
         }
       />
-
-      {/* ── Fournées en cours de cuisson ──────────────────────────────────
-          Plusieurs peuvent tourner en même temps (un levain sur trois jours
-          pendant qu'un entremets se monte). Quand aucune ne tourne, la section
-          disparaît entièrement et le planning remonte : pas de bloc vide. */}
-      {activeBatches.length > 0 && (
-        <section id="sec-en-cours" className="mt-10 scroll-mt-28">
-          <div className="mb-4 flex items-center gap-2.5">
-            <h2 className="font-label-md text-[10px] font-semibold uppercase tracking-[0.18em] text-outline">
-              Fournées en cours
-            </h2>
-            <span className="flex items-center gap-1.5 rounded-pill bg-primary px-2 py-0.5 font-label-md text-[10.5px] text-on-primary">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-pill bg-white opacity-70 motion-reduce:hidden" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-white" />
-              </span>
-              {activeBatches.length}
-            </span>
-          </div>
-          <div className="space-y-4">
-            {activeBatches.map((x) => (
-              <ActiveBatchCard key={x.id} batch={x} />
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* ── Mes fournées + Listes de courses ─────────────────────────────
           Côte à côte au bureau (grille 12 colonnes, 7/5), empilées sur
@@ -827,55 +791,6 @@ function VignetteFournee({
         </span>
       )}
     </>
-  );
-}
-
-// Carte de fournée en cours de cuisson. L'avancement est dit en étapes —
-// « Étape 2 sur 5 · Crème Chiboust » — et non en décompte (« dans 12 min ») :
-// le modèle ne porte aucun ancrage horaire par étape, un décompte serait une
-// estimation déguisée en horloge. Il viendra quand les étapes auront une heure.
-function ActiveBatchCard({ batch }: { batch: ActiveBatchRow }) {
-  const { done, total, currentTitle } = batch.progress;
-  const etape = total > 0 ? `Étape ${Math.min(done + 1, total)} sur ${total}` : null;
-
-  return (
-    <div className="flex flex-col gap-4 rounded-xl border border-outline-variant bg-surface-container-low p-5 md:flex-row md:items-center">
-      {/* Sur mobile, la vignette se réduit à une pastille : sur un téléphone
-          tenu au-dessus d'un plan de travail, c'est l'avancement qui sert,
-          pas l'illustration. */}
-      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-container md:h-20 md:w-20">
-        <VignetteFournee recette={batch.recipes} compacte />
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <p className="font-headline-md text-lg leading-tight text-primary">{titreAvecProjet(batch.recipe_title || 'Fournée', batch.recipes)}</p>
-        <p className="mt-0.5 font-body-md text-[13px] text-on-surface-variant">
-          {[etape, currentTitle].filter(Boolean).join(' · ') || 'Fournée en cours'}
-        </p>
-        {total > 0 && (
-          <div className="mt-3 flex gap-1" role="img" aria-label={`${done} étape${done > 1 ? 's' : ''} sur ${total} terminée${done > 1 ? 's' : ''}`}>
-            {Array.from({ length: total }, (_, i) => (
-              <span key={i} className={`h-1.5 flex-1 rounded-pill ${i < done ? 'bg-primary' : 'bg-surface-container-highest'}`} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="flex w-full shrink-0 gap-2 md:w-auto">
-        <Link
-          href={`/fournee/${batch.id}?mode=preparer`}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-pill border border-primary px-4 py-2.5 font-label-md text-label-md text-primary transition-all hover:bg-primary/5 active:scale-95 md:flex-none"
-        >
-          <span className="material-symbols-outlined text-[18px]">tune</span> Préparer
-        </Link>
-        <Link
-          href={`/fournee/${batch.id}?mode=patisser`}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-pill bg-primary px-4 py-2.5 font-label-md text-label-md text-on-primary transition-all hover:shadow-lg active:scale-95 md:flex-none"
-        >
-          <span className="material-symbols-outlined text-[18px]">skillet</span> Pâtisser
-        </Link>
-      </div>
-    </div>
   );
 }
 
