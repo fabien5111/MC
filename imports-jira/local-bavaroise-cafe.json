@@ -1,0 +1,93 @@
+{
+  "ticket": "local-bavaroise-cafe",
+  "recette": {
+    "titre": "Bavaroise café",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse onctueuse et légère à base de crème anglaise infusée au café en grains, au goût de café rond et peu amer. Elle sert de crémeux aéré au centre d'un entremets, d'insert ou de garniture d'individuels.",
+    "rendement": "1 cercle Ø 20 cm, 3 cm de hauteur — environ 665 g de bavaroise utilisable (783 g d'ingrédients, perte ≈ 15 %)",
+    "ustensiles": [
+      "Casserole",
+      "Fouet",
+      "Cul-de-poule",
+      "Maryse",
+      "Chinois",
+      "Thermomètre de cuisson",
+      "Batteur électrique",
+      "Rouleau à pâtisserie"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Bavaroise café",
+        "page": null,
+        "temps_preparation_minutes": 40,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": 83,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Lait entier",
+            "quantite": 230,
+            "unite": "g"
+          },
+          {
+            "nom": "Café en grains",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 8,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau d'hydratation",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 300,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans l'eau d'hydratation très froide pendant 10 minutes.",
+          "Concasser grossièrement les grains de café au rouleau, les verser dans le lait porté à frémissement, couvrir et infuser 20 minutes.",
+          "Filtrer le lait au chinois en pressant les grains, puis le réchauffer jusqu'au frémissement.",
+          "Blanchir les jaunes avec le sucre au fouet, sans faire mousser.",
+          "Verser le lait chaud sur les jaunes, remettre sur feu doux et cuire à 83 °C en remuant à la maryse, jusqu'à ce que la crème nappe la maryse.",
+          "Hors du feu, incorporer la gélatine essorée, filtrer au chinois dans un cul-de-poule et refroidir à 25-28 °C en remuant.",
+          "Fouetter la crème liquide très froide en chantilly mousseuse, souple, sans la serrer.",
+          "Incorporer la crème fouettée à la maryse en deux fois dans l'anglaise à 25-28 °C et utiliser aussitôt."
+        ],
+        "conseils_etape": "Ne pas dépasser 84 °C à la cuisson pour ne pas faire coaguler les jaunes. Incorporer la crème fouettée dans une anglaise à 25-28 °C : plus chaude, elle fait retomber la crème ; plus froide, la gélatine prend en grumeaux. Infuser à couvert pour garder les arômes du café sans amertume."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, 3 cm de hauteur : ≈ 425 g de bavaroise, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, 3 cm de hauteur : ≈ 665 g de bavaroise, soit ×1 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, 3 cm de hauteur : ≈ 960 g de bavaroise, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, 4 cm de hauteur : ≈ 110 g par pièce, soit 6 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, en mousse d'enveloppe, remplissage complet sans insert ni biscuit : ≈ 270 g de bavaroise, soit ×0,41 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, 2,5 cm de hauteur : ≈ 570 g de bavaroise, soit ×0,86 de la recette.",
+      "Utilisation — Insert Ø 16 cm, 1,5 cm de hauteur : ≈ 215 g de bavaroise, soit ×0,32 de la recette.",
+      "Utilisation — Verrines de 80 g : 8 verrines avec la recette entière.",
+      "Variante — Intensité douce : 15 g de café en grains au lieu de 25 g, infusion de 15 minutes, le reste inchangé.",
+      "Variante — Intensité forte : 40 g de café en grains et 245 g de lait (les grains en absorbent davantage), infusion de 30 minutes.",
+      "Variante — Avec extrait de café : ajouter 5 g d'extrait de café au lait infusé chaud, à régler entre 3 et 8 g selon la marque."
+    ],
+    "conseils_conservation": "Utiliser la bavaroise aussitôt montée, avant la prise. Une fois prise, elle se garde 2 jours au réfrigérateur à 4 °C, filmée au contact. Congélation possible dans l'entremets monté jusqu'à 1 mois ; décongeler 8 à 12 heures au réfrigérateur et ne jamais recongeler."
+  }
+}
