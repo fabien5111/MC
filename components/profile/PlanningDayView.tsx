@@ -14,7 +14,7 @@
 // l'intérieur d'une seule fournée), d'où `day_order_index`, une colonne
 // dédiée à cet ordre transverse, nulle tant qu'aucun glisser n'a eu lieu ce
 // jour-là.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -84,14 +84,26 @@ export function PlanningDayView({
   // tant que le membre n'a pas navigué — la règle `premierJourAffiche` décide.
   const [debutSemaine, setDebutSemaine] = useState<string | null>(null);
   const [aujourdhui, setAujourdhui] = useState<string | null>(null);
+  // Nombre de colonnes déduit de la largeur RÉELLEMENT disponible pour la vue
+  // semaine (jamais de la fenêtre) : une colonne ne descend pas sous
+  // `COLONNE_MIN_PX`, au-delà on affiche moins de jours.
   const [nbColonnes, setNbColonnes] = useState(4);
+  const semaineRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     setAujourdhui(dateIsoLocale(new Date()));
-    const lire = () => setNbColonnes(colonnesSemaine(window.innerWidth));
-    lire();
-    window.addEventListener('resize', lire);
-    return () => window.removeEventListener('resize', lire);
   }, []);
+  useEffect(() => {
+    const el = semaineRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const lire = () => {
+      const largeur = el.getBoundingClientRect().width;
+      if (largeur > 0) setNbColonnes(colonnesSemaine(largeur));
+    };
+    lire();
+    const obs = new ResizeObserver(lire);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [tactile]);
   // Fournées dont la question « toutes les étapes sont cochées » a déjà été
   // posée (acceptée ou refusée) : sans ça, une fournée entièrement cochée
   // mais toujours `planifiee` (refus de la terminer) bascule instantanément
@@ -717,12 +729,24 @@ export function PlanningDayView({
         </div>
       )}
       <LoadingOverlay visible={busy || navigating} label={navigating ? 'Ouverture de la fournée…' : 'Réorganisation en cours…'} />
-      {filtres()}
       {/* Dès 1024 px à la souris : vue semaine. Les deux vues sont rendues et
           basculées par CSS (pas de saut au premier rendu) ; un appareil
-          tactile garde la liste compacte à toutes les largeurs. */}
-      {!tactile && <div className="hidden lg:block">{vueSemaine()}</div>}
+          tactile garde la liste compacte à toutes les largeurs.
+          La vue semaine SORT du conteneur de 1 200 px de la page : centrée sur
+          la fenêtre, jusqu'à 1 600 px, en laissant 80 px de chaque côté (le
+          sommaire fixe d'En cuisine fait 58 px replié). Filtres compris, pour
+          rester alignés sur la grille. */}
+      {!tactile && (
+        <div
+          ref={semaineRef}
+          className="relative left-1/2 hidden w-[min(1600px,calc(100vw-160px))] -translate-x-1/2 flex-col gap-4 lg:flex"
+        >
+          {filtres()}
+          {vueSemaine()}
+        </div>
+      )}
       <div className={`flex flex-col gap-6${tactile ? '' : ' lg:hidden'}`}>
+        {filtres()}
         {groups.length === 0 && <p className="text-on-surface-variant italic">Aucune étape pour les fournées affichées.</p>}
         {pendingGroups.map((g) => (
           <section key={g.date} className="rounded-xl border border-outline-variant bg-surface-container-lowest">

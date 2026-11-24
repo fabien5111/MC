@@ -95,11 +95,17 @@ export function premierJourAffiche(jours: { date: string; incomplet: boolean }[]
   return aVenir >= 0 ? aVenir : jours.length - 1;
 }
 
-// Nombre de colonnes de la vue semaine selon la largeur de la fenêtre.
+// Vue semaine : largeur minimale d'une colonne de jour, et plafond.
+export const COLONNE_MIN_PX = 260;
+export const COLONNES_MAX = 5;
+const ECART_COLONNES_PX = 12; // `gap-3` de la grille
+
+// Nombre de colonnes de la vue semaine d'après la largeur RÉELLEMENT disponible
+// (pas celle de la fenêtre) : autant que possible sans descendre sous
+// `COLONNE_MIN_PX`, entre 2 et `COLONNES_MAX`.
 export function colonnesSemaine(largeur: number): number {
-  if (largeur >= 1600) return 7;
-  if (largeur >= 1280) return 5;
-  return 4;
+  const n = Math.floor((largeur + ECART_COLONNES_PX) / (COLONNE_MIN_PX + ECART_COLONNES_PX));
+  return Math.max(2, Math.min(COLONNES_MAX, n));
 }
 
 // Minutes de travail actif d'une journée (préparation + cuisson, hors repos).

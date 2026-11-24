@@ -115,10 +115,18 @@ describe('premierJourAffiche', () => {
 });
 
 describe('colonnesSemaine', () => {
-  it('suit la largeur', () => {
-    expect(colonnesSemaine(1024)).toBe(4);
-    expect(colonnesSemaine(1280)).toBe(5);
-    expect(colonnesSemaine(1700)).toBe(7);
+  it('jamais une colonne sous 260 px', () => {
+    expect(colonnesSemaine(1070)).toBe(3); // 3 × 260 + 2 × 12 = 804 ≤ 1070 < 4 colonnes (1076)
+    expect(colonnesSemaine(1076)).toBe(4);
+    expect(colonnesSemaine(1280)).toBe(4);
+  });
+  it('plafonne à 5 colonnes', () => {
+    expect(colonnesSemaine(1600)).toBe(5);
+    expect(colonnesSemaine(3000)).toBe(5);
+  });
+  it('au moins 2 colonnes', () => {
+    expect(colonnesSemaine(300)).toBe(2);
+    expect(colonnesSemaine(0)).toBe(2);
   });
 });
 
