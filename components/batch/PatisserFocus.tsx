@@ -525,15 +525,6 @@ export function PatisserFocus({
   const prec = etapes[idx - 1];
   const suiv = etapes[idx + 1];
   const toutFini = etapes.every((e) => e.terminee);
-  // Étape terminée dont le constat n'est pas rempli : rappel sur le bouton de
-  // droite, sans jamais bloquer le passage à la suite.
-  const finVide =
-    courante.terminee && !courante.step.commentaire && (courante.step as { ecart_produit_g?: number | null }).ecart_produit_g == null;
-  const rappelFin = finVide ? (
-    <span className="pointer-events-none absolute -top-2.5 right-2 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-[#1a1214] shadow">
-      fin d’étape vide
-    </span>
-  ) : null;
   const jalon = jalons[courante.jalon];
 
   return (
@@ -607,18 +598,16 @@ export function PatisserFocus({
             ← Précédente
           </button>
           {suiv ? (
-            <button type="button" onClick={() => onEtape(suiv.step.id)} className="relative h-12 flex-1 rounded-xl bg-primary font-label-md text-[15px] text-on-primary">
+            <button type="button" onClick={() => onEtape(suiv.step.id)} className="h-12 flex-1 rounded-xl bg-primary font-label-md text-[15px] text-on-primary">
               Suivante →
-              {rappelFin}
             </button>
           ) : onCloturer ? (
             <button
               type="button"
               onClick={onCloturer}
-              className={`relative h-12 flex-1 rounded-xl font-label-md text-[15px] text-white ${toutFini ? 'bg-green-700' : 'bg-primary'}`}
+              className={`h-12 flex-1 rounded-xl font-label-md text-[15px] text-white ${toutFini ? 'bg-green-700' : 'bg-primary'}`}
             >
               Clôturer la fournée
-              {rappelFin}
             </button>
           ) : batch.status !== 'planifiee' ? (
             <a href="#sec-resume" className="flex h-12 flex-1 items-center justify-center rounded-xl bg-primary font-label-md text-[15px] text-on-primary">

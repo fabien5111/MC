@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { EcartProduitChamp } from '@/components/batch/EcartProduitChamp';
 import { ChoixRemarque, PorteeEdition } from '@/components/batch/DerniereFois';
+import { PhotosFourneeBloc } from '@/components/batch/PhotosFournee';
 import { TriRetours } from '@/components/batch/ValidationFournee';
 import { BILAN_MAX, cleRemarque, type Remarque } from '@/lib/batch-lecons';
 import { phraseAutresValidees } from '@/lib/batch-lecons-client';
@@ -157,6 +158,8 @@ export function EcranFinFournee({
           </section>
 
           <RecapNotes etapes={etapes} propres={propres} onEtape={onEtape} onSousEtape={onSousEtape} />
+
+          <PhotosFourneeBloc etapes={etapes.map((e) => ({ id: e.id, titre: e.titre }))} />
 
           {essaiProjet ? (
             <section className="flex flex-col gap-2">

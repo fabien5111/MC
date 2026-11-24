@@ -897,13 +897,6 @@ export function BatchView({
           />
         )}
 
-        {/* Photos de réalisation (JEP-382), fournée en cours : sous le déroulé,
-            dans les deux modes. Fournée close : en bas du résumé. */}
-        {batch.status === 'planifiee' && (
-          <div className="mt-8">
-            <PhotosFourneeBloc etapes={etapesPourPhotos(batch)} />
-          </div>
-        )}
       </div>
       </PhotosFourneeProvider>
     </LeconsProvider>

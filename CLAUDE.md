@@ -1904,8 +1904,7 @@ mobile » (piste A retenue).
 - **Étape qui vient d'être terminée → défilement vers « Fin d'étape »**
   (case du titre OU auto-coche par le dernier geste : **exception voulue** à « l'auto-coche
   ne fait pas défiler », le constat est la suite logique ; jamais à l'ouverture d'une étape
-  déjà terminée). Une pastille « fin d'étape vide » sur « Suivante » / « Clôturer » rappelle
-  un constat non rempli, sans jamais bloquer. **À venir (lot 3)** : version bureau (liste
+  déjà terminée). Aucune pastille de rappel sur « Suivante » / « Clôturer » (retirée le 24/11/2026). **À venir (lot 3)** : version bureau (liste
   des étapes à gauche, deux colonnes, « Fin d'étape » à droite).
 
 ## Photos de réalisation d'une fournée (JEP-382)
@@ -1933,8 +1932,8 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   absence arrête le script avant toute suppression) reprend les orphelins.
 - **Ajout** : un seul bouton « Ajouter des photos » (plusieurs fichiers ; sur
   téléphone, le sélecteur du système propose appareil photo ou photothèque) dans le
-  bloc « Photos de cette fournée » (sous le déroulé
-  d'une fournée en cours ; en bas du résumé, mis en avant, sur une fournée close),
+  bloc « Photos de cette fournée » (dans l'écran de fin de
+  fournée, 24/11/2026 — plus sous le déroulé ; en bas du résumé, mis en avant, sur une fournée close),
   bouton « Photo » sur chaque étape (Préparer, et Pâtisser hors du volet replié) :
   **sur appareil tactile seulement** (`useTactile`, `pointer: coarse`), un clic
   déplie le choix « Prendre une photo » (`capture`) / « Choisir dans la galerie »
