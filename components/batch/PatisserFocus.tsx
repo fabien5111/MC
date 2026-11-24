@@ -338,7 +338,10 @@ function CarteEtape({
       {s.tips && (
         <div className="p-3 bg-primary/5 border-l-4 border-primary rounded">
           <p className="font-label-md text-[11px] uppercase tracking-widest text-primary mb-1">Conseils &amp; astuces</p>
-          <div className="font-body-md text-[16px] italic whitespace-pre-line">{s.tips}</div>
+          {/* Première ligne seulement, « Tout afficher » pour le reste (comme « Ma note »). */}
+          <ReplieUneLigne hauteur={24}>
+            <div className="font-body-md text-[16px] leading-6 italic whitespace-pre-line">{s.tips}</div>
+          </ReplieUneLigne>
         </div>
       )}
 
@@ -468,6 +471,25 @@ export function PatisserFocus({
     haut.current?.scrollIntoView({ block: 'start' });
   }, [courante?.step.id]);
 
+  // Hauteur RÉELLE de la barre basse du site : `--mobile-nav-h` (72 px) est une
+  // estimation, que la taille des polices, l'encoche ou le rond central
+  // dépassent sur certains téléphones — la barre de navigation passait alors en
+  // partie dessous. Mesurée et suivie ; la variable reste le repli avant mesure.
+  const [navH, setNavH] = useState<number | null>(null);
+  useEffect(() => {
+    const nav = document.querySelector<HTMLElement>('.mobile-nav-bar');
+    if (!nav) return;
+    const mesurer = () => setNavH(Math.ceil(nav.getBoundingClientRect().height));
+    mesurer();
+    const ro = new ResizeObserver(mesurer);
+    ro.observe(nav);
+    window.addEventListener('resize', mesurer);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', mesurer);
+    };
+  }, []);
+
   if (!courante) return null;
   const prec = etapes[idx - 1];
   const suiv = etapes[idx + 1];
@@ -525,10 +547,14 @@ export function PatisserFocus({
       />
 
       {/* Place réservée à la barre de navigation fixe. */}
-      <div className="h-20" aria-hidden="true" />
+      <div aria-hidden="true" style={{ height: (navH ?? 72) + 96 }} />
 
-      {/* Navigation seule : rien n'est coché par ces boutons. */}
-      <div className="fixed inset-x-0 z-[46] border-t border-outline-variant bg-white/95 px-3 py-2 backdrop-blur-sm bottom-[var(--mobile-nav-h)]">
+      {/* Navigation seule : rien n'est coché par ces boutons. Posée sur la barre
+          basse, 6 px au-dessus : le rond central de celle-ci déborde vers le haut. */}
+      <div
+        className="fixed inset-x-0 z-[46] border-t border-outline-variant bg-white/95 px-3 py-2 backdrop-blur-sm"
+        style={{ bottom: navH != null ? navH + 6 : 'calc(var(--mobile-nav-h) + 6px)' }}
+      >
         <div className="mx-auto flex max-w-[1200px] gap-2">
           <button
             type="button"

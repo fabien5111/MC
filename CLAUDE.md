@@ -1866,7 +1866,10 @@ mobile » (piste A retenue).
   (`etapeTerminee` : même sens que la case du titre), **marron = il reste
   quelque chose à faire** ; l'étape affichée est entourée, un segment y mène.
 - **Boutons du bas = navigation seule** (« ← Précédente » / « Suivante → »),
-  barre fixe au-dessus de la barre basse. Une étape se termine par la case de son
+  barre fixe posée sur la barre basse du site **à sa hauteur MESURÉE** (`navH`,
+  `.mobile-nav-bar` + `ResizeObserver`) : `--mobile-nav-h` (72 px) n'est qu'une
+  estimation, que les polices agrandies ou l'encoche dépassent — la barre passait
+  alors en partie dessous (retour du 24/11/2026). Une étape se termine par la case de son
   titre ou par l'auto-coche. **Dernière étape** : « Clôturer la fournée » ouvre
   l'écran de fin (vert si tout est terminé) ; fournée close : « Voir le
   résumé ». La barre « Fournée prête à être clôturée » est donc masquée sous
@@ -1878,7 +1881,7 @@ mobile » (piste A retenue).
 - **En tête, ce qui sert à réaliser l'étape** : « Ma note » **et** les retours
   de mes fournées dans un seul bloc, **réduit à sa première ligne**
   (`components/ReplieUneLigne.tsx`, « … Tout afficher », bouton seulement si le
-  contenu dépasse). Exception assumée à « une note n'est jamais repliée » : elle
+  contenu dépasse) ; même repli pour « Conseils & astuces ». Exception assumée à « une note n'est jamais repliée » : elle
   reste visible, sa première ligne en tête d'étape. Retours de sous-étape et
   d'ingrédient : même repli sous leur ligne. Puis les photos en **vignettes**
   (`PhotosEtapeVignettes`) : photos d'étape de la **recette de base** (relues en
