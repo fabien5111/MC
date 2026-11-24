@@ -2,13 +2,29 @@
 // présentation, testée (`planning-jour.test.ts`).
 import { formatTime } from '@/lib/format';
 
-// Palette fixe des fournées : la couleur d'une fournée est tirée de son id,
-// donc stable d'un jour à l'autre et d'une visite à l'autre.
-export const COULEURS_FOURNEE = ['#8a3b4a', '#4f7a5a', '#a8702a', '#3f5f86', '#7a4f8a', '#5f6b70'] as const;
+// Palette des fournées : teintes franches et lisibles par les daltoniens
+// (d'après Okabe-Ito, foncées pour tenir sur fond blanc), dans un ordre où
+// deux voisines sont toujours bien distinctes. Le bordeaux du site vient tard :
+// en tête, il se confondrait avec les titres et les boutons.
+export const COULEURS_FOURNEE = ['#0072B2', '#E69F00', '#009E73', '#CC79A7', '#D55E00', '#56B4E9', '#8A1C3B', '#7A5C2E'] as const;
 
+// Repli : couleur tirée de l'id, pour une fournée absente de la table par rang.
 export function couleurFournee(id: number): string {
   const n = COULEURS_FOURNEE.length;
   return COULEURS_FOURNEE[((Math.trunc(id) % n) + n) % n];
+}
+
+// Couleur par RANG d'apparition (`planIds` dans l'ordre du planning, doublons
+// admis) : la première fournée prend la première teinte, etc. — les 8 premières
+// sont ainsi garanties distinctes, ce qu'une couleur tirée de l'id ne garantit
+// pas. Affichage seul, jamais enregistré : la couleur d'une fournée peut changer
+// quand une fournée plus ancienne quitte le planning.
+export function couleursParRang(planIds: number[]): Map<number, string> {
+  const m = new Map<number, string>();
+  for (const id of planIds) {
+    if (!m.has(id)) m.set(id, COULEURS_FOURNEE[m.size % COULEURS_FOURNEE.length]);
+  }
+  return m;
 }
 
 // Regroupe les étapes CONSÉCUTIVES d'une même fournée sous un seul en-tête.

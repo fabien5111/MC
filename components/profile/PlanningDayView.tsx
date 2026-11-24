@@ -26,6 +26,7 @@ import { BottomSheet } from '@/components/BottomSheet';
 import {
   colonnesSemaine,
   couleurFournee,
+  couleursParRang,
   dateIsoLocale,
   grouperConsecutifs,
   indexDeplacement,
@@ -111,6 +112,11 @@ export function PlanningDayView({
       items: g.items.filter((it) => !masquees.has(it.planId)),
     }))
     .filter((g) => g.items.length > 0);
+  // Couleur de chaque fournée par rang d'apparition dans le planning (dates
+  // croissantes), calculée sur TOUT le planning : masquer une fournée ne
+  // change pas la couleur des autres.
+  const couleurs = couleursParRang(groupsAll.flatMap((g) => g.items.map((it) => it.planId)));
+  const couleur = (planId: number) => couleurs.get(planId) ?? couleurFournee(planId);
 
   // Réordonne les étapes d'UN jour (entre fournées potentiellement
   // différentes) : renumérote l'ensemble des étapes de ce jour plutôt que
@@ -359,7 +365,7 @@ export function PlanningDayView({
                 title="Ouvrir la fournée"
                 className="group/f flex min-h-10 items-center gap-2 px-4 pt-3 pb-0.5 font-label-md text-[12px] uppercase tracking-wider text-secondary"
               >
-                <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: couleurFournee(bloc.planId) }} />
+                <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: couleur(bloc.planId) }} />
                 {premier.projet && (
                   <span className="material-symbols-outlined text-[16px]" title="Projet en cours" aria-label="Projet en cours">
                     construction
@@ -445,7 +451,7 @@ export function PlanningDayView({
         <div className="flex flex-wrap gap-2" role="group" aria-label="Afficher ou masquer une fournée">
           {fournees.map((f) => {
             const visible = !masquees.has(f.planId);
-            const couleur = couleurFournee(f.planId);
+            const teinte = couleur(f.planId);
             return (
               <button
                 key={f.planId}
@@ -455,7 +461,7 @@ export function PlanningDayView({
                 title={visible ? 'Masquer les étapes de cette fournée' : 'Afficher les étapes de cette fournée'}
                 className={`flex min-h-9 max-w-full items-center gap-2 rounded-pill border border-outline-variant bg-surface-container-lowest px-3 py-1 text-[13px] text-primary transition-opacity${visible ? '' : ' opacity-45'}`}
               >
-                <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: couleur }} />
+                <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: teinte }} />
                 {f.projet && <span className="material-symbols-outlined text-[15px]">construction</span>}
                 <span className="min-w-0 truncate">{f.titre}</span>
                 <span aria-hidden className="h-1 w-10 shrink-0 overflow-hidden rounded-full bg-surface-variant">
@@ -463,7 +469,7 @@ export function PlanningDayView({
                     className="block h-full"
                     style={{
                       width: `${f.total ? (100 * f.faites) / f.total : 0}%`,
-                      background: couleur,
+                      background: teinte,
                     }}
                   />
                 </span>
@@ -543,7 +549,7 @@ export function PlanningDayView({
         title={canReorder ? 'Glisser pour réordonner cette étape dans sa journée' : undefined}
         className={`flex overflow-hidden rounded-lg border border-outline-variant/60 bg-surface${canReorder ? ' cursor-grab active:cursor-grabbing' : ''}${dragId === it.stepId ? ' opacity-50' : ''}`}
       >
-        <span aria-hidden className="w-1 shrink-0" style={{ background: couleurFournee(it.planId) }} />
+        <span aria-hidden className="w-1 shrink-0" style={{ background: couleur(it.planId) }} />
         <div className="min-w-0 flex-1 py-1.5 pr-2">
           <Link
             href={`/fournee/${it.planId}?mode=preparer`}
@@ -749,7 +755,7 @@ export function PlanningDayView({
           <div className="flex flex-col gap-1 px-4 pt-2 pb-[calc(16px+env(safe-area-inset-bottom,0px))]">
             <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-outline-variant" aria-hidden />
             <p className="flex items-center gap-2 font-label-md text-[12px] uppercase tracking-wider text-secondary">
-              <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: couleurFournee(feuilleItem.it.planId) }} />
+              <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: couleur(feuilleItem.it.planId) }} />
               {feuilleItem.it.projet && <span className="material-symbols-outlined text-[16px]">construction</span>}
               <span className="min-w-0 truncate">{feuilleItem.it.recipeTitleBrut}</span>
             </p>

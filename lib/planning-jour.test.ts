@@ -3,6 +3,7 @@ import {
   COULEURS_FOURNEE,
   colonnesSemaine,
   couleurFournee,
+  couleursParRang,
   dateIsoLocale,
   grouperConsecutifs,
   indexDeplacement,
@@ -17,6 +18,21 @@ describe('couleurFournee', () => {
     expect(COULEURS_FOURNEE).toContain(couleurFournee(123456));
     expect(couleurFournee(0)).toBe(COULEURS_FOURNEE[0]);
     expect(couleurFournee(COULEURS_FOURNEE.length + 1)).toBe(COULEURS_FOURNEE[1]);
+  });
+});
+
+describe('couleursParRang', () => {
+  it('attribue les teintes dans l’ordre d’apparition, sans doublon', () => {
+    const m = couleursParRang([42, 7, 42, 9, 3, 15]);
+    expect([...m.keys()]).toEqual([42, 7, 9, 3, 15]);
+    expect(m.get(42)).toBe(COULEURS_FOURNEE[0]);
+    expect(m.get(7)).toBe(COULEURS_FOURNEE[1]);
+    expect(new Set(m.values()).size).toBe(5);
+  });
+  it('boucle au-delà de la palette', () => {
+    const ids = Array.from({ length: COULEURS_FOURNEE.length + 1 }, (_, i) => i + 100);
+    const m = couleursParRang(ids);
+    expect(m.get(ids[COULEURS_FOURNEE.length])).toBe(COULEURS_FOURNEE[0]);
   });
 });
 
