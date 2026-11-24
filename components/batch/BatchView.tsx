@@ -1894,6 +1894,8 @@ function PatisserView({
   // Vue « une étape à la fois » (téléphone, tablette) : étape affichée. Posée
   // une fois à l'ouverture (première étape à faire) puis seulement par le
   // membre : terminer une étape ne fait jamais changer d'étape sous le doigt.
+  // Bureau : vue « une étape » par défaut, déroulé complet à la demande.
+  const [derouleComplet, setDerouleComplet] = useState(false);
   const [etapeFocus, setEtapeFocus] = useState<number | null>(() =>
     etapeInitiale(etapesOrdonnees(batch, groupBatchStepsByDay(batch.batch_steps))),
   );
@@ -2151,6 +2153,8 @@ function PatisserView({
         pointsAVerifier={pointsAVerifier}
         photosRecette={photosRecette}
         onCloturer={!readOnly && batch.status === 'planifiee' ? onMarkTerminee : undefined}
+        bureau={!derouleComplet}
+        onDeroule={() => setDerouleComplet(true)}
         rappels={{
           onToggleStep: toggleStep,
           onToggleSub: toggleSub,
@@ -2165,7 +2169,12 @@ function PatisserView({
 
       {/* Déroulé complet : ordinateur et impression. Sous 1024 px, la vue
           « une étape à la fois » ci-dessus le remplace. */}
-      <div className="hidden lg:flex print:flex flex-col gap-6">
+      <div className={`hidden ${derouleComplet ? 'lg:flex' : ''} print:flex flex-col gap-6`}>
+        {derouleComplet && (
+          <button type="button" onClick={() => setDerouleComplet(false)} className="no-print hidden lg:inline-flex self-start items-center gap-1 font-label-md text-[13px] text-primary underline underline-offset-2">
+            ← Revenir à l’étape par étape
+          </button>
+        )}
         <PatisserBody
           batch={batch}
           jalons={jalons}

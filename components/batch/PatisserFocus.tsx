@@ -310,7 +310,7 @@ function CarteEtape({
   const finRef = useRef<HTMLElement>(null);
   const etaitTerminee = useRef(g.complete);
   useEffect(() => {
-    if (g.complete && !etaitTerminee.current) {
+    if (g.complete && !etaitTerminee.current && !window.matchMedia('(min-width: 1024px)').matches) {
       const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       requestAnimationFrame(() => requestAnimationFrame(() => finRef.current?.scrollIntoView({ behavior: reduit ? 'auto' : 'smooth', block: 'center' })));
     }
@@ -323,7 +323,7 @@ function CarteEtape({
   const enAmont = !!(s as { fait_en_amont?: boolean }).fait_en_amont;
   const badges = [enAmont ? 'DÉJÀ RÉALISÉE AVANT LA FOURNÉE' : '', ...g.badges.filter((b) => b !== 'PRÉPARATION DÉJÀ RÉALISÉE')].filter(Boolean);
   return (
-    <article data-etape-courante={s.id} className="flex flex-col gap-4">
+    <article data-etape-courante={s.id} className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-x-8">
       <header className="flex flex-col gap-1">
         <p className="flex justify-between gap-2 font-label-md text-[12px] uppercase tracking-widest text-secondary">
           <span className="min-w-0 truncate">{titreJour}</span>
@@ -411,7 +411,7 @@ function CarteEtape({
           Déplié aussi dès qu'un constat existe. */}
       <section
         ref={finRef}
-        className={`mt-2 flex flex-col gap-3 rounded-xl p-4 ${g.complete ? 'border-2 border-green-700 bg-green-50' : 'border border-dashed border-outline-variant bg-white'}`}
+        className={`mt-2 flex flex-col gap-3 rounded-xl p-4 lg:sticky lg:top-[calc(var(--site-header-h,72px)+16px)] lg:col-start-2 lg:[grid-row:1/span_20] lg:mt-0 ${g.complete ? 'border-2 border-green-700 bg-green-50' : 'border border-dashed border-outline-variant bg-white'}`}
       >
         <h3 className={`flex items-center gap-2 font-label-md text-[13px] font-bold uppercase tracking-widest ${g.complete ? 'text-green-800' : 'text-on-surface-variant'}`}>
           <span className="material-symbols-outlined text-[20px]">{g.complete ? 'task_alt' : 'flag'}</span>
@@ -471,6 +471,8 @@ export function PatisserFocus({
   photosRecette,
   onCloturer,
   rappels,
+  bureau = true,
+  onDeroule,
 }: {
   batch: BatchFull;
   jalons: BatchJalon[];
@@ -486,6 +488,11 @@ export function PatisserFocus({
   // Absent : fournée close ou verrouillée, pas de clôture proposée.
   onCloturer?: () => void;
   rappels: Rappels;
+  // Au-dessus de 1024 px : vue « une étape » en trois zones (liste, étape, fin
+  // d'étape) quand vrai, déroulé complet quand faux. Sous 1024 px, toujours la vue
+  // une étape. `onDeroule` : bouton « Voir tout le déroulé » (bureau seulement).
+  bureau?: boolean;
+  onDeroule?: () => void;
 }) {
   const etapes = etapesOrdonnees(batch, jalons);
   const idx = Math.max(0, etapes.findIndex((e) => e.step.id === etapeId));
@@ -528,12 +535,13 @@ export function PatisserFocus({
   const jalon = jalons[courante.jalon];
 
   return (
-    <div className="lg:hidden print:hidden">
+    <div className={`${bureau ? '' : 'lg:hidden'} print:hidden`}>
       <div ref={haut} id="patisser-focus" className="scroll-mt-24" />
+      <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:gap-8">
       {/* Jauge : un segment par étape, regroupés par jour. Vert = terminée,
           marron = il reste quelque chose à faire ; l'étape affichée est
           entourée. Toucher un segment y mène. */}
-      <nav aria-label="Étapes de la fournée" className="mb-4 flex gap-2">
+      <nav aria-label="Étapes de la fournée" className="mb-4 flex gap-2 lg:hidden">
         {jalons.map((j, ji) => (
           <div key={ji} className="flex min-w-0 gap-1" style={{ flex: j.steps.length }}>
             {etapes
@@ -561,6 +569,51 @@ export function PatisserFocus({
         ))}
       </nav>
 
+      {/* Bureau : liste verticale des étapes, groupées par jour. Même sens des
+          couleurs que la jauge : vert = terminée, marron = reste à faire. */}
+      <nav
+        aria-label="Étapes de la fournée"
+        className="hidden lg:sticky lg:top-[calc(var(--site-header-h,72px)+16px)] lg:flex lg:max-h-[calc(100vh-var(--site-header-h,72px)-32px)] lg:flex-col lg:gap-3 lg:overflow-y-auto"
+      >
+        {jalons.map((j, ji) => {
+          const jour = dateDuJalon(batch, j.offset);
+          return (
+            <div key={ji} className="flex flex-col gap-1">
+              <p className="font-label-md text-[11px] uppercase tracking-widest text-secondary">
+                {j.offset > 0 ? `Jour J − ${j.offset}` : 'Jour J'}
+                {jour ? ` · ${jour.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}
+              </p>
+              {etapes
+                .filter((e) => e.jalon === ji)
+                .map((e) => {
+                  const rang = etapes.indexOf(e) + 1;
+                  const active = e.step.id === courante.step.id;
+                  return (
+                    <button
+                      key={e.step.id}
+                      type="button"
+                      onClick={() => onEtape(e.step.id)}
+                      aria-current={active ? 'step' : undefined}
+                      className={`flex items-center gap-2 rounded-lg px-2 py-2 text-left font-body-md text-[14px] leading-tight ${active ? 'bg-surface-container-high ring-2 ring-primary' : 'hover:bg-surface-container'}`}
+                    >
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white ${e.terminee ? 'bg-green-700' : 'bg-primary'}`}>
+                        {e.terminee ? <span className="material-symbols-outlined text-[16px]">check</span> : rang}
+                      </span>
+                      <span className={`min-w-0 ${e.terminee ? 'text-green-800' : 'text-on-surface'}`}>{e.step.title || 'Étape'}</span>
+                    </button>
+                  );
+                })}
+            </div>
+          );
+        })}
+        {onDeroule && (
+          <button type="button" onClick={onDeroule} className="mt-2 self-start font-label-md text-[13px] text-primary underline underline-offset-2">
+            Voir tout le déroulé
+          </button>
+        )}
+      </nav>
+
+      <div className="min-w-0">
       <CarteEtape
         key={courante.step.id}
         batch={batch}
@@ -585,7 +638,7 @@ export function PatisserFocus({
           fond plein, et marge basse de 12 px pour le rond central de la barre
           basse, qui déborde vers le haut. */}
       <div
-        className="fixed inset-x-0 z-[46] border-t border-outline-variant bg-white px-3 pt-2 pb-3"
+        className="fixed inset-x-0 z-[46] border-t border-outline-variant bg-white px-3 pt-2 pb-3 lg:static lg:mt-6 lg:border-0 lg:bg-transparent lg:p-0"
         style={{ bottom: navH != null ? navH - 1 : 'calc(var(--mobile-nav-h) - 1px)' }}
       >
         <div className="mx-auto flex max-w-[1200px] gap-2">
@@ -617,6 +670,8 @@ export function PatisserFocus({
             <span className="flex-1" />
           )}
         </div>
+      </div>
+      </div>
       </div>
     </div>
   );

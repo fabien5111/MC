@@ -1849,7 +1849,7 @@ la validation et l'avis — sans laisser le temps de noter la dernière étape.
   ont disparu ; `ValidationFournee` ne sert plus que la case « Fournée validée » du
   résumé d'une fournée close.
 
-## Mode Pâtisser « une étape à la fois » (téléphone et tablette, 24/11/2026)
+## Mode Pâtisser « une étape à la fois » (téléphone, tablette et bureau, 24/11/2026)
 
 Sous **1024 px**, le mode Pâtisser n'affiche plus le déroulé mais **une étape à
 la fois** (`components/batch/PatisserFocus.tsx`, logique pure et testée :
@@ -1904,8 +1904,17 @@ mobile » (piste A retenue).
 - **Étape qui vient d'être terminée → défilement vers « Fin d'étape »**
   (case du titre OU auto-coche par le dernier geste : **exception voulue** à « l'auto-coche
   ne fait pas défiler », le constat est la suite logique ; jamais à l'ouverture d'une étape
-  déjà terminée). Aucune pastille de rappel sur « Suivante » / « Clôturer » (retirée le 24/11/2026). **À venir (lot 3)** : version bureau (liste
-  des étapes à gauche, deux colonnes, « Fin d'étape » à droite).
+  déjà terminée). Aucune pastille de rappel sur « Suivante » / « Clôturer » (retirée le 24/11/2026).
+- **Version bureau (lot 3, ≥ 1024 px)** : la même vue (`PatisserFocus`, prop `bureau`) est la
+  vue **par défaut** de l'ordinateur, en trois zones — liste verticale des étapes à gauche
+  (groupées par jour, rond vert = terminée, marron = reste à faire, étape affichée cernée),
+  étape au centre (**une seule colonne : ingrédients, puis gestes dessous**), « Fin d'étape »
+  à droite, collée sous l'en-tête (`sticky`) et toujours visible. Précédente / Suivante /
+  Clôturer ne sont plus fixes : posés sous l'étape. Pas de défilement automatique vers « Fin
+  d'étape » sur bureau (elle est déjà à l'écran). « Voir tout le déroulé » (sous la liste)
+  bascule sur l'ancien déroulé (`derouleComplet`, `BatchView`, état local non mémorisé) et
+  « ← Revenir à l'étape par étape » le quitte ; l'**impression** reste toujours le déroulé.
+  Les règles de coche sont les mêmes (`gestesEtape`). Géométrie non vérifiée visuellement.
 
 ## Photos de réalisation d'une fournée (JEP-382)
 
