@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getCurrentUser } from '@/lib/auth';
-import { getBatches, getActiveBatches, getShoppingLists, getUnits } from '@/lib/profile';
+import { getBatches, getShoppingLists, getUnits } from '@/lib/profile';
 import { getIngredientConversions } from '@/lib/recipes';
 import { canAccess } from '@/lib/entitlements';
 import { getEntitlements } from '@/lib/entitlements-data';
@@ -34,10 +34,9 @@ export default async function EnCuisinePage() {
     );
   }
 
-  const [planning, batchesTerminees, activeBatches, shoppingLists, entitlements, conversions, units, realisations, helpBlocks] = await Promise.all([
+  const [planning, batchesTerminees, shoppingLists, entitlements, conversions, units, realisations, helpBlocks] = await Promise.all([
     getBatches(user.id, 'actives'),
     getBatches(user.id, 'terminees'),
-    getActiveBatches(user.id),
     getShoppingLists(user.id),
     getEntitlements(user.id),
     getIngredientConversions(),
@@ -71,7 +70,6 @@ export default async function EnCuisinePage() {
         <CuisineContent
           planning={planning}
           batchesTerminees={batchesTerminees}
-          activeBatches={activeBatches}
           shoppingLists={shoppingLists}
           droits={droits}
           conversions={conversions}
