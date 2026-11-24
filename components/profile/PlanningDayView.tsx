@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
+import { useDialog } from '@/components/Dialog';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { groupPlanningStepsByDate, type PlanningDayGroup, type PlanningDayItem } from '@/lib/recipe-plan';
 import { LockedAction } from '@/components/LockedAction';
@@ -29,9 +30,11 @@ import {
   couleurFournee,
   couleursParRang,
   dateIsoLocale,
+  decalageVersDate,
   grouperConsecutifs,
   indexDeplacement,
   joursConsecutifs,
+  ordreApresDepot,
   premierJourAffiche,
   tempsEtape,
   travailActif,
@@ -62,6 +65,7 @@ export function PlanningDayView({
   canReorder?: boolean;
 }) {
   const { mutate, busy } = useMutation();
+  const dialog = useDialog();
   const router = useRouter();
   // Distinct de `busy` (qui ne couvre que les écritures de `mutate`) : le
   // renvoi vers la fiche fournée après « je veux laisser un avis » est un
@@ -71,7 +75,26 @@ export function PlanningDayView({
   const [navigating, setNavigating] = useState(false);
   const [list, setList] = useState(plans);
   useEffect(() => setList(plans), [plans]);
+  // `dragRef` porte la vérité du glisser en cours (lue par les gestionnaires de
+  // dépôt, sans dépendre d'un re-rendu) ; `dragId` n'est que le reflet visuel,
+  // posé APRÈS le démarrage : modifier le DOM pendant `dragstart` fait annuler
+  // le glisser par Chrome.
+  const dragRef = useRef<number | null>(null);
   const [dragId, setDragId] = useState<number | null>(null);
+  // Jour survolé pendant un glisser (surbrillance de la colonne cible).
+  const [survol, setSurvol] = useState<string | null>(null);
+  function debutGlisser(e: React.DragEvent, stepId: number) {
+    dragRef.current = stepId;
+    e.dataTransfer.effectAllowed = 'move';
+    // Firefox n'amorce pas un glisser sans donnée.
+    e.dataTransfer.setData('text/plain', String(stepId));
+    setTimeout(() => setDragId(stepId), 0);
+  }
+  function finGlisser() {
+    dragRef.current = null;
+    setDragId(null);
+    setSurvol(null);
+  }
   // Feuille d'actions d'une étape (sous 1024 px) : Pâtisser, Préparer, et
   // Monter / Descendre dans la journée — le seul moyen de réordonner au doigt.
   const [feuilleId, setFeuilleId] = useState<number | null>(null);
@@ -176,6 +199,74 @@ export function PlanningDayView({
     if (!ok) setList(prev);
   }
 
+  // Déplace une étape vers un AUTRE jour : seul `day_offset` change (jours avant
+  // la dégustation) ; `base_day_offset` reste, le geste « rétablir » de Préparer
+  // fonctionne donc toujours. L'étape se place devant `avantId`, sinon en fin
+  // de journée, et la journée d'arrivée est renumérotée.
+  async function moveStepToDay(stepId: number, dateCible: string, avantId: number | null) {
+    const plan = list.find((p) => p.batch_steps.some((s) => s.id === stepId));
+    if (!plan || !plan.planned_date) return;
+    if (plan.status !== 'planifiee') {
+      await dialog.alert('Cette fournée est close : ses étapes ne se déplacent plus. Reprenez la fournée pour les modifier.');
+      return;
+    }
+    const offset = decalageVersDate(plan.planned_date, dateCible);
+    if (offset < 0) {
+      await dialog.alert('Une étape ne peut pas être placée après le jour de la dégustation de sa fournée.');
+      return;
+    }
+    const cible = groupsAll.find((g) => g.date === dateCible);
+    const ordre = ordreApresDepot(
+      (cible?.items ?? []).map((x) => x.stepId),
+      stepId,
+      avantId,
+    );
+    const prev = list;
+    setList((all) =>
+      all.map((p) => ({
+        ...p,
+        batch_steps: p.batch_steps.map((s) => {
+          const i = ordre.indexOf(s.id);
+          if (i < 0) return s;
+          return s.id === stepId ? { ...s, day_offset: offset, day_order_index: i } : { ...s, day_order_index: i };
+        }),
+      })),
+    );
+    const supabase = createClient();
+    const ok = await mutate(
+      async () => {
+        const results = await Promise.all(
+          ordre.map((id, i) =>
+            supabase
+              .from('batch_steps')
+              .update(id === stepId ? { day_offset: offset, day_order_index: i } : { day_order_index: i })
+              .eq('id', id),
+          ),
+        );
+        const failed = results.find((r) => r.error);
+        return failed ? { error: failed.error } : { error: null };
+      },
+      { errorLabel: "Déplacement de l'étape impossible" },
+    );
+    if (!ok) setList(prev);
+  }
+
+  // Dépôt d'une étape sur un jour (`avantId` : la carte visée, sinon fin de
+  // journée) : même jour = réordonnancement, autre jour = déplacement.
+  function deposer(date: string, avantId: number | null) {
+    const id = dragRef.current;
+    finGlisser();
+    if (id === null) return;
+    const origine = groupsAll.find((g) => g.items.some((x) => x.stepId === id));
+    if (!origine) return;
+    if (origine.date === date) {
+      const cible = avantId ?? origine.items[origine.items.length - 1].stepId;
+      moveStep(date, id, cible);
+    } else {
+      moveStepToDay(id, date, avantId);
+    }
+  }
+
   // Toutes les étapes d'une fournée cochées : plus de question posée sur le
   // coup. Une barre « Fournée prête à être clôturée » (en bas de page) mène à
   // l'écran de fin de fournée, ouvert par `?cloture=1` sur la fournée. Posé
@@ -273,15 +364,14 @@ export function PlanningDayView({
       <li
         key={it.stepId}
         onDragOver={(e) => {
-          if (dragId === null) return;
+          if (dragRef.current === null) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
         }}
         onDrop={(e) => {
-          if (dragId === null) return;
+          if (dragRef.current === null) return;
           e.preventDefault();
-          moveStep(g.date, dragId, it.stepId);
-          setDragId(null);
+          deposer(g.date, it.stepId);
         }}
         className={`flex items-center border-b border-outline-variant/30 last:border-0 pr-1${dragId === it.stepId ? ' opacity-50' : ''}`}
       >
@@ -291,11 +381,8 @@ export function PlanningDayView({
         {canReorder && !tactile && (
           <span
             draggable
-            onDragStart={(e) => {
-              setDragId(it.stepId);
-              e.dataTransfer.effectAllowed = 'move';
-            }}
-            onDragEnd={() => setDragId(null)}
+            onDragStart={(e) => debutGlisser(e, it.stepId)}
+            onDragEnd={finGlisser}
             title="Glisser pour réordonner cette étape dans sa journée"
             className="no-print material-symbols-outlined -mr-2 text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
           >
@@ -536,6 +623,21 @@ export function PlanningDayView({
   const etendue =
     datesVisibles.length > 1 ? `${jourCourt(datesVisibles[0])} – ${jourCourt(derniereVisible)}` : datesVisibles[0] ? dateLabel(datesVisibles[0]) : '';
 
+  // Une colonne de jour (vide ou non) reçoit une étape glissée : fin de journée.
+  const zoneDepot = (date: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (dragRef.current === null) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (survol !== date) setSurvol(date);
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (dragRef.current === null) return;
+      e.preventDefault();
+      deposer(date, null);
+    },
+  });
+
   function renderCarte(g: PlanningDayGroup, it: PlanningDayItem) {
     const { preparer, patisser } = liens(it);
     const resteAFaire = it.done && !it.complete;
@@ -543,24 +645,26 @@ export function PlanningDayView({
       <li
         key={it.stepId}
         onDragOver={(e) => {
-          if (dragId === null) return;
+          if (dragRef.current === null) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
         }}
         onDrop={(e) => {
-          if (dragId === null) return;
+          if (dragRef.current === null) return;
           e.preventDefault();
-          moveStep(g.date, dragId, it.stepId);
-          setDragId(null);
+          e.stopPropagation();
+          deposer(g.date, it.stepId);
         }}
         draggable={canReorder}
         onDragStart={(e) => {
-          if (!canReorder) return;
-          setDragId(it.stepId);
-          e.dataTransfer.effectAllowed = 'move';
+          if (!canReorder) {
+            e.preventDefault();
+            return;
+          }
+          debutGlisser(e, it.stepId);
         }}
-        onDragEnd={() => setDragId(null)}
-        title={canReorder ? 'Glisser pour réordonner cette étape dans sa journée' : undefined}
+        onDragEnd={finGlisser}
+        title={canReorder ? 'Glisser pour réordonner cette étape, ou la déposer sur un autre jour' : undefined}
         className={`flex overflow-hidden rounded-lg border border-outline-variant/60 bg-surface${canReorder ? ' cursor-grab active:cursor-grabbing' : ''}${dragId === it.stepId ? ' opacity-50' : ''}`}
       >
         <span aria-hidden className="w-1 shrink-0" style={{ background: couleur(it.planId) }} />
@@ -679,7 +783,11 @@ export function PlanningDayView({
               if (!g) {
                 // Jour sans étape : colonne vide, même gabarit que les autres.
                 return (
-                  <section key={date} className="flex min-w-0 flex-col rounded-xl border border-dashed border-outline-variant/70 bg-surface-container-lowest/40">
+                  <section
+                    key={date}
+                    {...zoneDepot(date)}
+                    className={`flex min-w-0 flex-col rounded-xl border border-dashed border-outline-variant/70 bg-surface-container-lowest/40${survol === date ? ' ring-2 ring-primary bg-primary/5' : ''}`}
+                  >
                     <h3 className="flex items-baseline justify-between gap-2 rounded-t-xl border-b border-outline-variant/30 bg-surface-container/50 px-3 py-2">
                       <span className="font-headline-md text-[16px] leading-tight text-primary/70 first-letter:uppercase">{jourCourt(date)}</span>
                     </h3>
@@ -693,7 +801,8 @@ export function PlanningDayView({
               return (
                 <section
                   key={g.date}
-                  className={`flex min-w-0 flex-col rounded-xl border border-outline-variant bg-surface-container-lowest${termine ? ' opacity-70' : ''}`}
+                  {...zoneDepot(g.date)}
+                  className={`flex min-w-0 flex-col rounded-xl border border-outline-variant bg-surface-container-lowest${termine ? ' opacity-70' : ''}${survol === g.date ? ' ring-2 ring-primary' : ''}`}
                 >
                   <h3 className="flex items-baseline justify-between gap-2 rounded-t-xl border-b border-outline-variant/40 bg-surface-container px-3 py-2">
                     <span className="font-headline-md text-[16px] leading-tight text-primary first-letter:uppercase">{jourCourt(g.date)}</span>
@@ -751,10 +860,7 @@ export function PlanningDayView({
           sommaire fixe d'En cuisine fait 58 px replié). Filtres compris, pour
           rester alignés sur la grille. */}
       {!tactile && (
-        <div
-          ref={semaineRef}
-          className="relative left-1/2 hidden w-[min(1600px,calc(100vw-160px))] -translate-x-1/2 flex-col gap-4 lg:flex"
-        >
+        <div ref={semaineRef} className="relative left-1/2 hidden w-[min(1600px,calc(100vw-160px))] -translate-x-1/2 flex-col gap-4 lg:flex">
           {filtres()}
           {vueSemaine()}
         </div>

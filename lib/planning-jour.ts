@@ -127,3 +127,24 @@ export function ajouterJoursIso(iso: string, n: number): string {
 export function joursConsecutifs(debut: string, nb: number): string[] {
   return Array.from({ length: Math.max(0, nb) }, (_, i) => ajouterJoursIso(debut, i));
 }
+
+// Nombre de jours entre une étape déplacée et la dégustation de sa fournée :
+// la valeur à écrire dans `batch_steps.day_offset` (jours AVANT la dégustation)
+// pour que l'étape tombe le `dateCible`. Négatif = après la dégustation, ce que
+// le modèle n'admet pas. Calendrier LOCAL, arrondi pour absorber un changement
+// d'heure (23 h ou 25 h entre deux minuits).
+export function decalageVersDate(datePlanifiee: string, dateCible: string): number {
+  const a = new Date(datePlanifiee + 'T00:00:00').getTime();
+  const b = new Date(dateCible + 'T00:00:00').getTime();
+  return Math.round((a - b) / 86400000);
+}
+
+// Nouvel ordre d'une journée quand une étape y est déposée : devant `avantId`
+// (sinon en fin de journée), l'étape déposée étant d'abord retirée de la liste
+// si elle y figurait déjà. Rend les identifiants dans l'ordre définitif.
+export function ordreApresDepot(ids: number[], deposeId: number, avantId: number | null): number[] {
+  const reste = ids.filter((x) => x !== deposeId);
+  const i = avantId === null ? -1 : reste.indexOf(avantId);
+  if (i < 0) return [...reste, deposeId];
+  return [...reste.slice(0, i), deposeId, ...reste.slice(i)];
+}

@@ -6,6 +6,8 @@ import {
   couleurFournee,
   couleursParRang,
   dateIsoLocale,
+  decalageVersDate,
+  ordreApresDepot,
   grouperConsecutifs,
   indexDeplacement,
   joursConsecutifs,
@@ -134,7 +136,12 @@ describe('colonnesSemaine', () => {
 
 describe('travailActif / dateIsoLocale', () => {
   it('additionne préparation et cuisson', () => {
-    expect(travailActif([{ prep_time: 15, cook_time: 20 }, { prep_time: null, cook_time: 5 }])).toBe(40);
+    expect(
+      travailActif([
+        { prep_time: 15, cook_time: 20 },
+        { prep_time: null, cook_time: 5 },
+      ]),
+    ).toBe(40);
   });
   it('date locale', () => {
     expect(dateIsoLocale(new Date(2026, 0, 5))).toBe('2026-01-05');
@@ -155,5 +162,35 @@ describe('ajouterJoursIso / joursConsecutifs', () => {
     expect(joursConsecutifs('2026-11-24', 5)).toHaveLength(5);
     expect(joursConsecutifs('2026-11-24', 0)).toEqual([]);
     expect(joursConsecutifs('2026-11-24', -2)).toEqual([]);
+  });
+});
+
+describe('decalageVersDate', () => {
+  it('jours avant la dégustation', () => {
+    expect(decalageVersDate('2026-11-20', '2026-11-20')).toBe(0);
+    expect(decalageVersDate('2026-11-20', '2026-11-18')).toBe(2);
+  });
+  it('négatif après la dégustation', () => {
+    expect(decalageVersDate('2026-11-20', '2026-11-21')).toBe(-1);
+  });
+  it('traverse un changement d’heure', () => {
+    expect(decalageVersDate('2026-03-30', '2026-03-28')).toBe(2);
+    expect(decalageVersDate('2026-10-27', '2026-10-24')).toBe(3);
+  });
+});
+
+describe('ordreApresDepot', () => {
+  it('devant une étape donnée', () => {
+    expect(ordreApresDepot([1, 2, 3], 9, 2)).toEqual([1, 9, 2, 3]);
+  });
+  it('en fin de journée sans repère', () => {
+    expect(ordreApresDepot([1, 2], 9, null)).toEqual([1, 2, 9]);
+  });
+  it('déplace une étape déjà présente', () => {
+    expect(ordreApresDepot([1, 2, 3], 3, 1)).toEqual([3, 1, 2]);
+    expect(ordreApresDepot([1, 2, 3], 1, null)).toEqual([2, 3, 1]);
+  });
+  it('repère inconnu : en fin', () => {
+    expect(ordreApresDepot([1, 2], 9, 77)).toEqual([1, 2, 9]);
   });
 });
