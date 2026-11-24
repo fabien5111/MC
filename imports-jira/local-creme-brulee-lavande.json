@@ -1,0 +1,85 @@
+{
+  "ticket": "local-creme-brulee-lavande",
+  "recette": {
+    "titre": "Crème brûlée lavande",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème prise à basse température, très onctueuse et fondante, au parfum floral de lavande, sans caramélisation. Congelée, elle sert d'insert crémeux à l'intérieur d'un entremets ou d'un individuel.",
+    "rendement": "1 cercle Ø 20 cm, 1,3 cm de hauteur — environ 415 g de crème utilisable (472 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Balance de précision",
+      "Casserole",
+      "Fouet",
+      "Cuillère",
+      "Chinois étamine",
+      "Thermomètre sonde",
+      "Cercle à entremets Ø 20 cm, hauteur 3 cm",
+      "Film alimentaire",
+      "Plaque à pâtisserie",
+      "Four"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crème brûlée lavande",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 285,
+        "temps_cuisson_minutes": 45,
+        "temperature_cuisson_celsius": 95,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 40,
+            "unite": "g"
+          },
+          {
+            "nom": "Lavande séchée alimentaire",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 80,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 50,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Préchauffer le four à 95 °C en chaleur statique.",
+          "Chauffer la crème, le lait et la lavande jusqu'à 80 °C, puis couvrir et infuser 15 minutes hors du feu.",
+          "Filtrer l'infusion en pressant la lavande.",
+          "Mélanger les jaunes avec le sucre au fouet, sans les faire blanchir ni mousser.",
+          "Verser l'infusion tiède sur les jaunes en mélangeant doucement, passer l'appareil au chinois, puis écumer les bulles en surface avec une cuillère.",
+          "Poser le cercle sur une plaque, fond fermé par deux couches de film alimentaire bien tendues et remontées sur l'extérieur, puis verser l'appareil sur 1,3 cm de hauteur.",
+          "Cuire 40 à 45 minutes à 95 °C jusqu'à une prise tremblotante au centre, soit 80-82 °C à cœur.",
+          "Refroidir 30 minutes à température ambiante, puis congeler à plat au moins 4 heures avant de démouler."
+        ],
+        "conseils_etape": "Utiliser de la lavande alimentaire non traitée et limiter l'infusion à 15 minutes hors du feu, sous peine d'un goût savonneux. Ne jamais dépasser 100 °C au four et ne pas fouetter les jaunes, sinon l'appareil granulerait ou mousserait ; compter 35 à 40 minutes de cuisson pour 1 cm de hauteur. Choisir un film alimentaire résistant à la cuisson et bien le remonter sur l'extérieur du cercle, sinon l'appareil liquide fuit par-dessous.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 2 mois au congélateur, filmée au contact."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, insert Ø 12 cm, 1,3 cm de hauteur : ≈ 150 g de crème, soit ×0,36 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, insert Ø 16 cm, 1,3 cm de hauteur : ≈ 265 g de crème, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, insert Ø 20 cm, 1,3 cm de hauteur : ≈ 415 g de crème, soit ×1,00 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, insert Ø 5 cm, 1,3 cm de hauteur : ≈ 25 g par pièce, soit 16 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert 18 x 5 cm, 1,3 cm de hauteur : ≈ 120 g de crème, soit ×0,29 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, insert de 1,2 cm de hauteur : ≈ 395 g de crème, soit ×0,95 de la recette.",
+      "Utilisation — Tartelettes Ø 8 cm, garniture de 1 cm : ≈ 50 g par pièce, soit 8 pièces avec la recette entière.",
+      "Variante — Vanille : remplacer la lavande par 1 gousse de vanille fendue et grattée, infusée de la même façon.",
+      "Variante — Earl Grey : remplacer la lavande par 3 g de thé Earl Grey, infusé 5 minutes seulement."
+    ],
+    "conseils_conservation": "Insert congelé dans son cercle, filmé au contact : 2 mois à -18 °C. Se démoule congelé et se monte directement dans l'entremets, où il décongèle en 6 à 8 heures au réfrigérateur. Hors congélation, 3 jours au réfrigérateur sous film."
+  }
+}
