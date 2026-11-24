@@ -65,6 +65,10 @@ import { colonneRefaisableAbsente, enregistrerBilan, enregistrerRefaisable } fro
 import { EcranFinFournee, type DemandeCloture } from '@/components/batch/EcranFinFournee';
 import { EcartProduitChamp } from '@/components/batch/EcartProduitChamp';
 import { PREFIXE_PROJET } from '@/lib/projects';
+import { gestesEtape } from '@/components/batch/gestes-etape';
+import { PointsAVerifierFournee } from '@/components/batch/PointsAVerifierFournee';
+import { PatisserFocus } from '@/components/batch/PatisserFocus';
+import { etapeDuJalon, etapeInitiale, etapesOrdonnees } from '@/lib/patisser-focus';
 import {
   fmtNum,
   BATCH_STATUS_LBL,
@@ -657,7 +661,7 @@ export function BatchView({
         />
       )}
       {pretACloturer && !ecranFin && (
-        <div className="no-print pointer-events-none fixed inset-x-0 z-[46] flex justify-center px-3 bottom-[calc(var(--mobile-nav-h)+12px)] lg:bottom-4">
+        <div className={`no-print pointer-events-none fixed inset-x-0 z-[46] flex justify-center px-3 bottom-[calc(var(--mobile-nav-h)+12px)] lg:bottom-4${mode === 'patisser' ? ' max-lg:hidden' : ''}`}>
           <button
             type="button"
             onClick={() => setEcranFin(true)}
@@ -671,7 +675,7 @@ export function BatchView({
           </button>
         </div>
       )}
-      <div id="sec-haut" className="recipe-print-content scroll-mt-28 max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-6 pb-32">
+      <div id="sec-haut" className={`recipe-print-content scroll-mt-28 max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-6 pb-32${mode === 'patisser' ? ' max-lg:pb-2' : ''}`}>
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
         {/* Retour contextuel : vers l'écran de liste d'où l'on vient quand il
@@ -888,17 +892,11 @@ export function BatchView({
             onMarkTerminee={markTerminee}
             peutRacheter={droits.aRacheter}
             pointsAVerifier={baseRecipe?.pointsAVerifierBySourceStepId}
+            photosRecette={baseRecipe?.stepPhotosBySourceStepId}
             help={readOnly ? undefined : help}
           />
         )}
 
-        {/* Photos de réalisation (JEP-382), fournée en cours : sous le déroulé,
-            dans les deux modes. Fournée close : en bas du résumé. */}
-        {batch.status === 'planifiee' && (
-          <div className="mt-8">
-            <PhotosFourneeBloc etapes={etapesPourPhotos(batch)} />
-          </div>
-        )}
       </div>
       </PhotosFourneeProvider>
     </LeconsProvider>
@@ -1838,9 +1836,12 @@ function PatisserView({
   onMarkTerminee,
   peutRacheter,
   pointsAVerifier,
+  photosRecette,
   help,
 }: {
   pointsAVerifier?: Record<number, string>;
+  // Photos d'étape de la recette de base, relues en direct (vue téléphone).
+  photosRecette?: Record<number, Photo[]>;
   batch: BatchFull;
   setBatch: React.Dispatch<React.SetStateAction<BatchFull>>;
   readOnly: boolean;
@@ -1890,6 +1891,12 @@ function PatisserView({
   // Étape visée par un lien `#etape-<id>` : dépliée à l'arrivée, sans quoi on
   // atterrirait sur un titre replié.
   const [hashStepId, setHashStepId] = useState<number | null>(null);
+  // Vue « une étape à la fois » (téléphone, tablette) : étape affichée. Posée
+  // une fois à l'ouverture (première étape à faire) puis seulement par le
+  // membre : terminer une étape ne fait jamais changer d'étape sous le doigt.
+  const [etapeFocus, setEtapeFocus] = useState<number | null>(() =>
+    etapeInitiale(etapesOrdonnees(batch, groupBatchStepsByDay(batch.batch_steps))),
+  );
 
   useEffect(() => {
     if (readOnly || batch.status !== 'planifiee') return;
@@ -2034,6 +2041,7 @@ function PatisserView({
     if (ji === -1) return;
     expandJalon(ji);
     setHashStepId(stepId);
+    setEtapeFocus(stepId);
     // Début de l'étape en haut (`scroll-mt-28` réserve la place de l'en-tête) :
     // une étape dépliée dépasse souvent l'écran, centrée on arrivait en son
     // milieu. Double rAF : on attend que le dépliage soit rendu.
@@ -2094,7 +2102,20 @@ function PatisserView({
           session (terminer/annuler) et la sortie, qui doivent rester
           atteignables même pour une fournée sans étape. `mobileInset="nav"` :
           même raison que dans PreparerView, cf. son commentaire. */}
-      <RecipeToc sections={tocSections} steps={tocSteps} anchorFor={jalonAnchorId} actions={tocActions} onNavigateToStep={expandJalon} mobile="drawer" mobileInset="nav" />
+      <RecipeToc
+        sections={tocSections}
+        steps={tocSteps}
+        anchorFor={jalonAnchorId}
+        actions={tocActions}
+        onNavigateToStep={(ji) => {
+          expandJalon(ji);
+          // Vue téléphone : choisir un jour affiche sa première étape à faire.
+          const id = etapeDuJalon(etapesOrdonnees(batch, jalons), ji);
+          if (id != null) setEtapeFocus(id);
+        }}
+        mobile="drawer"
+        mobileInset="nav"
+      />
 
       {meta && <p className="text-on-surface-variant text-sm mb-6">{meta}</p>}
 
@@ -2118,7 +2139,33 @@ function PatisserView({
         </div>
       )}
 
-      <div className="flex flex-col gap-6">
+      <PatisserFocus
+        batch={batch}
+        jalons={jalons}
+        readOnly={readOnly}
+        etapeId={etapeFocus}
+        onEtape={setEtapeFocus}
+        conversions={conversions}
+        units={units}
+        peutRacheter={peutRacheter}
+        pointsAVerifier={pointsAVerifier}
+        photosRecette={photosRecette}
+        onCloturer={!readOnly && batch.status === 'planifiee' ? onMarkTerminee : undefined}
+        rappels={{
+          onToggleStep: toggleStep,
+          onToggleSub: toggleSub,
+          onSubComment,
+          onToggleIng: (id, checked) => updateIngredient(id, { done: checked }),
+          onIngReal: (id, value) => updateIngredient(id, { real_quantity: numify(value) }),
+          onIngComment,
+          onStepComment,
+          onStepEcart,
+        }}
+      />
+
+      {/* Déroulé complet : impression seule. À l’écran, la vue
+          « une étape à la fois » ci-dessus sert tous les appareils. */}
+      <div className="hidden print:flex flex-col gap-6">
         <PatisserBody
           batch={batch}
           jalons={jalons}
@@ -2326,22 +2373,6 @@ function PatisserBody({
   );
 }
 
-// « Points à vérifier » posés sur l'étape du projet (JEP-403) : rappel en
-// lecture seule dans la fournée d'essai, hors du volet replié — c'est ce qu'on
-// vient contrôler en cuisinant. Rien si la note est vide ou absente.
-function PointsAVerifierFournee({ texte }: { texte: string | null }) {
-  if (!texte) return null;
-  return (
-    <div className="rounded-lg border border-amber-600/60 bg-amber-50 px-3 py-2">
-      <p className="mb-1 flex items-center gap-1.5 font-label-md text-[12px] uppercase tracking-widest text-amber-800">
-        <span className="material-symbols-outlined text-[18px]">flag</span>
-        Points à vérifier
-      </p>
-      <div className="font-body-md text-[15px] whitespace-pre-line">{texte}</div>
-    </div>
-  );
-}
-
 function StepCookCard({
   step: s,
   ingredients,
@@ -2392,73 +2423,9 @@ function StepCookCard({
     if (openedByHash) setOpen(true);
   }, [openedByHash]);
 
-  const times = remainingStepTimes(s);
-  const badges = [
-    s.done ? 'PRÉPARATION DÉJÀ RÉALISÉE' : '',
-    times.prep_time ? `PRÉP ${formatTime(times.prep_time).toUpperCase()}` : '',
-    times.wait_time ? `ATTENTE ${formatTime(times.wait_time).toUpperCase()}` : '',
-    times.cook_time ? `CUISSON ${formatTime(times.cook_time).toUpperCase()}${s.cook_temp ? ' · ' + s.cook_temp + ' °C' : ''}` : s.cook_temp ? `CUISSON ${s.cook_temp} °C` : '',
-  ].filter(Boolean);
-  // Même principe que les ingrédients ci-dessus : toutes les sous-étapes
-  // sont rendues, celles que « déjà réalisé » exclut étant barrées plutôt
-  // qu'escamotées. Les listes `active*` — ce qui reste réellement à faire —
-  // servent aux automatismes (auto-coche de l'étape), jamais à l'affichage.
-  const substeps = [...s.batch_substeps].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-  // Un ingrédient éclaté en sous-recette n'est PAS exclu ici : en exécution,
-  // il reste à incorporer comme n'importe quel autre (cf. commentaire du
-  // parent) — seule `batchIngredientExcluded` « déjà réalisé » / étape
-  // remplacée le sort encore du parcours.
-  const cookExcluded = (it: BatchIngredientRow) => batchIngredientExcluCuisine(s, it);
-  const activeIngredients = ingredients.filter((it) => !cookExcluded(it));
-  const activeSubsteps = substeps.filter((su) => !batchSubstepExcluded(s, su));
-  // Barrée / atténuée seulement si plus rien n'y reste à faire : une étape
-  // « déjà réalisée » qui garde une sous-étape ou un ingrédient reste normale.
-  const entierementTraitee = s.done && activeIngredients.length === 0 && activeSubsteps.length === 0;
-  // Case de l'étape : cochée seulement quand plus rien de gardé n'y reste à
-  // faire (cf. `stepComplete`) — `s.done` seul resterait vrai pour une pâte
-  // « déjà réalisée avant la fournée » dont la cuisson est encore à faire.
-  const complete = s.done && activeIngredients.every((it) => it.done) && activeSubsteps.every((su) => su.done);
-  // Ingrédients de l'étape que le texte de chaque sous-étape semble nommer
-  // (cf. lib/recipe-plan.ts), chacun affiché à sa seule première sous-étape —
-  // le lait versé en début d'étape n'est pas une nouvelle quantité à chaque
-  // sous-étape suivante qui le mentionne encore.
-  const subIngredientsBySubstep = substepIngredientsBySubstep(substeps, ingredients);
-
-  // Coche automatiquement le titre de l'étape dès qu'on vient de cocher le
-  // dernier ingrédient ou la dernière sous-étape restants — jamais en continu
-  // (un `useEffect` recalculé à chaque rendu recochait l'étape aussitôt après
-  // qu'on l'ait décochée à la main, puisque ses ingrédients/sous-étapes
-  // restaient cochés, eux). Se déclenche donc uniquement depuis les gestes de
-  // coche ci-dessous, jamais l'inverse : décocher un ingrédient ou une
-  // sous-étape ne décoche pas l'étape (cf. CLAUDE.md « une étape n'est jamais
-  // retirée du déroulé »).
-  function maybeAutoCheckStep(justDoneIngredientIds: Set<number>, justDoneSubstepIds: Set<number>) {
-    if (readOnly || s.done) return;
-    if (activeIngredients.length === 0 && activeSubsteps.length === 0) return;
-    const allIngDone = activeIngredients.every((it) => it.done || justDoneIngredientIds.has(it.id));
-    const allSubDone = activeSubsteps.every((su) => su.done || justDoneSubstepIds.has(su.id));
-    if (allIngDone && allSubDone) onToggleStep(s.id, true, false);
-  }
-
-  // Étape cochée : ses lignes « sorties » par `done` restent décochables —
-  // décocher l'une rouvre l'étape (`done` faux), sans quoi il fallait décocher
-  // l'étape puis revenir décocher la ligne. Une ligne retirée à la main ou une
-  // étape remplacée par une recette restent verrouillées.
-  const rouvrable = s.done && s.replaced_by_recipe_id == null;
-  // Étape cochée d'un coup (case de l'en-tête) : ses lignes ne sont « cochées »
-  // que par exclusion (`done` faux en base). Rouvrir l'étape les décocherait
-  // donc TOUTES : on pose d'abord `done` sur les autres lignes visibles cochées,
-  // pour que seule celle sur laquelle on a cliqué se décoche.
-  function rouvrirEtape(sousEtapeId?: number, ingredientId?: number) {
-    if (!s.done) return;
-    substeps.forEach((su) => {
-      if (su.id !== sousEtapeId && !su.done && batchSubstepExcluded(s, su)) onToggleSub(su.id, true);
-    });
-    ingredients.forEach((it) => {
-      if (it.id !== ingredientId && !it.done && !it.removed && cookExcluded(it)) onToggleIng(it.id, true);
-    });
-    onToggleStep(s.id, false, false);
-  }
+  // Règles de coche partagées avec la vue « une étape à la fois » (téléphone).
+  const g = gestesEtape(s, ingredients, readOnly, { onToggleStep, onToggleSub, onToggleIng });
+  const { badges, substeps, cookExcluded, entierementTraitee, complete, subIngredientsBySubstep } = g;
 
   // Ce que le volet replié contient, annoncé sur l'en-tête : une étape
   // repliée ne doit pas se lire comme une étape vide.
@@ -2495,20 +2462,10 @@ function StepCookCard({
             disabled={readOnly}
             aria-label={`Marquer « ${s.title || 'cette étape'} » comme réalisée`}
             onChange={(ev) => {
-              // Étape « déjà réalisée » qui garde une sous-étape ou un
-              // ingrédient : cocher la case termine ce qui reste, sans
-              // toucher à `done` (déjà vrai).
-              if (ev.target.checked && s.done && !complete) {
-                activeIngredients.filter((it) => !it.done).forEach((it) => onToggleIng(it.id, true));
-                activeSubsteps.filter((su) => !su.done).forEach((su) => onToggleSub(su.id, true));
-                setOpen(false);
-                return;
-              }
-              onToggleStep(s.id, ev.target.checked);
               // Étape cochée depuis son en-tête : on la replie, elle est
               // terminée. Seulement ce geste — l'auto-coche (dernier
               // ingrédient / dernière sous-étape) ne replie rien sous le doigt.
-              if (ev.target.checked) setOpen(false);
+              if (g.cocherEtape(ev.target.checked)) setOpen(false);
             }}
             className={`w-8 h-8 rounded border-outline accent-primary focus:ring-primary shrink-0 ${readOnly ? '' : 'cursor-pointer'}`}
           />
@@ -2568,19 +2525,14 @@ function StepCookCard({
             // Un ingrédient éclaté en sous-recette n'entre PAS dans ce cas :
             // sans mention particulière ici, il se coche normalement.
             const excluded = cookExcluded(ing);
-            const locked = readOnly || (excluded && !(rouvrable && !ing.removed));
+            const locked = g.ingredientVerrouille(ing);
             const struck = ing.done || excluded ? ' line-through opacity-50' : '';
             const checkbox = (
               <input
                 type="checkbox"
                 checked={ing.done || excluded}
                 disabled={locked}
-                onChange={(ev) => {
-                  const checked = ev.target.checked;
-                  onToggleIng(ing.id, checked);
-                  if (checked) maybeAutoCheckStep(new Set([ing.id]), new Set());
-                  else rouvrirEtape(undefined, ing.id);
-                }}
+                onChange={(ev) => g.cocherIngredient(ing, ev.target.checked)}
                 className={`w-6 h-6 rounded border-outline accent-primary focus:ring-primary shrink-0 ${locked ? '' : 'cursor-pointer'}`}
               />
             );
@@ -2655,8 +2607,8 @@ function StepCookCard({
         <ul className={`px-4 pb-3 flex flex-col gap-4${ingredients.length > 0 ? ' pt-3 border-t-2 border-outline-variant' : ''}`}>
           {substeps.map((su) => {
             const subIngredients = subIngredientsBySubstep.get(su.id) || [];
-            const subExcluded = batchSubstepExcluded(s, su);
-            const subLocked = readOnly || (subExcluded && !rouvrable);
+            const subExcluded = g.subExcluded(su);
+            const subLocked = g.sousEtapeVerrouillee(su);
             return (
               <li key={su.id} className="flex flex-col gap-1.5">
                 <label className="flex items-start gap-3">
@@ -2664,16 +2616,7 @@ function StepCookCard({
                     type="checkbox"
                     checked={su.done || subExcluded}
                     disabled={subLocked}
-                    onChange={(ev) => {
-                      const checked = ev.target.checked;
-                      onToggleSub(su.id, checked);
-                      if (checked) {
-                        subIngredients.forEach((it) => onToggleIng(it.id, true));
-                        maybeAutoCheckStep(new Set(subIngredients.map((it) => it.id)), new Set([su.id]));
-                      } else {
-                        rouvrirEtape(su.id);
-                      }
-                    }}
+                    onChange={(ev) => g.cocherSousEtape(su, ev.target.checked)}
                     className={`w-6 h-6 rounded border-outline accent-primary focus:ring-primary shrink-0 mt-0.5 ${subLocked ? '' : 'cursor-pointer'}`}
                   />
                   <span className={`font-body-md text-[16px] leading-relaxed${su.done || subExcluded ? ' line-through opacity-50' : ''}`}>{su.texte}</span>

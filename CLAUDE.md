@@ -1817,7 +1817,7 @@ final de l'**écran de fin de fournée** (`components/batch/EcranFinFournee.tsx`
 Avant, la dernière case ouvrait aussitôt « Terminer la fournée ? » puis le bilan,
 la validation et l'avis — sans laisser le temps de noter la dernière étape.
 
-- **Barre « Fournée prête à être clôturée »** (`BatchView`, `pretACloturer` : fournée
+- **Barre « Fournée prête à être clôturée »** (masquée sous 1024 px en mode Pâtisser, où le bouton de la dernière étape la remplace — cf. « Mode Pâtisser « une étape à la fois » ») (`BatchView`, `pretACloturer` : fournée
   en cours, non verrouillée, toutes les étapes cochées) : posée en bas, au-dessus de la
   barre de navigation mobile (`--mobile-nav-h`, `z-[46]`), dans les deux modes. Elle
   n'ouvre rien d'elle-même ; son bouton « Clôturer » ouvre l'écran. Décocher une étape
@@ -1850,6 +1850,74 @@ la validation et l'avis — sans laisser le temps de noter la dernière étape.
   ont disparu ; `ValidationFournee` ne sert plus que la case « Fournée validée » du
   résumé d'une fournée close.
 
+## Mode Pâtisser « une étape à la fois » (téléphone, tablette et bureau, 24/11/2026)
+
+Sous **1024 px**, le mode Pâtisser n'affiche plus le déroulé mais **une étape à
+la fois** (`components/batch/PatisserFocus.tsx`, logique pure et testée :
+`lib/patisser-focus.ts`). Le déroulé (`PatisserBody` / `StepCookCard`) reste
+celui de l'**impression** seule (`hidden print:flex`) ; la vue une étape sert
+téléphone, tablette et ordinateur (`print:hidden`). Maquettes : artefact « Pâtisser sur
+mobile » (piste A retenue).
+
+- **Mêmes règles de coche, un seul code** : `gestesEtape`
+  (`components/batch/gestes-etape.ts`) porte auto-coche, réouverture d'une étape
+  en décochant une ligne, verrouillage — partagé avec `StepCookCard`. Ne pas
+  recoder ces règles dans l'une des deux vues.
+- **Jauge** : un segment par étape, groupés par jour ; **vert = terminée**
+  (`etapeTerminee` : même sens que la case du titre), **marron = il reste
+  quelque chose à faire** ; l'étape affichée est entourée, un segment y mène.
+- **Boutons du bas = navigation seule** (« ← Précédente » / « Suivante → »),
+  barre fixe posée sur la barre basse du site **à sa hauteur MESURÉE** (`navH`,
+  `.mobile-nav-bar` + `ResizeObserver`) : `--mobile-nav-h` (72 px) n'est qu'une
+  estimation, que les polices agrandies ou l'encoche dépassent — la barre passait
+  alors en partie dessous (retour du 24/11/2026). Une étape se termine par la case de son
+  titre ou par l'auto-coche. **Dernière étape** : « Clôturer la fournée » ouvre
+  l'écran de fin (vert si tout est terminé) ; fournée close : « Voir le
+  résumé ». La barre « Fournée prête à être clôturée » est donc masquée sous
+  1024 px en mode Pâtisser (`max-lg:hidden`).
+- **Étape affichée** posée une fois à l'ouverture (`etapeInitiale` : `#etape-<id>`,
+  sinon la première à faire) puis seulement par le membre — terminer une étape
+  ne change jamais d'étape sous le doigt. Le sommaire (jours) affiche la
+  première étape à faire du jour (`etapeDuJalon`).
+- **En tête, ce qui sert à réaliser l'étape** : « Ma note » **et** les retours
+  de mes fournées dans un seul bloc, **réduit à sa première ligne**
+  (`components/ReplieUneLigne.tsx`, « … Tout afficher », bouton seulement si le
+  contenu dépasse) ; même repli pour « Conseils & astuces ». Exception assumée à « une note n'est jamais repliée » : elle
+  reste visible, sa première ligne en tête d'étape. Retours de sous-étape et
+  d'ingrédient : même repli sous leur ligne. Puis les photos en **vignettes**
+  (`PhotosEtapeVignettes`) : photos d'étape de la **recette de base** (relues en
+  direct) puis les miennes ; un clic ouvre le diaporama de `StepPhotoGallery`
+  (qui gagne le glissement du doigt) ; « Gérer mes photos » déplie l'éditeur
+  habituel (`PhotosEtape`).
+- **Commentaires de ligne conservés** : picto note sur chaque ingrédient
+  (quantité utilisée, note, « À racheter ») et chaque sous-étape ; une note
+  enregistrée s'affiche en vert sous la ligne (même doctrine que le déroulé).
+- **« Fin d'étape »** en bas : commentaire de l'étape et quantité obtenue.
+  Pendant l'étape : cadre en pointillés réduit à son titre, une phrase et le lien
+  « Remplir maintenant » (déplié aussi dès qu'un constat existe) ; **vert** et
+  déplié une fois l'étape terminée.
+- **Ajouter une photo** : tuile pointillée « Photo » en dernière cellule de la
+  grille de vignettes (`fin` de `StepPhotoGallery`) ; sur appareil tactile un appui
+  propose « Prendre une photo » / « Choisir dans la galerie », sur ordinateur
+  elle ouvre les fichiers.
+  « Prendre une photo » (menu Actions) vise l'étape affichée
+  (`data-etape-courante`, `etapeAffichee`).
+- **Étape qui vient d'être terminée → défilement vers « Fin d'étape »**
+  (case du titre OU auto-coche par le dernier geste : **exception voulue** à « l'auto-coche
+  ne fait pas défiler », le constat est la suite logique ; jamais à l'ouverture d'une étape
+  déjà terminée). Aucune pastille de rappel sur « Suivante » / « Clôturer » (retirée le 24/11/2026).
+- **Version bureau (lot 3, ≥ 1024 px)** : la même vue (`PatisserFocus`) est la **seule** vue de
+  l'ordinateur, en deux zones — liste verticale des étapes à gauche (groupées par jour, rond
+  vert = terminée, marron = reste à faire, étape affichée cernée, collée sous l'en-tête) et
+  étape à droite en **une seule colonne, pleine largeur** : note, photos, conseils,
+  ingrédients, gestes, puis « Fin d'étape », puis Précédente / Suivante / Clôturer (posés sous
+  l'étape, plus fixes). Une colonne à droite pour « Fin d'étape » (essayée le 24/11/2026)
+  rétrécissait les textes et laissait un vide avant les boutons : abandonnée. Pas de
+  défilement automatique vers « Fin d'étape » sur bureau. **Le déroulé complet
+  (`PatisserBody`) ne sert plus qu'à l'impression** (`hidden print:flex`) : le lien « Voir
+  tout le déroulé » a été retiré (25/11/2026). Mêmes règles de coche (`gestesEtape`).
+  Géométrie non vérifiée visuellement.
+
 ## Photos de réalisation d'une fournée (JEP-382)
 
 Journal photo **privé** par fournée, puis galeries « Mes réalisations ». Logique
@@ -1875,8 +1943,8 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   absence arrête le script avant toute suppression) reprend les orphelins.
 - **Ajout** : un seul bouton « Ajouter des photos » (plusieurs fichiers ; sur
   téléphone, le sélecteur du système propose appareil photo ou photothèque) dans le
-  bloc « Photos de cette fournée » (sous le déroulé
-  d'une fournée en cours ; en bas du résumé, mis en avant, sur une fournée close),
+  bloc « Photos de cette fournée » (dans l'écran de fin de
+  fournée, 24/11/2026 — plus sous le déroulé ; en bas du résumé, mis en avant, sur une fournée close),
   bouton « Photo » sur chaque étape (Préparer, et Pâtisser hors du volet replié) :
   **sur appareil tactile seulement** (`useTactile`, `pointer: coarse`), un clic
   déplie le choix « Prendre une photo » (`capture`) / « Choisir dans la galerie »
