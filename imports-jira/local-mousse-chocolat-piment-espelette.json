@@ -1,0 +1,84 @@
+{
+  "ticket": "local-mousse-chocolat-piment-espelette",
+  "recette": {
+    "titre": "Mousse chocolat-piment d'Espelette (pâte à bombe)",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse aérienne et fondante au chocolat noir fruité, structurée par une pâte à bombe, avec une chaleur de piment d'Espelette qui monte doucement en fin de bouche sans masquer le fruité du cacao. Elle sert de corps d'entremets, de verrine ou d'insert pour des desserts chocolat à la signature épicée.",
+    "rendement": "1 cercle Ø 20 cm, 3,5 cm de hauteur (10 portions d'environ 63 g) — environ 630 g de mousse utilisable (666 g d'ingrédients, perte ≈ 5 %)",
+    "ustensiles": [
+      "Couteau",
+      "Casserole",
+      "Bain-marie",
+      "Thermomètre de cuisine",
+      "Batteur électrique ou robot avec fouet",
+      "Maryse",
+      "Cercle à entremets Ø 20 cm"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Mousse chocolat-piment d'Espelette (pâte à bombe)",
+        "page": null,
+        "temps_preparation_minutes": 40,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir 66-70 %",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Piment d'Espelette",
+            "quantite": 0.75,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 35 %",
+            "quantite": 300,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 30,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hacher le chocolat noir, le faire fondre à 45-50 °C au bain-marie, puis le maintenir autour de 40 °C.",
+          "Doser le piment d'Espelette progressivement : incorporer d'abord 0.5 g dans le chocolat, lisser à la maryse, attendre 5 minutes puis goûter une pointe, car le piquant monte lentement.",
+          "Ajouter le piment par paliers de 0.25 g, avec 5 minutes d'attente et une dégustation entre chaque palier, jusqu'à 0.75 g (équilibré) ; ne jamais dépasser 1.25 g au total.",
+          "Monter la crème liquide très froide au batteur en crème fouettée souple (bec d'oiseau mou), puis réserver au froid.",
+          "Porter le sucre semoule et l'eau à 121 °C dans une casserole, en commençant à battre les jaunes d'œufs au batteur vers 110 °C.",
+          "Verser le sirop en filet le long de la cuve sur les jaunes en train de battre, puis fouetter jusqu'à refroidissement à 30 °C et texture épaisse en ruban (pâte à bombe).",
+          "Incorporer un tiers de la pâte à bombe au chocolat à 40 °C pour détendre, puis le reste en deux fois à la maryse, sans faire retomber.",
+          "Ajouter la crème fouettée en trois fois, jusqu'à une mousse homogène et lisse, puis couler aussitôt dans le cercle Ø 20 cm filmé et laisser prendre 4 heures au réfrigérateur."
+        ],
+        "conseils_etape": "Le piquant du piment d'Espelette met quelques minutes à se révéler dans le gras du chocolat et se renforce après 12 à 24 h au froid : viser le bas de l'échelle (0.5 g très doux, 0.75 g équilibré, 1 g marqué, 1.25 g plafond), soit environ 0.11 g pour 100 g de mousse si la quantité change. Le chocolat ne doit pas dépasser 50 °C à la fonte, puis être utilisé autour de 40 °C, et la pâte à bombe doit être refroidie à 30 °C environ (tiède, jamais chaude) pour éviter une mousse grainée."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, mousse de 3,5 cm : ≈ 405 g de mousse, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, mousse de 3,5 cm : ≈ 630 g de mousse, soit ×1 (recette entière).",
+      "Utilisation — Entremets rond Ø 24 cm, mousse de 3,5 cm : ≈ 905 g de mousse, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, mousse de 4 cm : ≈ 90 g par pièce, soit 7 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, mousse en enveloppe, gouttière de 5 cm de profondeur : ≈ 315 g de mousse, soit ×0,50 de la recette (insert éventuel à déduire).",
+      "Utilisation — Cadre carré 18 x 18 cm, mousse de 3,5 cm : ≈ 650 g de mousse, soit ×1,03 de la recette.",
+      "Utilisation — Verrines de 100 ml remplies à 80 % : ≈ 45 g par verrine, soit 13 verrines avec la recette entière.",
+      "Variante — Chocolat noir fruité d'origine (Madagascar, Tanzanie, Équateur…) : le fruité souligne la chaleur douce du piment, alors qu'un chocolat très amer l'écrase."
+    ],
+    "conseils_conservation": "Mousse seule : 48 h au réfrigérateur sous film au contact. Congélation : 1 mois, de préférence en montage ; décongeler 6 à 8 h au réfrigérateur. Idéalement utiliser la mousse aussitôt préparée, avant la prise, pour un montage lisse."
+  }
+}
