@@ -69,6 +69,10 @@ export type PlanningDayItem = {
   stepId: number;
   planId: number;
   recipeTitle: string;
+  // Titre de la recette SANS le préfixe « [Projet] » et marque « projet en
+  // cours » à part : la vue par jour affiche le projet par un picto.
+  recipeTitleBrut: string;
+  projet: boolean;
   recipeId: string | null;
   // Numéro d'étape au sein de sa propre recette (pas un numéro transverse au
   // jour) : c'est le même numéro que sur la fiche fournée.
@@ -109,7 +113,9 @@ export function groupPlanningStepsByDate(plans: BatchListRow[]): PlanningDayGrou
   const withDate: (PlanningDayItem & { date: string })[] = [];
   plans.forEach((p) => {
     if (!p.planned_date) return;
-    const recipeTitle = titreAvecProjet(p.recipe_title || p.recipes?.title || '', p.recipes);
+    const recipeTitleBrut = p.recipe_title || p.recipes?.title || '';
+    const recipeTitle = titreAvecProjet(recipeTitleBrut, p.recipes);
+    const projet = recipeTitle !== recipeTitleBrut;
     [...p.batch_steps]
       .sort((a, b) => a.order_index - b.order_index)
       .forEach((s, i) => {
@@ -119,6 +125,8 @@ export function groupPlanningStepsByDate(plans: BatchListRow[]): PlanningDayGrou
           stepId: s.id,
           planId: p.id,
           recipeTitle,
+          recipeTitleBrut,
+          projet,
           recipeId: p.recipes?.id ?? p.recipe_id,
           number: i + 1,
           title: s.title,
