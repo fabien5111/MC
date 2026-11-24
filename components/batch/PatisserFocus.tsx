@@ -577,9 +577,9 @@ export function PatisserFocus({
         rappels={rappels}
       />
 
-      {/* Place réservée à la barre de navigation fixe. */}
-      <div aria-hidden="true" style={{ height: (navH ?? 72) + 104 }} />
-
+      {/* Aucune place réservée sous le contenu : la barre fixe ne recouvre que le
+          bas de marge du pied de page (`globals.css`, `#patisser-focus`). Un
+          espaceur ici laissait ~400 px de vide avant le pied de page. */}
       {/* Navigation seule : rien n'est coché par ces boutons. Collée à la barre
           basse (aucun jour entre les deux : le texte défilait dans l'intervalle),
           fond plein, et marge basse de 12 px pour le rond central de la barre

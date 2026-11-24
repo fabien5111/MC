@@ -675,7 +675,7 @@ export function BatchView({
           </button>
         </div>
       )}
-      <div id="sec-haut" className="recipe-print-content scroll-mt-28 max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-6 pb-32">
+      <div id="sec-haut" className={`recipe-print-content scroll-mt-28 max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-6 pb-32${mode === 'patisser' ? ' max-lg:pb-2' : ''}`}>
         <LoadingOverlay visible={busy || resuming} label="Enregistrement…" />
 
         {/* Retour contextuel : vers l'écran de liste d'où l'on vient quand il

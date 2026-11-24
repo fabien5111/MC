@@ -1483,3 +1483,11 @@ body[data-impersonation] {
   max-width: 96vw;
   max-height: 96vh;
 }
+
+/* Mode Pâtisser une étape à la fois (< 1024 px) : le pied de page suit la
+   carte sans grand vide ; sa marge basse (py-16) absorbe la barre fixe. */
+@media (max-width: 1023px) {
+  body:has(#patisser-focus) footer {
+    margin-top: 1rem;
+  }
+}
