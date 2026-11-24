@@ -303,6 +303,19 @@ function CarteEtape({
   const [finOuvert, setFinOuvert] = useState(false);
   const ecartSaisi = (s as { ecart_produit_g?: number | null }).ecart_produit_g != null;
   const finVisible = g.complete || finOuvert || !!s.commentaire || ecartSaisi;
+  // Étape qui VIENT d'être terminée (case du titre ou dernier geste coché) : on
+  // emmène le membre vers « Fin d'étape », où se saisit le constat. Jamais à
+  // l'ouverture d'une étape déjà terminée (la carte est remontée à chaque
+  // changement d'étape : la référence part de l'état initial).
+  const finRef = useRef<HTMLElement>(null);
+  const etaitTerminee = useRef(g.complete);
+  useEffect(() => {
+    if (g.complete && !etaitTerminee.current) {
+      const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      requestAnimationFrame(() => requestAnimationFrame(() => finRef.current?.scrollIntoView({ behavior: reduit ? 'auto' : 'smooth', block: 'center' })));
+    }
+    etaitTerminee.current = g.complete;
+  }, [g.complete]);
   const titreJour = (jalon.offset > 0 ? `Jour J − ${jalon.offset}` : 'Jour J') + (jour ? ` · ${jourLong(jour)}` : '');
   // Temps seulement : l'état de l'étape se lit à la couleur du titre et de la
   // jauge. « Déjà réalisée avant la fournée » reste dit, lui, car il change
@@ -397,6 +410,7 @@ function CarteEtape({
           lien « Remplir maintenant »), vert et déplié une fois l'étape terminée.
           Déplié aussi dès qu'un constat existe. */}
       <section
+        ref={finRef}
         className={`mt-2 flex flex-col gap-3 rounded-xl p-4 ${g.complete ? 'border-2 border-green-700 bg-green-50' : 'border border-dashed border-outline-variant bg-white'}`}
       >
         <h3 className={`flex items-center gap-2 font-label-md text-[13px] font-bold uppercase tracking-widest ${g.complete ? 'text-green-800' : 'text-on-surface-variant'}`}>
@@ -511,6 +525,15 @@ export function PatisserFocus({
   const prec = etapes[idx - 1];
   const suiv = etapes[idx + 1];
   const toutFini = etapes.every((e) => e.terminee);
+  // Étape terminée dont le constat n'est pas rempli : rappel sur le bouton de
+  // droite, sans jamais bloquer le passage à la suite.
+  const finVide =
+    courante.terminee && !courante.step.commentaire && (courante.step as { ecart_produit_g?: number | null }).ecart_produit_g == null;
+  const rappelFin = finVide ? (
+    <span className="pointer-events-none absolute -top-2.5 right-2 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-[#1a1214] shadow">
+      fin d’étape vide
+    </span>
+  ) : null;
   const jalon = jalons[courante.jalon];
 
   return (
@@ -584,16 +607,18 @@ export function PatisserFocus({
             ← Précédente
           </button>
           {suiv ? (
-            <button type="button" onClick={() => onEtape(suiv.step.id)} className="h-12 flex-1 rounded-xl bg-primary font-label-md text-[15px] text-on-primary">
+            <button type="button" onClick={() => onEtape(suiv.step.id)} className="relative h-12 flex-1 rounded-xl bg-primary font-label-md text-[15px] text-on-primary">
               Suivante →
+              {rappelFin}
             </button>
           ) : onCloturer ? (
             <button
               type="button"
               onClick={onCloturer}
-              className={`h-12 flex-1 rounded-xl font-label-md text-[15px] text-white ${toutFini ? 'bg-green-700' : 'bg-primary'}`}
+              className={`relative h-12 flex-1 rounded-xl font-label-md text-[15px] text-white ${toutFini ? 'bg-green-700' : 'bg-primary'}`}
             >
               Clôturer la fournée
+              {rappelFin}
             </button>
           ) : batch.status !== 'planifiee' ? (
             <a href="#sec-resume" className="flex h-12 flex-1 items-center justify-center rounded-xl bg-primary font-label-md text-[15px] text-on-primary">

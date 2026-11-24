@@ -1901,9 +1901,12 @@ mobile » (piste A retenue).
   elle ouvre les fichiers.
   « Prendre une photo » (menu Actions) vise l'étape affichée
   (`data-etape-courante`, `etapeAffichee`).
-- **À venir (lot 2)** : défilement vers « Fin d'étape » quand l'étape vient
-  d'être terminée, rappel sur « Suivante » si elle est vide. **Lot 3** : version
-  bureau (liste des étapes à gauche, deux colonnes, « Fin d'étape » à droite).
+- **Étape qui vient d'être terminée → défilement vers « Fin d'étape »**
+  (case du titre OU auto-coche par le dernier geste : **exception voulue** à « l'auto-coche
+  ne fait pas défiler », le constat est la suite logique ; jamais à l'ouverture d'une étape
+  déjà terminée). Une pastille « fin d'étape vide » sur « Suivante » / « Clôturer » rappelle
+  un constat non rempli, sans jamais bloquer. **À venir (lot 3)** : version bureau (liste
+  des étapes à gauche, deux colonnes, « Fin d'étape » à droite).
 
 ## Photos de réalisation d'une fournée (JEP-382)
 
