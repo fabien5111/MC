@@ -20,9 +20,10 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation } from '@/lib/use-mutation';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
-import { formatTime } from '@/lib/format';
-import { groupPlanningStepsByDate, type PlanningDayGroup } from '@/lib/recipe-plan';
+import { groupPlanningStepsByDate, type PlanningDayGroup, type PlanningDayItem } from '@/lib/recipe-plan';
 import { LockedAction } from '@/components/LockedAction';
+import { BottomSheet } from '@/components/BottomSheet';
+import { couleurFournee, grouperConsecutifs, indexDeplacement, tempsEtape } from '@/lib/planning-jour';
 import type { BatchListRow } from '@/lib/profile';
 
 const dateLabel = (iso: string): string =>
@@ -53,6 +54,19 @@ export function PlanningDayView({
   const [list, setList] = useState(plans);
   useEffect(() => setList(plans), [plans]);
   const [dragId, setDragId] = useState<number | null>(null);
+  // Feuille d'actions d'une étape (sous 1024 px) : Pâtisser, Préparer, et
+  // Monter / Descendre dans la journée — le seul moyen de réordonner au doigt.
+  const [feuilleId, setFeuilleId] = useState<number | null>(null);
+  // Appareil tactile : la poignée de glisser-déposer (HTML5, souris seule) n'y
+  // est pas affichée.
+  const [tactile, setTactile] = useState(false);
+  useEffect(() => {
+    try {
+      setTactile(window.matchMedia('(pointer: coarse)').matches);
+    } catch {
+      setTactile(false);
+    }
+  }, []);
   // Fournées dont la question « toutes les étapes sont cochées » a déjà été
   // posée (acceptée ou refusée) : sans ça, une fournée entièrement cochée
   // mais toujours `planifiee` (refus de la terminer) bascule instantanément
@@ -161,150 +175,189 @@ export function PlanningDayView({
   const pendingGroups = groups.filter((g) => !isDone(g));
   const doneGroups = groups.filter(isDone);
 
-  function renderSteps(g: PlanningDayGroup) {
+  // Étape dont la feuille d'actions est ouverte (sous 1024 px). Relue dans
+  // `groups` à chaque rendu : après « Monter » / « Descendre », sa position
+  // affichée suit l'état local.
+  const feuilleItem = feuilleId === null ? null : groups.flatMap((g) => g.items.map((it, idx) => ({ g, it, idx }))).find((x) => x.it.stepId === feuilleId) ?? null;
+
+  function liens(it: PlanningDayItem) {
+    return {
+      preparer: `/fournee/${it.planId}?mode=preparer#etape-${it.stepId}`,
+      patisser: `/fournee/${it.planId}?mode=patisser#etape-${it.stepId}`,
+    };
+  }
+
+  function texteTemps(it: PlanningDayItem) {
+    const { parties, total } = tempsEtape(it, it.done && !it.complete);
+    if (parties.length === 0) return null;
     return (
-      <ul className="flex flex-col px-6 pb-6">
-        {g.items.map((it, idx) => {
-              // Étape déjà faite mais pas terminée : la préparation est derrière,
-              // il ne reste que la cuisson.
-              const resteSeul = it.done && !it.complete;
-              const stepTotal = (resteSeul ? 0 : (it.prep_time || 0) + (it.wait_time || 0)) + (it.cook_time || 0);
-              const badges = [
-                it.prep_time && !resteSeul ? `PRÉP ${formatTime(it.prep_time).toUpperCase()}` : '',
-                it.wait_time && !resteSeul ? `ATTENTE ${formatTime(it.wait_time).toUpperCase()}` : '',
-                it.cook_time
-                  ? `CUISSON ${formatTime(it.cook_time).toUpperCase()}${it.cook_temp ? ' · ' + it.cook_temp + ' °C' : ''}`
-                  : it.cook_temp
-                    ? `CUISSON ${it.cook_temp} °C`
-                    : '',
-              ].filter(Boolean);
-              return (
-                <li
-                  key={it.stepId}
-                  onDragOver={(e) => {
-                    if (dragId === null) return;
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                  }}
-                  onDrop={(e) => {
-                    if (dragId === null) return;
-                    e.preventDefault();
-                    const fromIdx = g.items.findIndex((x) => x.stepId === dragId);
-                    moveStep(g.date, fromIdx, idx);
-                    setDragId(null);
-                  }}
-                  className={`flex flex-col gap-1.5 py-2.5 border-b border-outline-variant/30 last:border-0${dragId === it.stepId ? ' opacity-50' : ''}`}
-                >
-                  {/* Trois lignes fixes, sur tous les appareils (pas
-                      seulement un repli mobile) : nom de la recette, nom de
-                      l'étape (case à cocher collée devant, jamais solidaire
-                      du titre de la recette au-dessus), puis le temps. */}
-                  <div className="flex items-center gap-2">
-                    {canReorder ? (
-                      <span
-                        draggable
-                        onDragStart={(e) => {
-                          setDragId(it.stepId);
-                          e.dataTransfer.effectAllowed = 'move';
-                        }}
-                        onDragEnd={() => setDragId(null)}
-                        title="Glisser pour réordonner cette étape dans sa journée"
-                        className="material-symbols-outlined text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
-                      >
-                        drag_indicator
-                      </span>
-                    ) : (
-                      // JEP-130 : l'espace était réservé mais vide — une
-                      // colonne de 18 px qui ne disait rien. Le repère
-                      // occupe exactement la même largeur, à la même place,
-                      // et explique enfin pourquoi la poignée manque. Sans
-                      // droit, l'étape n'est de toute façon ni draggable ni
-                      // cible de dépose (`onDragOver` / `onDrop` du <li>
-                      // parent restent inertes tant que `dragId` ne peut
-                      // jamais être posé — cf. plus haut).
-                      <LockedAction
-                        label="Réordonner cette étape dans sa journée"
-                        message="Réordonner les étapes d'une journée n'est pas inclus dans votre formule."
-                        className="shrink-0"
-                      />
-                    )}
-                    <Link
-                      href={`/fournee/${it.planId}?mode=preparer`}
-                      className="font-label-md text-[11px] text-secondary uppercase tracking-widest hover:underline"
-                    >
-                      {it.recipeTitle}
-                    </Link>
-                  </div>
-                  {(() => {
-                    // `complete` (et non `done`) : une étape « déjà réalisée avant
-                    // la fournée » qui garde sa sous-étape de cuisson n'est ni
-                    // barrée ni cochée. Le clic sur le titre mène à l'étape, dans
-                    // le mode Préparer (pictos ci-contre pour Pâtisser).
-                    const hrefPreparer = `/fournee/${it.planId}?mode=preparer#etape-${it.stepId}`;
-                    const hrefPatisser = `/fournee/${it.planId}?mode=patisser#etape-${it.stepId}`;
-                    const resteAFaire = it.done && !it.complete;
-                    const numberSpan = <span className={`font-label-md text-label-md shrink-0 ${it.complete ? 'text-on-surface-variant line-through opacity-60' : 'text-primary'}`}>{it.number}.</span>;
-                    const titleSpan = <span className={`font-body-md ${it.complete ? 'text-on-surface-variant line-through opacity-60' : ''}`}>{it.title || 'Étape ' + it.number}</span>;
-                    return (
-                      <div className="flex items-center gap-1.5 pl-[26px]">
-                        <input
-                          type="checkbox"
-                          checked={it.complete}
-                          disabled={resteAFaire}
-                          onChange={(e) => toggleDone(it.stepId, e.target.checked)}
-                          title={
-                            resteAFaire
-                              ? 'Il reste une sous-étape à faire : à cocher depuis le mode Pâtisser'
-                              : it.complete
-                                ? 'Marquer comme non faite'
-                                : 'Marquer comme faite'
-                          }
-                          className="w-5 h-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer shrink-0 disabled:cursor-not-allowed"
-                        />
-                        <Link href={hrefPatisser} title="Ouvrir cette étape en mode Pâtisser" className="flex items-baseline gap-1.5 hover:underline">
-                          {numberSpan}
-                          {titleSpan}
-                        </Link>
-                        <span className="no-print ml-auto flex items-center gap-1 shrink-0">
-                          <Link
-                            href={hrefPreparer}
-                            title="Ouvrir cette étape en mode Préparer"
-                            aria-label="Ouvrir cette étape en mode Préparer"
-                            className="inline-flex text-primary hover:opacity-70"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">checklist</span>
-                          </Link>
-                          <Link
-                            href={hrefPatisser}
-                            title="Ouvrir cette étape en mode Pâtisser"
-                            aria-label="Ouvrir cette étape en mode Pâtisser"
-                            className="inline-flex text-primary hover:opacity-70"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">skillet</span>
-                          </Link>
-                        </span>
-                      </div>
-                    );
-                  })()}
-                  <div className="flex gap-2 flex-wrap pl-[26px]">
-                    {badges.map((b, k) => (
-                      <span key={k} className="font-label-md text-[11px] bg-surface-variant px-2.5 py-1 whitespace-nowrap">
-                        {b}
-                      </span>
-                    ))}
-                    {stepTotal > 0 && (
-                      <span className="font-label-md text-[11px] bg-primary text-white px-2.5 py-1 whitespace-nowrap">TOTAL {formatTime(stepTotal).toUpperCase()}</span>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-      </ul>
+      <span className="block text-[13px] leading-snug text-on-surface-variant tabular-nums">
+        {parties.join(' · ')}
+        {total && (
+          <>
+            {' = '}
+            <b className="font-semibold text-primary">{total}</b>
+          </>
+        )}
+      </span>
     );
   }
 
+  function renderStep(g: PlanningDayGroup, it: PlanningDayItem) {
+    const idx = g.items.findIndex((x) => x.stepId === it.stepId);
+    const { preparer, patisser } = liens(it);
+    // `complete` (et non `done`) : une étape « déjà réalisée avant la fournée »
+    // qui garde une sous-étape de cuisson n'est pas encore terminée.
+    const resteAFaire = it.done && !it.complete;
+    return (
+      <li
+        key={it.stepId}
+        onDragOver={(e) => {
+          if (dragId === null) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        }}
+        onDrop={(e) => {
+          if (dragId === null) return;
+          e.preventDefault();
+          const fromIdx = g.items.findIndex((x) => x.stepId === dragId);
+          moveStep(g.date, fromIdx, idx);
+          setDragId(null);
+        }}
+        className={`flex items-center border-b border-outline-variant/30 last:border-0 pr-1${dragId === it.stepId ? ' opacity-50' : ''}`}
+      >
+        {/* Poignée : souris seulement — le glisser-déposer HTML5 ne fonctionne
+            pas au toucher ; au doigt, « Monter / Descendre » sont dans la
+            feuille d'actions. */}
+        {canReorder && !tactile && (
+          <span
+            draggable
+            onDragStart={(e) => {
+              setDragId(it.stepId);
+              e.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragEnd={() => setDragId(null)}
+            title="Glisser pour réordonner cette étape dans sa journée"
+            className="no-print material-symbols-outlined -mr-2 text-[18px] text-outline-variant hover:text-secondary cursor-grab active:cursor-grabbing select-none shrink-0"
+          >
+            drag_indicator
+          </span>
+        )}
+        {/* Case dans une zone de toucher de 44 px. */}
+        <label className={`flex h-11 w-11 shrink-0 items-center justify-center ${resteAFaire ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+          <input
+            type="checkbox"
+            checked={it.complete}
+            disabled={resteAFaire}
+            onChange={(e) => toggleDone(it.stepId, e.target.checked)}
+            title={
+              resteAFaire
+                ? 'Il reste une sous-étape à faire : à cocher depuis le mode Pâtisser'
+                : it.complete
+                  ? 'Marquer comme non faite'
+                  : 'Marquer comme faite'
+            }
+            aria-label={`${it.title || 'Étape ' + it.number} : ${it.complete ? 'marquer comme non faite' : 'marquer comme faite'}`}
+            className="h-6 w-6 rounded border-outline accent-primary focus:ring-primary cursor-pointer disabled:cursor-not-allowed"
+          />
+        </label>
+        {/* Toucher la ligne ouvre l'étape en mode Pâtisser. Une étape faite est
+            estompée, jamais barrée : elle reste lisible. */}
+        <Link href={patisser} title="Ouvrir cette étape en mode Pâtisser" className={`min-w-0 flex-1 py-2 ${it.complete ? 'opacity-60' : ''}`}>
+          <span className="block font-body-md text-[16px] font-semibold leading-snug text-on-surface">
+            <span className="mr-1 text-secondary tabular-nums">{it.number}.</span>
+            {it.title || 'Étape ' + it.number}
+          </span>
+          {texteTemps(it)}
+        </Link>
+        {/* Dès 1024 px : les deux modes en accès direct, libellés. */}
+        <span className="no-print hidden lg:flex shrink-0 items-center gap-1 pl-2">
+          <Link href={preparer} title="Ouvrir cette étape en mode Préparer" className="flex w-14 flex-col items-center gap-0.5 rounded-lg py-1 text-[10px] font-semibold text-primary hover:bg-surface-container">
+            <span className="material-symbols-outlined text-[22px]">checklist</span>
+            Préparer
+          </Link>
+          <Link href={patisser} title="Ouvrir cette étape en mode Pâtisser" className="flex w-14 flex-col items-center gap-0.5 rounded-lg py-1 text-[10px] font-semibold text-primary hover:bg-surface-container">
+            <span className="material-symbols-outlined text-[22px]">skillet</span>
+            Pâtisser
+          </Link>
+        </span>
+        {/* Sous 1024 px : feuille d'actions. */}
+        <button
+          type="button"
+          onClick={() => setFeuilleId(it.stepId)}
+          aria-label={`Actions de l'étape ${it.title || it.number}`}
+          aria-haspopup="dialog"
+          className="no-print flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary hover:bg-surface-container lg:hidden"
+        >
+          <span className="material-symbols-outlined">more_vert</span>
+        </button>
+      </li>
+    );
+  }
+
+  // Les étapes consécutives d'une même fournée sous un seul rappel de la
+  // recette (`grouperConsecutifs`) : l'ordre de la journée reste celui choisi
+  // par le membre, l'en-tête réapparaît si cet ordre alterne entre fournées.
+  function renderSteps(g: PlanningDayGroup) {
+    return (
+      <div className="flex flex-col pb-2">
+        {grouperConsecutifs(g.items).map((bloc, k) => {
+          const premier = bloc.items[0];
+          return (
+            <div key={`${bloc.planId}-${k}`}>
+              <Link
+                href={`/fournee/${bloc.planId}?mode=preparer`}
+                title="Ouvrir la fournée"
+                className="group/f flex min-h-10 items-center gap-2 px-4 pt-3 pb-0.5 font-label-md text-[12px] uppercase tracking-wider text-secondary"
+              >
+                <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: couleurFournee(bloc.planId) }} />
+                {premier.projet && (
+                  <span className="material-symbols-outlined text-[16px]" title="Projet en cours" aria-label="Projet en cours">
+                    construction
+                  </span>
+                )}
+                <span className="min-w-0 flex-1 truncate underline decoration-outline-variant underline-offset-[3px] group-hover/f:decoration-current">
+                  {premier.recipeTitleBrut}
+                </span>
+                <span aria-hidden className="material-symbols-outlined text-[18px]">
+                  chevron_right
+                </span>
+              </Link>
+              <ul className="flex flex-col pl-1">{bloc.items.map((it) => renderStep(g, it))}</ul>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // En-tête de jour collant sous l'en-tête du site (`--site-header-h`) : la
+  // date reste visible pendant qu'on fait défiler ses étapes. Aucun ancêtre
+  // ne doit porter d'`overflow` (il couperait le `sticky`), d'où l'arrondi
+  // posé sur l'en-tête plutôt qu'un `overflow-hidden` sur la carte.
+  function enteteJour(g: PlanningDayGroup, coin = true) {
+    const faites = g.items.filter((it) => it.complete).length;
+    return (
+      <h3
+        className={`sticky top-[var(--site-header-h,72px)] z-10 flex items-baseline justify-between gap-3 border-b border-outline-variant/40 bg-surface-container px-4 py-2${coin ? ' rounded-t-xl' : ''}`}
+      >
+        <span className="font-headline-md text-[18px] leading-tight text-primary capitalize">{dateLabel(g.date)}</span>
+        <span className="shrink-0 text-[12px] text-on-surface-variant tabular-nums" title={`${faites} étape(s) faite(s) sur ${g.items.length}`}>
+          {faites}/{g.items.length}
+        </span>
+      </h3>
+    );
+  }
+
+  function deplacer(sens: -1 | 1) {
+    if (!feuilleItem) return;
+    const cible = indexDeplacement(feuilleItem.idx, feuilleItem.g.items.length, sens);
+    if (cible === null) return;
+    moveStep(feuilleItem.g.date, feuilleItem.idx, cible);
+  }
+
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       {pretes.length > 0 && (
         <div className="no-print pointer-events-none fixed inset-x-0 z-[46] flex flex-col items-center gap-2 px-3 bottom-[calc(var(--mobile-nav-h)+12px)] lg:bottom-4">
           {pretes.map((p) => (
@@ -328,30 +381,105 @@ export function PlanningDayView({
       )}
       <LoadingOverlay visible={busy || navigating} label={navigating ? 'Ouverture de la fournée…' : 'Réorganisation en cours…'} />
       {pendingGroups.map((g) => (
-        <div key={g.date} className="border border-outline-variant rounded-xl bg-surface-container-lowest overflow-hidden">
-          <h3 className="font-headline-md text-headline-md text-primary capitalize p-6 pb-4">{dateLabel(g.date)}</h3>
+        <section key={g.date} className="rounded-xl border border-outline-variant bg-surface-container-lowest">
+          {enteteJour(g)}
           {renderSteps(g)}
-        </div>
+        </section>
       ))}
       {doneGroups.length > 0 && (
-        <details className="group border border-outline-variant rounded-xl bg-surface-container-lowest overflow-hidden">
-          <summary className="flex items-center justify-between gap-3 p-6 cursor-pointer list-none">
-            <span className="font-headline-md text-headline-md text-primary flex items-center gap-3">
+        <details className="group rounded-xl border border-outline-variant bg-surface-container-lowest">
+          <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer list-none">
+            <span className="font-headline-md text-[18px] text-primary flex items-center gap-3">
               Journées terminées
               <span className="font-label-md text-[11px] bg-green-700 text-white px-2.5 py-1 rounded-full">{doneGroups.length}</span>
             </span>
             <span className="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
           </summary>
-          <div className="flex flex-col gap-6 pb-2">
+          <div className="flex flex-col">
             {doneGroups.map((g) => (
-              <div key={g.date} className="border-t border-outline-variant/50 first:border-t-0">
-                <h4 className="font-headline-md text-[18px] text-primary capitalize px-6 pt-4 pb-2">{dateLabel(g.date)}</h4>
+              <div key={g.date} className="border-t border-outline-variant/50">
+                {enteteJour(g, false)}
                 {renderSteps(g)}
               </div>
             ))}
           </div>
         </details>
       )}
+      <BottomSheet open={feuilleItem !== null} onClose={() => setFeuilleId(null)} breakpoint="lg" label="Actions de l'étape">
+        {feuilleItem && (
+          <div className="flex flex-col gap-1 px-4 pt-2 pb-[calc(16px+env(safe-area-inset-bottom,0px))]">
+            <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-outline-variant" aria-hidden />
+            <p className="flex items-center gap-2 font-label-md text-[12px] uppercase tracking-wider text-secondary">
+              <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: couleurFournee(feuilleItem.it.planId) }} />
+              {feuilleItem.it.projet && <span className="material-symbols-outlined text-[16px]">construction</span>}
+              <span className="min-w-0 truncate">{feuilleItem.it.recipeTitleBrut}</span>
+            </p>
+            <p className="font-headline-md text-[20px] leading-tight text-primary">
+              {feuilleItem.it.number}. {feuilleItem.it.title || 'Étape ' + feuilleItem.it.number}
+            </p>
+            <p className="text-[13px] text-on-surface-variant">
+              <span className="capitalize">{dateLabel(feuilleItem.g.date)}</span>
+            </p>
+            {texteTemps(feuilleItem.it)}
+            <div className="mt-4 flex flex-col gap-2">
+              <Link
+                href={liens(feuilleItem.it).patisser}
+                className="flex min-h-[52px] items-center gap-3 rounded-2xl bg-primary px-4 font-label-md text-[15px] text-on-primary"
+              >
+                <span className="material-symbols-outlined">skillet</span>
+                <span>
+                  Pâtisser cette étape
+                  <small className="block font-body-md text-[12px] font-normal opacity-80">Suivre l’étape pas à pas</small>
+                </span>
+              </Link>
+              <Link
+                href={liens(feuilleItem.it).preparer}
+                className="flex min-h-[52px] items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 font-label-md text-[15px] text-primary"
+              >
+                <span className="material-symbols-outlined">checklist</span>
+                <span>
+                  Préparer cette étape
+                  <small className="block font-body-md text-[12px] font-normal opacity-80">Ingrédients, notes, jour de l’étape</small>
+                </span>
+              </Link>
+            </div>
+            {feuilleItem.g.items.length > 1 && (
+              <div className="mt-4 border-t border-outline-variant/50 pt-3">
+                <p className="mb-2 font-label-md text-[12px] uppercase tracking-wider text-on-surface-variant">Ordre dans la journée</p>
+                {canReorder ? (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => deplacer(-1)}
+                      disabled={feuilleItem.idx === 0 || busy}
+                      className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-outline-variant font-label-md text-[14px] text-primary disabled:opacity-40"
+                    >
+                      <span className="material-symbols-outlined">arrow_upward</span>
+                      Monter
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deplacer(1)}
+                      disabled={feuilleItem.idx === feuilleItem.g.items.length - 1 || busy}
+                      className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-outline-variant font-label-md text-[14px] text-primary disabled:opacity-40"
+                    >
+                      <span className="material-symbols-outlined">arrow_downward</span>
+                      Descendre
+                    </button>
+                  </div>
+                ) : (
+                  <LockedAction
+                    label="Réordonner cette étape dans sa journée"
+                    message="Réordonner les étapes d'une journée n'est pas inclus dans votre formule."
+                  >
+                    <span className="text-[14px]">Monter / Descendre</span>
+                  </LockedAction>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </BottomSheet>
     </div>
   );
 }
