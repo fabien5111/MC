@@ -1,0 +1,130 @@
+{
+  "ticket": "local-mousse-chocolat-epices-de-noel",
+  "recette": {
+    "titre": "Mousse chocolat épices de Noël, pâte à bombe",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Mousse au chocolat noir aérienne et fondante, structurée par une pâte à bombe et parfumée par une crème infusée à la cannelle, à la badiane, à l'orange et à la muscade. Elle apporte le cœur gourmand et chaleureux d'une bûche de Noël, en enveloppe, en couche ou en insert.",
+    "rendement": "1 entremets rond Ø 20 cm, 4 cm de hauteur — environ 715 g de mousse utilisable (795.5 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Balance",
+      "Casserole",
+      "Économe",
+      "Râpe fine",
+      "Couteau",
+      "Passoire fine",
+      "Thermomètre de cuisine",
+      "Cul-de-poule",
+      "Batteur avec fouet",
+      "Maryse",
+      "Cercle Ø 20 cm"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crème infusée aux épices",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 20,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 140,
+            "unite": "g"
+          },
+          {
+            "nom": "Cannelle en bâton",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Badiane",
+            "quantite": 2,
+            "unite": "g"
+          },
+          {
+            "nom": "Zeste d'orange",
+            "quantite": 5,
+            "unite": "g"
+          },
+          {
+            "nom": "Muscade",
+            "quantite": 0.5,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Prélever le zeste d'orange à l'économe.",
+          "Râper la muscade à la râpe fine.",
+          "Concasser grossièrement la cannelle et la badiane au couteau.",
+          "Porter la crème liquide à frémissement dans une casserole avec la cannelle, la badiane et le zeste d'orange.",
+          "Retirer du feu, ajouter la muscade, couvrir et laisser infuser 20 min.",
+          "Filtrer à la passoire fine en pressant bien les épices.",
+          "Peser la crème filtrée et la compléter à 130 g avec un peu de crème liquide froide prélevée sur les 300 g de l'étape suivante.",
+          "Porter de nouveau à frémissement juste avant de la verser sur le chocolat."
+        ],
+        "conseils_etape": "Ne pas dépasser 30 minutes d'infusion : la badiane et la cannelle deviennent amères. Prélever le zeste sans la partie blanche."
+      },
+      {
+        "nom_etape": "Mousse chocolat à la pâte à bombe",
+        "page": null,
+        "temps_preparation_minutes": 35,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat noir 64 %",
+            "quantite": 190,
+            "unite": "g"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 70,
+            "unite": "g"
+          },
+          {
+            "nom": "Eau",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 300,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hacher finement le chocolat noir au couteau, le placer dans un cul-de-poule et verser dessus la crème infusée frémissante.",
+          "Mélanger à la maryse jusqu'à obtenir une ganache lisse et brillante, puis la laisser tiédir à 35-40 °C, contrôlée au thermomètre.",
+          "Cuire le sucre semoule et l'eau à 118 °C dans une casserole, contrôlée au thermomètre.",
+          "Commencer à battre les jaunes d'œufs au batteur quand le sirop atteint 110 °C, puis verser le sirop à 118 °C en filet sur le bord du bol, sans cesser de fouetter.",
+          "Fouetter jusqu'à refroidissement à environ 30 °C, la pâte à bombe doit être blanche, épaisse et former un ruban.",
+          "Monter la crème liquide très froide en chantilly souple, au bec d'oiseau.",
+          "Incorporer la pâte à bombe à la ganache à 35-40 °C à la maryse, puis la chantilly en deux fois, sans faire retomber.",
+          "Couler aussitôt dans le cercle Ø 20 cm ou le moule choisi, puis laisser prendre 4 h au réfrigérateur ou 2 h au congélateur."
+        ],
+        "conseils_etape": "La ganache doit être à 35-40 °C au moment du mélange : trop chaude, elle fait retomber la mousse ; trop froide, elle fait des grumeaux de chocolat — la repasser quelques secondes au bain-marie si elle descend sous 35 °C. Verser le sirop sur le bord du bol, jamais sur le fouet, pour éviter les fils de sucre. Incorporer la chantilly en deux fois, à la maryse, sans insister."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, hauteur 4 cm : ≈ 460 g de mousse, soit ×0,64 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, hauteur 4 cm : ≈ 715 g de mousse, soit ×1 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, hauteur 4 cm : ≈ 1030 g de mousse, soit ×1,44 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, hauteur 4 cm : ≈ 90 g par pièce (87,5 g au calcul exact), soit ×0,13 de la recette par pièce : 8 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm (demi-cylindre), mousse en enveloppe, gouttière remplie de mousse seule : ≈ 220 g de mousse, soit ×0,31 de la recette (déduire le volume de l'insert et du fond).",
+      "Utilisation — Bûche en gouttière 30 x 8 cm (demi-cylindre), mousse en enveloppe, gouttière remplie de mousse seule : ≈ 430 g de mousse, soit ×0,60 de la recette (déduire le volume de l'insert et du fond).",
+      "Utilisation — Cadre carré 18 x 18 cm, hauteur 3 cm, en couche de mousse : ≈ 555 g de mousse, soit ×0,78 de la recette.",
+      "Variante — Version plus douce : remplacer 40 g de chocolat noir par du chocolat au lait."
+    ],
+    "conseils_conservation": "Mousse moulée (entremets, bûche) : 48 h au réfrigérateur sous film. 1 mois au congélateur, filmée hermétiquement. Décongeler 6 à 8 h au réfrigérateur, sans la sortir plus tôt. Idéal en montage : utiliser aussitôt après la préparation, pendant que la mousse est encore souple."
+  }
+}
