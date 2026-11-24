@@ -45,6 +45,8 @@ import { poidsEquivalentTexte, resolveIngredientRefId, type ConversionRef, type 
 import { RecipeStep } from '@/components/recipe/RecipeStep';
 import type { IngredientView, RecipeStepView } from '@/lib/recipes';
 import { StepEditorCard } from '@/components/projets/StepEditorCard';
+import { RedactionIAProvider, useRedactionIA } from '@/components/redaction/RedactionIA';
+import { ligneIngredient, texteTemps, type RecetteRedaction } from '@/lib/redaction-ia';
 import { apparier } from '@/lib/batch-lecons';
 import { RetoursEtape, RetoursIngredientNom, RetoursSousEtape, useEtapeRetours } from '@/components/batch/DerniereFois';
 import { TagFilter, type TagOption } from '@/components/projets/TagFilter';
@@ -655,7 +657,29 @@ export function ComponentResolver({
     else onClose();
   }, busy || chargement);
 
-  return (
+  // Rédaction par IA (JEP-414) dans « Modifier cette préparation » : la
+  // préparation telle qu'elle est dans la fenêtre (brouillon), pour les
+  // boutons « Proposer avec l'IA » des conseils et de la préparation à
+  // l'avance de chaque étape. Droit et solde : ceux de la page.
+  const redactionPage = useRedactionIA();
+  const recetteBrouillon: RecetteRedaction = {
+    titre: `${projectTitle} — ${component.name}`,
+    description: '',
+    rendement: formatLabel ?? '',
+    etapes: draft.map((st) => ({
+      titre: (st.title ?? '').trim(),
+      texte: (st.sous_etapes?.length ? st.sous_etapes.join('\n') : st.description ?? '').trim(),
+      ingredients: st.ingredients.map((it) => ligneIngredient({ name: it.name, qty: it.quantity, unit: it.unit, comment: it.comment })).filter(Boolean),
+      temps: texteTemps({ prep: st.prep_time, cook: st.cook_time, wait: st.wait_time, temp: st.cook_temp }),
+      conseils: (st.tips ?? '').trim(),
+      avance: st.can_prepare_ahead === true,
+      avanceNote: (st.advance_note ?? '').trim(),
+    })),
+    conseils: '',
+    degustation: '',
+  };
+
+  const fenetre = (
     <div
       role="dialog"
       aria-modal="true"
@@ -1153,6 +1177,13 @@ export function ComponentResolver({
         )}
       </div>
     </div>
+  );
+
+  if (!redactionPage) return fenetre;
+  return (
+    <RedactionIAProvider acces={redactionPage.acces} credits={redactionPage.credits} recette={recetteBrouillon}>
+      {fenetre}
+    </RedactionIAProvider>
   );
 }
 

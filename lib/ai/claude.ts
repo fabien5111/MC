@@ -14,6 +14,14 @@ export const IMPORT_MODEL = process.env.IMPORT_MODEL || 'claude-haiku-4-5';
 // Ramener cette variable à `claude-haiku-4-5` pour revenir au modèle rapide.
 export const TRANSCRIBE_MODEL = process.env.TRANSCRIBE_MODEL || 'claude-sonnet-5';
 
+// Modèle de la RÉDACTION des deux champs de conservation (JEP-414) : dégustation
+// et conservation, préparation à l'avance d'une étape. Une durée fausse peut
+// rendre malade, et le champ est le plus souvent vide : le modèle raisonne
+// seul, ou doit vérifier ce que l'auteur a écrit. Les autres champs de la
+// rédaction restent sur `IMPORT_MODEL`. Ramener la variable à
+// `claude-haiku-4-5` pour revenir au modèle rapide.
+export const REDACTION_CONSERVATION_MODEL = process.env.REDACTION_CONSERVATION_MODEL || 'claude-sonnet-5';
+
 // Modèle de la MODÉRATION de contenu (contrôle IA à la validation des
 // recettes, annexe A). Décision de modération : la reproductibilité prime
 // sur la créativité, d'où `claude-sonnet-5` par défaut (cf. annexe A.6).

@@ -8,6 +8,7 @@ import { getProjectFull, getProjectTrials } from '@/lib/projects-data';
 import { canAccess } from '@/lib/entitlements';
 import { checkQuota, getCurrentPlan, getEntitlements } from '@/lib/entitlements-data';
 import { CLE_CREDITS_IA } from '@/lib/credits-ia';
+import { etatRedaction } from '@/lib/redaction-ia-data';
 import { getMoldTypes } from '@/lib/admin';
 import { getUnits } from '@/lib/profile';
 import { getIngredientConversions, getIngredientDensities, getRecipeFull } from '@/lib/recipes';
@@ -126,6 +127,7 @@ export default async function ProjetPage({ params }: Params) {
           peutGenererIA={peutGenererIA}
           quotaProjetIA={quotaProjetIA}
           quotaAjustementIA={quotaAjustementIA}
+          redactionIA={await etatRedaction(user.id)}
           tags={tags.map((t) => ({ id: t.id, name: t.name }))}
           difficulties={difficulties.map((d) => ({ id: d.id, name: d.name, level: d.level }))}
           utensilNames={utensilNames}

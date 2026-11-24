@@ -17,10 +17,10 @@
  * (`2026-11-08-2` : JEP-361, après JEP-273 le même jour). Deux textes
  * différents ne portent jamais la même version.
  */
-export const CGV_VERSION = '2026-11-08-2';
+export const CGV_VERSION = '2026-11-19';
 
 /** Date de mise à jour, telle qu'affichée en tête de la page. */
-export const CGV_DATE_AFFICHEE = '8 novembre 2026';
+export const CGV_DATE_AFFICHEE = '19 novembre 2026';
 
 /** Chemin public de la page. */
 export const CGV_CHEMIN = '/cgv';

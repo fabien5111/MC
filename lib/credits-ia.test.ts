@@ -42,7 +42,8 @@ describe('grille des crédits IA (JEP-405)', () => {
 
   it('chaque action a un droit d’accès et un libellé', () => {
     for (const a of ACTIONS_CREDITS) {
-      expect(DROIT_ACTION[a]).toMatch(/_ia_mensuel$/);
+      // `redaction_ia` (JEP-414) : clé « oui / non » créée pour la fonction, sans suffixe.
+      expect(DROIT_ACTION[a]).toMatch(/_ia(_mensuel)?$/);
       expect(LIBELLE_ACTION[a].length).toBeGreaterThan(0);
     }
   });

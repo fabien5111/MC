@@ -1,4 +1,5 @@
 import { StockageEnLigneProvider } from '@/components/stockage/StockageEnLigneProvider';
+import { etatRedaction } from '@/lib/redaction-ia-data';
 import { stockageEnLigne } from '@/lib/stockage-en-ligne-data';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -147,6 +148,7 @@ export default async function RelecturePage({ params }: Params) {
               conversions={conversions}
               ingredientRefIds={ingredientRefIds}
               helpBlocks={helpBlocks}
+              redactionIA={await etatRedaction(user.id)}
             />
           </>
         )}
