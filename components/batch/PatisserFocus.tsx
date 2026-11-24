@@ -300,6 +300,9 @@ function CarteEtape({
   const ingredients = ingredientsEtapeCuisine(batch, s);
   const g = gestesEtape(s, ingredients, readOnly, rappels);
   const jour = dateDuJalon(batch, jalon.offset);
+  const [finOuvert, setFinOuvert] = useState(false);
+  const ecartSaisi = (s as { ecart_produit_g?: number | null }).ecart_produit_g != null;
+  const finVisible = g.complete || finOuvert || !!s.commentaire || ecartSaisi;
   const titreJour = (jalon.offset > 0 ? `Jour J − ${jalon.offset}` : 'Jour J') + (jour ? ` · ${jourLong(jour)}` : '');
   // Temps seulement : l'état de l'étape se lit à la couleur du titre et de la
   // jauge. « Déjà réalisée avant la fournée » reste dit, lui, car il change
@@ -390,37 +393,51 @@ function CarteEtape({
 
       {s.video_url && <StepVideoPlayer url={s.video_url} />}
 
-      {/* Le constat se fait en fin d'étape : cadre discret pendant l'étape,
-          vert une fois l'étape terminée. Remplissable à tout moment. */}
+      {/* Le constat se fait en fin d'étape : cadre discret pendant l'étape (un
+          lien « Remplir maintenant »), vert et déplié une fois l'étape terminée.
+          Déplié aussi dès qu'un constat existe. */}
       <section
-        className={`mt-2 flex flex-col gap-3 rounded-xl p-4 ${g.complete ? 'border-2 border-green-700 bg-green-50' : 'border border-dashed border-outline-variant'}`}
+        className={`mt-2 flex flex-col gap-3 rounded-xl p-4 ${g.complete ? 'border-2 border-green-700 bg-green-50' : 'border border-dashed border-outline-variant bg-white'}`}
       >
-        <h3 className={`flex items-center gap-2 font-label-md text-[13px] uppercase tracking-widest ${g.complete ? 'text-green-800' : 'text-on-surface-variant'}`}>
+        <h3 className={`flex items-center gap-2 font-label-md text-[13px] font-bold uppercase tracking-widest ${g.complete ? 'text-green-800' : 'text-on-surface-variant'}`}>
           <span className="material-symbols-outlined text-[20px]">{g.complete ? 'task_alt' : 'flag'}</span>
           {g.complete ? 'Étape terminée — comment ça s’est passé ?' : 'Fin d’étape'}
         </h3>
-        {!g.complete && !readOnly && (
-          <p className="-mt-1 text-[13px] text-on-surface-variant">À compléter une fois l’étape terminée : votre commentaire et la quantité obtenue.</p>
-        )}
-        <textarea
-          rows={3}
-          style={{ minHeight: 84 }}
-          placeholder="Ce qui s'est passé sur cette étape…"
-          aria-label="Mon commentaire sur cette étape"
-          disabled={readOnly}
-          value={s.commentaire || ''}
-          onChange={(ev) => rappels.onStepComment(s.id, ev.target.value)}
-          className={`block w-full resize-y border rounded px-3 py-2 font-body-md text-sm focus:ring-1 focus:ring-primary ${
-            s.commentaire ? 'border-green-700 bg-white' : 'border-outline-variant bg-white'
-          }`}
-        />
-        {/* Colonne absente (migration pas jouée) : le champ n'est pas proposé. */}
-        {'ecart_produit_g' in s && (
-          <EcartProduitChamp
-            valeur={(s as { ecart_produit_g?: number | null }).ecart_produit_g ?? null}
-            disabled={readOnly}
-            onChange={(v) => rappels.onStepEcart(s.id, v)}
-          />
+        {!finVisible ? (
+          <>
+            <p className="text-[13px] text-on-surface-variant">À compléter une fois l’étape terminée : votre commentaire et la quantité obtenue.</p>
+            {!readOnly && (
+              <button type="button" onClick={() => setFinOuvert(true)} className="self-start font-label-md text-[14px] text-primary underline underline-offset-2">
+                Remplir maintenant
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <label htmlFor={`fin-com-${s.id}`} className="font-label-md text-[11px] uppercase tracking-widest text-on-surface-variant">
+              Mon commentaire
+            </label>
+            <textarea
+              id={`fin-com-${s.id}`}
+              rows={3}
+              style={{ minHeight: 84 }}
+              placeholder="Texture, cuisson, ce que vous changeriez…"
+              disabled={readOnly}
+              value={s.commentaire || ''}
+              onChange={(ev) => rappels.onStepComment(s.id, ev.target.value)}
+              className={`block w-full resize-y border rounded px-3 py-2 font-body-md text-sm focus:ring-1 focus:ring-primary ${
+                s.commentaire ? 'border-green-700 bg-white' : 'border-outline-variant bg-white'
+              }`}
+            />
+            {/* Colonne absente (migration pas jouée) : le champ n'est pas proposé. */}
+            {'ecart_produit_g' in s && (
+              <EcartProduitChamp
+                valeur={(s as { ecart_produit_g?: number | null }).ecart_produit_g ?? null}
+                disabled={readOnly}
+                onChange={(v) => rappels.onStepEcart(s.id, v)}
+              />
+            )}
+          </>
         )}
       </section>
     </article>
@@ -547,13 +564,15 @@ export function PatisserFocus({
       />
 
       {/* Place réservée à la barre de navigation fixe. */}
-      <div aria-hidden="true" style={{ height: (navH ?? 72) + 96 }} />
+      <div aria-hidden="true" style={{ height: (navH ?? 72) + 104 }} />
 
-      {/* Navigation seule : rien n'est coché par ces boutons. Posée sur la barre
-          basse, 6 px au-dessus : le rond central de celle-ci déborde vers le haut. */}
+      {/* Navigation seule : rien n'est coché par ces boutons. Collée à la barre
+          basse (aucun jour entre les deux : le texte défilait dans l'intervalle),
+          fond plein, et marge basse de 12 px pour le rond central de la barre
+          basse, qui déborde vers le haut. */}
       <div
-        className="fixed inset-x-0 z-[46] border-t border-outline-variant bg-white/95 px-3 py-2 backdrop-blur-sm"
-        style={{ bottom: navH != null ? navH + 6 : 'calc(var(--mobile-nav-h) + 6px)' }}
+        className="fixed inset-x-0 z-[46] border-t border-outline-variant bg-white px-3 pt-2 pb-3"
+        style={{ bottom: navH != null ? navH - 1 : 'calc(var(--mobile-nav-h) - 1px)' }}
       >
         <div className="mx-auto flex max-w-[1200px] gap-2">
           <button

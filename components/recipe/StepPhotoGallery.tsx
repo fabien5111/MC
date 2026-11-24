@@ -29,11 +29,14 @@ export function StepPhotoGallery({
   // Classes de colonnes de la grille, à la place des deux réglages par défaut
   // (galeries « Mes réalisations » : 3 à 6 colonnes).
   grille,
+  // Cellule posée après la dernière vignette (tuile « ajouter une photo »).
+  fin,
 }: {
   photos: StepPhoto[];
   compact?: boolean;
   sousVignette?: (index: number) => ReactNode;
   grille?: string;
+  fin?: ReactNode;
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   // Glissement du doigt sur la photo : précédente / suivante (téléphone).
@@ -95,6 +98,7 @@ export function StepPhotoGallery({
             </div>
           );
         })}
+        {fin}
       </div>
 
       {openIndex !== null && (

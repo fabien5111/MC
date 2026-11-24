@@ -1891,8 +1891,14 @@ mobile » (piste A retenue).
 - **Commentaires de ligne conservés** : picto note sur chaque ingrédient
   (quantité utilisée, note, « À racheter ») et chaque sous-étape ; une note
   enregistrée s'affiche en vert sous la ligne (même doctrine que le déroulé).
-- **« Fin d'étape »** en bas : commentaire de l'étape et quantité obtenue,
-  cadre en pointillés pendant l'étape, **vert** une fois terminée.
+- **« Fin d'étape »** en bas : commentaire de l'étape et quantité obtenue.
+  Pendant l'étape : cadre en pointillés réduit à son titre, une phrase et le lien
+  « Remplir maintenant » (déplié aussi dès qu'un constat existe) ; **vert** et
+  déplié une fois l'étape terminée.
+- **Ajouter une photo** : tuile pointillée « Photo » en dernière cellule de la
+  grille de vignettes (`fin` de `StepPhotoGallery`) ; sur appareil tactile un appui
+  propose « Prendre une photo » / « Choisir dans la galerie », sur ordinateur
+  elle ouvre les fichiers.
   « Prendre une photo » (menu Actions) vise l'étape affichée
   (`data-etape-courante`, `etapeAffichee`).
 - **À venir (lot 2)** : défilement vers « Fin d'étape » quand l'étape vient

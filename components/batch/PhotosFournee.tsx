@@ -645,6 +645,10 @@ export function PhotosEtapeVignettes({
 }) {
   const ctx = usePhotosFournee();
   const [gerer, setGerer] = useState(false);
+  const [choix, setChoix] = useState(false);
+  const camera = useRef<HTMLInputElement>(null);
+  const galerie = useRef<HTMLInputElement>(null);
+  const tactile = useTactile();
   const miennes = ctx ? photosDeEtape(ctx.photos, stepId) : [];
   const toutes = [
     ...photosRecette.map((p) => ({ url: p.url, ai_retouched: p.ai_retouched, legende: 'Photo de la recette' })),
@@ -662,18 +666,78 @@ export function PhotosEtapeVignettes({
       </div>
     );
   }
+  const plein = !!ctx && placesRestantes(ctx.photos) <= 0;
+  const surChoix = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (ctx && files.length) void ctx.ajouter(files, stepId);
+  };
+  // Tuile pointillée « Photo », dernière cellule de la grille : un appui
+  // déplie le choix « Prendre une photo » / « Choisir dans la galerie » (sur
+  // ordinateur, elle ouvre directement les fichiers).
+  const tuile =
+    peutAjouter && !plein ? (
+      <button
+        type="button"
+        onClick={() => (tactile ? setChoix((v) => !v) : galerie.current?.click())}
+        aria-expanded={tactile ? choix : undefined}
+        aria-label="Ajouter une photo à cette étape"
+        className="flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg border-2 border-dashed border-outline-variant text-[11px] font-label-md text-primary hover:border-primary"
+      >
+        <span className="material-symbols-outlined text-[26px]">add_a_photo</span>
+        Photo
+      </button>
+    ) : null;
   return (
     <div className="no-print flex flex-col gap-2">
-      {toutes.length > 0 && <StepPhotoGallery photos={toutes} grille="grid-cols-4 sm:grid-cols-6" />}
-      {peutAjouter && (
-        <div className="flex flex-wrap items-center gap-3">
-          <BoutonsPhoto stepId={stepId} compact />
-          {miennes.length > 0 && (
-            <button type="button" onClick={() => setGerer(true)} className="font-label-md text-[13px] text-primary underline underline-offset-2">
-              Gérer mes photos
-            </button>
-          )}
+      <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={surChoix} />
+      <input ref={galerie} type="file" accept="image/*" multiple className="hidden" onChange={surChoix} />
+      {toutes.length > 0 ? (
+        <StepPhotoGallery photos={toutes} grille="grid-cols-4 sm:grid-cols-6" fin={tuile} />
+      ) : (
+        tuile && <div className="grid grid-cols-4 gap-4 sm:grid-cols-6">{tuile}</div>
+      )}
+      {tactile && choix && !plein && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setChoix(false);
+              camera.current?.click();
+            }}
+            className="inline-flex items-center gap-1.5 rounded-pill bg-primary px-3.5 py-2 text-[13px] font-label-md text-on-primary"
+          >
+            <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+            Prendre une photo
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setChoix(false);
+              galerie.current?.click();
+            }}
+            className="inline-flex items-center gap-1.5 rounded-pill bg-primary px-3.5 py-2 text-[13px] font-label-md text-on-primary"
+          >
+            <span className="material-symbols-outlined text-[18px]">photo_library</span>
+            Choisir dans la galerie
+          </button>
         </div>
+      )}
+      {plein && peutAjouter && (
+        <span role="status" className="flex items-center gap-1 text-[12px] text-on-surface-variant">
+          <span className="material-symbols-outlined text-[16px]">check_circle</span>
+          {BATCH_PHOTOS_MAX} photos maximum atteintes
+        </span>
+      )}
+      {peutAjouter && !plein && ctx && (
+        <div className="flex flex-wrap items-center gap-3 empty:hidden">
+          <BoutonColler className="!px-2.5 !py-1 !text-[12px]" onFichiers={(fs) => void ctx.ajouter(fs, stepId)} />
+        </div>
+      )}
+      {peutAjouter && miennes.length > 0 && (
+        <button type="button" onClick={() => setGerer(true)} className="self-start font-label-md text-[13px] text-primary underline underline-offset-2">
+          Gérer mes photos
+        </button>
       )}
     </div>
   );
