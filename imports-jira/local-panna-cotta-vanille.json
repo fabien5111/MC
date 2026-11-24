@@ -1,0 +1,84 @@
+{
+  "ticket": "local-panna-cotta-vanille",
+  "recette": {
+    "titre": "Panna cotta vanille",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème lactée infusée à la vanille, lisse et fondante, mais plus ferme qu'une panna cotta de verrine pour se découper nettement une fois congelée. Elle sert d'insert crémeux au cœur d'un entremets ou d'une bûche.",
+    "rendement": "1 cercle Ø 18 cm, 2 cm de hauteur — environ 515 g de crème utilisable (572 g d'ingrédients, perte ≈ 10 %)",
+    "ustensiles": [
+      "Casserole",
+      "Couteau d'office",
+      "Bol",
+      "Fouet",
+      "Thermomètre",
+      "Chinois",
+      "Maryse",
+      "Cercle ou cadre",
+      "Plaque",
+      "Film alimentaire"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Panna cotta vanille",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 260,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 350,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait entier",
+            "quantite": 150,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 60,
+            "unite": "g"
+          },
+          {
+            "nom": "Gousse de vanille",
+            "quantite": 3,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 9,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans un bol d'eau très froide pendant 10 minutes.",
+          "Fendre la gousse de vanille dans la longueur et gratter les graines au couteau.",
+          "Chauffer le lait, la crème, le sucre, les graines et la gousse jusqu'au frémissement, vers 85 °C.",
+          "Couvrir et laisser infuser hors du feu pendant 20 minutes.",
+          "Retirer la gousse, réchauffer la crème à 60 °C puis y dissoudre la gélatine essorée en fouettant.",
+          "Passer au chinois et laisser tiédir à 35 °C en remuant à la maryse.",
+          "Couler dans le cercle ou le cadre, filmé en fond et posé sur une plaque.",
+          "Filmer au contact, laisser prendre 4 heures au réfrigérateur puis congeler au moins 12 heures."
+        ],
+        "conseils_etape": "Ne pas faire bouillir la crème une fois la gélatine ajoutée, la prise serait affaiblie. Le dosage d'environ 1,6 % de gélatine donne un insert qui se découpe congelé, sans être caoutchouteux ; ne pas l'augmenter. Laisser tiédir vers 35 °C en remuant avant de couler : les grains de vanille restent en suspension au lieu de tomber au fond.",
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 3 jours au frais, ou 3 mois congelée, filmée au contact."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Insert Ø 12 cm, 1,5 cm de hauteur, pour un entremets Ø 16 cm : ≈ 170 g de crème, soit ×0,33 de la recette.",
+      "Utilisation — Insert Ø 16 cm, 1,5 cm de hauteur, pour un entremets Ø 20 cm : ≈ 305 g de crème, soit ×0,59 de la recette.",
+      "Utilisation — Insert Ø 20 cm, 1,5 cm de hauteur, pour un entremets Ø 24 cm : ≈ 475 g de crème, soit ×0,92 de la recette.",
+      "Utilisation — Inserts individuels en cercles Ø 7 cm, 1 cm de hauteur : ≈ 40 g par pièce, soit 12 pièces avec la recette entière.",
+      "Utilisation — Insert de bûche en gouttière 20 x 7 cm, bande de 4 cm de large et 1,5 cm de hauteur : ≈ 120 g de crème, soit ×0,23 de la recette.",
+      "Utilisation — Insert de bûche en gouttière 30 x 8 cm, bande de 5 cm de large et 1,5 cm de hauteur : ≈ 230 g de crème, soit ×0,45 de la recette.",
+      "Utilisation — Insert dans un cadre carré 18 x 18 cm, 1,5 cm de hauteur : ≈ 490 g de crème, soit ×0,95 de la recette.",
+      "Variante — Remplacer 1 gousse de vanille par 2 g de zeste de citron vert râpé ajoutés à l'infusion pour une version plus vive."
+    ],
+    "conseils_conservation": "3 jours au réfrigérateur, filmée au contact ; 3 mois au congélateur. Congeler au moins 12 heures avant de démouler l'insert. Monter l'insert encore congelé dans l'entremets : l'entremets monté se décongèle ensuite au réfrigérateur, en 6 à 8 heures pour un Ø 20 cm."
+  }
+}
