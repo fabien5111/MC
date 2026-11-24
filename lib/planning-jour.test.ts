@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   COULEURS_FOURNEE,
   colonnesSemaine,
+  ajouterJoursIso,
   couleurFournee,
   couleursParRang,
   dateIsoLocale,
   grouperConsecutifs,
   indexDeplacement,
+  joursConsecutifs,
   premierJourAffiche,
   tempsEtape,
   travailActif,
@@ -136,5 +138,22 @@ describe('travailActif / dateIsoLocale', () => {
   });
   it('date locale', () => {
     expect(dateIsoLocale(new Date(2026, 0, 5))).toBe('2026-01-05');
+  });
+});
+
+describe('ajouterJoursIso / joursConsecutifs', () => {
+  it('passe d’un mois et d’une année à l’autre', () => {
+    expect(ajouterJoursIso('2026-11-30', 1)).toBe('2026-12-01');
+    expect(ajouterJoursIso('2026-12-31', 1)).toBe('2027-01-01');
+    expect(ajouterJoursIso('2026-03-01', -1)).toBe('2026-02-28');
+  });
+  it('traverse le changement d’heure sans sauter ni répéter un jour', () => {
+    expect(joursConsecutifs('2026-03-28', 4)).toEqual(['2026-03-28', '2026-03-29', '2026-03-30', '2026-03-31']);
+    expect(joursConsecutifs('2026-10-24', 4)).toEqual(['2026-10-24', '2026-10-25', '2026-10-26', '2026-10-27']);
+  });
+  it('nombre de jours demandé, jamais négatif', () => {
+    expect(joursConsecutifs('2026-11-24', 5)).toHaveLength(5);
+    expect(joursConsecutifs('2026-11-24', 0)).toEqual([]);
+    expect(joursConsecutifs('2026-11-24', -2)).toEqual([]);
   });
 });

@@ -112,3 +112,18 @@ export function colonnesSemaine(largeur: number): number {
 export function travailActif(items: { prep_time: number | null; cook_time: number | null }[]): number {
   return items.reduce((t, it) => t + (it.prep_time || 0) + (it.cook_time || 0), 0);
 }
+
+// Ajoute `n` jours (négatif : retire) à une date `YYYY-MM-DD`, en calendrier
+// LOCAL : `setDate` suit les changements d'heure, jamais une addition de
+// 24 h en millisecondes.
+export function ajouterJoursIso(iso: string, n: number): string {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return dateIsoLocale(d);
+}
+
+// `nb` jours calendaires consécutifs à partir de `debut` (inclus), jours vides
+// compris : la vue semaine garde ainsi une grille pleine et sans saut de date.
+export function joursConsecutifs(debut: string, nb: number): string[] {
+  return Array.from({ length: Math.max(0, nb) }, (_, i) => ajouterJoursIso(debut, i));
+}

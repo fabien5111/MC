@@ -24,12 +24,14 @@ import { groupPlanningStepsByDate, type PlanningDayGroup, type PlanningDayItem }
 import { LockedAction } from '@/components/LockedAction';
 import { BottomSheet } from '@/components/BottomSheet';
 import {
+  ajouterJoursIso,
   colonnesSemaine,
   couleurFournee,
   couleursParRang,
   dateIsoLocale,
   grouperConsecutifs,
   indexDeplacement,
+  joursConsecutifs,
   premierJourAffiche,
   tempsEtape,
   travailActif,
@@ -505,34 +507,34 @@ export function PlanningDayView({
   }
 
   // ── Vue semaine (dès 1024 px, à la souris) ────────────────────────────
-  // Une colonne par jour qui porte au moins une étape (les jours vides ne
-  // prennent pas de colonne), journées terminées comprises, à leur place.
+  // Fenêtre de `nbColonnes` jours CALENDAIRES consécutifs, jours vides compris :
+  // la grille est toujours pleine et ne saute aucune date. Les bornes de
+  // navigation sont le premier et le dernier jour qui portent une étape.
   const joursSemaine = [...groups].sort((a, b) => a.date.localeCompare(b.date));
-  const debutDefaut = premierJourAffiche(
+  const parDate = new Map(joursSemaine.map((g) => [g.date, g]));
+  const premiereDate = joursSemaine[0]?.date ?? '';
+  const derniereDate = joursSemaine[joursSemaine.length - 1]?.date ?? '';
+  const defautIdx = premierJourAffiche(
     joursSemaine.map((g) => ({
       date: g.date,
       incomplet: g.items.some((it) => !it.complete),
     })),
     aujourdhui,
   );
-  const debutIdx = (() => {
-    if (debutSemaine === null) return debutDefaut;
-    const i = joursSemaine.findIndex((g) => g.date >= debutSemaine);
-    return i >= 0 ? i : Math.max(0, joursSemaine.length - 1);
-  })();
-  const visibles = joursSemaine.slice(debutIdx, debutIdx + nbColonnes);
-  const aller = (i: number) => setDebutSemaine(joursSemaine[Math.max(0, Math.min(i, joursSemaine.length - 1))]?.date ?? null);
+  const dateDefaut = joursSemaine[defautIdx]?.date ?? premiereDate;
+  const bornee = (d: string) => (d < premiereDate ? premiereDate : d > derniereDate ? derniereDate : d);
+  const debut = bornee(debutSemaine ?? dateDefaut);
+  const datesVisibles = joursConsecutifs(debut, nbColonnes);
+  const derniereVisible = datesVisibles[datesVisibles.length - 1] ?? debut;
+  const aller = (delta: number) => setDebutSemaine(bornee(ajouterJoursIso(debut, delta)));
   const jourCourt = (iso: string) =>
     new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
     });
-  const etendue = visibles.length
-    ? visibles.length === 1
-      ? dateLabel(visibles[0].date)
-      : `${jourCourt(visibles[0].date)} – ${jourCourt(visibles[visibles.length - 1].date)}`
-    : '';
+  const etendue =
+    datesVisibles.length > 1 ? `${jourCourt(datesVisibles[0])} – ${jourCourt(derniereVisible)}` : datesVisibles[0] ? dateLabel(datesVisibles[0]) : '';
 
   function renderCarte(g: PlanningDayGroup, it: PlanningDayItem) {
     const { preparer, patisser } = liens(it);
@@ -633,8 +635,8 @@ export function PlanningDayView({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => aller(debutIdx - 1)}
-              disabled={debutIdx <= 0}
+              onClick={() => aller(-1)}
+              disabled={debut <= premiereDate}
               aria-label="Jour précédent"
               title="Jour précédent"
               className="flex h-9 w-9 items-center justify-center rounded-full border border-outline-variant text-primary hover:bg-surface-container disabled:opacity-35"
@@ -644,7 +646,7 @@ export function PlanningDayView({
             <button
               type="button"
               onClick={() => setDebutSemaine(null)}
-              disabled={debutIdx === debutDefaut}
+              disabled={debut === dateDefaut}
               title="Revenir au premier jour qui reste à faire"
               className="flex h-9 items-center gap-1 rounded-pill border border-outline-variant px-3 font-label-md text-[13px] text-primary hover:bg-surface-container disabled:opacity-35"
             >
@@ -653,8 +655,8 @@ export function PlanningDayView({
             </button>
             <button
               type="button"
-              onClick={() => aller(debutIdx + 1)}
-              disabled={debutIdx + nbColonnes >= joursSemaine.length}
+              onClick={() => aller(1)}
+              disabled={derniereVisible >= derniereDate}
               aria-label="Jour suivant"
               title="Jour suivant"
               className="flex h-9 w-9 items-center justify-center rounded-full border border-outline-variant text-primary hover:bg-surface-container disabled:opacity-35"
@@ -663,7 +665,7 @@ export function PlanningDayView({
             </button>
           </div>
         </div>
-        {visibles.length === 0 ? (
+        {joursSemaine.length === 0 ? (
           <p className="text-on-surface-variant italic">Aucune étape pour les fournées affichées.</p>
         ) : (
           <div
@@ -672,7 +674,19 @@ export function PlanningDayView({
               gridTemplateColumns: `repeat(${nbColonnes}, minmax(0, 1fr))`,
             }}
           >
-            {visibles.map((g) => {
+            {datesVisibles.map((date) => {
+              const g = parDate.get(date);
+              if (!g) {
+                // Jour sans étape : colonne vide, même gabarit que les autres.
+                return (
+                  <section key={date} className="flex min-w-0 flex-col rounded-xl border border-dashed border-outline-variant/70 bg-surface-container-lowest/40">
+                    <h3 className="flex items-baseline justify-between gap-2 rounded-t-xl border-b border-outline-variant/30 bg-surface-container/50 px-3 py-2">
+                      <span className="font-headline-md text-[16px] leading-tight text-primary/70 first-letter:uppercase">{jourCourt(date)}</span>
+                    </h3>
+                    <p className="p-4 text-center text-[13px] italic text-on-surface-variant/70">Rien de prévu</p>
+                  </section>
+                );
+              }
               const faites = g.items.filter((it) => it.complete).length;
               const termine = faites === g.items.length;
               const actif = travailActif(g.items);
