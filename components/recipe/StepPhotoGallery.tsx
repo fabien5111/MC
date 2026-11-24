@@ -5,7 +5,7 @@
 // étape sans revenir à la grille. Le wrapper de chaque vignette reste un
 // `<div>` (pas un `<button>`) : la mise en page d'impression
 // (`.print-step-photos > div`, app/globals.css) cible ce tag directement.
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AiPhotoBadge } from '@/components/AiPhotoBadge';
 
 // `thumb_url` (vignette de la grille) et `legende` (sous la photo du
@@ -36,6 +36,8 @@ export function StepPhotoGallery({
   grille?: string;
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  // Glissement du doigt sur la photo : précédente / suivante (téléphone).
+  const debutGlisse = useRef<number | null>(null);
 
   const close = useCallback(() => setOpenIndex(null), []);
   const prev = useCallback(
@@ -101,6 +103,16 @@ export function StepPhotoGallery({
           role="dialog"
           aria-modal="true"
           onClick={close}
+          onTouchStart={(e) => {
+            debutGlisse.current = e.touches.length === 1 ? e.touches[0].clientX : null;
+          }}
+          onTouchEnd={(e) => {
+            const debut = debutGlisse.current;
+            debutGlisse.current = null;
+            if (debut == null || photos.length < 2) return;
+            const dx = e.changedTouches[0].clientX - debut;
+            if (Math.abs(dx) > 40) (dx < 0 ? next : prev)();
+          }}
         >
           <button type="button" onClick={close} title="Fermer" className={`absolute top-4 right-4 z-10 ${overlayIconBtn}`}>
             <span className="material-symbols-outlined">close</span>

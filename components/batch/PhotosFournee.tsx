@@ -255,6 +255,10 @@ function useTactile(): boolean {
  * le haut est passé sous l'en-tête du site ; à défaut la première visible.
  */
 function etapeAffichee(): number | null {
+  // Vue « une étape à la fois » (téléphone, tablette) : l'étape affichée est
+  // déclarée par la vue elle-même, le déroulé masqué n'a aucune hauteur.
+  const courante = Array.from(document.querySelectorAll<HTMLElement>('[data-etape-courante]')).find((el) => el.getBoundingClientRect().height > 0);
+  if (courante) return Number(courante.dataset.etapeCourante) || null;
   const cartes = Array.from(document.querySelectorAll<HTMLElement>('[id^="etape-"]')).filter((el) => /^etape-\d+$/.test(el.id));
   const seuil = 120;
   let choisie: HTMLElement | null = null;
@@ -618,6 +622,59 @@ export function PhotosEtape({
       <div>
         <BoutonsPhoto stepId={stepId} compact />
       </div>
+    </div>
+  );
+}
+
+// ── Vignettes d'une étape (mode Pâtisser, une étape à la fois) ─────────────
+
+/**
+ * Photos qui aident à réaliser l'étape, en petites vignettes : celles de la
+ * recette de base (relues en direct, jamais copiées) puis celles de mes
+ * fournées. Un clic ouvre le diaporama plein écran de `StepPhotoGallery`
+ * (flèches, glissement, clavier). L'ajout reste à côté ; recadrer, supprimer
+ * ou réordonner mes photos passe par « Gérer mes photos », qui déplie
+ * l'éditeur habituel (`PhotosEtape`).
+ */
+export function PhotosEtapeVignettes({
+  stepId,
+  photosRecette = [],
+}: {
+  stepId: number;
+  photosRecette?: { url: string; ai_retouched?: boolean }[];
+}) {
+  const ctx = usePhotosFournee();
+  const [gerer, setGerer] = useState(false);
+  const miennes = ctx ? photosDeEtape(ctx.photos, stepId) : [];
+  const toutes = [
+    ...photosRecette.map((p) => ({ url: p.url, ai_retouched: p.ai_retouched, legende: 'Photo de la recette' })),
+    ...miennes.map((p) => ({ url: p.url, thumb_url: p.thumb_url, legende: p.legende })),
+  ];
+  const peutAjouter = !!ctx && !ctx.bloque;
+  if (!toutes.length && !peutAjouter) return null;
+  if (gerer && ctx) {
+    return (
+      <div className="no-print flex flex-col gap-2">
+        <PhotosEtape stepId={stepId} sansMarge />
+        <button type="button" onClick={() => setGerer(false)} className="self-start font-label-md text-[13px] text-primary underline underline-offset-2">
+          Terminé
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="no-print flex flex-col gap-2">
+      {toutes.length > 0 && <StepPhotoGallery photos={toutes} grille="grid-cols-4 sm:grid-cols-6" />}
+      {peutAjouter && (
+        <div className="flex flex-wrap items-center gap-3">
+          <BoutonsPhoto stepId={stepId} compact />
+          {miennes.length > 0 && (
+            <button type="button" onClick={() => setGerer(true)} className="font-label-md text-[13px] text-primary underline underline-offset-2">
+              Gérer mes photos
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
