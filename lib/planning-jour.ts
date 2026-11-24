@@ -54,3 +54,39 @@ export function indexDeplacement(idx: number, longueur: number, sens: -1 | 1): n
   const cible = idx + sens;
   return cible < 0 || cible >= longueur ? null : cible;
 }
+
+// Date du jour au format `YYYY-MM-DD`, dans le fuseau du NAVIGATEUR (jamais
+// `toISOString`, qui donne la date UTC).
+export function dateIsoLocale(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// Vue semaine (ordinateur) : premier jour affiché.
+//  - le premier jour qui porte une étape non terminée, s'il est passé ou
+//    aujourd'hui (on reprend là où on en est, retard compris) ;
+//  - sinon (tout est fait jusqu'à aujourd'hui, ou rien n'est en cours),
+//    aujourd'hui — à défaut le premier jour planifié qui suit ;
+//  - sinon (tout est dans le passé), le dernier jour planifié.
+// `jours` est trié par date croissante. `aujourdhui` nul (pas encore connu
+// côté navigateur) : le premier jour non terminé, quel qu'il soit.
+export function premierJourAffiche(jours: { date: string; incomplet: boolean }[], aujourdhui: string | null): number {
+  if (jours.length === 0) return 0;
+  const premierIncomplet = jours.findIndex((j) => j.incomplet);
+  if (aujourdhui === null) return premierIncomplet >= 0 ? premierIncomplet : 0;
+  if (premierIncomplet >= 0 && jours[premierIncomplet].date <= aujourdhui) return premierIncomplet;
+  const aVenir = jours.findIndex((j) => j.date >= aujourdhui);
+  return aVenir >= 0 ? aVenir : jours.length - 1;
+}
+
+// Nombre de colonnes de la vue semaine selon la largeur de la fenêtre.
+export function colonnesSemaine(largeur: number): number {
+  if (largeur >= 1600) return 7;
+  if (largeur >= 1280) return 5;
+  return 4;
+}
+
+// Minutes de travail actif d'une journée (préparation + cuisson, hors repos).
+export function travailActif(items: { prep_time: number | null; cook_time: number | null }[]): number {
+  return items.reduce((t, it) => t + (it.prep_time || 0) + (it.cook_time || 0), 0);
+}

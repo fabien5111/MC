@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { COULEURS_FOURNEE, couleurFournee, grouperConsecutifs, indexDeplacement, tempsEtape } from '@/lib/planning-jour';
+import {
+  COULEURS_FOURNEE,
+  colonnesSemaine,
+  couleurFournee,
+  dateIsoLocale,
+  grouperConsecutifs,
+  indexDeplacement,
+  premierJourAffiche,
+  tempsEtape,
+  travailActif,
+} from '@/lib/planning-jour';
 
 describe('couleurFournee', () => {
   it('est stable et prise dans la palette', () => {
@@ -60,5 +70,47 @@ describe('indexDeplacement', () => {
     expect(indexDeplacement(2, 3, 1)).toBeNull();
     expect(indexDeplacement(1, 3, -1)).toBe(0);
     expect(indexDeplacement(1, 3, 1)).toBe(2);
+  });
+});
+
+describe('premierJourAffiche', () => {
+  const j = (date: string, incomplet: boolean) => ({ date, incomplet });
+  it('premier jour non terminé, dans le passé', () => {
+    expect(premierJourAffiche([j('2026-11-17', false), j('2026-11-18', true), j('2026-11-19', true)], '2026-11-19')).toBe(1);
+  });
+  it('premier jour non terminé, aujourd’hui', () => {
+    expect(premierJourAffiche([j('2026-11-18', false), j('2026-11-19', true)], '2026-11-19')).toBe(1);
+  });
+  it('passé terminé, reste à faire dans le futur : aujourd’hui', () => {
+    expect(premierJourAffiche([j('2026-11-18', false), j('2026-11-19', false), j('2026-11-21', true)], '2026-11-19')).toBe(1);
+  });
+  it('aujourd’hui sans étape : premier jour à venir', () => {
+    expect(premierJourAffiche([j('2026-11-18', false), j('2026-11-21', true)], '2026-11-19')).toBe(1);
+  });
+  it('tout est passé et terminé : dernier jour', () => {
+    expect(premierJourAffiche([j('2026-11-10', false), j('2026-11-11', false)], '2026-11-19')).toBe(1);
+  });
+  it('date du jour inconnue : premier non terminé', () => {
+    expect(premierJourAffiche([j('2026-11-10', false), j('2026-11-21', true)], null)).toBe(1);
+  });
+  it('aucun jour', () => {
+    expect(premierJourAffiche([], '2026-11-19')).toBe(0);
+  });
+});
+
+describe('colonnesSemaine', () => {
+  it('suit la largeur', () => {
+    expect(colonnesSemaine(1024)).toBe(4);
+    expect(colonnesSemaine(1280)).toBe(5);
+    expect(colonnesSemaine(1700)).toBe(7);
+  });
+});
+
+describe('travailActif / dateIsoLocale', () => {
+  it('additionne préparation et cuisson', () => {
+    expect(travailActif([{ prep_time: 15, cook_time: 20 }, { prep_time: null, cook_time: 5 }])).toBe(40);
+  });
+  it('date locale', () => {
+    expect(dateIsoLocale(new Date(2026, 0, 5))).toBe('2026-01-05');
   });
 });

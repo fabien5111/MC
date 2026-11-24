@@ -45,6 +45,7 @@ import { LockedAction } from '@/components/LockedAction';
 import { findMergeTarget } from '@/lib/shopping-merge';
 import { NOM_A_RACHETER, estListeARacheter, rangerListes } from '@/lib/a-racheter';
 import { RecipeToc, type TocAction, type TocSections } from '@/components/recipe/RecipeToc';
+import { useTactile } from '@/lib/use-tactile';
 
 type PlanningView = 'jours' | 'recettes';
 
@@ -181,6 +182,11 @@ export function CuisineContent({
   // La vue par jour est la vue par défaut (décision produit) : c'est elle
   // qui rend le planning actionnable sans ouvrir chaque fournée une à une.
   const [planningView, setPlanningView] = useState<PlanningView>('jours');
+  // Vue « Par jour » à la souris, dès 1024 px : la vue semaine du planning
+  // prend toute la largeur et les courses passent dessous. Ailleurs (« Par
+  // fournée », appareil tactile), planning et courses restent côte à côte.
+  const tactile = useTactile();
+  const semainePleineLargeur = planningView === 'jours' && !tactile;
 
   // La vue du planning reste tracée dans le hash : sans ça, un retour arrière
   // du navigateur depuis une fournée ne rétablit jamais la vue choisie.
@@ -468,7 +474,7 @@ export function CuisineContent({
           elle naît de ce qui est planifié juste à côté. */}
       <div className="mt-12 lg:grid lg:grid-cols-12 lg:gap-x-16">
       {/* ── Mes fournées ──────────────────────────────────────────────── */}
-      <section id="sec-fournees" className="scroll-mt-28 lg:col-span-7">
+      <section id="sec-fournees" className={`scroll-mt-28 ${semainePleineLargeur ? 'lg:col-span-12' : 'lg:col-span-7'}`}>
         {/* Ancres des deux vues (entrées du sommaire) : même position, le clic bascule la vue. */}
         <span id="sec-vue-jours" className="block scroll-mt-28" />
         <span id="sec-vue-recettes" className="block scroll-mt-28" />
@@ -584,7 +590,7 @@ export function CuisineContent({
       </section>
 
       {/* ── Listes de courses ──────────────────────────────────────────── */}
-      <section id="sec-courses" className="mt-14 scroll-mt-28 lg:col-span-5 lg:mt-0">
+      <section id="sec-courses" className={`mt-14 scroll-mt-28 ${semainePleineLargeur ? 'lg:col-span-12' : 'lg:col-span-5 lg:mt-0'}`}>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-3 font-headline-md text-primary">
             <span className="material-symbols-outlined">shopping_bag</span> Listes de courses
@@ -602,7 +608,9 @@ export function CuisineContent({
         {aRacheter && <ARacheterCard liste={aRacheter} />}
         {proposerARacheter && <ARacheterVide existe={!!listeSysteme} onClick={ouvrirARacheter} />}
         {activeShoppingLists.length > 0 ? (
-          <div className="space-y-4">
+          // Pleine largeur (vue semaine au-dessus) : listes en grille plutôt
+          // qu'en bandes étirées sur tout l'écran.
+          <div className={semainePleineLargeur ? 'space-y-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:space-y-0' : 'space-y-4'}>
             {activeShoppingLists.map((l) => {
               const items = l.shopping_list_items || [];
               const done = items.filter((i) => i.checked).length;

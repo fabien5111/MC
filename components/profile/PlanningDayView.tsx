@@ -23,11 +23,26 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { groupPlanningStepsByDate, type PlanningDayGroup, type PlanningDayItem } from '@/lib/recipe-plan';
 import { LockedAction } from '@/components/LockedAction';
 import { BottomSheet } from '@/components/BottomSheet';
-import { couleurFournee, grouperConsecutifs, indexDeplacement, tempsEtape } from '@/lib/planning-jour';
+import {
+  colonnesSemaine,
+  couleurFournee,
+  dateIsoLocale,
+  grouperConsecutifs,
+  indexDeplacement,
+  premierJourAffiche,
+  tempsEtape,
+  travailActif,
+} from '@/lib/planning-jour';
+import { useTactile } from '@/lib/use-tactile';
+import { formatTime } from '@/lib/format';
 import type { BatchListRow } from '@/lib/profile';
 
 const dateLabel = (iso: string): string =>
-  new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
 
 // Pas de resynchronisation ici : `CuisineContent`, qui monte toujours cette
 // vue, fait déjà un `router.refresh()` à son propre montage (même raison —
@@ -58,14 +73,23 @@ export function PlanningDayView({
   // Monter / Descendre dans la journée — le seul moyen de réordonner au doigt.
   const [feuilleId, setFeuilleId] = useState<number | null>(null);
   // Appareil tactile : la poignée de glisser-déposer (HTML5, souris seule) n'y
-  // est pas affichée.
-  const [tactile, setTactile] = useState(false);
+  // est pas affichée, et la vue semaine du bureau non plus (liste compacte à
+  // toutes les largeurs).
+  const tactile = useTactile();
+  // Filtres par fournée : ids des fournées masquées. Jamais mémorisés : au
+  // rechargement, tout est visible.
+  const [masquees, setMasquees] = useState<Set<number>>(new Set());
+  // Vue semaine (dès 1024 px, à la souris) : premier jour affiché (date), nul
+  // tant que le membre n'a pas navigué — la règle `premierJourAffiche` décide.
+  const [debutSemaine, setDebutSemaine] = useState<string | null>(null);
+  const [aujourdhui, setAujourdhui] = useState<string | null>(null);
+  const [nbColonnes, setNbColonnes] = useState(4);
   useEffect(() => {
-    try {
-      setTactile(window.matchMedia('(pointer: coarse)').matches);
-    } catch {
-      setTactile(false);
-    }
+    setAujourdhui(dateIsoLocale(new Date()));
+    const lire = () => setNbColonnes(colonnesSemaine(window.innerWidth));
+    lire();
+    window.addEventListener('resize', lire);
+    return () => window.removeEventListener('resize', lire);
   }, []);
   // Fournées dont la question « toutes les étapes sont cochées » a déjà été
   // posée (acceptée ou refusée) : sans ça, une fournée entièrement cochée
@@ -78,21 +102,36 @@ export function PlanningDayView({
   // recochage puisqu'elle restait, elle, dans ce groupe replié.
   const [pendingFinish, setPendingFinish] = useState<Set<number>>(new Set());
 
-  const groups = groupPlanningStepsByDate(list);
+  // Toutes les journées (réordonnancement : l'ordre porte sur la journée
+  // entière, étapes masquées comprises) et les journées affichées (filtres).
+  const groupsAll = groupPlanningStepsByDate(list);
+  const groups = groupsAll
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((it) => !masquees.has(it.planId)),
+    }))
+    .filter((g) => g.items.length > 0);
 
   // Réordonne les étapes d'UN jour (entre fournées potentiellement
   // différentes) : renumérote l'ensemble des étapes de ce jour plutôt que
   // d'intercaler une seule valeur (même principe que `moveSubstep` dans
   // BatchStepDonePanel), pour que `day_order_index` reste toujours défini pour
   // tout le monde une fois qu'on a touché à ce jour.
-  async function moveStep(date: string, fromIdx: number, toIdx: number) {
-    if (fromIdx === toIdx) return;
-    const group = groups.find((g) => g.date === date);
+  // Désignée par identifiants d'étape, pas par position : avec un filtre
+  // actif, la position affichée n'est pas celle dans la journée entière.
+  async function moveStep(date: string, fromStepId: number, toStepId: number) {
+    const group = groupsAll.find((g) => g.date === date);
     if (!group) return;
+    const fromIdx = group.items.findIndex((x) => x.stepId === fromStepId);
+    const toIdx = group.items.findIndex((x) => x.stepId === toStepId);
+    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
     const sorted = [...group.items];
     const [moved] = sorted.splice(fromIdx, 1);
     sorted.splice(toIdx, 0, moved);
-    const reassigned = sorted.map((it, i) => ({ stepId: it.stepId, day_order_index: i }));
+    const reassigned = sorted.map((it, i) => ({
+      stepId: it.stepId,
+      day_order_index: i,
+    }));
     const prev = list;
     setList((all) =>
       all.map((p) => ({
@@ -137,7 +176,12 @@ export function PlanningDayView({
   // en mode Pâtisser.
   async function toggleDone(stepId: number, checked: boolean) {
     const prev = list;
-    setList((all) => all.map((p) => ({ ...p, batch_steps: p.batch_steps.map((s) => (s.id === stepId ? { ...s, done: checked } : s)) })));
+    setList((all) =>
+      all.map((p) => ({
+        ...p,
+        batch_steps: p.batch_steps.map((s) => (s.id === stepId ? { ...s, done: checked } : s)),
+      })),
+    );
     const ok = await mutate(() => createClient().from('batch_steps').update({ done: checked }).eq('id', stepId), {
       errorLabel: 'Modification non enregistrée',
       refresh: false,
@@ -153,12 +197,8 @@ export function PlanningDayView({
     if (allDone) proposeFinish(batchRow);
   }
 
-  if (groups.length === 0) {
-    return (
-      <p className="text-on-surface-variant italic">
-        Aucune étape à afficher — seules les fournées avec une date de dégustation apparaissent ici.
-      </p>
-    );
+  if (groupsAll.length === 0) {
+    return <p className="text-on-surface-variant italic">Aucune étape à afficher — seules les fournées avec une date de dégustation apparaissent ici.</p>;
   }
 
   // Une journée est « terminée » quand toutes ses étapes sont cochées ET que
@@ -178,7 +218,8 @@ export function PlanningDayView({
   // Étape dont la feuille d'actions est ouverte (sous 1024 px). Relue dans
   // `groups` à chaque rendu : après « Monter » / « Descendre », sa position
   // affichée suit l'état local.
-  const feuilleItem = feuilleId === null ? null : groups.flatMap((g) => g.items.map((it, idx) => ({ g, it, idx }))).find((x) => x.it.stepId === feuilleId) ?? null;
+  const feuilleItem =
+    feuilleId === null ? null : (groups.flatMap((g) => g.items.map((it, idx) => ({ g, it, idx }))).find((x) => x.it.stepId === feuilleId) ?? null);
 
   function liens(it: PlanningDayItem) {
     return {
@@ -204,7 +245,6 @@ export function PlanningDayView({
   }
 
   function renderStep(g: PlanningDayGroup, it: PlanningDayItem) {
-    const idx = g.items.findIndex((x) => x.stepId === it.stepId);
     const { preparer, patisser } = liens(it);
     // `complete` (et non `done`) : une étape « déjà réalisée avant la fournée »
     // qui garde une sous-étape de cuisson n'est pas encore terminée.
@@ -220,8 +260,7 @@ export function PlanningDayView({
         onDrop={(e) => {
           if (dragId === null) return;
           e.preventDefault();
-          const fromIdx = g.items.findIndex((x) => x.stepId === dragId);
-          moveStep(g.date, fromIdx, idx);
+          moveStep(g.date, dragId, it.stepId);
           setDragId(null);
         }}
         className={`flex items-center border-b border-outline-variant/30 last:border-0 pr-1${dragId === it.stepId ? ' opacity-50' : ''}`}
@@ -274,11 +313,19 @@ export function PlanningDayView({
             libellés. Une tablette tactile en paysage garde le « ⋯ » : sans
             souris, c'est sa seule porte vers Monter / Descendre. */}
         <span className={`no-print hidden shrink-0 items-center gap-1 pl-2${tactile ? '' : ' lg:flex'}`}>
-          <Link href={preparer} title="Ouvrir cette étape en mode Préparer" className="flex w-14 flex-col items-center gap-0.5 rounded-lg py-1 text-[10px] font-semibold text-primary hover:bg-surface-container">
+          <Link
+            href={preparer}
+            title="Ouvrir cette étape en mode Préparer"
+            className="flex w-14 flex-col items-center gap-0.5 rounded-lg py-1 text-[10px] font-semibold text-primary hover:bg-surface-container"
+          >
             <span className="material-symbols-outlined text-[22px]">checklist</span>
             Préparer
           </Link>
-          <Link href={patisser} title="Ouvrir cette étape en mode Pâtisser" className="flex w-14 flex-col items-center gap-0.5 rounded-lg py-1 text-[10px] font-semibold text-primary hover:bg-surface-container">
+          <Link
+            href={patisser}
+            title="Ouvrir cette étape en mode Pâtisser"
+            className="flex w-14 flex-col items-center gap-0.5 rounded-lg py-1 text-[10px] font-semibold text-primary hover:bg-surface-container"
+          >
             <span className="material-symbols-outlined text-[22px]">skillet</span>
             Pâtisser
           </Link>
@@ -351,11 +398,293 @@ export function PlanningDayView({
     );
   }
 
+  // Filtres par fournée : une pastille par fournée présente au planning, avec
+  // sa couleur et son avancement (étapes terminées / total, toutes journées).
+  const fournees = (() => {
+    const m = new Map<
+      number,
+      {
+        planId: number;
+        titre: string;
+        projet: boolean;
+        faites: number;
+        total: number;
+      }
+    >();
+    groupsAll.forEach((g) =>
+      g.items.forEach((it) => {
+        const f = m.get(it.planId) ?? {
+          planId: it.planId,
+          titre: it.recipeTitleBrut,
+          projet: it.projet,
+          faites: 0,
+          total: 0,
+        };
+        f.total += 1;
+        if (it.complete) f.faites += 1;
+        m.set(it.planId, f);
+      }),
+    );
+    return [...m.values()];
+  })();
+
+  function basculerFiltre(planId: number) {
+    setMasquees((prev) => {
+      const n = new Set(prev);
+      if (n.has(planId)) n.delete(planId);
+      else n.add(planId);
+      return n;
+    });
+  }
+
+  function filtres() {
+    if (fournees.length < 2) return null;
+    const nbMasquees = fournees.filter((f) => masquees.has(f.planId)).length;
+    return (
+      <div className="no-print flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Afficher ou masquer une fournée">
+          {fournees.map((f) => {
+            const visible = !masquees.has(f.planId);
+            const couleur = couleurFournee(f.planId);
+            return (
+              <button
+                key={f.planId}
+                type="button"
+                onClick={() => basculerFiltre(f.planId)}
+                aria-pressed={visible}
+                title={visible ? 'Masquer les étapes de cette fournée' : 'Afficher les étapes de cette fournée'}
+                className={`flex min-h-9 max-w-full items-center gap-2 rounded-pill border border-outline-variant bg-surface-container-lowest px-3 py-1 text-[13px] text-primary transition-opacity${visible ? '' : ' opacity-45'}`}
+              >
+                <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: couleur }} />
+                {f.projet && <span className="material-symbols-outlined text-[15px]">construction</span>}
+                <span className="min-w-0 truncate">{f.titre}</span>
+                <span aria-hidden className="h-1 w-10 shrink-0 overflow-hidden rounded-full bg-surface-variant">
+                  <span
+                    className="block h-full"
+                    style={{
+                      width: `${f.total ? (100 * f.faites) / f.total : 0}%`,
+                      background: couleur,
+                    }}
+                  />
+                </span>
+                <span className="shrink-0 text-[11px] text-on-surface-variant tabular-nums">
+                  {f.faites}/{f.total}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {nbMasquees > 0 && (
+          <p className="text-[12px] text-secondary">
+            {nbMasquees} fournée{nbMasquees > 1 ? 's masquées' : ' masquée'} ·{' '}
+            <button type="button" onClick={() => setMasquees(new Set())} className="underline">
+              tout afficher
+            </button>
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // ── Vue semaine (dès 1024 px, à la souris) ────────────────────────────
+  // Une colonne par jour qui porte au moins une étape (les jours vides ne
+  // prennent pas de colonne), journées terminées comprises, à leur place.
+  const joursSemaine = [...groups].sort((a, b) => a.date.localeCompare(b.date));
+  const debutDefaut = premierJourAffiche(
+    joursSemaine.map((g) => ({
+      date: g.date,
+      incomplet: g.items.some((it) => !it.complete),
+    })),
+    aujourdhui,
+  );
+  const debutIdx = (() => {
+    if (debutSemaine === null) return debutDefaut;
+    const i = joursSemaine.findIndex((g) => g.date >= debutSemaine);
+    return i >= 0 ? i : Math.max(0, joursSemaine.length - 1);
+  })();
+  const visibles = joursSemaine.slice(debutIdx, debutIdx + nbColonnes);
+  const aller = (i: number) => setDebutSemaine(joursSemaine[Math.max(0, Math.min(i, joursSemaine.length - 1))]?.date ?? null);
+  const jourCourt = (iso: string) =>
+    new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+  const etendue = visibles.length
+    ? visibles.length === 1
+      ? dateLabel(visibles[0].date)
+      : `${jourCourt(visibles[0].date)} – ${jourCourt(visibles[visibles.length - 1].date)}`
+    : '';
+
+  function renderCarte(g: PlanningDayGroup, it: PlanningDayItem) {
+    const { preparer, patisser } = liens(it);
+    const resteAFaire = it.done && !it.complete;
+    return (
+      <li
+        key={it.stepId}
+        onDragOver={(e) => {
+          if (dragId === null) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        }}
+        onDrop={(e) => {
+          if (dragId === null) return;
+          e.preventDefault();
+          moveStep(g.date, dragId, it.stepId);
+          setDragId(null);
+        }}
+        draggable={canReorder}
+        onDragStart={(e) => {
+          if (!canReorder) return;
+          setDragId(it.stepId);
+          e.dataTransfer.effectAllowed = 'move';
+        }}
+        onDragEnd={() => setDragId(null)}
+        title={canReorder ? 'Glisser pour réordonner cette étape dans sa journée' : undefined}
+        className={`flex overflow-hidden rounded-lg border border-outline-variant/60 bg-surface${canReorder ? ' cursor-grab active:cursor-grabbing' : ''}${dragId === it.stepId ? ' opacity-50' : ''}`}
+      >
+        <span aria-hidden className="w-1 shrink-0" style={{ background: couleurFournee(it.planId) }} />
+        <div className="min-w-0 flex-1 py-1.5 pr-2">
+          <Link
+            href={`/fournee/${it.planId}?mode=preparer`}
+            title="Ouvrir la fournée"
+            className="flex items-center gap-1 pl-2 font-label-md text-[10px] uppercase tracking-wider text-secondary hover:underline"
+          >
+            {it.projet && <span className="material-symbols-outlined text-[13px]">construction</span>}
+            <span className="min-w-0 truncate">{it.recipeTitleBrut}</span>
+          </Link>
+          <div className="flex items-start">
+            <label className={`flex h-8 w-8 shrink-0 items-center justify-center ${resteAFaire ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+              <input
+                type="checkbox"
+                checked={it.complete}
+                disabled={resteAFaire}
+                onChange={(e) => toggleDone(it.stepId, e.target.checked)}
+                title={
+                  resteAFaire
+                    ? 'Il reste une sous-étape à faire : à cocher depuis le mode Pâtisser'
+                    : it.complete
+                      ? 'Marquer comme non faite'
+                      : 'Marquer comme faite'
+                }
+                aria-label={`${it.title || 'Étape ' + it.number} : ${it.complete ? 'marquer comme non faite' : 'marquer comme faite'}`}
+                className="h-5 w-5 rounded border-outline accent-primary focus:ring-primary cursor-pointer disabled:cursor-not-allowed"
+              />
+            </label>
+            <Link
+              href={patisser}
+              title="Ouvrir cette étape en mode Pâtisser"
+              draggable={false}
+              className={`min-w-0 flex-1 pt-1.5 font-body-md text-[14px] font-semibold leading-snug text-on-surface hover:underline ${it.complete ? 'opacity-60' : ''}`}
+            >
+              <span className="mr-1 text-secondary tabular-nums">{it.number}.</span>
+              {it.title || 'Étape ' + it.number}
+            </Link>
+          </div>
+          <div className={`pl-8 ${it.complete ? 'opacity-60' : ''}`}>{texteTemps(it)}</div>
+          <div className="mt-1.5 flex flex-wrap gap-1.5 pl-7">
+            <Link
+              href={preparer}
+              draggable={false}
+              title="Ouvrir cette étape en mode Préparer"
+              className="inline-flex items-center gap-1 rounded-pill border border-outline-variant/70 px-2 py-0.5 font-label-md text-[11px] text-primary hover:bg-surface-container"
+            >
+              <span className="material-symbols-outlined text-[15px]">checklist</span>
+              Préparer
+            </Link>
+            <Link
+              href={patisser}
+              draggable={false}
+              title="Ouvrir cette étape en mode Pâtisser"
+              className="inline-flex items-center gap-1 rounded-pill border border-outline-variant/70 px-2 py-0.5 font-label-md text-[11px] text-primary hover:bg-surface-container"
+            >
+              <span className="material-symbols-outlined text-[15px]">skillet</span>
+              Pâtisser
+            </Link>
+          </div>
+        </div>
+      </li>
+    );
+  }
+
+  function vueSemaine() {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="font-headline-md text-[18px] text-primary first-letter:uppercase">{etendue}</p>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => aller(debutIdx - 1)}
+              disabled={debutIdx <= 0}
+              aria-label="Jour précédent"
+              title="Jour précédent"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-outline-variant text-primary hover:bg-surface-container disabled:opacity-35"
+            >
+              <span className="material-symbols-outlined">chevron_left</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDebutSemaine(null)}
+              disabled={debutIdx === debutDefaut}
+              title="Revenir au premier jour qui reste à faire"
+              className="flex h-9 items-center gap-1 rounded-pill border border-outline-variant px-3 font-label-md text-[13px] text-primary hover:bg-surface-container disabled:opacity-35"
+            >
+              <span className="material-symbols-outlined text-[18px]">today</span>
+              Jour en cours
+            </button>
+            <button
+              type="button"
+              onClick={() => aller(debutIdx + 1)}
+              disabled={debutIdx + nbColonnes >= joursSemaine.length}
+              aria-label="Jour suivant"
+              title="Jour suivant"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-outline-variant text-primary hover:bg-surface-container disabled:opacity-35"
+            >
+              <span className="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
+        </div>
+        {visibles.length === 0 ? (
+          <p className="text-on-surface-variant italic">Aucune étape pour les fournées affichées.</p>
+        ) : (
+          <div
+            className="grid gap-3"
+            style={{
+              gridTemplateColumns: `repeat(${nbColonnes}, minmax(0, 1fr))`,
+            }}
+          >
+            {visibles.map((g) => {
+              const faites = g.items.filter((it) => it.complete).length;
+              const termine = faites === g.items.length;
+              const actif = travailActif(g.items);
+              return (
+                <section
+                  key={g.date}
+                  className={`flex min-w-0 flex-col rounded-xl border border-outline-variant bg-surface-container-lowest${termine ? ' opacity-70' : ''}`}
+                >
+                  <h3 className="flex items-baseline justify-between gap-2 rounded-t-xl border-b border-outline-variant/40 bg-surface-container px-3 py-2">
+                    <span className="font-headline-md text-[16px] leading-tight text-primary first-letter:uppercase">{jourCourt(g.date)}</span>
+                    <span className="shrink-0 text-[12px] text-on-surface-variant tabular-nums" title={`${faites} étape(s) faite(s) sur ${g.items.length}`}>
+                      {faites}/{g.items.length}
+                    </span>
+                  </h3>
+                  <ul className="flex flex-col gap-2 p-2">{g.items.map((it) => renderCarte(g, it))}</ul>
+                  {actif > 0 && <p className="mt-auto px-3 pb-2 text-[11px] text-on-surface-variant tabular-nums">{formatTime(actif)} de travail actif</p>}
+                </section>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function deplacer(sens: -1 | 1) {
     if (!feuilleItem) return;
     const cible = indexDeplacement(feuilleItem.idx, feuilleItem.g.items.length, sens);
     if (cible === null) return;
-    moveStep(feuilleItem.g.date, feuilleItem.idx, cible);
+    moveStep(feuilleItem.g.date, feuilleItem.it.stepId, feuilleItem.g.items[cible].stepId);
   }
 
   return (
@@ -382,31 +711,39 @@ export function PlanningDayView({
         </div>
       )}
       <LoadingOverlay visible={busy || navigating} label={navigating ? 'Ouverture de la fournée…' : 'Réorganisation en cours…'} />
-      {pendingGroups.map((g) => (
-        <section key={g.date} className="rounded-xl border border-outline-variant bg-surface-container-lowest">
-          {enteteJour(g)}
-          {renderSteps(g)}
-        </section>
-      ))}
-      {doneGroups.length > 0 && (
-        <details className="group rounded-xl border border-outline-variant bg-surface-container-lowest">
-          <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer list-none">
-            <span className="font-headline-md text-[18px] text-primary flex items-center gap-3">
-              Journées terminées
-              <span className="font-label-md text-[11px] bg-green-700 text-white px-2.5 py-1 rounded-full">{doneGroups.length}</span>
-            </span>
-            <span className="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
-          </summary>
-          <div className="flex flex-col">
-            {doneGroups.map((g) => (
-              <div key={g.date} className="border-t border-outline-variant/50">
-                {enteteJour(g, false)}
-                {renderSteps(g)}
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
+      {filtres()}
+      {/* Dès 1024 px à la souris : vue semaine. Les deux vues sont rendues et
+          basculées par CSS (pas de saut au premier rendu) ; un appareil
+          tactile garde la liste compacte à toutes les largeurs. */}
+      {!tactile && <div className="hidden lg:block">{vueSemaine()}</div>}
+      <div className={`flex flex-col gap-6${tactile ? '' : ' lg:hidden'}`}>
+        {groups.length === 0 && <p className="text-on-surface-variant italic">Aucune étape pour les fournées affichées.</p>}
+        {pendingGroups.map((g) => (
+          <section key={g.date} className="rounded-xl border border-outline-variant bg-surface-container-lowest">
+            {enteteJour(g)}
+            {renderSteps(g)}
+          </section>
+        ))}
+        {doneGroups.length > 0 && (
+          <details className="group rounded-xl border border-outline-variant bg-surface-container-lowest">
+            <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer list-none">
+              <span className="font-headline-md text-[18px] text-primary flex items-center gap-3">
+                Journées terminées
+                <span className="font-label-md text-[11px] bg-green-700 text-white px-2.5 py-1 rounded-full">{doneGroups.length}</span>
+              </span>
+              <span className="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
+            </summary>
+            <div className="flex flex-col">
+              {doneGroups.map((g) => (
+                <div key={g.date} className="border-t border-outline-variant/50">
+                  {enteteJour(g, false)}
+                  {renderSteps(g)}
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
       <BottomSheet open={feuilleItem !== null} onClose={() => setFeuilleId(null)} breakpoint={tactile ? 'aucun' : 'lg'} label="Actions de l'étape">
         {feuilleItem && (
           <div className="flex flex-col gap-1 px-4 pt-2 pb-[calc(16px+env(safe-area-inset-bottom,0px))]">
