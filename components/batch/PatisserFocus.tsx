@@ -323,7 +323,7 @@ function CarteEtape({
   const enAmont = !!(s as { fait_en_amont?: boolean }).fait_en_amont;
   const badges = [enAmont ? 'DÉJÀ RÉALISÉE AVANT LA FOURNÉE' : '', ...g.badges.filter((b) => b !== 'PRÉPARATION DÉJÀ RÉALISÉE')].filter(Boolean);
   return (
-    <article data-etape-courante={s.id} className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-x-8">
+    <article data-etape-courante={s.id} className="flex flex-col gap-4">
       <header className="flex flex-col gap-1">
         <p className="flex justify-between gap-2 font-label-md text-[12px] uppercase tracking-widest text-secondary">
           <span className="min-w-0 truncate">{titreJour}</span>
@@ -411,7 +411,7 @@ function CarteEtape({
           Déplié aussi dès qu'un constat existe. */}
       <section
         ref={finRef}
-        className={`mt-2 flex flex-col gap-3 rounded-xl p-4 lg:sticky lg:top-[calc(var(--site-header-h,72px)+16px)] lg:col-start-2 lg:[grid-row:1/span_20] lg:mt-0 ${g.complete ? 'border-2 border-green-700 bg-green-50' : 'border border-dashed border-outline-variant bg-white'}`}
+        className={`mt-2 flex flex-col gap-3 rounded-xl p-4 ${g.complete ? 'border-2 border-green-700 bg-green-50' : 'border border-dashed border-outline-variant bg-white'}`}
       >
         <h3 className={`flex items-center gap-2 font-label-md text-[13px] font-bold uppercase tracking-widest ${g.complete ? 'text-green-800' : 'text-on-surface-variant'}`}>
           <span className="material-symbols-outlined text-[20px]">{g.complete ? 'task_alt' : 'flag'}</span>
@@ -471,8 +471,6 @@ export function PatisserFocus({
   photosRecette,
   onCloturer,
   rappels,
-  bureau = true,
-  onDeroule,
 }: {
   batch: BatchFull;
   jalons: BatchJalon[];
@@ -488,11 +486,6 @@ export function PatisserFocus({
   // Absent : fournée close ou verrouillée, pas de clôture proposée.
   onCloturer?: () => void;
   rappels: Rappels;
-  // Au-dessus de 1024 px : vue « une étape » en trois zones (liste, étape, fin
-  // d'étape) quand vrai, déroulé complet quand faux. Sous 1024 px, toujours la vue
-  // une étape. `onDeroule` : bouton « Voir tout le déroulé » (bureau seulement).
-  bureau?: boolean;
-  onDeroule?: () => void;
 }) {
   const etapes = etapesOrdonnees(batch, jalons);
   const idx = Math.max(0, etapes.findIndex((e) => e.step.id === etapeId));
@@ -535,7 +528,7 @@ export function PatisserFocus({
   const jalon = jalons[courante.jalon];
 
   return (
-    <div className={`${bureau ? '' : 'lg:hidden'} print:hidden`}>
+    <div className="print:hidden">
       <div ref={haut} id="patisser-focus" className="scroll-mt-24" />
       <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:gap-8">
       {/* Jauge : un segment par étape, regroupés par jour. Vert = terminée,
@@ -606,11 +599,6 @@ export function PatisserFocus({
             </div>
           );
         })}
-        {onDeroule && (
-          <button type="button" onClick={onDeroule} className="mt-2 self-start font-label-md text-[13px] text-primary underline underline-offset-2">
-            Voir tout le déroulé
-          </button>
-        )}
       </nav>
 
       <div className="min-w-0">

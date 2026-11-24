@@ -1854,8 +1854,8 @@ la validation et l'avis — sans laisser le temps de noter la dernière étape.
 Sous **1024 px**, le mode Pâtisser n'affiche plus le déroulé mais **une étape à
 la fois** (`components/batch/PatisserFocus.tsx`, logique pure et testée :
 `lib/patisser-focus.ts`). Le déroulé (`PatisserBody` / `StepCookCard`) reste
-celui de l'ordinateur et de l'**impression** (`hidden lg:flex print:flex`) ; la
-vue téléphone est `lg:hidden print:hidden`. Maquettes : artefact « Pâtisser sur
+celui de l'**impression** seule (`hidden print:flex`) ; la vue une étape sert
+téléphone, tablette et ordinateur (`print:hidden`). Maquettes : artefact « Pâtisser sur
 mobile » (piste A retenue).
 
 - **Mêmes règles de coche, un seul code** : `gestesEtape`
@@ -1905,16 +1905,17 @@ mobile » (piste A retenue).
   (case du titre OU auto-coche par le dernier geste : **exception voulue** à « l'auto-coche
   ne fait pas défiler », le constat est la suite logique ; jamais à l'ouverture d'une étape
   déjà terminée). Aucune pastille de rappel sur « Suivante » / « Clôturer » (retirée le 24/11/2026).
-- **Version bureau (lot 3, ≥ 1024 px)** : la même vue (`PatisserFocus`, prop `bureau`) est la
-  vue **par défaut** de l'ordinateur, en trois zones — liste verticale des étapes à gauche
-  (groupées par jour, rond vert = terminée, marron = reste à faire, étape affichée cernée),
-  étape au centre (**une seule colonne : ingrédients, puis gestes dessous**), « Fin d'étape »
-  à droite, collée sous l'en-tête (`sticky`) et toujours visible. Précédente / Suivante /
-  Clôturer ne sont plus fixes : posés sous l'étape. Pas de défilement automatique vers « Fin
-  d'étape » sur bureau (elle est déjà à l'écran). « Voir tout le déroulé » (sous la liste)
-  bascule sur l'ancien déroulé (`derouleComplet`, `BatchView`, état local non mémorisé) et
-  « ← Revenir à l'étape par étape » le quitte ; l'**impression** reste toujours le déroulé.
-  Les règles de coche sont les mêmes (`gestesEtape`). Géométrie non vérifiée visuellement.
+- **Version bureau (lot 3, ≥ 1024 px)** : la même vue (`PatisserFocus`) est la **seule** vue de
+  l'ordinateur, en deux zones — liste verticale des étapes à gauche (groupées par jour, rond
+  vert = terminée, marron = reste à faire, étape affichée cernée, collée sous l'en-tête) et
+  étape à droite en **une seule colonne, pleine largeur** : note, photos, conseils,
+  ingrédients, gestes, puis « Fin d'étape », puis Précédente / Suivante / Clôturer (posés sous
+  l'étape, plus fixes). Une colonne à droite pour « Fin d'étape » (essayée le 24/11/2026)
+  rétrécissait les textes et laissait un vide avant les boutons : abandonnée. Pas de
+  défilement automatique vers « Fin d'étape » sur bureau. **Le déroulé complet
+  (`PatisserBody`) ne sert plus qu'à l'impression** (`hidden print:flex`) : le lien « Voir
+  tout le déroulé » a été retiré (25/11/2026). Mêmes règles de coche (`gestesEtape`).
+  Géométrie non vérifiée visuellement.
 
 ## Photos de réalisation d'une fournée (JEP-382)
 
