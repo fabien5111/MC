@@ -1,0 +1,85 @@
+{
+  "ticket": "local-panna-cotta-coco",
+  "recette": {
+    "titre": "Panna cotta coco",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Crème prise infusée à la noix de coco, au goût net et lacté, plus ferme qu'une panna cotta de verrine pour se découper proprement. Elle sert d'insert crémeux, congelé, au cœur d'un entremets ou d'un individuel.",
+    "rendement": "1 cadre 20 x 20 cm, 1,2 cm de hauteur — environ 480 g de crème utilisable (545 g d'ingrédients, perte ≈ 12 %)",
+    "ustensiles": [
+      "Casserole",
+      "Cul-de-poule",
+      "Chinois",
+      "Maryse",
+      "Mixeur plongeant",
+      "Thermomètre",
+      "Cadre inox 20 x 20 cm",
+      "Plaque",
+      "Film alimentaire",
+      "Couteau"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Panna cotta coco",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 240,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 1,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 1 mois au congélateur, filmée au contact ; à utiliser congelée dans le montage.",
+        "ingredients": [
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 250,
+            "unite": "g"
+          },
+          {
+            "nom": "Lait de coco",
+            "quantite": 200,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 55,
+            "unite": "g"
+          },
+          {
+            "nom": "Noix de coco râpée",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Gélatine en feuilles",
+            "quantite": 10,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Hydrater la gélatine dans un cul-de-poule d'eau très froide pendant 10 minutes.",
+          "Chauffer la crème, le lait de coco, le sucre semoule et la noix de coco râpée jusqu'aux premiers frémissements, sans faire bouillir.",
+          "Couvrir et laisser infuser hors du feu 15 minutes.",
+          "Passer au chinois en pressant bien la noix de coco, puis réchauffer l'infusion à 60 °C.",
+          "Essorer la gélatine et la dissoudre dans l'infusion à 60 °C.",
+          "Mixer brièvement en gardant le mixeur plongeant incliné, sans incorporer d'air.",
+          "Refroidir à 30 °C environ en remuant, puis couler dans le cadre filmé au fond, posé sur une plaque.",
+          "Laisser prendre au congélateur au moins 4 heures avant de démouler et de détailler au couteau."
+        ],
+        "conseils_etape": "Dosage ferme voulu : environ 2 % de gélatine pour le liquide, contre 1 % en verrine. Ne pas l'augmenter, la texture deviendrait élastique. Presser la noix de coco pour en extraire tout le goût, et couler vers 30 °C pour éviter que la matière grasse du coco ne se sépare."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Entremets rond Ø 16 cm, insert Ø 12 cm, 1,5 cm de hauteur : ≈ 170 g de crème, soit ×0,35 de la recette.",
+      "Utilisation — Entremets rond Ø 20 cm, insert Ø 16 cm, 1,5 cm de hauteur : ≈ 300 g de crème, soit ×0,63 de la recette.",
+      "Utilisation — Entremets rond Ø 24 cm, insert Ø 20 cm, 1,5 cm de hauteur : ≈ 470 g de crème, soit ×0,98 de la recette.",
+      "Utilisation — Individuels en cercles Ø 7 cm, insert Ø 5 cm, 1,5 cm de hauteur : ≈ 30 g par pièce, soit 16 pièces avec la recette entière.",
+      "Utilisation — Bûche en gouttière 20 x 7 cm, insert de 16 x 4 cm, 2 cm de hauteur : ≈ 130 g de crème, soit ×0,27 de la recette.",
+      "Utilisation — Bûche en gouttière 30 x 8 cm, insert de 26 x 5 cm, 2 cm de hauteur : ≈ 260 g de crème, soit ×0,54 de la recette.",
+      "Utilisation — Cadre carré 18 x 18 cm, couche de 1 cm : ≈ 325 g de crème, soit ×0,68 de la recette.",
+      "Variante — Coco-vanille : ajouter 1 gousse de vanille fendue et grattée à l'infusion.",
+      "Variante — Coco-citron vert : ajouter le zeste de 1 citron vert à l'infusion."
+    ],
+    "conseils_conservation": "Réfrigérateur : 3 jours sous film au contact. Congélateur : jusqu'à 1 mois, en insert filmé. Décongeler au réfrigérateur plutôt qu'à température ambiante. L'insérer encore congelé dans le montage pour qu'il tienne à la découpe."
+  }
+}
