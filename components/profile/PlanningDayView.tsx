@@ -665,7 +665,7 @@ export function PlanningDayView({
         }}
         onDragEnd={finGlisser}
         title={canReorder ? 'Glisser pour réordonner cette étape, ou la déposer sur un autre jour' : undefined}
-        className={`flex overflow-hidden rounded-lg border border-outline-variant/60 bg-surface${canReorder ? ' cursor-grab active:cursor-grabbing' : ''}${dragId === it.stepId ? ' opacity-50' : ''}`}
+        className={`flex overflow-hidden rounded-lg border border-outline-variant/60 ${it.complete ? 'bg-surface-container-lowest' : 'bg-surface'}${canReorder ? ' cursor-grab active:cursor-grabbing' : ''}${dragId === it.stepId ? ' opacity-50' : ''}`}
       >
         <span aria-hidden className="w-1 shrink-0" style={{ background: couleur(it.planId) }} />
         <div className="min-w-0 flex-1 py-1.5 pr-2">
