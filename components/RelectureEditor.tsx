@@ -221,7 +221,8 @@ function initSp(sp: any, refAllergens: Record<string, string>): SpState {
         key: nextKey(),
         imported: imported ? ligatureOeuf(imported) : null,
         nom,
-        qte: g.quantite ?? '',
+        // L'IA peut rendre un nombre : on garde toujours une chaîne.
+        qte: g.quantite == null ? '' : String(g.quantite),
         unite: g.unite || '',
         note,
         // Allergène pré-rempli depuis le référentiel si l'ingrédient y figure.
@@ -1309,7 +1310,7 @@ export function RelectureEditor({
     etapes: sps.map((sp) => ({
       titre: sp.nom.trim(),
       texte: sp.etapes.map((e) => e.texte.trim()).filter(Boolean).join('\n'),
-      ingredients: sp.ings.map((i) => ligneIngredient({ name: i.nom, qty: i.qte, unit: i.unite, comment: i.note })).filter(Boolean),
+      ingredients: sp.ings.map((i) => ligneIngredient({ name: i.nom, qty: String(i.qte ?? ''), unit: i.unite, comment: i.note })).filter(Boolean),
       temps: texteTemps({ prep: minutes(sp.prep), cook: minutes(sp.cuisson), wait: minutes(sp.attente), temp: minutes(sp.temp) }),
       conseils: sp.tips.trim(),
       avance: sp.avance,

@@ -153,6 +153,8 @@ describe('mise en texte', () => {
   it('ingrédients, temps et recette', () => {
     expect(ligneIngredient({ name: 'Farine', qty: '200', unit: 'g', comment: 'tamisée' })).toBe('200 g Farine — tamisée');
     expect(ligneIngredient({ name: '  ' })).toBe('');
+    // Quantité numérique (import IA) : ne doit pas planter.
+    expect(ligneIngredient({ name: 'Farine', qty: 200 as unknown as string, unit: 'g' })).toBe('200 g Farine');
     expect(texteTemps({ prep: 20, cook: 90, temp: 180, wait: null })).toBe('Préparation 20 min · Cuisson 1h30 à 180 °C');
     const t = texteRecette(recette());
     expect(t).toContain('ÉTAPE 1 — Crème pâtissière');
