@@ -312,10 +312,11 @@ export function texteTemps(t: { prep?: number | null; cook?: number | null; wait
 
 /** « 200 g Farine — tamisée ». */
 export function ligneIngredient(i: { name?: string | null; qty?: string | null; unit?: string | null; comment?: string | null }): string {
-  const nom = (i.name ?? '').trim();
+  // `String(...)` : une quantité importée peut arriver sous forme de nombre.
+  const nom = String(i.name ?? '').trim();
   if (!nom) return '';
-  const q = [(i.qty ?? '').trim(), (i.unit ?? '').trim()].filter(Boolean).join(' ');
-  const c = (i.comment ?? '').trim();
+  const q = [String(i.qty ?? '').trim(), String(i.unit ?? '').trim()].filter(Boolean).join(' ');
+  const c = String(i.comment ?? '').trim();
   return `${q ? `${q} ` : ''}${nom}${c ? ` — ${c}` : ''}`;
 }
 
