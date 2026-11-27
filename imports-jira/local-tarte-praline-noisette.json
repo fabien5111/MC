@@ -1,0 +1,187 @@
+{
+  "ticket": "local-tarte-praline-noisette",
+  "recette": {
+    "titre": "Tarte au praliné noisette",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Une pâte sucrée croustillante, un croustillant praliné au chocolat au lait et un crémeux praliné onctueux, parsemés de noisettes torréfiées. Une tarte gourmande qui se prépare sur deux jours.",
+    "rendement": "1 tarte de 22 cm de diamètre (8 personnes)",
+    "ustensiles": [
+      "Cercle à tarte de 22 cm",
+      "Robot pâtissier avec feuille",
+      "Rouleau à pâtisserie",
+      "Papier cuisson et billes de cuisson",
+      "Casserole",
+      "Thermomètre de cuisine",
+      "Mixeur plongeant",
+      "Maryse",
+      "Spatule coudée"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Pâte sucrée",
+        "page": null,
+        "temps_preparation_minutes": 25,
+        "temps_attente_minutes": 150,
+        "temps_cuisson_minutes": 25,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 1,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Le fond cuit se garde 2 jours dans une boîte hermétique, à température ambiante.",
+        "ingredients": [
+          {
+            "nom": "Beurre",
+            "quantite": 100,
+            "unite": "g",
+            "commentaire": "mou"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 75,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 25,
+            "unite": "g"
+          },
+          {
+            "nom": "Sel fin",
+            "quantite": 1,
+            "unite": "g"
+          },
+          {
+            "nom": "Œuf",
+            "quantite": 45,
+            "unite": "g",
+            "commentaire": "à température ambiante"
+          },
+          {
+            "nom": "Farine T55",
+            "quantite": 200,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Crémer le beurre mou avec le sucre glace, la poudre d'amande et le sel.",
+          "Ajouter l'œuf, puis la farine, et mélanger juste jusqu'à ce que la pâte soit homogène.",
+          "Aplatir la pâte entre deux feuilles de papier cuisson et la réserver 2 heures au frais.",
+          "Abaisser la pâte à 3 mm et foncer le cercle de 22 cm, puis la réserver 30 minutes au frais.",
+          "Piquer le fond, le recouvrir de papier cuisson et de billes de cuisson.",
+          "Cuire à blanc 15 minutes à 160 °C, retirer les billes et poursuivre 10 minutes jusqu'à une coloration dorée."
+        ],
+        "conseils_etape": "Ne pas trop travailler la pâte après l'ajout de la farine : elle deviendrait élastique et se rétracterait à la cuisson."
+      },
+      {
+        "nom_etape": "Croustillant praliné",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": 15,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Chocolat au lait",
+            "quantite": 30,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné",
+            "quantite": 100,
+            "unite": "g",
+            "commentaire": "noisette"
+          },
+          {
+            "nom": "Crêpes dentelle",
+            "quantite": 40,
+            "unite": "g",
+            "commentaire": "émiettées"
+          }
+        ],
+        "instructions": [
+          "Faire fondre le chocolat au lait au bain-marie.",
+          "Ajouter le praliné, puis les crêpes dentelle émiettées, et mélanger délicatement.",
+          "Étaler le croustillant en couche régulière au fond de la tarte cuite et refroidie.",
+          "Réserver 15 minutes au frais pour le figer."
+        ],
+        "conseils_etape": "Mélanger les crêpes dentelle en dernier et sans insister, pour qu'elles gardent leur croquant."
+      },
+      {
+        "nom_etape": "Crémeux praliné",
+        "page": null,
+        "temps_preparation_minutes": 20,
+        "temps_attente_minutes": 200,
+        "temps_cuisson_minutes": 5,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Gélatine",
+            "quantite": 3,
+            "unite": "g",
+            "commentaire": "en feuille"
+          },
+          {
+            "nom": "Crème liquide",
+            "quantite": 200,
+            "unite": "g",
+            "commentaire": "35 % MG"
+          },
+          {
+            "nom": "Jaune d'œuf",
+            "quantite": 50,
+            "unite": "g"
+          },
+          {
+            "nom": "Sucre semoule",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Praliné",
+            "quantite": 150,
+            "unite": "g",
+            "commentaire": "noisette"
+          }
+        ],
+        "instructions": [
+          "Réhydrater la gélatine dans un grand volume d'eau froide.",
+          "Porter la crème à frémissement.",
+          "Mélanger les jaunes et le sucre, verser la crème chaude dessus, puis remettre le tout dans la casserole.",
+          "Cuire à feu doux en remuant jusqu'à 83 °C, puis ajouter la gélatine essorée.",
+          "Verser sur le praliné et mixer au mixeur plongeant pour obtenir une texture lisse.",
+          "Laisser tiédir le crémeux jusqu'à 35-40 °C en le remuant de temps en temps.",
+          "Couler le crémeux sur le croustillant et réserver 3 heures au frais."
+        ],
+        "conseils_etape": "Garder la tête du mixeur plongée dans la crème pour ne pas incorporer de bulles d'air. Ne pas couler le crémeux trop chaud : il ferait fondre le croustillant et ramollirait les crêpes dentelle."
+      },
+      {
+        "nom_etape": "Finition",
+        "page": null,
+        "temps_preparation_minutes": 10,
+        "temps_attente_minutes": null,
+        "temps_cuisson_minutes": 10,
+        "temperature_cuisson_celsius": 160,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Noisettes",
+            "quantite": 40,
+            "unite": "g",
+            "commentaire": "entières"
+          }
+        ],
+        "instructions": [
+          "Torréfier les noisettes 10 minutes à 160 °C, les laisser refroidir puis les concasser grossièrement.",
+          "Décercler la tarte et parsemer les noisettes sur le pourtour du crémeux."
+        ],
+        "conseils_etape": "Sortir la tarte du réfrigérateur 15 minutes avant de servir : le crémeux sera plus fondant."
+      }
+    ],
+    "astuces_recette": [
+      "Pour une version plus intense, remplacer le chocolat au lait du croustillant par du chocolat noir à 55 %."
+    ],
+    "conseils_conservation": "Se conserve 2 jours au réfrigérateur, dans une boîte hermétique."
+  }
+}
