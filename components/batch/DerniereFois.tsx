@@ -217,9 +217,18 @@ export function ChoixRemarque({ r }: { r: Remarque }) {
       title={infobulle}
       aria-label={infobulle}
       aria-pressed={epinglee}
-      className={`no-print not-italic inline-flex align-middle mr-1 p-0.5 rounded hover:bg-surface-container ${epinglee ? 'text-primary' : 'text-outline'}`}
+      className={`no-print not-italic inline-flex align-middle mr-1 p-0.5 rounded-full ${
+        epinglee ? 'text-primary bg-primary/10 hover:bg-primary/20' : 'text-outline hover:bg-surface-container'
+      }`}
     >
-      <span className={`material-symbols-outlined text-[16px]${epinglee ? '' : ' -rotate-45'}`}>push_pin</span>
+      {/* JEP-417 : épinglée = épingle PLEINE sur pastille ; désépinglée =
+          épingle BARRÉE, sans fond — l'ancienne variante (même épingle vide,
+          grisée et penchée) ne se distinguait pas à 16 px. */}
+      {epinglee ? (
+        <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>push_pin</span>
+      ) : (
+        <span className="material-symbols-outlined text-[16px]">keep_off</span>
+      )}
     </button>
   );
 }
@@ -231,8 +240,11 @@ export function ChoixRemarque({ r }: { r: Remarque }) {
 function RemarqueLigne({ r, sansDate = false, ajustement }: { r: Remarque; sansDate?: boolean; ajustement?: AjustementEcart }) {
   const v = useLecons();
   const d = !sansDate ? dateCourte(r.date) : null;
+  // JEP-417 : une remarque désépinglée reste affichée jusqu'au rechargement,
+  // atténuée pour qu'on voie d'un coup d'œil qu'elle ne reviendra plus.
+  const eteinte = !!v?.gestion && !v.epinglee(r);
   return (
-    <li className="flex flex-col">
+    <li className={`flex flex-col transition-opacity${eteinte ? ' opacity-60' : ''}`}>
       {(r.nature === 'sous_etape' || r.nature === 'ingredient') && (
         <span className="not-italic font-normal text-primary">
           {r.libelle}
