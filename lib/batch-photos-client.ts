@@ -55,7 +55,7 @@ export async function ajouterPhotoFournee(p: {
     })
     .select(COLONNES)
     .single();
-  if (error || !data) throw new Error(error?.message?.includes('batch_photos_max') ? 'Huit photos au plus par fournée.' : 'La photo n’a pas pu être enregistrée.');
+  if (error || !data) throw new Error(error?.message?.includes('batch_photos_max') ? 'Huit photos au plus par étape, et huit pour la fournée.' : 'La photo n’a pas pu être enregistrée.');
   return data as BatchPhoto;
 }
 
