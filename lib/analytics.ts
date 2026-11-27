@@ -23,7 +23,7 @@ import { GA_ID } from '@/lib/consent';
 /** Événements autorisés et forme exacte de leurs paramètres (`null` : aucun). */
 export type EvenementsAudience = {
   /** Ajustement appliqué à une fournée (quantité, moule, ingrédient ou IA). */
-  ajuster_recette: { mode: 'quantite' | 'moule' | 'ingredient' | 'ia' };
+  ajuster_recette: { mode: 'quantite' | 'moule' | 'ingredient' | 'ia' | 'coefficient' };
   ajouter_favori: { recipe_id: string };
   retirer_favori: { recipe_id: string };
   creer_fournee: { recipe_id: string };
