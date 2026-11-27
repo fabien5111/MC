@@ -1,0 +1,121 @@
+{
+  "ticket": "local-pithiviers",
+  "recette": {
+    "titre": "Pithiviers",
+    "auteur_origine": null,
+    "video_url": null,
+    "description": "Un feuilletage croustillant et doré, garni d'une crème d'amande fondante parfumée au rhum. Ce dessert traditionnel de la ville de Pithiviers est le cousin de la galette des rois.",
+    "rendement": "1 pithiviers Ø 24 cm, 8 parts — environ 720 g de pithiviers cru utilisable (900 g d'ingrédients, perte ≈ 20 %)",
+    "ustensiles": [
+      "Saladier",
+      "Fouet",
+      "Maryse",
+      "Poche à douille",
+      "Cercles Ø 22, 26 et 28 cm",
+      "Plaque de cuisson",
+      "Papier cuisson",
+      "Pinceau",
+      "Couteau d'office",
+      "Grille"
+    ],
+    "etapes": [
+      {
+        "nom_etape": "Crème d'amande",
+        "page": null,
+        "temps_preparation_minutes": 15,
+        "temps_attente_minutes": 30,
+        "temps_cuisson_minutes": null,
+        "temperature_cuisson_celsius": null,
+        "anticipation_jours": 0,
+        "peut_preparer_avance": true,
+        "precisions_avance": "Se garde 3 jours au réfrigérateur, filmée au contact ; la remettre en pommade à la maryse avant de pocher.",
+        "ingredients": [
+          {
+            "nom": "Beurre doux",
+            "quantite": 100,
+            "unite": "g",
+            "commentaire": "pommade"
+          },
+          {
+            "nom": "Sucre glace",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Poudre d'amande",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Œufs entiers",
+            "quantite": 100,
+            "unite": "g"
+          },
+          {
+            "nom": "Rhum",
+            "quantite": 10,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Travailler le beurre pommade au fouet jusqu'à obtenir une texture crémeuse.",
+          "Ajouter le sucre glace et mélanger sans faire mousser.",
+          "Incorporer la poudre d'amande.",
+          "Ajouter les œufs battus en trois fois, en mélangeant bien entre chaque ajout.",
+          "Parfumer au rhum puis lisser à la maryse.",
+          "Garnir une poche à douille et réserver 30 min au réfrigérateur pour raffermir la crème."
+        ],
+        "conseils_etape": "Mélangez sans incorporer d'air : une crème d'amande trop fouettée gonfle à la cuisson et peut faire éclater le feuilletage. Utilisez des ingrédients à la même température pour éviter que la crème tranche."
+      },
+      {
+        "nom_etape": "Montage et cuisson",
+        "page": null,
+        "temps_preparation_minutes": 30,
+        "temps_attente_minutes": 45,
+        "temps_cuisson_minutes": 45,
+        "temperature_cuisson_celsius": 180,
+        "anticipation_jours": 0,
+        "ingredients": [
+          {
+            "nom": "Pâte feuilletée pur beurre",
+            "quantite": 460,
+            "unite": "g",
+            "commentaire": "2 rouleaux achetés"
+          },
+          {
+            "nom": "Jaunes d'œufs",
+            "quantite": 20,
+            "unite": "g"
+          },
+          {
+            "nom": "Crème liquide 30%",
+            "quantite": 10,
+            "unite": "g"
+          }
+        ],
+        "instructions": [
+          "Dérouler les deux rouleaux de pâte feuilletée, détailler un disque Ø 26 cm et un disque Ø 28 cm, puis les réserver 15 min au froid.",
+          "Poser le disque Ø 26 cm sur une plaque garnie de papier cuisson, marquer un cercle Ø 22 cm au centre et y pocher la crème d'amande en dôme, en laissant 2 cm de bord libre.",
+          "Mouiller le bord libre à l'eau au pinceau, poser le disque Ø 28 cm par-dessus en chassant l'air, puis souder fermement les bords.",
+          "Mélanger le jaune d'œuf et la crème, dorer le dessus sans couler sur la tranche, puis réserver 30 min au réfrigérateur en préchauffant le four à 200 °C.",
+          "Dorer une seconde fois, chiqueter et festonner le bord, puis rayer le dessus en arcs du centre vers le bord sans percer la pâte.",
+          "Percer 3 à 5 petites cheminées au sommet pour laisser échapper la vapeur.",
+          "Cuire 15 min à 200 °C puis 30 min à 180 °C, jusqu'à une coloration brun doré uniforme.",
+          "Laisser tiédir sur une grille avant de servir."
+        ],
+        "conseils_etape": "Soudez bien les bords et gardez la pâte très froide jusqu'à l'enfournement, sinon le pithiviers s'ouvre à la cuisson. Ne dorez jamais la tranche : la dorure colle les feuillets et empêche la pâte de se développer."
+      }
+    ],
+    "astuces_recette": [
+      "Utilisation — Pithiviers Ø 16 cm (4 parts) : ≈ 320 g de pithiviers cru, soit ×0,44 de la recette.",
+      "Utilisation — Pithiviers Ø 20 cm (6 parts) : ≈ 500 g de pithiviers cru, soit ×0,69 de la recette.",
+      "Utilisation — Pithiviers Ø 28 cm (10 à 12 parts) : ≈ 980 g de pithiviers cru, soit ×1,36 de la recette.",
+      "Utilisation — Pithiviers individuels Ø 10 cm : ≈ 125 g chacun, soit 5 pièces avec la recette entière (×0,17 par pièce).",
+      "Utilisation — Pithiviers rectangulaire (jalousie) 30 x 12 cm : ≈ 575 g de pithiviers cru, soit ×0,80 de la recette.",
+      "Variante — Galette des rois : glisser une fève dans la crème d'amande, près du bord, avant de poser le second disque.",
+      "Variante — Frangipane : mélanger la crème d'amande avec la moitié de son poids de crème pâtissière froide (2/3 de crème d'amande, 1/3 de crème pâtissière) pour une garniture plus moelleuse.",
+      "Variante — Pistache : remplacer 30 g de poudre d'amande par 30 g de pâte de pistache et supprimer le rhum."
+    ],
+    "conseils_conservation": "Le pithiviers se déguste tiède ou à température ambiante, idéalement le jour même. Il se garde 2 jours au réfrigérateur, filmé, et se réchauffe 10 min à 160 °C pour retrouver son croustillant. Monté cru et non doré, il se congèle 1 mois bien filmé : le dorer puis le cuire sans le décongeler, en prolongeant la cuisson d'environ 10 min."
+  }
+}
