@@ -1942,7 +1942,18 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   Supprimer une photo n'efface pas l'objet : la réconciliation du stockage
   (`reconcilier_stockage.py`, qui lit `batch_photos` — table **obligatoire**, son
   absence arrête le script avant toute suppression) reprend les orphelins.
-- **Ajout** : un seul bouton « Ajouter des photos » (plusieurs fichiers ; sur
+- **Ajout = la tuile des photos de recette** (JEP-431, `TuileAjoutPhoto`) : un
+  `ImageSlot` vide pointillé (dépôt, glisser-déposer, Ctrl+V, plusieurs fichiers) avec
+  en pastilles « Coller » et « Depuis… », partout où l'on ajoute (bloc « Photos de cette
+  fournée » en 16:9, sous chaque étape en carré, vue « une étape à la fois » sur deux
+  colonnes de la grille de vignettes — une seule case serait recouverte par ses deux
+  pastilles). Plus de rangée de boutons séparés (`BoutonsPhoto` supprimé) ; le message
+  « N photos maximum atteintes » remplace la tuile quand le plafond est atteint. Sur
+  appareil tactile, un appui sur la tuile déplie « Prendre une photo » / « Choisir dans
+  la galerie » (interception en capture, DOM seulement : pastilles et fenêtre « Depuis… »
+  portée non concernées). La fenêtre « Depuis… » propose en tête **« Cet appareil »**
+  (fichier du disque, ouvert à toutes les formules, photos et PDF, pas le texte). Ancien
+  mode, pour mémoire : un seul bouton « Ajouter des photos » (plusieurs fichiers ; sur
   téléphone, le sélecteur du système propose appareil photo ou photothèque) dans le
   bloc « Photos de cette fournée » (dans l'écran de fin de
   fournée, 24/11/2026 — plus sous le déroulé ; en bas du résumé, mis en avant, sur une fournée close),
