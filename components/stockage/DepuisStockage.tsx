@@ -22,7 +22,7 @@ import { useDialog } from '@/components/Dialog';
 import { useWriteGuard } from '@/components/ImpersonationProvider';
 import { useStockageEnLigne } from '@/components/stockage/StockageEnLigneProvider';
 import { FenetrePhotosFournees, useSourceFournees } from '@/components/recipe/PhotosDeMesFournees';
-import { sourcesPour, type ConfigStockage, type DefinitionSource, type IdSource, type UsageStockage } from '@/lib/stockage-en-ligne';
+import { MAX_OCTETS_SOURCE, fichierConvient, sourcesPour, type ConfigStockage, type DefinitionSource, type IdSource, type UsageStockage } from '@/lib/stockage-en-ligne';
 import { ErreurStockage, ouvrirFenetreVide, type Element, type Explorateur, type Selection } from './sources/commun';
 import {
   choisirDansDrive,
@@ -81,6 +81,10 @@ export function DepuisStockage({
   const avecFournees = usage === 'image' && !!fournees?.recipeId && fournees.places > 0;
   if ((!sources.length && !avecFournees) || max < 1) return null;
   const autorise = !!valeur?.autorise;
+  // « Cet appareil » (JEP-431) : un fichier du disque, ouvert à toutes les
+  // formules comme « Mes fournées » — ce n'est pas un service tiers. Pas pour
+  // le texte (un document de stockage en ligne, aucun fichier local à lire).
+  const avecAppareil = usage !== 'texte';
 
   const contenu =
     variante === 'pastille' ? (
@@ -100,7 +104,7 @@ export function DepuisStockage({
       ? `w-8 h-8 rounded-full bg-surface/90 text-on-surface flex items-center justify-center shadow-md hover:bg-primary hover:text-on-primary transition-colors ${className}`
       : `inline-flex items-center gap-2 border border-primary text-primary rounded-full px-5 py-2 font-label-md text-label-md hover:bg-primary/5 transition-colors disabled:opacity-60 ${className}`;
 
-  if (!autorise && !avecFournees) {
+  if (!autorise && !avecFournees && !avecAppareil) {
     return (
       <span onClick={(e) => e.stopPropagation()} className={variante === 'pastille' ? className : ''}>
         <LockedAction label={LIBELLE} message={MESSAGE_VERROU} className={variante === 'pastille' ? 'rounded-full bg-surface/90 p-1.5 shadow-md' : ''}>
@@ -135,6 +139,7 @@ export function DepuisStockage({
             verrouillees={autorise ? [] : sources}
             config={valeur?.config ?? null}
             avecFournees={avecFournees}
+            avecAppareil={avecAppareil}
             onFournees={() => {
               setOuvert(false);
               setOuvertFournees(true);
@@ -161,6 +166,7 @@ function FenetreStockage({
   verrouillees,
   config: configProp,
   avecFournees,
+  avecAppareil,
   onFournees,
   onClose,
   onSelection,
@@ -172,6 +178,7 @@ function FenetreStockage({
   verrouillees: DefinitionSource[];
   config: ConfigStockage | null;
   avecFournees: boolean;
+  avecAppareil: boolean;
   onFournees: () => void;
   onClose: () => void;
   onSelection: (sel: Selection) => void;
@@ -184,6 +191,24 @@ function FenetreStockage({
   const pressionSurVoile = useRef(false);
   const attentePhotos = useRef<AbortController | null>(null);
   const monte = useRef(true);
+  const champAppareil = useRef<HTMLInputElement | null>(null);
+
+  // Fichiers du disque : mêmes contrôles que pour un fichier venu d'un stockage
+  // en ligne (format, 30 Mo, nombre de places), puis même chemin en aval.
+  function fichiersAppareil(liste: FileList | null) {
+    const tous = Array.from(liste ?? []);
+    if (!tous.length) return;
+    const valides = tous.filter((f) => fichierConvient(f.name, f.type, usage) && f.size <= MAX_OCTETS_SOURCE);
+    if (valides.length < tous.length) {
+      void dialog.alert(
+        usage === 'pdf'
+          ? 'Seuls les fichiers PDF de 30 Mo au plus sont acceptés.'
+          : 'Seules les photos PNG, JPEG, WebP ou AVIF de 30 Mo au plus sont acceptées.',
+      );
+    }
+    if (!valides.length) return;
+    onSelection({ fichiers: valides.slice(0, max) });
+  }
 
   useEffect(() => {
     monte.current = true;
@@ -375,6 +400,34 @@ function FenetreStockage({
         {etat.vue === 'sources' && (
           <div className="p-5">
             <ul className="flex flex-col gap-2">
+              {avecAppareil && (
+                <li>
+                  <input
+                    ref={champAppareil}
+                    type="file"
+                    hidden
+                    multiple={usage === 'image' && max > 1}
+                    accept={usage === 'pdf' ? 'application/pdf,.pdf' : 'image/png,image/jpeg,image/webp,image/avif'}
+                    onChange={(e) => {
+                      fichiersAppareil(e.target.files);
+                      e.target.value = '';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => champAppareil.current?.click()}
+                    className="w-full flex items-center gap-3 rounded-lg border border-outline-variant bg-surface px-4 py-3 text-left hover:border-primary hover:bg-primary/5 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-primary" aria-hidden>
+                      devices
+                    </span>
+                    <span className="font-body-md flex-1">Cet appareil</span>
+                    <span className="material-symbols-outlined text-on-surface-variant text-[18px]" aria-hidden>
+                      chevron_right
+                    </span>
+                  </button>
+                </li>
+              )}
               {avecFournees && (
                 <li>
                   <button
