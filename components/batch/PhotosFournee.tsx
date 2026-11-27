@@ -458,11 +458,11 @@ export function PhotosFourneeBloc({
 }) {
   const ctx = usePhotosFournee();
   if (!ctx) return null;
-  const photos = trierPhotos(ctx.photos);
+  // Le bloc ne montre que le résultat de la fournée (JEP-426) : les photos
+  // d'étape ont leur plafond et leur grille sous chaque étape, jamais ici.
+  const photos = trierPhotos(ctx.photos.filter((p) => p.batch_step_id == null));
   if (ctx.bloque && photos.length === 0) return null;
-  // Le compteur porte sur les photos de la fournée (sans étape) : les photos
-  // d'étape ont leur propre plafond, sous chaque étape.
-  const sansEtape = photos.filter((p) => p.batch_step_id == null).length;
+  const sansEtape = photos.length;
   return (
     <section
       id="sec-photos-fournee"

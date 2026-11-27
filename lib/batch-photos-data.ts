@@ -47,7 +47,10 @@ export async function getRealisations(userId: string, recipeId?: string): Promis
   let q = (await db())
     .from('batch_photos')
     .select(`${COLONNES}, batches!inner(id, recipe_id, recipe_title, planned_date)`)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    // Le résultat de la fournée seulement : les photos d'étape (JEP-426)
+    // restent sous leur étape, jamais dans « Mes réalisations ».
+    .is('batch_step_id', null);
   if (recipeId) q = q.eq('batches.recipe_id', recipeId);
   const { data, error } = await q.order('created_at', { ascending: false }).limit(REALISATIONS_MAX);
   if (error) {
