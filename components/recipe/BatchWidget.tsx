@@ -194,6 +194,7 @@ export function BatchWidget({
     setMMode('mold');
     setDMode('ia');
     setAiPrompt('');
+    setCoefSaisi('');
     setAiCoef('');
     setAiMsg(null);
     setAiDetail(null);
@@ -229,6 +230,11 @@ export function BatchWidget({
         setAiCoef(fr(facteur));
         setAiDetail(detail);
         setAiMsg(detail?.explication || '');
+      } else if (label.startsWith('Coefficient :') && recipe.measure_type !== 'dimensions') {
+        // Coefficient saisi à la main (libellé posé par `compute`).
+        if (recipe.measure_type === 'units') setUMode('coef');
+        else if (recipe.measure_type === 'mold') setMMode('coef');
+        setCoefSaisi(fr(facteur));
       } else if (recipe.measure_type === 'dimensions' && facteur !== 1) {
         setDMode('manuel');
         setAiCoef(fr(facteur));
@@ -243,13 +249,16 @@ export function BatchWidget({
 
   // Mode « unités »
   const numeric = ingredients.filter((m) => (num(m.qty) || 0) > 0);
-  const [uMode, setUMode] = useState<'qty' | 'ing' | 'ia'>('qty');
+  const [uMode, setUMode] = useState<'qty' | 'ing' | 'ia' | 'coef'>('qty');
   const [qty, setQty] = useState(recipe.yield_qty || '');
   const [ingIdx, setIngIdx] = useState(0);
   const [ingQty, setIngQty] = useState('');
 
   // Mode « moule » (avec, pour les administrateurs, un sous-mode IA en texte libre)
-  const [mMode, setMMode] = useState<'mold' | 'ia'>('mold');
+  const [mMode, setMMode] = useState<'mold' | 'ia' | 'coef'>('mold');
+  // Coefficient saisi directement (toutes formules, aucun crédit IA) : état propre,
+  // distinct de `aiCoef` pour ne jamais mélanger une saisie et une réponse de l'IA.
+  const [coefSaisi, setCoefSaisi] = useState('');
   // Recette en dimensions libres : coefficient saisi à la main ou calculé par l'IA.
   const [dMode, setDMode] = useState<'manuel' | 'ia'>('ia');
   const dimensionsParIA = dimensionsIADispo && dMode === 'ia';
@@ -334,6 +343,14 @@ export function BatchWidget({
         }
         factor = want / base;
         label = `Ajustement ${m.name} : ${want} ${m.unit || ''}`.trim();
+      } else if (uMode === 'coef') {
+        const c = num(coefSaisi);
+        if (!(c && c > 0)) {
+          dialog.alert('Indiquez un coefficient supérieur à 0.');
+          return null;
+        }
+        factor = c;
+        label = `Coefficient : ×${fr(c)}`;
       } else if (uMode === 'ia') {
         const c = num(aiCoef);
         if (!(c && c > 0)) {
@@ -351,6 +368,14 @@ export function BatchWidget({
         factor = want / num(recipe.yield_qty)!;
         label = `Quantité : ${want} ${unitLbl}`.trim();
       }
+    } else if (recipe.measure_type === 'mold' && mMode === 'coef') {
+      const c = num(coefSaisi);
+      if (!(c && c > 0)) {
+        dialog.alert('Indiquez un coefficient supérieur à 0.');
+        return null;
+      }
+      factor = c;
+      label = `Coefficient : ×${fr(c)}`;
     } else if (recipe.measure_type === 'mold' && mMode === 'ia') {
       const c = num(aiCoef);
       if (!(c && c > 0)) {
@@ -403,10 +428,10 @@ export function BatchWidget({
 
   // Mode d'ajustement réellement appliqué, pour la mesure d'audience (JEP-89) :
   // `null` quand rien n'a été ajusté (facteur 1 et aucun coefficient de moule).
-  function modeAjustement(res: { factor: number; moldCoefs: unknown }): 'quantite' | 'moule' | 'ingredient' | 'ia' | null {
+  function modeAjustement(res: { factor: number; moldCoefs: unknown }): 'quantite' | 'moule' | 'ingredient' | 'ia' | 'coefficient' | null {
     if (res.factor === 1 && !res.moldCoefs) return null;
-    if (recipe.measure_type === 'units') return uMode === 'ing' ? 'ingredient' : uMode === 'ia' ? 'ia' : 'quantite';
-    if (recipe.measure_type === 'mold') return mMode === 'ia' ? 'ia' : 'moule';
+    if (recipe.measure_type === 'units') return uMode === 'coef' ? 'coefficient' : uMode === 'ing' ? 'ingredient' : uMode === 'ia' ? 'ia' : 'quantite';
+    if (recipe.measure_type === 'mold') return mMode === 'coef' ? 'coefficient' : mMode === 'ia' ? 'ia' : 'moule';
     if (recipe.measure_type === 'dimensions') return dimensionsParIA ? 'ia' : 'quantite';
     return null;
   }
@@ -564,6 +589,17 @@ export function BatchWidget({
 
   // Bloc d'ajustement par IA (texte libre → coefficient), partagé entre le mode
   // « dimensions » et le troisième mode « unités » réservé aux administrateurs.
+  // Coefficient saisi directement, offert à tous (JEP : aucun droit, aucun crédit).
+  const coefBlock = (
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-col gap-2">
+        <label className={`${LBL} whitespace-nowrap`}>Coefficient</label>
+        <input type="number" min={0} step="any" value={coefSaisi} onChange={(e) => setCoefSaisi(e.target.value)} className={INPUT} style={{ width: '8rem' }} placeholder="ex : 1,5" />
+      </div>
+      <span className="text-xs text-on-surface-variant pb-2">Toutes les quantités de la recette seront multipliées par ce nombre.</span>
+    </div>
+  );
+
   const aiBlock = (
     <div className="flex flex-col gap-3" style={{ maxWidth: '40rem' }}>
       <label className={LBL}>Décrivez l&apos;ajustement souhaité</label>
@@ -672,6 +708,9 @@ export function BatchWidget({
                   <input type="radio" name="umode" checked={uMode === 'ing'} onChange={() => setUMode('ing')} /> Ajuster par quantité d&apos;un ingrédient
                 </label>
               )}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="umode" checked={uMode === 'coef'} onChange={() => setUMode('coef')} /> Saisir le coefficient
+              </label>
               {!peutAjusterIA ? (
                 // Sans le droit, il n'y a pas de contrôle à conserver : un
                 // radio mort n'offre aucune issue. Le repère prend sa place
@@ -695,6 +734,8 @@ export function BatchWidget({
             </div>
             {uMode === 'ia' ? (
               aiBlock
+            ) : uMode === 'coef' ? (
+              coefBlock
             ) : uMode === 'qty' ? (
               <div className="flex items-end gap-3">
                 <div className="flex flex-col gap-2">
@@ -750,6 +791,9 @@ export function BatchWidget({
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="mmode" checked={mMode === 'mold'} onChange={() => setMMode('mold')} /> Ajuster par moule
               </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="mmode" checked={mMode === 'coef'} onChange={() => setMMode('coef')} /> Saisir le coefficient
+              </label>
               {!peutAjusterIA ? (
                 <LockedAction label="Ajuster les quantités par IA" message={iaMessage}>
                   Ajuster les quantités par IA
@@ -770,6 +814,8 @@ export function BatchWidget({
             </div>
             {mMode === 'ia' ? (
               aiBlock
+            ) : mMode === 'coef' ? (
+              coefBlock
             ) : (
               <div className="flex flex-col gap-3" style={{ maxWidth: '32rem' }}>
                 <div className="flex flex-wrap items-end gap-4">

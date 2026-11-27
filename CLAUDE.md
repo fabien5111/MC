@@ -1430,6 +1430,7 @@ directes :
   à la main (DDL par `psql`, nœud 216075), absente des types générés, lue par
   le `select('*')` de `BATCH_FULL_SELECT` — sans elle la fournée se crée quand
   même, sans détail. Les fournées antérieures n'ont que le coefficient.
+- **Le coefficient se saisit toujours à la main** (27/11/2026, `BatchWidget`) : radio « Saisir le coefficient » dans les modes « unités » et « moule » (les recettes en dimensions libres avaient déjà leur champ), ouverte à toutes les formules, **sans droit ni crédit IA**. Libellé `Coefficient : ×N` (`adjust_label`), reconnu à la reprise en édition ; événement GA `ajuster_recette` avec `mode: 'coefficient'`. État propre (`coefSaisi`), jamais mêlé à `aiCoef`.
 - **L'ajustement d'une fournée se modifie après coup** (« Modifier
   l'ajustement », bloc « Quantité produite » du mode Préparer, fournée non
   close) : le panneau de lancement (`BatchWidget`) rouvert en édition, avec une
