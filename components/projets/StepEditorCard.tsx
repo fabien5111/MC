@@ -13,7 +13,7 @@ import { createPortal } from 'react-dom';
 import { ImageSlot } from '@/components/ImageSlot';
 import { useDialog } from '@/components/Dialog';
 import { resizeFilesToDataUrls } from '@/lib/images';
-import { swapAt } from '@/lib/photo-reorder';
+import { destinationInsertion, moveAt, swapAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { BoutonsOrdrePhoto } from '@/components/BoutonsOrdrePhoto';
 import { DureeInput } from '@/components/DureeInput';
@@ -125,7 +125,11 @@ export function StepEditorCard({
   // Réordonner les photos (glisser-déposer ; flèches au doigt), comme dans la
   // vue des étapes du projet.
   const deplacerPhotos = (de: number, vers: number) => onChange({ photos: swapAt(photos, de, vers) });
-  const photoReorder = usePhotoDragReorder((de, vers) => deplacerPhotos(Number(de), Number(vers)));
+  const photoReorder = usePhotoDragReorder(
+    (de, vers) => deplacerPhotos(Number(de), Number(vers)),
+    // Insertion dans la gouttière (JEP-434).
+    (de, vers, zone) => onChange({ photos: moveAt(photos, Number(de), destinationInsertion(Number(de), Number(vers), zone)) }),
+  );
   const sous = step.sous_etapes;
   const modeListe = Array.isArray(sous) && sous.length > 0;
   const [popup, setPopup] = useState<number | null>(null);
@@ -725,7 +729,7 @@ export function StepEditorCard({
         <p className="mb-2 text-[12px] text-on-surface-variant">Cliquez ou glissez — plusieurs photos à la fois sont acceptées, elles se répartissent sur les emplacements libres.</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {photos.map((p, k) => (
-            <div key={k} className="space-y-1.5" {...photoReorder.dropProps(String(k))}>
+            <div key={k} className={`space-y-1.5 ${photoReorder.classeDepot(String(k))}`} {...photoReorder.dropProps(String(k))}>
               <div
                 className={`relative aspect-square border border-dashed overflow-hidden cursor-grab active:cursor-grabbing ${
                   photoReorder.overKey === String(k) ? 'border-primary ring-2 ring-primary' : 'border-outline-variant'

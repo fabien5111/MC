@@ -42,7 +42,7 @@ import { IngredientsRecapList } from '@/components/IngredientsRecapList';
 import { useDialog } from '@/components/Dialog';
 import { revalidateReference } from '@/lib/revalidate-reference';
 import { translateQuotaError } from '@/lib/quota-message-client';
-import { moveAt, swapAt } from '@/lib/photo-reorder';
+import { destinationInsertion, moveAt, swapAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { BoutonsOrdrePhoto } from '@/components/BoutonsOrdrePhoto';
 import { resizeFilesToDataUrls } from '@/lib/images';
@@ -675,6 +675,12 @@ export function RelectureEditor({
     const [siTo, piTo] = to.split(':').map(Number);
     if (siFrom !== siTo) return;
     setSps((prev) => prev.map((sp, k) => (k === siFrom ? { ...sp, photos: swapAt(sp.photos, piFrom, piTo) } : sp)));
+  }, (from, to, zone) => {
+    // Insertion dans la gouttière (JEP-434), au sein d'une même étape.
+    const [siFrom, piFrom] = from.split(':').map(Number);
+    const [siTo, piTo] = to.split(':').map(Number);
+    if (siFrom !== siTo) return;
+    setSps((prev) => prev.map((sp, k) => (k === siFrom ? { ...sp, photos: moveAt(sp.photos, piFrom, destinationInsertion(piFrom, piTo, zone)) } : sp)));
   });
   const deplacerPhoto = (si: number, pi: number, delta: -1 | 1) =>
     setSps((prev) => prev.map((sp, k) => (k === si ? { ...sp, photos: swapAt(sp.photos, pi, pi + delta) } : sp)));
@@ -2247,7 +2253,7 @@ export function RelectureEditor({
                 {sp.photos.map((p, pi) => {
                   const cle = `${si}:${pi}`;
                   return (
-                  <div key={pi} className="space-y-1.5" {...stepPhotoReorder.dropProps(cle)}>
+                  <div key={pi} className={`space-y-1.5 ${stepPhotoReorder.classeDepot(cle)}`} {...stepPhotoReorder.dropProps(cle)}>
                     <div
                       className={`relative aspect-square border border-dashed overflow-hidden rounded-lg ${
                         stepPhotoReorder.overKey === cle ? 'border-primary ring-2 ring-primary' : 'border-outline-variant'

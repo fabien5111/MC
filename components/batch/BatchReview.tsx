@@ -17,7 +17,7 @@ import type { ReviewPhoto } from '@/lib/reviews';
 import type { MyRecipeReview } from '@/lib/reviews-data';
 import { resizeFilesToDataUrls } from '@/lib/images';
 import { televerserImage } from '@/lib/storage-client';
-import { moveAt } from '@/lib/photo-reorder';
+import { destinationInsertion, moveAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { useDialog } from '@/components/Dialog';
 import { usePhotosFournee } from '@/components/batch/PhotosFournee';
@@ -134,6 +134,13 @@ function ReviewForm({
     const t = Number(to);
     if (Number.isNaN(f) || Number.isNaN(t)) return;
     setPhotos((prev) => moveAt(prev, f, t));
+  }, (from, to, zone) => {
+    // Insertion dans la gouttière (JEP-434) ; les emplacements vides au-delà
+    // de la dernière photo ne comptent pas : la cible est bornée aux photos.
+    const f = Number(from);
+    const t = Number(to);
+    if (Number.isNaN(f) || Number.isNaN(t)) return;
+    setPhotos((prev) => moveAt(prev, f, Math.min(destinationInsertion(f, Math.min(t, prev.length - 1), zone), prev.length - 1)));
   });
 
   async function submit() {
@@ -213,7 +220,7 @@ function ReviewForm({
         >
         <div className="flex gap-3">
           {Array.from({ length: REVIEW_PHOTOS_MAX }, (_, i) => (
-            <div key={i} className="space-y-1.5" {...photoReorder.dropProps(String(i))}>
+            <div key={i} className={`space-y-1.5 ${photoReorder.classeDepot(String(i))}`} {...photoReorder.dropProps(String(i))}>
               <div
                 className={`relative rounded-lg ${
                   photoReorder.overKey === String(i) ? 'ring-2 ring-primary' : ''

@@ -6,6 +6,7 @@ import {
   estTableAbsente,
   grouperParFournee,
   ordresApresEchange,
+  ordresApresInsertion,
   normaliserLegende,
   photosDeEtape,
   messagePlein,
@@ -124,5 +125,33 @@ describe('ordresApresEchange', () => {
   it('ne fait rien pour deux étapes différentes ou une photo inconnue', () => {
     expect(ordresApresEchange([ph(1, 7, 0), ph(2, 8, 1)], 1, 2)).toEqual([]);
     expect(ordresApresEchange([ph(1, 7, 0)], 1, 9)).toEqual([]);
+  });
+});
+
+describe('ordresApresInsertion (JEP-434)', () => {
+  const ph = (id: number, step: number | null, ordre: number) => photo(id, { batch_step_id: step, order_index: ordre });
+  const l = [ph(1, 7, 0), ph(2, 7, 1), ph(3, 7, 2)];
+  it('insère avant la cible en décalant les autres', () => {
+    // 3 devant 1 : 3, 1, 2
+    expect(ordresApresInsertion(l, 3, 1, 'avant')).toEqual([
+      { id: 3, ordre: 0 },
+      { id: 1, ordre: 1 },
+      { id: 2, ordre: 2 },
+    ]);
+  });
+  it('insère après la cible', () => {
+    // 1 après 2 : 2, 1, 3
+    expect(ordresApresInsertion(l, 1, 2, 'apres')).toEqual([
+      { id: 2, ordre: 0 },
+      { id: 1, ordre: 1 },
+    ]);
+  });
+  it('ne change rien quand la photo est déjà à cette place', () => {
+    expect(ordresApresInsertion(l, 2, 1, 'apres')).toEqual([]);
+    expect(ordresApresInsertion(l, 1, 2, 'avant')).toEqual([]);
+  });
+  it('ignore une autre étape ou la photo elle-même', () => {
+    expect(ordresApresInsertion([ph(1, 7, 0), ph(2, 8, 1)], 1, 2, 'avant')).toEqual([]);
+    expect(ordresApresInsertion(l, 1, 1, 'avant')).toEqual([]);
   });
 });

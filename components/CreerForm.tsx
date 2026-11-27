@@ -29,7 +29,7 @@ import { estDataUrlImage } from '@/lib/storage';
 import { ImageSlot } from '@/components/ImageSlot';
 import { SourceFourneesProvider } from '@/components/recipe/PhotosDeMesFournees';
 import { DureeInput } from '@/components/DureeInput';
-import { swapAt } from '@/lib/photo-reorder';
+import { destinationInsertion, moveAt, swapAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { HelpBlockSlot } from '@/components/help/HelpBlockSlot';
 import { useHelpBlocks } from '@/components/help/useHelpBlocks';
@@ -662,6 +662,12 @@ export function CreerForm({
     const piFrom = Number(piFromRaw);
     const piTo = Number(piToRaw);
     setSteps((s) => s.map((st, k) => (k === si ? { ...st, photos: swapAt(st.photos, piFrom, piTo) } : st)));
+  }, (from, to, zone) => {
+    // Insertion dans la gouttière (JEP-434), au sein d'une même étape.
+    const [siFrom, piFrom] = from.split(':').map(Number);
+    const [siTo, piTo] = to.split(':').map(Number);
+    if (siFrom !== siTo) return;
+    setSteps((s) => s.map((st, k) => (k === siFrom ? { ...st, photos: moveAt(st.photos, piFrom, destinationInsertion(piFrom, piTo, zone)) } : st)));
   });
   const addStep = () => setSteps((s) => [...s, emptyStep()]);
   const insertStepBefore = (i: number) => setSteps((s) => [...s.slice(0, i), emptyStep(), ...s.slice(i)]);
@@ -2679,7 +2685,7 @@ export function CreerForm({
                     {st.photos.map((p, pi) => {
                       const photoKey = `${si}:${pi}`;
                       return (
-                        <div key={pi} className="space-y-1.5" {...stepPhotoReorder.dropProps(photoKey)}>
+                        <div key={pi} className={`space-y-1.5 ${stepPhotoReorder.classeDepot(photoKey)}`} {...stepPhotoReorder.dropProps(photoKey)}>
                           <div
                             className={`relative aspect-square border border-dashed overflow-hidden ${
                               stepPhotoReorder.overKey === photoKey ? 'border-primary ring-2 ring-primary' : 'border-outline-variant'

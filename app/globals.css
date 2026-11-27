@@ -1491,3 +1491,28 @@ body[data-impersonation] {
     margin-top: 1rem;
   }
 }
+
+/* Repère d'insertion d'une photo glissée entre deux autres (JEP-434) : un trait
+   plein au bord de la vignette visée, posé par `usePhotoDragReorder`. */
+.depot-avant,
+.depot-apres {
+  position: relative;
+}
+.depot-avant::after,
+.depot-apres::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 30;
+  background: #300a12;
+  border-radius: 3px;
+  pointer-events: none;
+}
+.depot-avant::after {
+  left: 0;
+}
+.depot-apres::after {
+  right: 0;
+}

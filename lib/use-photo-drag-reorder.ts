@@ -7,11 +7,25 @@
 // plusieurs étapes, chacune avec ses propres emplacements, dans un seul appel
 // du hook au niveau du formulaire (les règles des hooks interdisent d'en
 // instancier un par étape dans une boucle de rendu).
+//
+// JEP-434 : deux gestes selon l'endroit du relâchement. Au centre d'une photo,
+// les deux photos s'échangent (`onReorder`) ; dans la gouttière (le quart de
+// chaque bord, qui recouvre l'espace entre deux photos), la photo glissée
+// s'insère à cet endroit (`onInsert`). Sans `onInsert`, seul l'échange existe.
 import { useCallback, useState } from 'react';
-import { PHOTO_REORDER_DND_TYPE } from '@/lib/photo-reorder';
+import { PHOTO_REORDER_DND_TYPE, zoneDepot, type ZoneDepot } from '@/lib/photo-reorder';
 
-export function usePhotoDragReorder(onReorder: (from: string, to: string) => void) {
-  const [overKey, setOverKey] = useState<string | null>(null);
+export function usePhotoDragReorder(
+  onReorder: (from: string, to: string) => void,
+  onInsert?: (from: string, to: string, zone: 'avant' | 'apres') => void,
+) {
+  const [depot, setDepot] = useState<{ key: string; zone: ZoneDepot } | null>(null);
+
+  const zoneDe = (e: React.DragEvent): ZoneDepot => {
+    if (!onInsert) return 'centre';
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    return zoneDepot(e.clientX - r.left, r.width);
+  };
 
   const dragProps = useCallback(
     (key: string) => ({
@@ -20,7 +34,7 @@ export function usePhotoDragReorder(onReorder: (from: string, to: string) => voi
         e.dataTransfer.setData(PHOTO_REORDER_DND_TYPE, key);
         e.dataTransfer.effectAllowed = 'move';
       },
-      onDragEnd: () => setOverKey(null),
+      onDragEnd: () => setDepot(null),
     }),
     [],
   );
@@ -30,19 +44,32 @@ export function usePhotoDragReorder(onReorder: (from: string, to: string) => voi
       onDragOver: (e: React.DragEvent) => {
         if (!e.dataTransfer.types.includes(PHOTO_REORDER_DND_TYPE)) return;
         e.preventDefault();
-        if (overKey !== key) setOverKey(key);
+        const zone = zoneDe(e);
+        if (depot?.key !== key || depot.zone !== zone) setDepot({ key, zone });
       },
-      onDragLeave: () => setOverKey((k) => (k === key ? null : k)),
+      onDragLeave: () => setDepot((d) => (d?.key === key ? null : d)),
       onDrop: (e: React.DragEvent) => {
         const from = e.dataTransfer.getData(PHOTO_REORDER_DND_TYPE);
-        setOverKey(null);
+        const zone = zoneDe(e);
+        setDepot(null);
         if (!from || from === key) return;
         e.preventDefault();
-        onReorder(from, key);
+        if (zone === 'centre' || !onInsert) onReorder(from, key);
+        else onInsert(from, key, zone);
       },
     }),
-    [onReorder, overKey],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [onReorder, onInsert, depot],
   );
 
-  return { overKey, dragProps, dropProps };
+  /** Clé visée par un ÉCHANGE (centre d'une photo) : sert au cadre « ring ». */
+  const overKey = depot && depot.zone === 'centre' ? depot.key : null;
+
+  /** Classe du repère d'insertion (trait au bord de la photo), vide hors gouttière. */
+  const classeDepot = useCallback(
+    (key: string) => (depot && depot.key === key && depot.zone !== 'centre' ? `depot-${depot.zone}` : ''),
+    [depot],
+  );
+
+  return { overKey, classeDepot, dragProps, dropProps };
 }
