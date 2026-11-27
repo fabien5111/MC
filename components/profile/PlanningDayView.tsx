@@ -332,6 +332,24 @@ export function PlanningDayView({
   const feuilleItem =
     feuilleId === null ? null : (groups.flatMap((g) => g.items.map((it, idx) => ({ g, it, idx }))).find((x) => x.it.stepId === feuilleId) ?? null);
 
+  // Supprime la fournée ENTIÈRE à laquelle appartient une étape (le planning
+  // n'a pas de suppression d'étape isolée : les étapes sont celles de la
+  // fournée, emportées en cascade). Même écriture que `delPlan` d'En cuisine.
+  async function supprimerFournee(planId: number, titre: string) {
+    const nb = list.find((p) => p.id === planId)?.batch_steps.length ?? 0;
+    const ok = await dialog.confirm(
+      `Supprimer la fournée « ${titre} » ? Toutes ses étapes${nb > 0 ? ` (${nb})` : ''} seront supprimées du planning, ainsi que ses notes et ses photos. Cette action est définitive.`,
+      { okLabel: 'Supprimer la fournée', focus: 'annuler' },
+    );
+    if (!ok) return;
+    const fait = await mutate(() => createClient().from('batches').delete().eq('id', planId), {
+      errorLabel: 'Suppression impossible',
+    });
+    if (!fait) return;
+    setFeuilleId(null);
+    setList((all) => all.filter((p) => p.id !== planId));
+  }
+
   function liens(it: PlanningDayItem) {
     return {
       preparer: `/fournee/${it.planId}?mode=preparer#etape-${it.stepId}`,
@@ -669,14 +687,27 @@ export function PlanningDayView({
       >
         <span aria-hidden className="w-1 shrink-0" style={{ background: couleur(it.planId) }} />
         <div className="min-w-0 flex-1 py-1.5 pr-2">
-          <Link
-            href={`/fournee/${it.planId}?mode=preparer`}
-            title="Ouvrir la fournée"
-            className="flex items-center gap-1 pl-2 font-label-md text-[10px] uppercase tracking-wider text-secondary hover:underline"
-          >
-            {it.projet && <span className="material-symbols-outlined text-[13px]">construction</span>}
-            <span className="min-w-0 truncate">{it.recipeTitleBrut}</span>
-          </Link>
+          <div className="flex items-center justify-between gap-1">
+            <Link
+              href={`/fournee/${it.planId}?mode=preparer`}
+              title="Ouvrir la fournée"
+              className="flex min-w-0 items-center gap-1 pl-2 font-label-md text-[10px] uppercase tracking-wider text-secondary hover:underline"
+            >
+              {it.projet && <span className="material-symbols-outlined text-[13px]">construction</span>}
+              <span className="min-w-0 truncate">{it.recipeTitleBrut}</span>
+            </Link>
+            <button
+              type="button"
+              draggable={false}
+              onClick={() => supprimerFournee(it.planId, it.recipeTitleBrut)}
+              disabled={busy}
+              title="Supprimer la fournée"
+              aria-label={`Supprimer la fournée ${it.recipeTitleBrut}`}
+              className="no-print flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container hover:text-error disabled:opacity-40"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete</span>
+            </button>
+          </div>
           <div className="flex items-start">
             <label className={`flex h-8 w-8 shrink-0 items-center justify-center ${resteAFaire ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
               <input
@@ -931,6 +962,17 @@ export function PlanningDayView({
                   <small className="block font-body-md text-[12px] font-normal opacity-80">Ingrédients, notes, jour de l’étape</small>
                 </span>
               </Link>
+            </div>
+            <div className="mt-4 border-t border-outline-variant/50 pt-3">
+              <button
+                type="button"
+                onClick={() => supprimerFournee(feuilleItem.it.planId, feuilleItem.it.recipeTitleBrut)}
+                disabled={busy}
+                className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-error/50 font-label-md text-[14px] text-error disabled:opacity-40"
+              >
+                <span className="material-symbols-outlined">delete</span>
+                Supprimer la fournée
+              </button>
             </div>
             {feuilleItem.g.items.length > 1 && (
               <div className="mt-4 border-t border-outline-variant/50 pt-3">
