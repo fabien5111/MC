@@ -13,6 +13,15 @@
 // fournée » (sans étape, ajoutées en fin de fournée). Le même plafond est tenu
 // par le trigger `batch_photos_plafond` en base, par couple (fournée, étape).
 export const BATCH_PHOTOS_MAX = 8;
+// Photos « de la fournée » (sans étape, bloc de fin de fournée) : 4, en 2 lignes
+// de 2 tuiles paysage (JEP-422). Plafond tenu par l'interface seulement : le
+// trigger de la base, lui, admet jusqu'à 8 par emplacement.
+export const FOURNEE_PHOTOS_MAX = 4;
+
+/** Plafond d'un emplacement : l'étape (8) ou la fournée elle-même (4). */
+export function maxPhotos(stepId: number | null): number {
+  return stepId == null ? FOURNEE_PHOTOS_MAX : BATCH_PHOTOS_MAX;
+}
 export const LEGENDE_MAX = 200;
 
 /** Largeur de la photo pleine et de sa vignette (calculées dans le navigateur au dépôt). */
@@ -50,7 +59,7 @@ export function normaliserLegende(v: string | null | undefined): string | null {
  * elle-même (`null` : photos sans étape, dites « de fin de fournée »).
  */
 export function placesRestantes(photos: readonly Pick<BatchPhoto, 'batch_step_id'>[], stepId: number | null): number {
-  return Math.max(0, BATCH_PHOTOS_MAX - photos.filter((p) => (p.batch_step_id ?? null) === stepId).length);
+  return Math.max(0, maxPhotos(stepId) - photos.filter((p) => (p.batch_step_id ?? null) === stepId).length);
 }
 
 /**
@@ -67,7 +76,7 @@ export function photosEtapesPermises(auteurRecetteId: string | null | undefined,
 /** Message d'un emplacement plein. */
 export function messagePlein(stepId: number | null): string {
   return stepId == null
-    ? `${BATCH_PHOTOS_MAX} photos au plus pour la fournée : supprimez-en une pour en ajouter une autre.`
+    ? `${FOURNEE_PHOTOS_MAX} photos au plus pour la fournée : supprimez-en une pour en ajouter une autre.`
     : `${BATCH_PHOTOS_MAX} photos au plus par étape : supprimez-en une pour en ajouter une autre.`;
 }
 

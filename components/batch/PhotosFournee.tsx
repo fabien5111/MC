@@ -31,8 +31,9 @@ import { BoutonsOrdrePhoto } from '@/components/BoutonsOrdrePhoto';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { trackEvent } from '@/lib/analytics';
 import {
-  BATCH_PHOTOS_MAX,
+  FOURNEE_PHOTOS_MAX,
   LEGENDE_MAX,
+  maxPhotos,
   messagePlein,
   PHOTO_LARGEUR,
   ordresApresEchange,
@@ -136,7 +137,7 @@ export function PhotosFourneeProvider({
           [
             ...new Set(erreurs),
             ecartees
-              ? `${ecartees} photo${ecartees > 1 ? 's' : ''} non ajoutée${ecartees > 1 ? 's' : ''} : ${BATCH_PHOTOS_MAX} au plus ${stepId == null ? 'pour la fournée' : 'par étape'}.`
+              ? `${ecartees} photo${ecartees > 1 ? 's' : ''} non ajoutée${ecartees > 1 ? 's' : ''} : ${maxPhotos(stepId)} au plus ${stepId == null ? 'pour la fournée' : 'par étape'}.`
               : '',
           ]
             .filter(Boolean)
@@ -343,7 +344,7 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
     e.target.value = '';
     if (files.length) void ctx.ajouter(files, stepId);
   };
-  const titrePlein = plein ? `${BATCH_PHOTOS_MAX} photos au plus ${stepId == null ? 'pour la fournée' : 'par étape'}` : undefined;
+  const titrePlein = plein ? `${maxPhotos(stepId)} photos au plus ${stepId == null ? 'pour la fournée' : 'par étape'}` : undefined;
   return (
     <span className="no-print inline-flex flex-wrap items-center gap-2">
       <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={surChoix} />
@@ -441,7 +442,7 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
       {plein && (
         <span role="status" className="flex items-center gap-1 text-[12px] text-on-surface-variant">
           <span className="material-symbols-outlined text-[16px]">check_circle</span>
-          {BATCH_PHOTOS_MAX} photos maximum atteintes{stepId == null ? ' pour la fournée' : ' pour cette étape'}
+          {maxPhotos(stepId)} photos maximum atteintes{stepId == null ? ' pour la fournée' : ' pour cette étape'}
         </span>
       )}
     </span>
@@ -478,7 +479,7 @@ export function PhotosFourneeBloc({
           <span className="material-symbols-outlined text-[20px]">photo_library</span>
           Photos de cette fournée
           <span className="font-label-md text-[12px] text-on-surface-variant">
-            ({sansEtape}/{BATCH_PHOTOS_MAX})
+            ({sansEtape}/{FOURNEE_PHOTOS_MAX})
           </span>
         </h3>
         <BoutonsPhoto stepId={null} />
@@ -490,8 +491,8 @@ export function PhotosFourneeBloc({
       <p className="mb-3 flex items-start gap-1.5 text-[12px] text-on-surface-variant">
         <span className="material-symbols-outlined text-[16px] shrink-0">info</span>
         {ctx.photosEtapes
-          ? `Jusqu’à ${BATCH_PHOTOS_MAX} photos pour la fournée, et ${BATCH_PHOTOS_MAX} sous chaque étape : elles pourront illustrer les étapes de votre recette.`
-          : `Jusqu’à ${BATCH_PHOTOS_MAX} photos pour la fournée. Les photos d’étape sont réservées à l’auteur de la recette.`}
+          ? `Jusqu’à ${FOURNEE_PHOTOS_MAX} photos pour la fournée, et 8 sous chaque étape : elles pourront illustrer les étapes de votre recette.`
+          : `Jusqu’à ${FOURNEE_PHOTOS_MAX} photos pour la fournée. Les photos d’étape sont réservées à l’auteur de la recette.`}
       </p>
       <p className="mb-3 flex items-start gap-1.5 text-[12px] text-on-surface-variant">
         <span className="material-symbols-outlined text-[16px] shrink-0">cloud_done</span>
@@ -500,14 +501,14 @@ export function PhotosFourneeBloc({
       {photos.length > 0 ? (
         ctx.bloque ? (
           // Lecture seule : galerie, clic = diaporama.
-          <StepPhotoGallery photos={photos} grille="grid-cols-2 sm:grid-cols-4" />
+          <StepPhotoGallery photos={photos} grille="grid-cols-2" />
         ) : (
-          // 2 colonnes sur téléphone, 4 dès 640 px : 8 photos = 2 lignes (JEP-422).
-          // Même tuile que sous une étape : corbeille et crayon (recadrage,
-          // zoom, rotation) en superposition sur la photo.
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          // 4 photos au plus, en 2 lignes de 2 tuiles paysage (16:9, comme dans
+          // « Mes réalisations ») — JEP-422. Même tuile que sous une étape :
+          // corbeille et crayon (recadrage, zoom, rotation) sur la photo.
+          <div className="grid grid-cols-2 gap-3">
             {photos.map((p) => (
-              <div key={p.id} className="relative aspect-square overflow-hidden border border-dashed border-outline-variant">
+              <div key={p.id} className="relative aspect-video overflow-hidden border border-dashed border-outline-variant">
                 <ImageSlot
                   src={p.url}
                   originalSrc={p.url}
@@ -515,7 +516,7 @@ export function PhotosFourneeBloc({
                   onClear={() => void ctx.supprimer(p.id)}
                   shape="rect"
                   maxWidth={PHOTO_LARGEUR}
-                  aspectRatio={1}
+                  aspectRatio={16 / 9}
                   className="h-full w-full"
                 />
               </div>
@@ -721,7 +722,7 @@ export function PhotosEtapeVignettes({
       {plein && peutAjouter && (
         <span role="status" className="flex items-center gap-1 text-[12px] text-on-surface-variant">
           <span className="material-symbols-outlined text-[16px]">check_circle</span>
-          {BATCH_PHOTOS_MAX} photos maximum atteintes pour cette étape
+          {maxPhotos(stepId)} photos maximum atteintes pour cette étape
         </span>
       )}
       {peutAjouter && !plein && ctx && (
@@ -742,69 +743,6 @@ export function PhotosEtapeVignettes({
           Gérer mes photos
         </button>
       )}
-    </div>
-  );
-}
-
-// ── Passerelle vers l'avis ────────────────────────────────────────────────
-
-/**
- * Photos de la fournée proposées dans le formulaire d'avis. La photo choisie
- * reste à la même adresse (`realisations/`) ; la route d'avis vérifie qu'elle
- * appartient bien à une fournée du membre, et l'avis passe en modération
- * comme toute photo d'avis.
- */
-export function ChoixPhotoFournee({
-  dejaChoisies,
-  places,
-  onChoisir,
-}: {
-  dejaChoisies: string[];
-  places: number;
-  onChoisir: (url: string) => void;
-}) {
-  const ctx = usePhotosFournee();
-  const [ouvert, setOuvert] = useState(false);
-  if (!ctx || ctx.photos.length === 0) return null;
-  const photos = trierPhotos(ctx.photos);
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOuvert((o) => !o)}
-        className="inline-flex items-center gap-1.5 text-[13px] font-label-md text-primary underline underline-offset-2"
-      >
-        <span className="material-symbols-outlined text-[18px]">photo_library</span>
-        Choisir parmi les photos de cette fournée
-      </button>
-      {ouvert && (
-        <div className="mt-2 flex flex-wrap gap-2">
-          {photos.map((p) => {
-            const choisie = dejaChoisies.includes(p.url);
-            return (
-              <button
-                key={p.id}
-                type="button"
-                disabled={choisie || places <= 0}
-                onClick={() => onChoisir(p.url)}
-                title={choisie ? 'Déjà dans votre avis' : places <= 0 ? 'Plus de place dans votre avis' : p.legende || 'Ajouter à mon avis'}
-                className={`relative h-[72px] w-[72px] overflow-hidden rounded border ${
-                  choisie ? 'border-primary ring-2 ring-primary' : 'border-outline-variant hover:border-primary'
-                } disabled:cursor-not-allowed`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- stockage objet */}
-                <img src={p.thumb_url || p.url} alt={p.legende ?? ''} className={`h-full w-full object-cover ${choisie ? 'opacity-60' : ''}`} />
-                {choisie && (
-                  <span className="material-symbols-outlined absolute inset-0 m-auto h-fit w-fit text-[22px] text-primary">check_circle</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      <p className="mt-1 text-[11px] text-on-surface-variant">
-        La photo choisie deviendra visible sur la fiche recette une fois votre avis validé.
-      </p>
     </div>
   );
 }

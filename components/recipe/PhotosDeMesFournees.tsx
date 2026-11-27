@@ -22,6 +22,8 @@ export type SourceFournees = {
   /** Emplacements encore libres sur l'étape. */
   places: number;
   onChoisir: (urls: string[]) => void;
+  /** Limite la liste aux photos de cette fournée (formulaire d'avis). */
+  batchId?: number;
 };
 
 const Contexte = createContext<SourceFournees | null>(null);
@@ -35,7 +37,7 @@ export function useSourceFournees(): SourceFournees | null {
 }
 
 export function FenetrePhotosFournees({ source, onClose }: { source: SourceFournees; onClose: () => void }) {
-  const { recipeId, stepId, titreEtape, places, onChoisir } = source;
+  const { recipeId, stepId, titreEtape, places, onChoisir, batchId } = source;
   const [photos, setPhotos] = useState<PhotoDeFournee[] | null>(null);
   const [toutes, setToutes] = useState(false);
   const [choisies, setChoisies] = useState<number[]>([]);
@@ -43,7 +45,7 @@ export function FenetrePhotosFournees({ source, onClose }: { source: SourceFourn
   useEffect(() => {
     if (!recipeId) return;
     let actif = true;
-    photosDesFournees(recipeId, stepId, titreEtape)
+    photosDesFournees(recipeId, stepId, titreEtape, batchId)
       .then((p) => actif && setPhotos(p))
       .catch(() => actif && setPhotos([]));
     return () => {
