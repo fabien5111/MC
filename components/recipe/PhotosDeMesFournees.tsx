@@ -67,7 +67,7 @@ export function FenetrePhotosFournees({ source, onClose }: { source: SourceFourn
 
   return createPortal(
           <div
-            className="fixed inset-0 z-[105] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+            className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
             onClick={(e) => {
               // Le portail propage ses clics à l'emplacement de photo, qui ouvrirait
               // sinon le sélecteur de fichiers de l'appareil.

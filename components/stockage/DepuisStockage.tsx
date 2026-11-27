@@ -373,7 +373,7 @@ function FenetreStockage({
       role="dialog"
       aria-modal="true"
       aria-label={titre}
-      className="fixed inset-0 z-[105] flex items-start justify-center overflow-y-auto bg-background/60 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-background/60 p-4 backdrop-blur-[2px]"
       onClick={(e) => {
         e.stopPropagation();
         const surVoile = pressionSurVoile.current && e.target === e.currentTarget;
