@@ -22,8 +22,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
-import { DepuisStockage } from '@/components/stockage/DepuisStockage';
-import { BoutonColler } from '@/components/BoutonColler';
 import { useReadOnly, useWriteGuard } from '@/components/ImpersonationProvider';
 import { StepPhotoGallery } from '@/components/recipe/StepPhotoGallery';
 import { ImageSlot } from '@/components/ImageSlot';
@@ -249,14 +247,8 @@ export function PhotosFourneeProvider({
   );
 }
 
-// ── Boutons d'ajout ───────────────────────────────────────────────────────
+// ── Ajout de photos ───────────────────────────────────────────────────────
 
-/**
- * « Ajouter des photos » : un seul bouton, plusieurs fichiers à la fois. Sur un
- * téléphone, le sélecteur du système propose l'appareil photo ou la photothèque ;
- * sur ordinateur, les fichiers du disque. En version compacte (sous une étape),
- * le bouton « Photo » ouvre directement l'appareil photo (`capture`).
- */
 // Appareil tactile (téléphone, tablette) : seul cas où « Prendre une photo »
 // (`capture`) a un sens — sur ordinateur, l'attribut est ignoré et le bouton
 // ouvrirait simplement les fichiers, comme « Choisir ».
@@ -328,123 +320,115 @@ export function usePrendrePhotoEtape(): (() => void) | null {
   };
 }
 
-export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | null; compact?: boolean }) {
+/**
+ * Tuile « ajouter des photos » (JEP-431) : le même emplacement que celui des
+ * photos d'une recette (`ImageSlot`) — dépôt, glisser-déposer, Ctrl+V, et en
+ * pastilles « Coller » et « Depuis… » (stockages en ligne + « Cet appareil »).
+ * Remplace l'ancienne rangée de boutons séparés. Plusieurs fichiers à la fois ;
+ * le plafond est tenu par `ajouter`.
+ *
+ * Sur appareil tactile, un appui sur la tuile déplie le choix « Prendre une
+ * photo » / « Choisir dans la galerie » au lieu d'ouvrir directement le
+ * sélecteur (l'attribut `capture` n'a de sens que là). L'interception se fait
+ * en phase de capture, et seulement pour un appui qui vient de la tuile
+ * elle-même (DOM) : les pastilles (boutons) et la fenêtre « Depuis… », portée
+ * dans `document.body` mais rattachée à cet arbre React, ne sont pas touchées.
+ */
+function TuileAjoutPhoto({
+  stepId,
+  ratio,
+}: {
+  stepId: number | null;
+  /** Rapport largeur / hauteur de la tuile (1 : étape ; 16/9 : bloc de la fournée). */
+  ratio: number;
+}) {
   const ctx = usePhotosFournee();
+  const tactile = useTactile();
+  const [choix, setChoix] = useState(false);
   const camera = useRef<HTMLInputElement>(null);
   const galerie = useRef<HTMLInputElement>(null);
-  const [choix, setChoix] = useState(false);
-  const tactile = useTactile();
   if (!ctx || ctx.bloque) return null;
   // Sous une étape : réservé à l'auteur de la recette (JEP-422).
   if (stepId != null && !ctx.photosEtapes) return null;
-  const places = placesRestantes(ctx.photos, stepId);
-  const plein = places <= 0;
+  if (placesRestantes(ctx.photos, stepId) <= 0) return null;
+  const ajouterPlusieurs = (fichiers: File[]) => void ctx.ajouter(fichiers, stepId);
+  // Un seul fichier : l'emplacement vide le rend en data-URL (déjà compressée).
+  const ajouterUne = (dataUrl: string) => {
+    void fetch(dataUrl)
+      .then((r) => r.blob())
+      .then((blob) => ctx.ajouter([new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' })], stepId));
+  };
   const surChoix = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = '';
-    if (files.length) void ctx.ajouter(files, stepId);
+    if (files.length) ajouterPlusieurs(files);
   };
-  const titrePlein = plein ? `${maxPhotos(stepId)} photos au plus ${stepId == null ? 'pour la fournée' : 'par étape'}` : undefined;
   return (
-    <span className="no-print inline-flex flex-wrap items-center gap-2">
+    <div className="no-print">
       <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={surChoix} />
       <input ref={galerie} type="file" accept="image/*" multiple className="hidden" onChange={surChoix} />
-      {compact ? (
-        // Un clic sur « Photo » déplie le choix : appareil photo OU galerie
-        // (sur téléphone et tablette ; sur ordinateur, les deux ouvrent les
-        // fichiers du disque).
-        <>
+      <div
+        className="relative overflow-hidden border border-dashed border-outline-variant"
+        style={{ aspectRatio: ratio }}
+        onClickCapture={(e) => {
+          if (!tactile) return;
+          const cible = e.target as HTMLElement;
+          if (!e.currentTarget.contains(cible) || cible.closest('button') || cible.tagName === 'INPUT') return;
+          e.stopPropagation();
+          setChoix((v) => !v);
+        }}
+      >
+        <ImageSlot
+          src={null}
+          onChange={ajouterUne}
+          onFilesAdded={ajouterPlusieurs}
+          shape="rect"
+          maxWidth={PHOTO_LARGEUR}
+          aspectRatio={ratio}
+          placeholder="Ajouter des photos"
+          className="h-full w-full"
+        />
+      </div>
+      {tactile && choix && (
+        <div className="mt-2 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => (tactile ? setChoix((v) => !v) : galerie.current?.click())}
-            disabled={plein}
-            aria-expanded={tactile ? choix : undefined}
-            title={titrePlein ?? 'Ajouter une photo à cette étape'}
-            aria-label="Ajouter une photo à cette étape"
-            className="inline-flex items-center gap-1 rounded-pill border border-outline-variant px-2.5 py-1 text-[12px] font-label-md text-on-surface-variant hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+            onClick={() => {
+              setChoix(false);
+              camera.current?.click();
+            }}
+            className="inline-flex items-center gap-1 rounded-pill bg-primary px-2.5 py-1 text-[12px] font-label-md text-on-primary hover:opacity-90"
           >
             <span className="material-symbols-outlined text-[16px]">photo_camera</span>
-            Photo
+            Prendre une photo
           </button>
-          {tactile && choix && !plein && (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  setChoix(false);
-                  camera.current?.click();
-                }}
-                className="inline-flex items-center gap-1 rounded-pill bg-primary px-2.5 py-1 text-[12px] font-label-md text-on-primary hover:opacity-90"
-              >
-                <span className="material-symbols-outlined text-[16px]">photo_camera</span>
-                Prendre une photo
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setChoix(false);
-                  galerie.current?.click();
-                }}
-                className="inline-flex items-center gap-1 rounded-pill bg-primary px-2.5 py-1 text-[12px] font-label-md text-on-primary hover:opacity-90"
-              >
-                <span className="material-symbols-outlined text-[16px]">photo_library</span>
-                Choisir dans la galerie
-              </button>
-            </>
-          )}
-          {!plein && (
-            // Coller l'image copiée sous l'étape, comme dans le bloc général :
-            // visible seulement si une image est copiée (cf. BoutonColler).
-            <BoutonColler className="!px-2.5 !py-1 !text-[12px]" onFichiers={(fs) => void ctx.ajouter(fs, stepId)} />
-          )}
-          {!plein && (
-            // Stockage en ligne (JEP-408, JEP-422) : sur ordinateur aussi, sous
-            // l'étape ; absent sans source configurée.
-            <DepuisStockage
-              usage="image"
-              max={places}
-              variante="bouton"
-              className="!px-2.5 !py-1 !text-[12px]"
-              onFichiers={(fs) => void ctx.ajouter(fs, stepId)}
-            />
-          )}
-        </>
-      ) : (
-        // Un seul bouton : sur un téléphone, le sélecteur du système propose
-        // lui-même l'appareil photo ou la photothèque ; sur ordinateur, les
-        // fichiers du disque. Plusieurs photos à la fois.
-        <button
-          type="button"
-          onClick={() => galerie.current?.click()}
-          disabled={plein}
-          title={titrePlein}
-          className="inline-flex items-center gap-1.5 rounded-pill bg-primary px-4 py-2 font-label-md text-label-md text-on-primary hover:opacity-90 transition-opacity disabled:opacity-50"
-        >
-          <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
-          Ajouter des photos
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              setChoix(false);
+              galerie.current?.click();
+            }}
+            className="inline-flex items-center gap-1 rounded-pill bg-primary px-2.5 py-1 text-[12px] font-label-md text-on-primary hover:opacity-90"
+          >
+            <span className="material-symbols-outlined text-[16px]">photo_library</span>
+            Choisir dans la galerie
+          </button>
+        </div>
       )}
-      {!compact && !plein && (
-        // Coller l'image copiée (JEP-408) : ouvert à tous, visible seulement si
-        // une image est copiée.
-        <BoutonColler className="!px-4 !py-2" onFichiers={(fs) => void ctx.ajouter(fs, stepId)} />
-      )}
-      {!compact && !plein && (
-        // Stockage en ligne (JEP-408) : absent sans source configurée.
-        <DepuisStockage
-          usage="image"
-          max={places}
-          variante="bouton"
-          className="!px-4 !py-2"
-          onFichiers={(fs) => void ctx.ajouter(fs, stepId)}
-        />
-      )}
-      {plein && (
-        <span role="status" className="flex items-center gap-1 text-[12px] text-on-surface-variant">
-          <span className="material-symbols-outlined text-[16px]">check_circle</span>
-          {maxPhotos(stepId)} photos maximum atteintes{stepId == null ? ' pour la fournée' : ' pour cette étape'}
-        </span>
-      )}
+    </div>
+  );
+}
+
+/** Message affiché à la place de la tuile quand le plafond de photos est atteint. */
+function MessagePlein({ stepId }: { stepId: number | null }) {
+  const ctx = usePhotosFournee();
+  if (!ctx || ctx.bloque) return null;
+  if (stepId != null && !ctx.photosEtapes) return null;
+  if (placesRestantes(ctx.photos, stepId) > 0) return null;
+  return (
+    <span role="status" className="no-print flex items-center gap-1 text-[12px] text-on-surface-variant">
+      <span className="material-symbols-outlined text-[16px]">check_circle</span>
+      {maxPhotos(stepId)} photos maximum atteintes{stepId == null ? ' pour la fournée' : ' pour cette étape'}
     </span>
   );
 }
@@ -482,7 +466,7 @@ export function PhotosFourneeBloc({
             ({sansEtape}/{FOURNEE_PHOTOS_MAX})
           </span>
         </h3>
-        <BoutonsPhoto stepId={null} />
+        <MessagePlein stepId={null} />
       </div>
       <p className="mb-3 flex items-start gap-1.5 text-[12px] text-on-surface-variant">
         <span className="material-symbols-outlined text-[16px] shrink-0">lock</span>
@@ -498,7 +482,12 @@ export function PhotosFourneeBloc({
         <span className="material-symbols-outlined text-[16px] shrink-0">cloud_done</span>
         Les photos, légendes et étapes sont enregistrées automatiquement.
       </p>
-      {photos.length > 0 ? (
+      {photos.length === 0 && !ctx.bloque && (
+        <p className="mb-3 text-sm italic text-on-surface-variant">
+          Aucune photo pour l’instant : gardez une trace de votre réalisation, pour comparer vos essais.
+        </p>
+      )}
+      {photos.length > 0 || !ctx.bloque ? (
         ctx.bloque ? (
           // Lecture seule : galerie, clic = diaporama.
           <StepPhotoGallery photos={photos} grille="grid-cols-2" />
@@ -521,13 +510,11 @@ export function PhotosFourneeBloc({
                 />
               </div>
             ))}
+            {/* Même tuile que sous une étape (JEP-431) : pastilles « Coller » et « Depuis… ». */}
+            <TuileAjoutPhoto stepId={null} ratio={16 / 9} />
           </div>
         )
-      ) : (
-        <p className="text-sm italic text-on-surface-variant">
-          Aucune photo pour l’instant : gardez une trace de votre réalisation, pour comparer vos essais.
-        </p>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -553,12 +540,6 @@ export function PhotosEtape({
   // en ligne) : chacun devient une photo de l'étape, y compris depuis un
   // emplacement déjà rempli.
   const ajouterPlusieurs = (fichiers: File[]) => void ctx.ajouter(fichiers, stepId);
-  // Un seul fichier : l'emplacement vide le rend en data-URL (déjà compressée).
-  const ajouterUne = (dataUrl: string) => {
-    void fetch(dataUrl)
-      .then((r) => r.blob())
-      .then((blob) => ctx.ajouter([new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' })], stepId));
-  };
   const places = placesRestantes(ctx.photos, stepId);
   return (
     <div className={`no-print ${sansMarge ? '' : 'mt-3'} flex flex-col gap-2`}>
@@ -597,25 +578,10 @@ export function PhotosEtape({
               )}
             </div>
           ))}
-          {!ctx.bloque && places > 0 && (
-            <div key={`vide-${photos.length}`} className="relative aspect-square overflow-hidden border border-dashed border-outline-variant">
-              <ImageSlot
-                src={null}
-                onChange={ajouterUne}
-                onFilesAdded={ajouterPlusieurs}
-                shape="rect"
-                maxWidth={PHOTO_LARGEUR}
-                aspectRatio={1}
-                placeholder="Ajouter des photos"
-                className="h-full w-full"
-              />
-            </div>
-          )}
+          {!ctx.bloque && places > 0 && <TuileAjoutPhoto key={`vide-${photos.length}`} stepId={stepId} ratio={1} />}
         </div>
       )}
-      <div>
-        <BoutonsPhoto stepId={stepId} compact />
-      </div>
+      <MessagePlein stepId={stepId} />
     </div>
   );
 }
@@ -623,12 +589,12 @@ export function PhotosEtape({
 // ── Vignettes d'une étape (mode Pâtisser, une étape à la fois) ─────────────
 
 /**
- * Photos qui aident à réaliser l'étape, en petites vignettes : celles de la
- * recette de base (relues en direct, jamais copiées) puis celles de mes
- * fournées. Un clic ouvre le diaporama plein écran de `StepPhotoGallery`
- * (flèches, glissement, clavier). L'ajout reste à côté ; recadrer, supprimer
- * ou réordonner mes photos passe par « Gérer mes photos », qui déplie
- * l'éditeur habituel (`PhotosEtape`).
+ * Photos de l'étape (mode Pâtisser, une étape à la fois). Celles de la recette
+ * de base (relues en direct, jamais copiées) restent de petites vignettes : un
+ * clic ouvre le diaporama plein écran de `StepPhotoGallery`. Mes photos
+ * s'affichent d'emblée dans l'éditeur habituel (`PhotosEtape`, JEP-431) :
+ * recadrer, supprimer, réordonner et la tuile d'ajout avec ses pastilles
+ * « Coller » / « Depuis… » — plus de « Gérer mes photos » à déplier.
  */
 export function PhotosEtapeVignettes({
   stepId,
@@ -638,111 +604,13 @@ export function PhotosEtapeVignettes({
   photosRecette?: { url: string; ai_retouched?: boolean }[];
 }) {
   const ctx = usePhotosFournee();
-  const [gerer, setGerer] = useState(false);
-  const [choix, setChoix] = useState(false);
-  const camera = useRef<HTMLInputElement>(null);
-  const galerie = useRef<HTMLInputElement>(null);
-  const tactile = useTactile();
   const etapesPermises = !!ctx && ctx.photosEtapes;
-  const miennes = ctx && etapesPermises ? photosDeEtape(ctx.photos, stepId) : [];
-  const toutes = [
-    ...photosRecette.map((p) => ({ url: p.url, ai_retouched: p.ai_retouched, legende: 'Photo de la recette' })),
-    ...miennes.map((p) => ({ url: p.url, thumb_url: p.thumb_url, legende: p.legende })),
-  ];
-  const peutAjouter = !!ctx && !ctx.bloque && etapesPermises;
-  if (!toutes.length && !peutAjouter) return null;
-  if (gerer && ctx) {
-    return (
-      <div className="no-print flex flex-col gap-2">
-        <PhotosEtape stepId={stepId} sansMarge />
-        <button type="button" onClick={() => setGerer(false)} className="self-start font-label-md text-[13px] text-primary underline underline-offset-2">
-          Terminé
-        </button>
-      </div>
-    );
-  }
-  const places = ctx ? placesRestantes(ctx.photos, stepId) : 0;
-  const plein = !!ctx && places <= 0;
-  const surChoix = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = '';
-    if (ctx && files.length) void ctx.ajouter(files, stepId);
-  };
-  // Tuile pointillée « Photo », dernière cellule de la grille : un appui
-  // déplie le choix « Prendre une photo » / « Choisir dans la galerie » (sur
-  // ordinateur, elle ouvre directement les fichiers).
-  const tuile =
-    peutAjouter && !plein ? (
-      <button
-        type="button"
-        onClick={() => (tactile ? setChoix((v) => !v) : galerie.current?.click())}
-        aria-expanded={tactile ? choix : undefined}
-        aria-label="Ajouter une photo à cette étape"
-        className="flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg border-2 border-dashed border-outline-variant text-[11px] font-label-md text-primary hover:border-primary"
-      >
-        <span className="material-symbols-outlined text-[26px]">add_a_photo</span>
-        Photo
-      </button>
-    ) : null;
+  const recette = photosRecette.map((p) => ({ url: p.url, ai_retouched: p.ai_retouched, legende: 'Photo de la recette' }));
+  if (!recette.length && !etapesPermises) return null;
   return (
     <div className="no-print flex flex-col gap-2">
-      <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={surChoix} />
-      <input ref={galerie} type="file" accept="image/*" multiple className="hidden" onChange={surChoix} />
-      {toutes.length > 0 ? (
-        <StepPhotoGallery photos={toutes} grille="grid-cols-4 sm:grid-cols-6" fin={tuile} />
-      ) : (
-        tuile && <div className="grid grid-cols-4 gap-4 sm:grid-cols-6">{tuile}</div>
-      )}
-      {tactile && choix && !plein && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setChoix(false);
-              camera.current?.click();
-            }}
-            className="inline-flex items-center gap-1.5 rounded-pill bg-primary px-3.5 py-2 text-[13px] font-label-md text-on-primary"
-          >
-            <span className="material-symbols-outlined text-[18px]">photo_camera</span>
-            Prendre une photo
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setChoix(false);
-              galerie.current?.click();
-            }}
-            className="inline-flex items-center gap-1.5 rounded-pill bg-primary px-3.5 py-2 text-[13px] font-label-md text-on-primary"
-          >
-            <span className="material-symbols-outlined text-[18px]">photo_library</span>
-            Choisir dans la galerie
-          </button>
-        </div>
-      )}
-      {plein && peutAjouter && (
-        <span role="status" className="flex items-center gap-1 text-[12px] text-on-surface-variant">
-          <span className="material-symbols-outlined text-[16px]">check_circle</span>
-          {maxPhotos(stepId)} photos maximum atteintes pour cette étape
-        </span>
-      )}
-      {peutAjouter && !plein && ctx && (
-        <div className="flex flex-wrap items-center gap-3 empty:hidden">
-          <BoutonColler className="!px-2.5 !py-1 !text-[12px]" onFichiers={(fs) => void ctx.ajouter(fs, stepId)} />
-          {/* Stockage en ligne (JEP-422) : la tuile « Photo » n'ouvre que les fichiers de l'appareil. */}
-          <DepuisStockage
-            usage="image"
-            max={places}
-            variante="bouton"
-            className="!px-2.5 !py-1 !text-[12px]"
-            onFichiers={(fs) => void ctx.ajouter(fs, stepId)}
-          />
-        </div>
-      )}
-      {peutAjouter && miennes.length > 0 && (
-        <button type="button" onClick={() => setGerer(true)} className="self-start font-label-md text-[13px] text-primary underline underline-offset-2">
-          Gérer mes photos
-        </button>
-      )}
+      {recette.length > 0 && <StepPhotoGallery photos={recette} grille="grid-cols-4 sm:grid-cols-6" />}
+      {etapesPermises && <PhotosEtape stepId={stepId} sansMarge />}
     </div>
   );
 }

@@ -1886,11 +1886,10 @@ mobile » (piste A retenue).
   (`components/ReplieUneLigne.tsx`, « … Tout afficher », bouton seulement si le
   contenu dépasse) ; même repli pour « Conseils & astuces ». Exception assumée à « une note n'est jamais repliée » : elle
   reste visible, sa première ligne en tête d'étape. Retours de sous-étape et
-  d'ingrédient : même repli sous leur ligne. Puis les photos en **vignettes**
-  (`PhotosEtapeVignettes`) : photos d'étape de la **recette de base** (relues en
-  direct) puis les miennes ; un clic ouvre le diaporama de `StepPhotoGallery`
-  (qui gagne le glissement du doigt) ; « Gérer mes photos » déplie l'éditeur
-  habituel (`PhotosEtape`).
+  d'ingrédient : même repli sous leur ligne. Puis les photos (`PhotosEtapeVignettes`) :
+  photos d'étape de la **recette de base** (relues en direct) en **vignettes**, un clic
+  ouvre le diaporama de `StepPhotoGallery` (qui gagne le glissement du doigt) ; puis
+  les miennes, d'emblée dans l'éditeur habituel (`PhotosEtape`, JEP-431).
 - **Commentaires de ligne conservés** : picto note sur chaque ingrédient
   (quantité utilisée, note, « À racheter ») et chaque sous-étape ; une note
   enregistrée s'affiche en vert sous la ligne (même doctrine que le déroulé).
@@ -1898,10 +1897,9 @@ mobile » (piste A retenue).
   Pendant l'étape : cadre en pointillés réduit à son titre, une phrase et le lien
   « Remplir maintenant » (déplié aussi dès qu'un constat existe) ; **vert** et
   déplié une fois l'étape terminée.
-- **Ajouter une photo** : tuile pointillée « Photo » en dernière cellule de la
-  grille de vignettes (`fin` de `StepPhotoGallery`) ; sur appareil tactile un appui
-  propose « Prendre une photo » / « Choisir dans la galerie », sur ordinateur
-  elle ouvre les fichiers.
+- **Ajouter une photo** : tuile d'ajout de `PhotosEtape` (JEP-431, pastilles « Coller » /
+  « Depuis… ») ; sur appareil tactile un appui propose « Prendre une photo » /
+  « Choisir dans la galerie », sur ordinateur elle ouvre les fichiers.
   « Prendre une photo » (menu Actions) vise l'étape affichée
   (`data-etape-courante`, `etapeAffichee`).
 - **Étape qui vient d'être terminée → défilement vers « Fin d'étape »**
@@ -1943,7 +1941,19 @@ pure : `lib/batch-photos.ts` (testée) ; lecture : `lib/batch-photos-data.ts` ;
   Supprimer une photo n'efface pas l'objet : la réconciliation du stockage
   (`reconcilier_stockage.py`, qui lit `batch_photos` — table **obligatoire**, son
   absence arrête le script avant toute suppression) reprend les orphelins.
-- **Ajout** : un seul bouton « Ajouter des photos » (plusieurs fichiers ; sur
+- **Ajout = la tuile des photos de recette** (JEP-431, `TuileAjoutPhoto`) : un
+  `ImageSlot` vide pointillé (dépôt, glisser-déposer, Ctrl+V, plusieurs fichiers) avec
+  en pastilles « Coller » et « Depuis… », partout où l'on ajoute (bloc « Photos de cette
+  fournée » en 16:9, sous chaque étape en carré, y compris dans la vue « une étape à la
+  fois » où mes photos sont d'emblée dans l'éditeur `PhotosEtape` — plus de « Gérer mes
+  photos » / « Terminé » ; seules les photos de la recette de base restent en vignettes
+  cliquables). Plus de rangée de boutons séparés (`BoutonsPhoto` supprimé) ; le message
+  « N photos maximum atteintes » remplace la tuile quand le plafond est atteint. Sur
+  appareil tactile, un appui sur la tuile déplie « Prendre une photo » / « Choisir dans
+  la galerie » (interception en capture, DOM seulement : pastilles et fenêtre « Depuis… »
+  portée non concernées). La fenêtre « Depuis… » propose en tête **« Cet appareil »**
+  (fichier du disque, ouvert à toutes les formules, photos et PDF, pas le texte). Ancien
+  mode, pour mémoire : un seul bouton « Ajouter des photos » (plusieurs fichiers ; sur
   téléphone, le sélecteur du système propose appareil photo ou photothèque) dans le
   bloc « Photos de cette fournée » (dans l'écran de fin de
   fournée, 24/11/2026 — plus sous le déroulé ; en bas du résumé, mis en avant, sur une fournée close),
