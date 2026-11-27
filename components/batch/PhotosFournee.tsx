@@ -337,12 +337,10 @@ export function usePrendrePhotoEtape(): (() => void) | null {
 function TuileAjoutPhoto({
   stepId,
   ratio,
-  className = '',
 }: {
   stepId: number | null;
   /** Rapport largeur / hauteur de la tuile (1 : étape ; 16/9 : bloc de la fournée). */
   ratio: number;
-  className?: string;
 }) {
   const ctx = usePhotosFournee();
   const tactile = useTactile();
@@ -366,7 +364,7 @@ function TuileAjoutPhoto({
     if (files.length) ajouterPlusieurs(files);
   };
   return (
-    <div className={`no-print ${className}`}>
+    <div className="no-print">
       <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={surChoix} />
       <input ref={galerie} type="file" accept="image/*" multiple className="hidden" onChange={surChoix} />
       <div
@@ -591,12 +589,12 @@ export function PhotosEtape({
 // ── Vignettes d'une étape (mode Pâtisser, une étape à la fois) ─────────────
 
 /**
- * Photos qui aident à réaliser l'étape, en petites vignettes : celles de la
- * recette de base (relues en direct, jamais copiées) puis celles de mes
- * fournées. Un clic ouvre le diaporama plein écran de `StepPhotoGallery`
- * (flèches, glissement, clavier). L'ajout reste à côté ; recadrer, supprimer
- * ou réordonner mes photos passe par « Gérer mes photos », qui déplie
- * l'éditeur habituel (`PhotosEtape`).
+ * Photos de l'étape (mode Pâtisser, une étape à la fois). Celles de la recette
+ * de base (relues en direct, jamais copiées) restent de petites vignettes : un
+ * clic ouvre le diaporama plein écran de `StepPhotoGallery`. Mes photos
+ * s'affichent d'emblée dans l'éditeur habituel (`PhotosEtape`, JEP-431) :
+ * recadrer, supprimer, réordonner et la tuile d'ajout avec ses pastilles
+ * « Coller » / « Depuis… » — plus de « Gérer mes photos » à déplier.
  */
 export function PhotosEtapeVignettes({
   stepId,
@@ -606,42 +604,13 @@ export function PhotosEtapeVignettes({
   photosRecette?: { url: string; ai_retouched?: boolean }[];
 }) {
   const ctx = usePhotosFournee();
-  const [gerer, setGerer] = useState(false);
   const etapesPermises = !!ctx && ctx.photosEtapes;
-  const miennes = ctx && etapesPermises ? photosDeEtape(ctx.photos, stepId) : [];
-  const toutes = [
-    ...photosRecette.map((p) => ({ url: p.url, ai_retouched: p.ai_retouched, legende: 'Photo de la recette' })),
-    ...miennes.map((p) => ({ url: p.url, thumb_url: p.thumb_url, legende: p.legende })),
-  ];
-  const peutAjouter = !!ctx && !ctx.bloque && etapesPermises;
-  if (!toutes.length && !peutAjouter) return null;
-  if (gerer && ctx) {
-    return (
-      <div className="no-print flex flex-col gap-2">
-        <PhotosEtape stepId={stepId} sansMarge />
-        <button type="button" onClick={() => setGerer(false)} className="self-start font-label-md text-[13px] text-primary underline underline-offset-2">
-          Terminé
-        </button>
-      </div>
-    );
-  }
-  // Tuile « ajouter des photos » : la même que sous une étape de Préparer et
-  // dans une recette (JEP-431), sur deux colonnes de la grille de vignettes —
-  // une seule case laisserait ses deux pastilles recouvrir toute la tuile.
-  const tuile = peutAjouter ? <TuileAjoutPhoto stepId={stepId} ratio={2} className="col-span-2" /> : null;
+  const recette = photosRecette.map((p) => ({ url: p.url, ai_retouched: p.ai_retouched, legende: 'Photo de la recette' }));
+  if (!recette.length && !etapesPermises) return null;
   return (
     <div className="no-print flex flex-col gap-2">
-      {toutes.length > 0 ? (
-        <StepPhotoGallery photos={toutes} grille="grid-cols-4 sm:grid-cols-6" fin={tuile} />
-      ) : (
-        tuile && <div className="grid grid-cols-4 gap-4 sm:grid-cols-6">{tuile}</div>
-      )}
-      {peutAjouter && <MessagePlein stepId={stepId} />}
-      {peutAjouter && miennes.length > 0 && (
-        <button type="button" onClick={() => setGerer(true)} className="self-start font-label-md text-[13px] text-primary underline underline-offset-2">
-          Gérer mes photos
-        </button>
-      )}
+      {recette.length > 0 && <StepPhotoGallery photos={recette} grille="grid-cols-4 sm:grid-cols-6" />}
+      {etapesPermises && <PhotosEtape stepId={stepId} sansMarge />}
     </div>
   );
 }
