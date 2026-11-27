@@ -448,87 +448,14 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
   );
 }
 
-// ── Sous chaque vignette : étape, légende, corbeille ──────────────────────
-
-function DetailPhoto({
-  photo,
-  etapes,
-  ctx,
-  avecEtape,
-}: {
-  photo: BatchPhoto;
-  etapes: { id: number; titre: string }[];
-  ctx: Ctx;
-  avecEtape: boolean;
-}) {
-  // Confirmation brève après l'enregistrement d'une légende (automatique, sans bouton).
-  const [enregistre, setEnregistre] = useState(false);
-  useEffect(() => {
-    if (!enregistre) return;
-    const t = setTimeout(() => setEnregistre(false), 2500);
-    return () => clearTimeout(t);
-  }, [enregistre]);
-  return (
-    <div className="no-print flex flex-col gap-1">
-      {avecEtape && ctx.photosEtapes && etapes.length > 0 && (
-        <select
-          value={photo.batch_step_id ?? ''}
-          disabled={ctx.bloque}
-          onChange={(e) => void ctx.rattacher(photo.id, e.target.value ? Number(e.target.value) : null)}
-          aria-label="Étape de la photo"
-          className="w-full min-w-0 rounded border border-outline-variant bg-white px-1.5 py-1 text-[12px] text-on-surface-variant"
-        >
-          <option value="">Toute la fournée</option>
-          {etapes.map((s, i) => (
-            <option key={s.id} value={s.id}>
-              {`${i + 1}. ${s.titre || 'Étape'}`}
-            </option>
-          ))}
-        </select>
-      )}
-      <div className="flex items-start gap-1">
-        <input
-          type="text"
-          // Non contrôlé : la légende s'écrit à la sortie du champ. `key`
-          // remonte le champ si la valeur change ailleurs (échec rétabli).
-          key={photo.legende ?? ''}
-          defaultValue={photo.legende ?? ''}
-          maxLength={LEGENDE_MAX}
-          disabled={ctx.bloque}
-          placeholder="Légende (facultatif)"
-          onBlur={(e) => void ctx.legender(photo.id, e.target.value).then((ok) => ok && setEnregistre(true))}
-          className="w-full min-w-0 rounded border border-outline-variant bg-white px-1.5 py-1 text-[12px] text-on-surface"
-        />
-        {!ctx.bloque && (
-          <button
-            type="button"
-            onClick={() => void ctx.supprimer(photo.id)}
-            title="Supprimer cette photo"
-            aria-label="Supprimer cette photo"
-            className="shrink-0 rounded p-1 text-error hover:bg-error/10 transition-colors"
-          >
-            <span className="material-symbols-outlined text-[18px]">delete</span>
-          </button>
-        )}
-      </div>
-      {enregistre && (
-        <p role="status" className="flex items-center gap-1 text-[11px] text-green-700">
-          <span className="material-symbols-outlined text-[14px]">check</span>
-          Légende enregistrée
-        </p>
-      )}
-    </div>
-  );
-}
-
 // ── Bloc « Photos de cette fournée » ──────────────────────────────────────
 
 export function PhotosFourneeBloc({
-  etapes,
   misEnAvant = false,
 }: {
-  // Étapes de la fournée, dans l'ordre du déroulé : rattachement d'une photo.
-  etapes: { id: number; titre: string }[];
+  // Étapes de la fournée (inutilisées depuis JEP-422 : plus de choix d'étape
+  // ni de légende sous les photos du bloc) ; gardées pour les appelants.
+  etapes?: { id: number; titre: string }[];
   // Résumé d'une fournée close : bloc mis en avant (cadre, titre plus grand).
   misEnAvant?: boolean;
 }) {
@@ -571,11 +498,30 @@ export function PhotosFourneeBloc({
         Les photos, légendes et étapes sont enregistrées automatiquement.
       </p>
       {photos.length > 0 ? (
-        <StepPhotoGallery
-          photos={photos}
-          grille="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
-          sousVignette={(i) => <DetailPhoto photo={photos[i]} etapes={etapes} ctx={ctx} avecEtape />}
-        />
+        ctx.bloque ? (
+          // Lecture seule : galerie, clic = diaporama.
+          <StepPhotoGallery photos={photos} grille="grid-cols-2 sm:grid-cols-4" />
+        ) : (
+          // 2 colonnes sur téléphone, 4 dès 640 px : 8 photos = 2 lignes (JEP-422).
+          // Même tuile que sous une étape : corbeille et crayon (recadrage,
+          // zoom, rotation) en superposition sur la photo.
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {photos.map((p) => (
+              <div key={p.id} className="relative aspect-square overflow-hidden border border-dashed border-outline-variant">
+                <ImageSlot
+                  src={p.url}
+                  originalSrc={p.url}
+                  onChange={(url) => void ctx.remplacer(p.id, url)}
+                  onClear={() => void ctx.supprimer(p.id)}
+                  shape="rect"
+                  maxWidth={PHOTO_LARGEUR}
+                  aspectRatio={1}
+                  className="h-full w-full"
+                />
+              </div>
+            ))}
+          </div>
+        )
       ) : (
         <p className="text-sm italic text-on-surface-variant">
           Aucune photo pour l’instant : gardez une trace de votre réalisation, pour comparer vos essais.
