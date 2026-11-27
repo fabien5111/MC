@@ -7,6 +7,8 @@ import {
   ordresApresEchange,
   normaliserLegende,
   photosDeEtape,
+  messagePlein,
+  photosEtapesPermises,
   placesRestantes,
   prochainOrdre,
   trierPhotos,
@@ -33,9 +35,25 @@ describe('photos de réalisation — règles', () => {
   it('dépose sur le conteneur public, réservé aux membres connectés', () => {
     expect(USAGES.realisation).toEqual({ conteneur: 'photos', prefixe: 'realisations', acces: 'membre' });
   });
-  it('compte les places restantes, jamais en négatif', () => {
-    expect(placesRestantes([])).toBe(BATCH_PHOTOS_MAX);
-    expect(placesRestantes(Array(BATCH_PHOTOS_MAX + 2).fill(0))).toBe(0);
+  it('compte les places restantes par emplacement, jamais en négatif', () => {
+    expect(placesRestantes([], null)).toBe(BATCH_PHOTOS_MAX);
+    const fin = Array.from({ length: BATCH_PHOTOS_MAX + 2 }, () => ({ batch_step_id: null }));
+    expect(placesRestantes(fin, null)).toBe(0);
+    // Les photos de fin de fournée ne prennent pas la place d'une étape, et inversement.
+    expect(placesRestantes(fin, 3)).toBe(BATCH_PHOTOS_MAX);
+    const etape = [{ batch_step_id: 3 }, { batch_step_id: 3 }, { batch_step_id: 4 }];
+    expect(placesRestantes(etape, 3)).toBe(BATCH_PHOTOS_MAX - 2);
+    expect(placesRestantes(etape, null)).toBe(BATCH_PHOTOS_MAX);
+  });
+  it('réserve les photos d’étape à l’auteur de la recette', () => {
+    expect(photosEtapesPermises('u1', 'u1')).toBe(true);
+    expect(photosEtapesPermises('u2', 'u1')).toBe(false);
+    expect(photosEtapesPermises(null, 'u1')).toBe(false);
+    expect(photosEtapesPermises(undefined, undefined)).toBe(false);
+  });
+  it('nomme l’emplacement plein', () => {
+    expect(messagePlein(null)).toMatch(/pour la fournée/);
+    expect(messagePlein(5)).toMatch(/par étape/);
   });
   it('place une nouvelle photo après la dernière', () => {
     expect(prochainOrdre([])).toBe(0);

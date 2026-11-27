@@ -9,6 +9,9 @@
 // la page Confidentialité le dit. Une photo ne devient publique, au sens de
 // « affichée à d'autres », que si le membre la choisit pour son avis.
 
+// Plafond par EMPLACEMENT (JEP-422) : 8 photos par étape, et 8 photos « de la
+// fournée » (sans étape, ajoutées en fin de fournée). Le même plafond est tenu
+// par le trigger `batch_photos_plafond` en base, par couple (fournée, étape).
 export const BATCH_PHOTOS_MAX = 8;
 export const LEGENDE_MAX = 200;
 
@@ -42,8 +45,30 @@ export function normaliserLegende(v: string | null | undefined): string | null {
   return t ? t.slice(0, LEGENDE_MAX) : null;
 }
 
-export function placesRestantes(photos: readonly unknown[]): number {
-  return Math.max(0, BATCH_PHOTOS_MAX - photos.length);
+/**
+ * Places restantes dans un emplacement : l'étape `stepId`, ou la fournée
+ * elle-même (`null` : photos sans étape, dites « de fin de fournée »).
+ */
+export function placesRestantes(photos: readonly Pick<BatchPhoto, 'batch_step_id'>[], stepId: number | null): number {
+  return Math.max(0, BATCH_PHOTOS_MAX - photos.filter((p) => (p.batch_step_id ?? null) === stepId).length);
+}
+
+/**
+ * Photos d'étape permises (JEP-422) : seulement à l'AUTEUR de la recette de la
+ * fournée — elles lui servent ensuite à illustrer ses étapes (« Depuis… » →
+ * « Mes fournées »). Un projet en cours est une recette du membre : ses essais
+ * y ont droit. Recette d'un autre, supprimée ou illisible : photos de fin de
+ * fournée seulement.
+ */
+export function photosEtapesPermises(auteurRecetteId: string | null | undefined, proprietaireId: string | null | undefined): boolean {
+  return !!auteurRecetteId && auteurRecetteId === proprietaireId;
+}
+
+/** Message d'un emplacement plein. */
+export function messagePlein(stepId: number | null): string {
+  return stepId == null
+    ? `${BATCH_PHOTOS_MAX} photos au plus pour la fournée : supprimez-en une pour en ajouter une autre.`
+    : `${BATCH_PHOTOS_MAX} photos au plus par étape : supprimez-en une pour en ajouter une autre.`;
 }
 
 /** `order_index` d'une photo ajoutée : après la dernière. */
