@@ -1875,6 +1875,7 @@ mobile » (piste A retenue).
   l'écran de fin (vert si tout est terminé) ; fournée close : « Voir le
   résumé ». La barre « Fournée prête à être clôturée » est donc masquée sous
   1024 px en mode Pâtisser (`max-lg:hidden`).
+- **Changer d'étape remonte en haut de la page** (JEP-425, à toute largeur, `window.scrollTo`), jamais à l'ouverture (le lien `#etape-<id>` garde sa position). **Sous 1024 px, glisser du doigt sur l'étape** : vers la gauche = suivante, vers la droite = précédente ; geste franchement horizontal seulement (≥ 60 px, deux fois plus large que haut), ignoré dans un champ de saisie, une sélection de texte, un élément `[data-sans-glisse]` et hors de la carte dans le DOM (diaporama des photos, feuilles et confirmations sont portés dans `document.body` mais remontent leurs évènements par l'arbre React : d'où le test `contains`).
 - **Étape affichée** posée une fois à l'ouverture (`etapeInitiale` : `#etape-<id>`,
   sinon la première à faire) puis seulement par le membre — terminer une étape
   ne change jamais d'étape sous le doigt. Le sommaire (jours) affiche la
