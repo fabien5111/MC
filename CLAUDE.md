@@ -2056,6 +2056,10 @@ adaptateurs du navigateur : `components/stockage/sources/`.
   code + PKCE échangé par le navigateur (application « monopage », sans secret).
   Les scripts des sélecteurs sont chargés **à l'ouverture de la fenêtre « Depuis… »**,
   pour que le clic ouvre la fenêtre du fournisseur sans attente.
+- **Les fenêtres « Depuis… » et « Mes fournées » sont en `z-[120]`** (JEP-426) :
+  l'écran de fin de fournée est en `z-[110]` et le bouton nuage y est monté. En
+  `z-[105]`, la fenêtre s'ouvrait DERRIÈRE lui — le clic semblait ne rien faire.
+  Toute fenêtre ouvrable depuis un écran modal doit se placer au-dessus de lui.
 - **Passages par le serveur, et eux seuls** (`/api/stockage/en-ligne/*`, garde
   `membreStockage` : connecté, `refusSiCompteBloque`, refus en lecture seule, droit
   revérifié) :
