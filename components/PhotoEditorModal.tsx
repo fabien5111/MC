@@ -13,6 +13,7 @@
 // finale — les deux calculs partagent `containScale`/`fitRect`/`rotatedDims`
 // pour rester identiques.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { containScale, cropRotateImageToDataUrl, fitRect, rotatedDims, type Rotation90 } from '@/lib/images';
 
 const MAX_ZOOM = 4;
@@ -188,9 +189,16 @@ export function PhotoEditorModal({
 
   const iconBtn = 'w-10 h-10 rounded-full bg-surface-container text-on-surface flex items-center justify-center hover:bg-surface-container-high transition-colors';
 
-  return (
+  // Portée dans `document.body` : l'emplacement d'une photo d'étape est
+  // `draggable` (réordonnancement). Rendue dedans, la modale était un
+  // descendant DOM de cet élément, et tout glisser de la photo (après un zoom,
+  // c'est le seul geste utile) lançait le glisser natif de la vignette au lieu
+  // de déplacer l'image. JEP-416.
+  if (typeof document === 'undefined') return null;
+  return createPortal(
     <div
       className="fixed inset-0 z-[110] flex items-center justify-center bg-background/70 backdrop-blur-[2px] p-4"
+      onDragStart={(e) => e.preventDefault()}
       role="dialog"
       aria-modal="true"
       onClick={(e) => {
@@ -204,7 +212,15 @@ export function PhotoEditorModal({
       <div className="w-full max-w-lg bg-surface-container-low border border-outline-variant rounded-xl p-5 shadow-lg">
         <p className="font-title-md text-title-md text-on-surface mb-4">Ajuster la photo</p>
 
-        <div ref={frameRef} className="mx-auto w-full" style={{ maxWidth: STAGE_BOX.w }}>
+        {/* Hauteur FIXE : la scène épouse le ratio de la photo tournée, donc
+            changeait de hauteur à chaque rotation — la modale grandissait et les
+            boutons se déplaçaient sous le doigt. La scène est centrée dans cette
+            boîte constante. */}
+        <div
+          ref={frameRef}
+          className="mx-auto w-full flex items-center justify-center"
+          style={{ maxWidth: STAGE_BOX.w, height: STAGE_BOX.h }}
+        >
           <div
             className="relative mx-auto overflow-hidden rounded-lg bg-surface-container-high touch-none select-none"
             style={{ width: stageSize.w, height: stageSize.h }}
@@ -285,6 +301,7 @@ export function PhotoEditorModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

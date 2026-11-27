@@ -172,6 +172,17 @@ export function HeroEditor({
           className="h-full w-full"
         />
       </div>
+      {hero && (
+        <label className="flex items-start gap-1.5 text-[11px] leading-tight text-on-surface-variant cursor-pointer">
+          <input
+            type="checkbox"
+            checked={ai}
+            onChange={(e) => setAi(e.target.checked)}
+            className="w-3.5 h-3.5 mt-0.5 rounded border-outline accent-primary cursor-pointer shrink-0"
+          />
+          Indication photo retravaillée avec l&apos;IA
+        </label>
+      )}
     </div>
   );
 }
