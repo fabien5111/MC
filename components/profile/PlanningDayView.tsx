@@ -703,7 +703,7 @@ export function PlanningDayView({
               disabled={busy}
               title="Supprimer la fournée"
               aria-label={`Supprimer la fournée ${it.recipeTitleBrut}`}
-              className="no-print flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container hover:text-error disabled:opacity-40"
+              className="no-print flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-error hover:bg-error/10 disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-[18px]">delete</span>
             </button>
