@@ -13,7 +13,7 @@
 // mes fournées (réduits à une ligne), puis les photos en vignettes. Ce qui se
 // constate APRÈS (commentaire, quantité obtenue) est en bas, dans « Fin
 // d'étape ». Le déroulé complet reste celui de l'ordinateur et de l'impression.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type TouchEvent } from 'react';
 import { NomIngredient } from '@/components/IngredientNomsProvider';
 import { ARacheterButton } from '@/components/batch/ARacheterButton';
 import { EcartProduitChamp } from '@/components/batch/EcartProduitChamp';
@@ -490,17 +490,38 @@ export function PatisserFocus({
   const etapes = etapesOrdonnees(batch, jalons);
   const idx = Math.max(0, etapes.findIndex((e) => e.step.id === etapeId));
   const courante = etapes[idx];
-  const haut = useRef<HTMLDivElement>(null);
   const premier = useRef(true);
-  // Changement d'étape : on remonte en haut de l'étape (sauf à l'ouverture).
+  // Changement d'étape : retour en HAUT DE PAGE, à toute largeur (JEP-425 ;
+  // l'ancien `scrollIntoView` sur le repère, mobile seul, s'arrêtait sous
+  // l'en-tête ou au milieu de la page). Jamais à l'ouverture : le lien
+  // `#etape-<id>` garde sa position.
   useEffect(() => {
     if (premier.current) {
       premier.current = false;
       return;
     }
-    if (window.matchMedia('(min-width: 1024px)').matches) return;
-    haut.current?.scrollIntoView({ block: 'start' });
+    window.scrollTo({ top: 0, behavior: 'auto' });
   }, [courante?.step.id]);
+
+  // Glisser du doigt sur l'étape (sous 1024 px, JEP-425) : vers la gauche =
+  // étape suivante, vers la droite = précédente. Seulement un geste franchement
+  // horizontal (≥ 60 px et deux fois plus large que haut), pour ne jamais
+  // détourner le défilement vertical. Ignoré dans un champ de saisie, une
+  // sélection de texte, et hors de la carte dans le DOM : les fenêtres portées
+  // dans `document.body` (diaporama des photos, qui a son propre glissement,
+  // feuilles, confirmations) remontent leurs évènements tactiles par l'arbre
+  // React, d'où le test `contains`.
+  const zoneGlisse = useRef<HTMLDivElement>(null);
+  const debutGlisse = useRef<{ x: number; y: number } | null>(null);
+  const surDebutGlisse = (ev: TouchEvent) => {
+    debutGlisse.current = null;
+    if (ev.touches.length !== 1) return;
+    const cible = ev.target as Element | null;
+    if (!cible || !zoneGlisse.current?.contains(cible)) return;
+    if (cible.closest('input, textarea, select, [contenteditable="true"], [data-sans-glisse]')) return;
+    if (window.matchMedia('(min-width: 1024px)').matches) return;
+    debutGlisse.current = { x: ev.touches[0].clientX, y: ev.touches[0].clientY };
+  };
 
   // Hauteur RÉELLE de la barre basse du site : `--mobile-nav-h` (72 px) est une
   // estimation, que la taille des polices, l'encoche ou le rond central
@@ -526,10 +547,21 @@ export function PatisserFocus({
   const suiv = etapes[idx + 1];
   const toutFini = etapes.every((e) => e.terminee);
   const jalon = jalons[courante.jalon];
+  const surFinGlisse = (ev: TouchEvent) => {
+    const debut = debutGlisse.current;
+    debutGlisse.current = null;
+    if (!debut || ev.changedTouches.length === 0) return;
+    if (window.getSelection()?.toString()) return;
+    const dx = ev.changedTouches[0].clientX - debut.x;
+    const dy = ev.changedTouches[0].clientY - debut.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < 2 * Math.abs(dy)) return;
+    const cible = dx < 0 ? suiv : prec;
+    if (cible) onEtape(cible.step.id);
+  };
 
   return (
     <div className="print:hidden">
-      <div ref={haut} id="patisser-focus" className="scroll-mt-24" />
+      <div id="patisser-focus" />
       <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:gap-8">
       {/* Jauge : un segment par étape, regroupés par jour. Vert = terminée,
           marron = il reste quelque chose à faire ; l'étape affichée est
@@ -601,7 +633,13 @@ export function PatisserFocus({
         })}
       </nav>
 
-      <div className="min-w-0">
+      <div
+        ref={zoneGlisse}
+        className="min-w-0"
+        onTouchStart={surDebutGlisse}
+        onTouchEnd={surFinGlisse}
+        onTouchCancel={() => (debutGlisse.current = null)}
+      >
       <CarteEtape
         key={courante.step.id}
         batch={batch}
