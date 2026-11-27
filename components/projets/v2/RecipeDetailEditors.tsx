@@ -168,6 +168,7 @@ export function HeroEditor({
           }}
           shape="rounded"
           maxWidth={1400}
+          aspectRatio={16 / 9}
           placeholder="Déposez la photo du dessert fini"
           className="h-full w-full"
         />
