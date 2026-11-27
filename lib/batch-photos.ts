@@ -166,3 +166,33 @@ export function grouperParFournee(photos: readonly Realisation[]): GroupeRealisa
     .sort((a, b) => (b.date ?? b.recente.slice(0, 10)).localeCompare(a.date ?? a.recente.slice(0, 10)) || b.recente.localeCompare(a.recente))
     .map((g) => ({ fourneeId: g.fourneeId, titre: g.titre, date: g.date, photos: trierPhotos(g.photos) }));
 }
+
+/**
+ * Nouveaux `order_index` après l'insertion de la photo `id` avant (`avant`) ou
+ * après (`apres`) la photo `idCible`, dans une même étape (JEP-434). Mêmes règles
+ * que `ordresApresEchange` : seules les photos dont l'ordre change sont rendues,
+ * les ordres existants sont réutilisés, renumérotés s'ils ne sont pas distincts.
+ */
+export function ordresApresInsertion(
+  photos: readonly Pick<BatchPhoto, 'id' | 'batch_step_id' | 'order_index' | 'created_at'>[],
+  id: number,
+  idCible: number,
+  zone: 'avant' | 'apres',
+): { id: number; ordre: number }[] {
+  const a = photos.find((p) => p.id === id);
+  const b = photos.find((p) => p.id === idCible);
+  if (!a || !b || id === idCible || a.batch_step_id !== b.batch_step_id) return [];
+  const liste = trierPhotos(photos.filter((p) => p.batch_step_id === a.batch_step_id));
+  const i = liste.findIndex((p) => p.id === id);
+  const apres = [...liste];
+  const [deplacee] = apres.splice(i, 1);
+  const cible = apres.findIndex((p) => p.id === idCible);
+  apres.splice(zone === 'apres' ? cible + 1 : cible, 0, deplacee);
+  const valeurs = liste.map((p) => p.order_index);
+  const distinctes = new Set(valeurs).size === valeurs.length;
+  const ordres = distinctes ? valeurs : valeurs.map((_, n) => valeurs[0] + n);
+  return apres
+    .map((p, n) => ({ id: p.id, ordre: ordres[n], avant: p.order_index }))
+    .filter((x) => x.ordre !== x.avant)
+    .map(({ id, ordre }) => ({ id, ordre }));
+}

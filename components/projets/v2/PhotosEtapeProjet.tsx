@@ -18,7 +18,7 @@ import { useRegisterSection, type OptionsSauvegarde, type SectionRegistry } from
 import { resizeFilesToDataUrls } from '@/lib/images';
 import { ImageSlot } from '@/components/ImageSlot';
 import { BoutonsOrdrePhoto } from '@/components/BoutonsOrdrePhoto';
-import { swapAt } from '@/lib/photo-reorder';
+import { destinationInsertion, moveAt, swapAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { SourceFourneesProvider } from '@/components/recipe/PhotosDeMesFournees';
 import { createClient } from '@/lib/supabase/client';
@@ -61,7 +61,11 @@ export function PhotosEtapeProjet({
   });
   // Réordonner : glisser-déposer (souris) ou flèches (doigt) — échange de deux
   // photos du brouillon, enregistré comme le reste par l'écriture automatique.
-  const reorder = usePhotoDragReorder((de, vers) => setBrouillon((prev) => swapAt(prev, Number(de), Number(vers))));
+  const reorder = usePhotoDragReorder(
+    (de, vers) => setBrouillon((prev) => swapAt(prev, Number(de), Number(vers))),
+    // Insertion dans la gouttière (JEP-434).
+    (de, vers, zone) => setBrouillon((prev) => moveAt(prev, Number(de), destinationInsertion(Number(de), Number(vers), zone))),
+  );
   const maj = (k: number, patch: Partial<Photo>) =>
     setBrouillon((prev) => prev.map((x, m) => (m === k ? { ...x, ...patch } : x)));
 
@@ -147,7 +151,7 @@ export function PhotosEtapeProjet({
         {brouillon.map((p, k) => (
           <div
             key={k}
-            className={`relative aspect-square overflow-hidden border border-dashed cursor-grab active:cursor-grabbing ${
+            className={`relative aspect-square overflow-hidden border border-dashed cursor-grab active:cursor-grabbing ${reorder.classeDepot(String(k))} ${
               reorder.overKey === String(k) ? 'border-primary ring-2 ring-primary' : 'border-outline-variant'
             }`}
             title="Glisser pour réordonner"

@@ -28,3 +28,32 @@ export function moveAt<T>(arr: T[], from: number, to: number): T[] {
   next.splice(to, 0, item);
   return next;
 }
+
+/** Côté d'une photo où tombe le relâchement : bord avant, centre (échange) ou bord après. */
+export type ZoneDepot = 'avant' | 'centre' | 'apres';
+
+/** Part de la largeur, à chaque bord d'une vignette, qui sert de gouttière d'insertion. */
+export const PART_GOUTTIERE = 0.25;
+
+/**
+ * Zone visée selon la position horizontale du pointeur dans la vignette :
+ * bords = gouttière d'insertion (entre deux photos), centre = échange (JEP-434).
+ * Largeur nulle ou position hors vignette : centre (comportement d'origine).
+ */
+export function zoneDepot(x: number, largeur: number, part: number = PART_GOUTTIERE): ZoneDepot {
+  if (!(largeur > 0)) return 'centre';
+  const r = x / largeur;
+  if (r < part) return 'avant';
+  if (r > 1 - part) return 'apres';
+  return 'centre';
+}
+
+/**
+ * Position finale d'une photo `from` insérée avant (`avant`) ou après (`apres`)
+ * la photo `cible`, dans un tableau dense — à passer à `moveAt`. Compte tenu du
+ * retrait préalable de `from` : insérer juste à côté de soi ne change rien.
+ */
+export function destinationInsertion(from: number, cible: number, zone: 'avant' | 'apres'): number {
+  const t = zone === 'apres' ? cible + 1 : cible;
+  return from < t ? t - 1 : t;
+}

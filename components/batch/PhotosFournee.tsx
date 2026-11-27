@@ -35,6 +35,7 @@ import {
   messagePlein,
   PHOTO_LARGEUR,
   ordresApresEchange,
+  ordresApresInsertion,
   photosDeEtape,
   placesRestantes,
   prochainOrdre,
@@ -65,6 +66,7 @@ type Ctx = {
   remplacer: (id: number, dataUrl: string) => Promise<void>;
   // Échange la place de deux photos d'une même étape (glisser-déposer, flèches).
   echanger: (idA: number, idB: number) => Promise<void>;
+  inserer: (id: number, idCible: number, zone: 'avant' | 'apres') => Promise<void>;
 };
 
 const PhotosCtx = createContext<Ctx | null>(null);
@@ -216,11 +218,12 @@ export function PhotosFourneeProvider({
     [dialog, writeGuard],
   );
 
-  const echanger = useCallback(
-    async (idA: number, idB: number) => {
+  // Écrit un nouvel ordre : état local d'abord, retour arrière si l'écriture échoue.
+  const appliquerOrdres = useCallback(
+    async (calcul: (avant: BatchPhoto[]) => { id: number; ordre: number }[]) => {
       if (!writeGuard('Photo de réalisation')) return;
       const avant = courantes.current;
-      const ordres = ordresApresEchange(avant, idA, idB);
+      const ordres = calcul(avant);
       if (!ordres.length) return;
       const parId = new Map(ordres.map((o) => [o.id, o.ordre]));
       setPhotos(avant.map((p) => (parId.has(p.id) ? { ...p, order_index: parId.get(p.id)! } : p)));
@@ -232,10 +235,19 @@ export function PhotosFourneeProvider({
     },
     [dialog, writeGuard],
   );
+  const echanger = useCallback(
+    (idA: number, idB: number) => appliquerOrdres((avant) => ordresApresEchange(avant, idA, idB)),
+    [appliquerOrdres],
+  );
+  // Insertion dans la gouttière entre deux photos (JEP-434).
+  const inserer = useCallback(
+    (id: number, idCible: number, zone: 'avant' | 'apres') => appliquerOrdres((avant) => ordresApresInsertion(avant, id, idCible, zone)),
+    [appliquerOrdres],
+  );
 
   const valeur = useMemo<Ctx>(
-    () => ({ photos, bloque, photosEtapes, ajouter, supprimer, legender, rattacher, remplacer, echanger }),
-    [photos, bloque, photosEtapes, ajouter, supprimer, legender, rattacher, remplacer, echanger],
+    () => ({ photos, bloque, photosEtapes, ajouter, supprimer, legender, rattacher, remplacer, echanger, inserer }),
+    [photos, bloque, photosEtapes, ajouter, supprimer, legender, rattacher, remplacer, echanger, inserer],
   );
 
   if (!initiales?.disponible) return <>{children}</>;
@@ -530,7 +542,10 @@ export function PhotosEtape({
 }) {
   const ctx = usePhotosFournee();
   // Glisser-déposer (souris) ; les flèches de chaque photo servent au doigt.
-  const reorder = usePhotoDragReorder((de, vers) => void ctx?.echanger(Number(de), Number(vers)));
+  const reorder = usePhotoDragReorder(
+    (de, vers) => void ctx?.echanger(Number(de), Number(vers)),
+    (de, vers, zone) => void ctx?.inserer(Number(de), Number(vers), zone),
+  );
   // Photos d'étape réservées à l'auteur de la recette (JEP-422) ; une photo
   // d'étape plus ancienne reste visible dans le bloc « Photos de cette fournée ».
   if (!ctx || !ctx.photosEtapes) return null;
@@ -551,7 +566,7 @@ export function PhotosEtape({
           {photos.map((p, k) => (
             <div
               key={p.id}
-              className={`relative aspect-square overflow-hidden border border-dashed ${
+              className={`relative aspect-square overflow-hidden border border-dashed ${reorder.classeDepot(String(p.id))} ${
                 reorder.overKey === String(p.id) ? 'border-primary ring-2 ring-primary' : 'border-outline-variant'
               } ${ctx.bloque ? '' : 'cursor-grab active:cursor-grabbing'}`}
               title={ctx.bloque ? undefined : 'Glisser pour réordonner'}
