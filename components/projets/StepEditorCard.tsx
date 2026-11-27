@@ -356,6 +356,7 @@ export function StepEditorCard({
                 <div className="flex flex-wrap min-[1232px]:flex-nowrap items-center min-[1232px]:items-start gap-x-4 gap-y-1.5">
                   <div className="relative flex-[2] min-w-0">
                     <input
+                      data-cible={`ing-${j}`}
                       value={g.name}
                       // Nom saisi ≠ ingrédient rattaché : le rattachement est refait
                       // à l'enregistrement. Un ingrédient du référentiel pré-remplit
@@ -538,6 +539,7 @@ export function StepEditorCard({
         {!modeListe ? (
           <>
             <textarea
+              data-cible="description"
               ref={autoGrow}
               value={step.description ?? ''}
               onChange={(e) => {
@@ -603,6 +605,7 @@ export function StepEditorCard({
                   drag_indicator
                 </span>
                 <textarea
+                  data-cible={`sous-${k}`}
                   ref={autoGrow}
                   value={t}
                   onChange={(e) => {
@@ -799,6 +802,7 @@ export function StepEditorCard({
         </summary>
         <div className="pb-6">
           <textarea
+            data-cible="conseil"
             ref={autoGrow}
             value={step.tips ?? ''}
             onChange={(e) => {

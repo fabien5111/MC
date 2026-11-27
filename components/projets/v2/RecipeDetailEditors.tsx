@@ -404,6 +404,7 @@ export function OrganisationEditor({
   utensilNames,
   mutate,
   sections,
+  tempsEtapes = [],
 }: {
   recipe: RecipeFull;
   difficultyId: number | null;
@@ -412,6 +413,9 @@ export function OrganisationEditor({
   mutate: Mutate;
   busy?: boolean;
   sections?: SectionRegistry;
+  // Temps de chaque étape, par préparation (JEP-427) : rappelés sous la somme
+  // pour voir d'où vient un total à ajuster. Un clic mène à l'étape.
+  tempsEtapes?: TempsPreparation[];
 }) {
   const init = {
     // Affichée triée dès l'ouverture : la référence de « modifié » l'est aussi
@@ -583,6 +587,7 @@ export function OrganisationEditor({
             <span>Total : {avecHeures(sommes.total)}</span>
           </div>
         </div>
+        {tempsEtapes.some((p) => p.etapes.length > 0) && <TempsDesEtapes preparations={tempsEtapes} />}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(
             [
@@ -642,13 +647,95 @@ export function OrganisationEditor({
   );
 }
 
+// ── Temps de chaque étape (JEP-427) ──────────────────────────────────────
+export type TempsPreparation = {
+  nom: string;
+  etapes: { id: number | string; titre: string; prep: number; cook: number; wait: number; onAller?: () => void }[];
+};
+
+// Tableau en lecture seule : une ligne par étape, groupées par préparation, avec
+// un sous-total par préparation. Les temps se corrigent dans « Modifier cette
+// préparation » ; le titre de l'étape y mène (défilement vers l'étape).
+function TempsDesEtapes({ preparations }: { preparations: TempsPreparation[] }) {
+  const cellule = (n: number) => (n ? avecHeures(n) : '—');
+  const entete = 'px-2 py-1 text-right font-label-md text-[11.5px] uppercase tracking-widest text-outline';
+  return (
+    <details className="mb-3 rounded-lg border border-outline-variant/60 px-3 py-2" open>
+      <summary className="cursor-pointer font-label-md text-[11.5px] uppercase tracking-widest text-outline">
+        Temps de chaque étape
+      </summary>
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full min-w-[480px] text-[14px] text-on-surface">
+          <thead>
+            <tr>
+              <th className={`${entete} text-left`}>Étape</th>
+              <th className={entete}>Préparation</th>
+              <th className={entete}>Cuisson</th>
+              <th className={entete}>Repos</th>
+              <th className={entete}>Total</th>
+            </tr>
+          </thead>
+          {preparations
+            .filter((p) => p.etapes.length > 0)
+            .map((p) => {
+              const somme = (k: 'prep' | 'cook' | 'wait') => p.etapes.reduce((n, e) => n + e[k], 0);
+              const [sp, sc, sw] = [somme('prep'), somme('cook'), somme('wait')];
+              return (
+                <tbody key={p.nom} className="border-t border-outline-variant/60">
+                  {preparations.length > 1 && (
+                    <tr>
+                      <td colSpan={5} className="px-2 pt-2 font-semibold text-primary">{p.nom}</td>
+                    </tr>
+                  )}
+                  {p.etapes.map((e) => (
+                    <tr key={e.id}>
+                      <td className="px-2 py-0.5">
+                        {e.onAller ? (
+                          <button type="button" onClick={e.onAller} className="text-left underline-offset-2 hover:underline">
+                            {e.titre}
+                          </button>
+                        ) : (
+                          e.titre
+                        )}
+                      </td>
+                      <td className="px-2 py-0.5 text-right tabular-nums">{cellule(e.prep)}</td>
+                      <td className="px-2 py-0.5 text-right tabular-nums">{cellule(e.cook)}</td>
+                      <td className="px-2 py-0.5 text-right tabular-nums">{cellule(e.wait)}</td>
+                      <td className="px-2 py-0.5 text-right tabular-nums">{cellule(e.prep + e.cook + e.wait)}</td>
+                    </tr>
+                  ))}
+                  {p.etapes.length > 1 && (
+                    <tr className="text-on-surface-variant">
+                      <td className="px-2 py-0.5 italic">Sous-total</td>
+                      <td className="px-2 py-0.5 text-right tabular-nums">{cellule(sp)}</td>
+                      <td className="px-2 py-0.5 text-right tabular-nums">{cellule(sc)}</td>
+                      <td className="px-2 py-0.5 text-right tabular-nums">{cellule(sw)}</td>
+                      <td className="px-2 py-0.5 text-right tabular-nums">{cellule(sp + sc + sw)}</td>
+                    </tr>
+                  )}
+                </tbody>
+              );
+            })}
+        </table>
+      </div>
+    </details>
+  );
+}
+
 // ── Conseils et source ──────────────────────────────────────────────────
+// Deux blocs de la page projet, aux titres de la fiche recette (JEP-429) :
+// « Conseils et astuces de la recette » (conseils + provenance) et « Conseils
+// de dégustation et de conservation ». Une instance par bloc (`partie`), chacune
+// avec sa section au registre et n'écrivant QUE ses colonnes — sinon
+// l'enregistrement de l'une réécrirait l'autre avec sa valeur d'ouverture.
 export function ConseilsEditor({
+  partie,
   recipe,
   mutate,
   sections,
   ajouts = null,
 }: {
+  partie: 'conseils' | 'degustation';
   recipe: RecipeFull;
   mutate: Mutate;
   busy?: boolean;
@@ -665,9 +752,17 @@ export function ConseilsEditor({
     videoUrl: recipe.video_url ?? '',
   };
   const [v, setV] = useState(init);
-  const signature = JSON.stringify(v);
-  const [base, setBase] = useState(() => JSON.stringify(init));
-  useRegisterSection(sections, 'conseils', { label: 'Conseils et source', dirty: signature !== base, signature, save: enregistrer });
+  const conseils = partie === 'conseils';
+  const signature = JSON.stringify(conseils ? [v.tips, v.source, v.sourceUrl, v.videoUrl] : [v.serving]);
+  const [base, setBase] = useState(() =>
+    JSON.stringify(conseils ? [init.tips, init.source, init.sourceUrl, init.videoUrl] : [init.serving]),
+  );
+  useRegisterSection(sections, partie, {
+    label: conseils ? 'Conseils de la recette' : 'Dégustation et conservation',
+    dirty: signature !== base,
+    signature,
+    save: enregistrer,
+  });
   const maj = (k: keyof typeof init) => (e: { target: { value: string } }) => setV((p) => ({ ...p, [k]: e.target.value }));
   const dernierAjout = useRef(0);
   useEffect(() => {
@@ -675,27 +770,45 @@ export function ConseilsEditor({
     dernierAjout.current = ajouts.id;
     setV((p) => ({
       ...p,
-      tips: ajouts.tips ? ajouterTexte(p.tips, ajouts.tips) : p.tips,
-      serving: ajouts.serving ? ajouterTexte(p.serving, ajouts.serving) : p.serving,
+      tips: conseils && ajouts.tips ? ajouterTexte(p.tips, ajouts.tips) : p.tips,
+      serving: !conseils && ajouts.serving ? ajouterTexte(p.serving, ajouts.serving) : p.serving,
     }));
     regrowAll();
-  }, [ajouts]);
+  }, [ajouts, conseils]);
 
   async function enregistrer(options?: OptionsSauvegarde) {
     const sigAppel = signature;
     const ok = await mutate(
       () =>
-        majRecette(recipe.id, {
-          tips: v.tips.trim() || null,
-          serving_advice: v.serving.trim() || null,
-          source: v.source.trim() || null,
-          source_url: v.sourceUrl.trim() || null,
-          video_url: v.videoUrl.trim() || null,
-        }),
-      { errorLabel: 'Enregistrement des conseils', silent: options?.silencieux },
+        majRecette(
+          recipe.id,
+          conseils
+            ? {
+                tips: v.tips.trim() || null,
+                source: v.source.trim() || null,
+                source_url: v.sourceUrl.trim() || null,
+                video_url: v.videoUrl.trim() || null,
+              }
+            : { serving_advice: v.serving.trim() || null },
+        ),
+      { errorLabel: conseils ? 'Enregistrement des conseils' : 'Enregistrement des conseils de dégustation', silent: options?.silencieux },
     );
     if (ok) setBase(sigAppel);
     return ok;
+  }
+
+  if (!conseils) {
+    return (
+      <ZoneRedaction cible={{ champ: 'degustation' }} valeur={v.serving} onAppliquer={(t: string) => setV((p) => ({ ...p, serving: t }))}>
+        {(boutonIA, panneauIA) => (
+          <div>
+            {boutonIA && <div className="mb-1 flex justify-end">{boutonIA}</div>}
+            <textarea ref={autoGrow} value={v.serving} onChange={(e) => { maj('serving')(e); autoGrow(e.target); }} rows={2} aria-label="Conseils de dégustation et de conservation" className={`${champ} resize-none overflow-hidden`} placeholder="Température de dégustation, accompagnement, conservation…" />
+            {panneauIA}
+          </div>
+        )}
+      </ZoneRedaction>
+    );
   }
 
   return (
@@ -703,23 +816,8 @@ export function ConseilsEditor({
       <ZoneRedaction cible={{ champ: 'conseils' }} valeur={v.tips} onAppliquer={(t: string) => setV((p) => ({ ...p, tips: t }))}>
         {(boutonIA, panneauIA) => (
           <div>
-            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-              <label className="font-label-md text-label-md text-outline">CONSEILS</label>
-              {boutonIA}
-            </div>
-            <textarea ref={autoGrow} value={v.tips} onChange={(e) => { maj('tips')(e); autoGrow(e.target); }} rows={3} className={`${champ} resize-none overflow-hidden`} placeholder="Astuces de réalisation, conservation…" />
-            {panneauIA}
-          </div>
-        )}
-      </ZoneRedaction>
-      <ZoneRedaction cible={{ champ: 'degustation' }} valeur={v.serving} onAppliquer={(t: string) => setV((p) => ({ ...p, serving: t }))}>
-        {(boutonIA, panneauIA) => (
-          <div>
-            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-              <label className="font-label-md text-label-md text-outline">CONSEILS DE SERVICE</label>
-              {boutonIA}
-            </div>
-            <textarea ref={autoGrow} value={v.serving} onChange={(e) => { maj('serving')(e); autoGrow(e.target); }} rows={2} className={`${champ} resize-none overflow-hidden`} placeholder="Température de dégustation, accompagnement…" />
+            {boutonIA && <div className="mb-1 flex justify-end">{boutonIA}</div>}
+            <textarea ref={autoGrow} value={v.tips} onChange={(e) => { maj('tips')(e); autoGrow(e.target); }} rows={3} aria-label="Conseils et astuces de la recette" className={`${champ} resize-none overflow-hidden`} placeholder="Astuces de réalisation…" />
             {panneauIA}
           </div>
         )}

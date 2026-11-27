@@ -583,14 +583,27 @@ export async function writeAssemblyStep(
 // (`projectValidationBlockers`) sont vérifiés par l'appelant, à l'affichage
 // comme avant l'appel. `status` ne bouge pas : la validation rend le projet
 // utilisable comme une recette (§8.2), elle ne la publie pas.
+// `fourneesRetenues` (JEP-430) : fournées d'essai que le membre envoie dans la
+// recette — leur marque d'essai (`batches.essai_projet`) est levée, elles
+// deviennent des fournées ordinaires de la fiche. Les autres restent des essais,
+// visibles sur la page du projet seulement. Colonne absente (migration pas
+// jouée) : rien à lever, la validation passe quand même.
 export async function validateProject(
   supabase: Supabase,
   recipeId: string,
   components: { name: string; role: string | null }[],
+  fourneesRetenues: number[] = [],
 ) {
   await writeAssemblyStep(supabase, recipeId, components);
   const { error } = await supabase.from('recipes').update({ project_stage: 'ready' } as never).eq('id', recipeId);
   if (error) throw error;
+  if (!fourneesRetenues.length) return;
+  const { error: bErr } = await supabase
+    .from('batches')
+    .update({ essai_projet: false } as never)
+    .eq('recipe_id', recipeId)
+    .in('id', fourneesRetenues);
+  if (bErr && !/essai_projet/.test(bErr.message)) throw bErr;
 }
 
 // Ustensiles d'une préparation copiée d'une recette existante : mémorisés sur

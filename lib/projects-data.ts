@@ -3,7 +3,7 @@
 // client, qui n'y tirerait que le build cassé. Le pendant pur —
 // constantes, types et prédicats — est dans lib/projects.ts.
 import { createClient } from '@/lib/supabase/server';
-import type { ComponentUtensil } from '@/lib/projects';
+import { estFourneeEssai, type ComponentUtensil } from '@/lib/projects';
 import type { Json } from '@/lib/database.types';
 
 // Un composant tel que l'écran de dialogue en a besoin. `steps` n'est pas la
@@ -336,10 +336,15 @@ export type ProjectTrial = {
   verdict: string | null;
   note: string | null;
   createdAt: string | null;
+  // Fournée d'essai (JEP-430) : faux pour une fournée envoyée dans la recette à
+  // la validation, ou lancée depuis la fiche d'un projet validé.
+  essai: boolean;
   lines: TrialLine[];
 };
 
-export async function getProjectTrials(recipeId: string): Promise<ProjectTrial[]> {
+// `enCours` : projet en cours (`wizard`) — sans la colonne `essai_projet`
+// (migration pas jouée), toutes ses fournées valent essai (ancienne règle).
+export async function getProjectTrials(recipeId: string, enCours = true): Promise<ProjectTrial[]> {
   const supabase = await createClient();
 
   // `trial_verdict` est absente de lib/database.types.ts tant que sa migration
@@ -413,6 +418,7 @@ export async function getProjectTrials(recipeId: string): Promise<ProjectTrial[]
     verdict: b.trial_verdict ?? null,
     note: b.commentaire_global,
     createdAt: b.created_at,
+    essai: estFourneeEssai(b, enCours),
     lines: parBatch.get(b.id) ?? [],
   }));
 }

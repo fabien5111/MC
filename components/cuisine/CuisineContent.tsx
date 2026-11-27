@@ -21,7 +21,7 @@
 // que je fais aujourd'hui, toutes fournées confondues ? » — la vue par
 // fournée reste à un clic.
 import { libelleAjustement } from '@/lib/batch-ai';
-import { isProjectDraft, titreAvecProjet } from '@/lib/projects';
+import { estFourneeEssai, isProjectDraft, titreAvecProjet } from '@/lib/projects';
 import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -492,7 +492,7 @@ export function CuisineContent({
               return (
                 <div key={p.id} className="flex items-start gap-4 rounded-lg border border-outline-variant bg-white p-4 transition-colors hover:bg-surface-container">
                   <Link href={`/fournee/${p.id}`} className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                    <VignetteFournee recette={p.recipes} />
+                    <VignetteFournee recette={p.recipes} fournee={p} />
                   </Link>
                   {/* Colonne de droite : titre au niveau du haut de la photo, infos
                       serrées, gestes dessous — la carte ne dépasse guère la photo. */}
@@ -682,7 +682,7 @@ export function CuisineContent({
                     return (
                       <div key={p.id} className="flex items-start gap-4 rounded-lg border border-outline-variant bg-white p-4 opacity-80 transition-opacity hover:opacity-100">
                         <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container-high">
-                          <VignetteFournee recette={p.recipes} />
+                          <VignetteFournee recette={p.recipes} fournee={p} />
                         </Link>
                         <div className="min-w-0 flex-1">
                           <Link href={`/fournee/${p.id}?lecture=1&mode=preparer`} className="block">
@@ -764,12 +764,16 @@ export function CuisineContent({
 // pas de photo, et pastille « Essai » posée sur la photo quand il en a une.
 function VignetteFournee({
   recette,
+  fournee,
   compacte = false,
 }: {
   recette: { hero_thumb_url: string | null; kind?: string | null; project_stage?: string | null } | null;
+  // Fournée lue : sa marque `essai_projet` (JEP-430) garde la pastille sur un
+  // essai resté hors de la recette après la validation du projet.
+  fournee?: object;
   compacte?: boolean;
 }) {
-  const essai = isProjectDraft(recette);
+  const essai = fournee ? estFourneeEssai(fournee, isProjectDraft(recette)) : isProjectDraft(recette);
   return (
     <>
       {recette?.hero_thumb_url ? (

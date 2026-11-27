@@ -98,6 +98,13 @@ export function ProjectMarking({
             </ul>
           )}
 
+          {/* Les fournées d'essai ne sont pas sur la fiche (JEP-430) : elles
+              restent sur la page du projet validé. */}
+          {isOwner && (
+            <a href={`/projets/${recipeId}`} className="mb-2 mr-4 inline-block font-label-md text-[12px] font-semibold text-primary hover:underline">
+              Voir le projet et ses essais
+            </a>
+          )}
           {isOwner && stage === 'ready' && !isPublished && (
             <button
               type="button"

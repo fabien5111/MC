@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { stepTimeSums } from '@/lib/recipe-view';
-import { estimerParts, pointsRestants, empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, baseDeLigne, coefPreparation, utensilsToAdd, componentScaleProposal, scaleIncompatibility } from '@/lib/projects';
+import { estimerParts, pointsRestants, empreinteEtapes, empreinteQuantites, projectTodo, buildProjectFormatUpdate, projectFormatKey, projectV2BlockStates, lignesRendement, quantitiesStale, baseDeLigne, coefPreparation, utensilsToAdd, componentScaleProposal, scaleIncompatibility, isProjectValidated, estFourneeEssai, selectionInitialeEssais } from '@/lib/projects';
 
 describe('projectV2BlockStates', () => {
   it('ne débloque que l’intention, l’identité et le format sur un projet vierge', () => {
@@ -302,5 +302,41 @@ describe('estimerParts', () => {
   it('rien sans dimension utile, ni en format libre', () => {
     expect(estimerParts('round', {}, 1)).toBeNull();
     expect(estimerParts('free', {}, 1)).toBeNull();
+  });
+});
+
+describe('projets validés et fournées d’essai (JEP-430)', () => {
+  it('reconnaît un projet validé ou dissous, jamais un projet en cours ni une recette', () => {
+    expect(isProjectValidated({ kind: 'project', project_stage: 'ready' })).toBe(true);
+    expect(isProjectValidated({ kind: 'project', project_stage: 'dissolved' })).toBe(true);
+    expect(isProjectValidated({ kind: 'project', project_stage: 'wizard' })).toBe(false);
+    expect(isProjectValidated({ kind: 'recipe', project_stage: null })).toBe(false);
+    expect(isProjectValidated(null)).toBe(false);
+  });
+
+  it('lit la marque d’essai quand la colonne existe, sinon retombe sur l’état du projet', () => {
+    expect(estFourneeEssai({ essai_projet: true }, false)).toBe(true);
+    expect(estFourneeEssai({ essai_projet: false }, true)).toBe(false);
+    expect(estFourneeEssai({ essai_projet: null }, true)).toBe(false);
+    expect(estFourneeEssai({ id: 1 }, true)).toBe(true);
+    expect(estFourneeEssai({ id: 1 }, false)).toBe(false);
+  });
+
+  it('pré-coche les seuls essais jugés « Validée »', () => {
+    expect(
+      selectionInitialeEssais([
+        { id: 1, verdict: 'validated' },
+        { id: 2, verdict: 'ok' },
+        { id: 3, verdict: null },
+        { id: 4, verdict: 'validated' },
+      ]),
+    ).toEqual([1, 4]);
+  });
+});
+
+describe('bloc « Conseils de dégustation et de conservation » (JEP-429)', () => {
+  it('s’ouvre comme les conseils, dès qu’une préparation a sa recette', () => {
+    expect(projectV2BlockStates({ measure_type: 'mold', servings: 8, components: [{ resolved: false }] }).degustation.unlocked).toBe(false);
+    expect(projectV2BlockStates({ measure_type: 'mold', servings: 8, components: [{ resolved: true }] }).degustation.unlocked).toBe(true);
   });
 });

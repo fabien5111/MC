@@ -4,6 +4,7 @@
 // `lib/batch-photos.ts`. Table absente (migration pas jouée) : rien n'est
 // affiché, aucune erreur.
 import { createClient } from '@/lib/supabase/server';
+import { estFourneeEssai } from '@/lib/projects';
 import { estTableAbsente, trierPhotos, type BatchPhoto, type PhotosFourneeInitiales, type Realisation } from '@/lib/batch-photos';
 
 const COLONNES = 'id, batch_id, batch_step_id, url, thumb_url, legende, order_index, created_at';
@@ -44,9 +45,12 @@ function enRealisations(lignes: LigneJointe[]): Realisation[] {
  * surprise si une policy de lecture plus large venait s'ajouter.
  */
 export async function getRealisations(userId: string, recipeId?: string): Promise<Realisation[]> {
+  // Sur la fiche d'une recette (`recipeId`), la fournée est lue en entier pour
+  // écarter les fournées d'essai d'un projet (JEP-430, `essai_projet`, colonne
+  // posée par `psql` : jamais nommée). « Mes réalisations » d'En cuisine les garde.
   let q = (await db())
     .from('batch_photos')
-    .select(`${COLONNES}, batches!inner(id, recipe_id, recipe_title, planned_date)`)
+    .select(`${COLONNES}, batches!inner(${recipeId ? '*' : 'id, recipe_id, recipe_title, planned_date'})`)
     .eq('user_id', userId)
     // Le résultat de la fournée seulement : les photos d'étape (JEP-426)
     // restent sous leur étape, jamais dans « Mes réalisations ».
@@ -57,5 +61,6 @@ export async function getRealisations(userId: string, recipeId?: string): Promis
     if (!estTableAbsente(error)) console.error('getRealisations:', error.message);
     return [];
   }
-  return enRealisations((data ?? []) as LigneJointe[]);
+  const lignes = (data ?? []) as unknown as LigneJointe[];
+  return enRealisations(recipeId ? lignes.filter((l) => !l.batches || !estFourneeEssai(l.batches, false)) : lignes);
 }

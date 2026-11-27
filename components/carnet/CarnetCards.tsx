@@ -19,7 +19,7 @@ import { MaryseIcon } from '@/components/MaryseIcon';
 import { RecipeCardTime } from '@/components/recipe/RecipeCardTime';
 import { AllergenPictosView } from '@/components/recipe/AllergenPictosView';
 import { PlanBadgeIcon } from '@/components/recipe/PlanBadgeIcon';
-import { isProjectDraft } from '@/lib/projects';
+import { isProjectDraft, isProjectValidated } from '@/lib/projects';
 import type { CarnetItem } from '@/lib/carnet';
 import type { AllergenRef } from '@/lib/recipes';
 
@@ -151,6 +151,11 @@ export function MineCard({
             <span className="rounded bg-primary px-1.5 py-0.5 font-label-md text-[9px] text-on-primary">Projet en cours</span>
           ) : (
             <>
+              {/* Projet validé (JEP-430) : une recette, qui garde la trace de son
+                  origine — c'est aussi ce qui la range dans la portée « Projets ». */}
+              {isProjectValidated(r) && (
+                <span className="rounded bg-green-700 px-1.5 py-0.5 font-label-md text-[9px] text-white">Projet validé</span>
+              )}
               <span className={`${st.badge} rounded px-1.5 py-0.5 font-label-md text-[9px] text-white`}>{st.label}</span>
               <span className="rounded bg-white/90 px-1.5 py-0.5 font-label-md text-[9px] text-primary">
                 {r.is_public === false ? 'Privée' : 'Publique'}

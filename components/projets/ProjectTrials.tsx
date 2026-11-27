@@ -146,6 +146,10 @@ export function ProjectTrials({
         dialog.alert(educatif ?? 'Erreur : ' + (error?.message || 'création refusée'));
         return;
       }
+      // Marque d'essai (JEP-430) : c'est elle qui tient la fournée hors de la
+      // fiche recette une fois le projet validé. Colonne posée par `psql`,
+      // absente des types : écrite à part, échec ignoré (migration pas jouée).
+      await supabase.from('batches').update({ essai_projet: true } as never).eq('id', batchRow.id);
       try {
         await insertMaterializedBatch(supabase, batchRow.id, recipe, 1, null);
       } catch (e) {

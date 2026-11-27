@@ -91,6 +91,11 @@ export function useRefaireFournee({ overlay = true }: { overlay?: boolean } = {}
       const batchId = newBatch.id;
       // Détail de l'ajustement par IA (cf. lib/batch-ai.ts) : colonne posée à
       // la main, absente des types générés — recopiée à part, échec ignoré.
+      // Refaire un essai de projet donne un essai (JEP-430) : sinon il entrerait
+      // dans la recette sans avoir été choisi à la validation.
+      if ((source as { essai_projet?: boolean | null }).essai_projet === true) {
+        await supabase.from('batches').update({ essai_projet: true } as never).eq('id', batchId);
+      }
       const adjustAi = (source as { adjust_ai?: unknown }).adjust_ai;
       if (adjustAi != null) {
         await supabase

@@ -14,16 +14,31 @@
 // douzaine de mutations une par une, pour un rendu qui n'a de toute façon
 // rien d'interactif à montrer.
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { COMPONENT_SOURCE_LABELS, PROJECT_FORMATS, formatYieldDesc, isProjectFormat } from '@/lib/projects';
 import type { ProjectFull } from '@/lib/projects-data';
 
-export function ProjectReadOnly({ project, planLabel }: { project: ProjectFull; planLabel: string }) {
+// `bandeau` remplace l'encart « Lecture seule » : la page d'un projet validé
+// (JEP-430) réutilise cette vue, pour une tout autre raison que la formule.
+export function ProjectReadOnly({
+  project,
+  planLabel,
+  bandeau,
+  apres,
+}: {
+  project: ProjectFull;
+  planLabel?: string;
+  bandeau?: ReactNode;
+  // Contenu ajouté en bas (fournées d'essai d'un projet validé).
+  apres?: ReactNode;
+}) {
   const format = isProjectFormat(project.measure_type) ? PROJECT_FORMATS[project.measure_type] : null;
   const dims = (project.mold_dims ?? {}) as Record<string, number>;
   const yieldDesc = format ? formatYieldDesc(project.measure_type as never, dims, project.servings) : null;
 
   return (
     <div className="space-y-8">
+      {bandeau ?? (
       <div className="rounded-lg border border-outline-variant bg-surface-container p-5">
         <p className="font-label-md text-[15px]">Lecture seule</p>
         <p className="mt-1 text-sm text-on-surface-variant">
@@ -34,6 +49,7 @@ export function ProjectReadOnly({ project, planLabel }: { project: ProjectFull; 
           Voir les formules
         </Link>
       </div>
+      )}
 
       {project.intent && (
         <section>
@@ -88,6 +104,7 @@ export function ProjectReadOnly({ project, planLabel }: { project: ProjectFull; 
           </ul>
         )}
       </section>
+      {apres}
     </div>
   );
 }

@@ -14,7 +14,7 @@ import { getIngredientRefAllergens } from '@/lib/imports';
 import { getMyRecipeReview, recetteEstProjetEnCours } from '@/lib/reviews-data';
 import { getVisibleHelpBlocks } from '@/lib/help';
 import { createClient } from '@/lib/supabase/server';
-import { isProjectDraft } from '@/lib/projects';
+import { estFourneeEssai, isProjectDraft } from '@/lib/projects';
 import { getRemarques } from '@/lib/batch-lecons-data';
 import { getPhotosFournee } from '@/lib/batch-photos-data';
 import { Footer } from '@/components/Footer';
@@ -131,7 +131,15 @@ export default async function FourneePage({ params, searchParams }: Params) {
       // « La dernière fois » (JEP-381) : fournée source (« Refaire »), sinon
       // dernière fournée terminée du membre sur la même recette.
       // et choix « garder / écarter » du membre sur cette recette.
-      getRemarques({ userId: batch.user_id!, recipeId: batch.recipe_id, excludeId: batch.id, sourcePlanId: batch.source_plan_id }),
+      // Fournée d'essai d'un projet : les autres essais comptent ; fournée
+      // ordinaire : ils sont écartés (JEP-430).
+      getRemarques({
+        userId: batch.user_id!,
+        recipeId: batch.recipe_id,
+        excludeId: batch.id,
+        sourcePlanId: batch.source_plan_id,
+        essais: estFourneeEssai(batch, false),
+      }),
       // Photos de réalisation (JEP-382) : journal privé, RLS propriétaire.
       getPhotosFournee(batch.id),
     ]);
