@@ -13,6 +13,12 @@
 // ça ne réécrit pas l'historique — même raisonnement que la carte d'avis,
 // indépendant de `readOnly` et de `?lecture=1`. Seule l'impersonation en
 // lecture seule bloque (garde réelle : RLS `impersonation_ro_*`).
+//
+// Plafond et droits (JEP-422) : 8 photos PAR ÉTAPE et 8 photos de fin de
+// fournée (sans étape). Les photos d'étape sont réservées à l'auteur de la
+// recette (`photosEtapes`) : elles lui servent à illustrer ses étapes ensuite.
+// Sinon, seul le bloc « Photos de cette fournée » accepte des photos ; une photo
+// d'étape déposée avant cette règle y reste visible (et supprimable).
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useDialog } from '@/components/Dialog';
@@ -25,8 +31,10 @@ import { BoutonsOrdrePhoto } from '@/components/BoutonsOrdrePhoto';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { trackEvent } from '@/lib/analytics';
 import {
-  BATCH_PHOTOS_MAX,
+  FOURNEE_PHOTOS_MAX,
   LEGENDE_MAX,
+  maxPhotos,
+  messagePlein,
   PHOTO_LARGEUR,
   ordresApresEchange,
   photosDeEtape,
@@ -48,6 +56,8 @@ import {
 type Ctx = {
   photos: BatchPhoto[];
   bloque: boolean;
+  // Photos d'étape permises (auteur de la recette, JEP-422).
+  photosEtapes: boolean;
   ajouter: (files: File[], stepId: number | null) => Promise<void>;
   supprimer: (id: number) => Promise<void>;
   // Rend `true` quand la légende a été écrite (faux : inchangée, refusée ou en échec).
@@ -70,11 +80,13 @@ export function PhotosFourneeProvider({
   batchId,
   userId,
   initiales,
+  photosEtapes,
   children,
 }: {
   batchId: number;
   userId: string;
   initiales: PhotosFourneeInitiales | null;
+  photosEtapes: boolean;
   children: ReactNode;
 }) {
   const dialog = useDialog();
@@ -87,11 +99,13 @@ export function PhotosFourneeProvider({
   courantes.current = photos;
 
   const ajouter = useCallback(
-    async (files: File[], stepId: number | null) => {
+    async (files: File[], demande: number | null) => {
       if (!writeGuard('Photo de réalisation')) return;
-      const places = placesRestantes(courantes.current);
+      // Sans droit aux photos d'étape, la photo rejoint la fournée.
+      const stepId = photosEtapes ? demande : null;
+      const places = placesRestantes(courantes.current, stepId);
       if (places <= 0) {
-        await dialog.alert(`${BATCH_PHOTOS_MAX} photos au plus par fournée : supprimez-en une pour en ajouter une autre.`);
+        await dialog.alert(messagePlein(stepId));
         return;
       }
       const lot = files.slice(0, places);
@@ -122,14 +136,16 @@ export function PhotosFourneeProvider({
         await dialog.alert(
           [
             ...new Set(erreurs),
-            ecartees ? `${ecartees} photo${ecartees > 1 ? 's' : ''} non ajoutée${ecartees > 1 ? 's' : ''} : ${BATCH_PHOTOS_MAX} au plus par fournée.` : '',
+            ecartees
+              ? `${ecartees} photo${ecartees > 1 ? 's' : ''} non ajoutée${ecartees > 1 ? 's' : ''} : ${maxPhotos(stepId)} au plus ${stepId == null ? 'pour la fournée' : 'par étape'}.`
+              : '',
           ]
             .filter(Boolean)
             .join('\n'),
         );
       }
     },
-    [batchId, userId, dialog, writeGuard],
+    [batchId, userId, dialog, writeGuard, photosEtapes],
   );
 
   const supprimer = useCallback(
@@ -169,6 +185,12 @@ export function PhotosFourneeProvider({
     async (id: number, stepId: number | null) => {
       if (!writeGuard('Photo de réalisation')) return;
       const avant = courantes.current;
+      if (stepId != null && !photosEtapes) return;
+      // L'emplacement d'arrivée a son propre plafond (la photo déplacée n'y compte pas).
+      if (placesRestantes(avant.filter((p) => p.id !== id), stepId) <= 0) {
+        await dialog.alert(messagePlein(stepId));
+        return;
+      }
       setPhotos(avant.map((p) => (p.id === id ? { ...p, batch_step_id: stepId } : p)));
       const erreur = await rattacherEtape(id, stepId);
       if (erreur) {
@@ -176,7 +198,7 @@ export function PhotosFourneeProvider({
         await dialog.alert('L’étape de la photo n’a pas pu être modifiée.');
       }
     },
-    [dialog, writeGuard],
+    [dialog, writeGuard, photosEtapes],
   );
 
   const remplacer = useCallback(
@@ -214,8 +236,8 @@ export function PhotosFourneeProvider({
   );
 
   const valeur = useMemo<Ctx>(
-    () => ({ photos, bloque, ajouter, supprimer, legender, rattacher, remplacer, echanger }),
-    [photos, bloque, ajouter, supprimer, legender, rattacher, remplacer, echanger],
+    () => ({ photos, bloque, photosEtapes, ajouter, supprimer, legender, rattacher, remplacer, echanger }),
+    [photos, bloque, photosEtapes, ajouter, supprimer, legender, rattacher, remplacer, echanger],
   );
 
   if (!initiales?.disponible) return <>{children}</>;
@@ -284,11 +306,12 @@ export function usePrendrePhotoEtape(): (() => void) | null {
   const dialog = useDialog();
   if (!ctx || ctx.bloque || !tactile) return null;
   return () => {
-    if (placesRestantes(ctx.photos) <= 0) {
-      void dialog.alert(`${BATCH_PHOTOS_MAX} photos au plus par fournée : supprimez-en une pour en ajouter une autre.`);
+    // Sans droit aux photos d'étape, la photo rejoint la fournée.
+    const stepId = ctx.photosEtapes ? etapeAffichee() : null;
+    if (placesRestantes(ctx.photos, stepId) <= 0) {
+      void dialog.alert(messagePlein(stepId));
       return;
     }
-    const stepId = etapeAffichee();
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -312,13 +335,16 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
   const [choix, setChoix] = useState(false);
   const tactile = useTactile();
   if (!ctx || ctx.bloque) return null;
-  const plein = placesRestantes(ctx.photos) <= 0;
+  // Sous une étape : réservé à l'auteur de la recette (JEP-422).
+  if (stepId != null && !ctx.photosEtapes) return null;
+  const places = placesRestantes(ctx.photos, stepId);
+  const plein = places <= 0;
   const surChoix = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = '';
     if (files.length) void ctx.ajouter(files, stepId);
   };
-  const titrePlein = plein ? `${BATCH_PHOTOS_MAX} photos au plus par fournée` : undefined;
+  const titrePlein = plein ? `${maxPhotos(stepId)} photos au plus ${stepId == null ? 'pour la fournée' : 'par étape'}` : undefined;
   return (
     <span className="no-print inline-flex flex-wrap items-center gap-2">
       <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={surChoix} />
@@ -371,6 +397,17 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
             // visible seulement si une image est copiée (cf. BoutonColler).
             <BoutonColler className="!px-2.5 !py-1 !text-[12px]" onFichiers={(fs) => void ctx.ajouter(fs, stepId)} />
           )}
+          {!plein && (
+            // Stockage en ligne (JEP-408, JEP-422) : sur ordinateur aussi, sous
+            // l'étape ; absent sans source configurée.
+            <DepuisStockage
+              usage="image"
+              max={places}
+              variante="bouton"
+              className="!px-2.5 !py-1 !text-[12px]"
+              onFichiers={(fs) => void ctx.ajouter(fs, stepId)}
+            />
+          )}
         </>
       ) : (
         // Un seul bouton : sur un téléphone, le sélecteur du système propose
@@ -396,7 +433,7 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
         // Stockage en ligne (JEP-408) : absent sans source configurée.
         <DepuisStockage
           usage="image"
-          max={placesRestantes(ctx.photos)}
+          max={places}
           variante="bouton"
           className="!px-4 !py-2"
           onFichiers={(fs) => void ctx.ajouter(fs, stepId)}
@@ -405,94 +442,21 @@ export function BoutonsPhoto({ stepId, compact = false }: { stepId: number | nul
       {plein && (
         <span role="status" className="flex items-center gap-1 text-[12px] text-on-surface-variant">
           <span className="material-symbols-outlined text-[16px]">check_circle</span>
-          {BATCH_PHOTOS_MAX} photos maximum atteintes
+          {maxPhotos(stepId)} photos maximum atteintes{stepId == null ? ' pour la fournée' : ' pour cette étape'}
         </span>
       )}
     </span>
   );
 }
 
-// ── Sous chaque vignette : étape, légende, corbeille ──────────────────────
-
-function DetailPhoto({
-  photo,
-  etapes,
-  ctx,
-  avecEtape,
-}: {
-  photo: BatchPhoto;
-  etapes: { id: number; titre: string }[];
-  ctx: Ctx;
-  avecEtape: boolean;
-}) {
-  // Confirmation brève après l'enregistrement d'une légende (automatique, sans bouton).
-  const [enregistre, setEnregistre] = useState(false);
-  useEffect(() => {
-    if (!enregistre) return;
-    const t = setTimeout(() => setEnregistre(false), 2500);
-    return () => clearTimeout(t);
-  }, [enregistre]);
-  return (
-    <div className="no-print flex flex-col gap-1">
-      {avecEtape && etapes.length > 0 && (
-        <select
-          value={photo.batch_step_id ?? ''}
-          disabled={ctx.bloque}
-          onChange={(e) => void ctx.rattacher(photo.id, e.target.value ? Number(e.target.value) : null)}
-          aria-label="Étape de la photo"
-          className="w-full min-w-0 rounded border border-outline-variant bg-white px-1.5 py-1 text-[12px] text-on-surface-variant"
-        >
-          <option value="">Toute la fournée</option>
-          {etapes.map((s, i) => (
-            <option key={s.id} value={s.id}>
-              {`${i + 1}. ${s.titre || 'Étape'}`}
-            </option>
-          ))}
-        </select>
-      )}
-      <div className="flex items-start gap-1">
-        <input
-          type="text"
-          // Non contrôlé : la légende s'écrit à la sortie du champ. `key`
-          // remonte le champ si la valeur change ailleurs (échec rétabli).
-          key={photo.legende ?? ''}
-          defaultValue={photo.legende ?? ''}
-          maxLength={LEGENDE_MAX}
-          disabled={ctx.bloque}
-          placeholder="Légende (facultatif)"
-          onBlur={(e) => void ctx.legender(photo.id, e.target.value).then((ok) => ok && setEnregistre(true))}
-          className="w-full min-w-0 rounded border border-outline-variant bg-white px-1.5 py-1 text-[12px] text-on-surface"
-        />
-        {!ctx.bloque && (
-          <button
-            type="button"
-            onClick={() => void ctx.supprimer(photo.id)}
-            title="Supprimer cette photo"
-            aria-label="Supprimer cette photo"
-            className="shrink-0 rounded p-1 text-error hover:bg-error/10 transition-colors"
-          >
-            <span className="material-symbols-outlined text-[18px]">delete</span>
-          </button>
-        )}
-      </div>
-      {enregistre && (
-        <p role="status" className="flex items-center gap-1 text-[11px] text-green-700">
-          <span className="material-symbols-outlined text-[14px]">check</span>
-          Légende enregistrée
-        </p>
-      )}
-    </div>
-  );
-}
-
 // ── Bloc « Photos de cette fournée » ──────────────────────────────────────
 
 export function PhotosFourneeBloc({
-  etapes,
   misEnAvant = false,
 }: {
-  // Étapes de la fournée, dans l'ordre du déroulé : rattachement d'une photo.
-  etapes: { id: number; titre: string }[];
+  // Étapes de la fournée (inutilisées depuis JEP-422 : plus de choix d'étape
+  // ni de légende sous les photos du bloc) ; gardées pour les appelants.
+  etapes?: { id: number; titre: string }[];
   // Résumé d'une fournée close : bloc mis en avant (cadre, titre plus grand).
   misEnAvant?: boolean;
 }) {
@@ -500,6 +464,9 @@ export function PhotosFourneeBloc({
   if (!ctx) return null;
   const photos = trierPhotos(ctx.photos);
   if (ctx.bloque && photos.length === 0) return null;
+  // Le compteur porte sur les photos de la fournée (sans étape) : les photos
+  // d'étape ont leur propre plafond, sous chaque étape.
+  const sansEtape = photos.filter((p) => p.batch_step_id == null).length;
   return (
     <section
       id="sec-photos-fournee"
@@ -512,7 +479,7 @@ export function PhotosFourneeBloc({
           <span className="material-symbols-outlined text-[20px]">photo_library</span>
           Photos de cette fournée
           <span className="font-label-md text-[12px] text-on-surface-variant">
-            ({photos.length}/{BATCH_PHOTOS_MAX})
+            ({sansEtape}/{FOURNEE_PHOTOS_MAX})
           </span>
         </h3>
         <BoutonsPhoto stepId={null} />
@@ -522,15 +489,40 @@ export function PhotosFourneeBloc({
         Visibles de vous seul.
       </p>
       <p className="mb-3 flex items-start gap-1.5 text-[12px] text-on-surface-variant">
+        <span className="material-symbols-outlined text-[16px] shrink-0">info</span>
+        {ctx.photosEtapes
+          ? `Jusqu’à ${FOURNEE_PHOTOS_MAX} photos pour la fournée, et 8 sous chaque étape : elles pourront illustrer les étapes de votre recette.`
+          : `Jusqu’à ${FOURNEE_PHOTOS_MAX} photos pour la fournée. Les photos d’étape sont réservées à l’auteur de la recette.`}
+      </p>
+      <p className="mb-3 flex items-start gap-1.5 text-[12px] text-on-surface-variant">
         <span className="material-symbols-outlined text-[16px] shrink-0">cloud_done</span>
         Les photos, légendes et étapes sont enregistrées automatiquement.
       </p>
       {photos.length > 0 ? (
-        <StepPhotoGallery
-          photos={photos}
-          grille="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
-          sousVignette={(i) => <DetailPhoto photo={photos[i]} etapes={etapes} ctx={ctx} avecEtape />}
-        />
+        ctx.bloque ? (
+          // Lecture seule : galerie, clic = diaporama.
+          <StepPhotoGallery photos={photos} grille="grid-cols-2" />
+        ) : (
+          // 4 photos au plus, en 2 lignes de 2 tuiles paysage (16:9, comme dans
+          // « Mes réalisations ») — JEP-422. Même tuile que sous une étape :
+          // corbeille et crayon (recadrage, zoom, rotation) sur la photo.
+          <div className="grid grid-cols-2 gap-3">
+            {photos.map((p) => (
+              <div key={p.id} className="relative aspect-video overflow-hidden border border-dashed border-outline-variant">
+                <ImageSlot
+                  src={p.url}
+                  originalSrc={p.url}
+                  onChange={(url) => void ctx.remplacer(p.id, url)}
+                  onClear={() => void ctx.supprimer(p.id)}
+                  shape="rect"
+                  maxWidth={PHOTO_LARGEUR}
+                  aspectRatio={16 / 9}
+                  className="h-full w-full"
+                />
+              </div>
+            ))}
+          </div>
+        )
       ) : (
         <p className="text-sm italic text-on-surface-variant">
           Aucune photo pour l’instant : gardez une trace de votre réalisation, pour comparer vos essais.
@@ -552,7 +544,9 @@ export function PhotosEtape({
   const ctx = usePhotosFournee();
   // Glisser-déposer (souris) ; les flèches de chaque photo servent au doigt.
   const reorder = usePhotoDragReorder((de, vers) => void ctx?.echanger(Number(de), Number(vers)));
-  if (!ctx) return null;
+  // Photos d'étape réservées à l'auteur de la recette (JEP-422) ; une photo
+  // d'étape plus ancienne reste visible dans le bloc « Photos de cette fournée ».
+  if (!ctx || !ctx.photosEtapes) return null;
   const photos = photosDeEtape(ctx.photos, stepId);
   if (ctx.bloque && photos.length === 0) return null;
   // Plusieurs fichiers choisis d'un coup (sélecteur, glisser-déposer, stockage
@@ -565,7 +559,7 @@ export function PhotosEtape({
       .then((r) => r.blob())
       .then((blob) => ctx.ajouter([new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' })], stepId));
   };
-  const places = placesRestantes(ctx.photos);
+  const places = placesRestantes(ctx.photos, stepId);
   return (
     <div className={`no-print ${sansMarge ? '' : 'mt-3'} flex flex-col gap-2`}>
       {(photos.length > 0 || (!ctx.bloque && places > 0)) && (
@@ -649,12 +643,13 @@ export function PhotosEtapeVignettes({
   const camera = useRef<HTMLInputElement>(null);
   const galerie = useRef<HTMLInputElement>(null);
   const tactile = useTactile();
-  const miennes = ctx ? photosDeEtape(ctx.photos, stepId) : [];
+  const etapesPermises = !!ctx && ctx.photosEtapes;
+  const miennes = ctx && etapesPermises ? photosDeEtape(ctx.photos, stepId) : [];
   const toutes = [
     ...photosRecette.map((p) => ({ url: p.url, ai_retouched: p.ai_retouched, legende: 'Photo de la recette' })),
     ...miennes.map((p) => ({ url: p.url, thumb_url: p.thumb_url, legende: p.legende })),
   ];
-  const peutAjouter = !!ctx && !ctx.bloque;
+  const peutAjouter = !!ctx && !ctx.bloque && etapesPermises;
   if (!toutes.length && !peutAjouter) return null;
   if (gerer && ctx) {
     return (
@@ -666,7 +661,8 @@ export function PhotosEtapeVignettes({
       </div>
     );
   }
-  const plein = !!ctx && placesRestantes(ctx.photos) <= 0;
+  const places = ctx ? placesRestantes(ctx.photos, stepId) : 0;
+  const plein = !!ctx && places <= 0;
   const surChoix = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = '';
@@ -726,12 +722,20 @@ export function PhotosEtapeVignettes({
       {plein && peutAjouter && (
         <span role="status" className="flex items-center gap-1 text-[12px] text-on-surface-variant">
           <span className="material-symbols-outlined text-[16px]">check_circle</span>
-          {BATCH_PHOTOS_MAX} photos maximum atteintes
+          {maxPhotos(stepId)} photos maximum atteintes pour cette étape
         </span>
       )}
       {peutAjouter && !plein && ctx && (
         <div className="flex flex-wrap items-center gap-3 empty:hidden">
           <BoutonColler className="!px-2.5 !py-1 !text-[12px]" onFichiers={(fs) => void ctx.ajouter(fs, stepId)} />
+          {/* Stockage en ligne (JEP-422) : la tuile « Photo » n'ouvre que les fichiers de l'appareil. */}
+          <DepuisStockage
+            usage="image"
+            max={places}
+            variante="bouton"
+            className="!px-2.5 !py-1 !text-[12px]"
+            onFichiers={(fs) => void ctx.ajouter(fs, stepId)}
+          />
         </div>
       )}
       {peutAjouter && miennes.length > 0 && (
@@ -739,69 +743,6 @@ export function PhotosEtapeVignettes({
           Gérer mes photos
         </button>
       )}
-    </div>
-  );
-}
-
-// ── Passerelle vers l'avis ────────────────────────────────────────────────
-
-/**
- * Photos de la fournée proposées dans le formulaire d'avis. La photo choisie
- * reste à la même adresse (`realisations/`) ; la route d'avis vérifie qu'elle
- * appartient bien à une fournée du membre, et l'avis passe en modération
- * comme toute photo d'avis.
- */
-export function ChoixPhotoFournee({
-  dejaChoisies,
-  places,
-  onChoisir,
-}: {
-  dejaChoisies: string[];
-  places: number;
-  onChoisir: (url: string) => void;
-}) {
-  const ctx = usePhotosFournee();
-  const [ouvert, setOuvert] = useState(false);
-  if (!ctx || ctx.photos.length === 0) return null;
-  const photos = trierPhotos(ctx.photos);
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOuvert((o) => !o)}
-        className="inline-flex items-center gap-1.5 text-[13px] font-label-md text-primary underline underline-offset-2"
-      >
-        <span className="material-symbols-outlined text-[18px]">photo_library</span>
-        Choisir parmi les photos de cette fournée
-      </button>
-      {ouvert && (
-        <div className="mt-2 flex flex-wrap gap-2">
-          {photos.map((p) => {
-            const choisie = dejaChoisies.includes(p.url);
-            return (
-              <button
-                key={p.id}
-                type="button"
-                disabled={choisie || places <= 0}
-                onClick={() => onChoisir(p.url)}
-                title={choisie ? 'Déjà dans votre avis' : places <= 0 ? 'Plus de place dans votre avis' : p.legende || 'Ajouter à mon avis'}
-                className={`relative h-[72px] w-[72px] overflow-hidden rounded border ${
-                  choisie ? 'border-primary ring-2 ring-primary' : 'border-outline-variant hover:border-primary'
-                } disabled:cursor-not-allowed`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- stockage objet */}
-                <img src={p.thumb_url || p.url} alt={p.legende ?? ''} className={`h-full w-full object-cover ${choisie ? 'opacity-60' : ''}`} />
-                {choisie && (
-                  <span className="material-symbols-outlined absolute inset-0 m-auto h-fit w-fit text-[22px] text-primary">check_circle</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      <p className="mt-1 text-[11px] text-on-surface-variant">
-        La photo choisie deviendra visible sur la fiche recette une fois votre avis validé.
-      </p>
     </div>
   );
 }

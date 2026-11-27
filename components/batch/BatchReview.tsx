@@ -20,7 +20,8 @@ import { televerserImage } from '@/lib/storage-client';
 import { moveAt } from '@/lib/photo-reorder';
 import { usePhotoDragReorder } from '@/lib/use-photo-drag-reorder';
 import { useDialog } from '@/components/Dialog';
-import { ChoixPhotoFournee, usePhotosFournee } from '@/components/batch/PhotosFournee';
+import { usePhotosFournee } from '@/components/batch/PhotosFournee';
+import { SourceFourneesProvider } from '@/components/recipe/PhotosDeMesFournees';
 
 function ReviewPhotos({ photos }: { photos: ReviewPhoto[] }) {
   if (!photos.length) return null;
@@ -67,6 +68,7 @@ function StarsReadOnly({ value }: { value: number | null }) {
 
 function ReviewForm({
   batchId,
+  recipeId,
   initialRating,
   initialComment,
   initialPhotos,
@@ -74,6 +76,7 @@ function ReviewForm({
   onSubmitted,
 }: {
   batchId: number;
+  recipeId: string;
   initialRating: number;
   initialComment: string;
   initialPhotos: ReviewPhoto[];
@@ -87,8 +90,8 @@ function ReviewForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Photos de réalisation de cette fournée (JEP-382) : reprises dans l'avis
-  // par « Choisir parmi les photos de cette fournée ». La route revérifie
-  // qu'elles appartiennent au membre.
+  // par le nuage « Depuis… » → « Mes fournées », limité à cette fournée
+  // (JEP-422). La route revérifie qu'elles appartiennent au membre.
   const photosFournee = usePhotosFournee();
   const realisations = new Set((photosFournee?.photos ?? []).map((p) => p.url));
 
@@ -194,6 +197,20 @@ function ReviewForm({
         <p className="text-[12px] text-on-surface-variant mb-2">
           Photos (facultatif, {REVIEW_PHOTOS_MAX} maximum) — plusieurs à la fois sont acceptées.
         </p>
+        <SourceFourneesProvider
+          valeur={{
+            recipeId,
+            batchId,
+            stepId: null,
+            titreEtape: '',
+            places: REVIEW_PHOTOS_MAX - photos.length,
+            onChoisir: (urls) =>
+              setPhotos((prev) => {
+                const nouvelles = urls.filter((u) => !prev.some((p) => p.url === u)).map((url) => ({ url, ai_retouched: false }));
+                return [...prev, ...nouvelles].slice(0, REVIEW_PHOTOS_MAX);
+              }),
+          }}
+        >
         <div className="flex gap-3">
           {Array.from({ length: REVIEW_PHOTOS_MAX }, (_, i) => (
             <div key={i} className="space-y-1.5" {...photoReorder.dropProps(String(i))}>
@@ -232,15 +249,7 @@ function ReviewForm({
             </div>
           ))}
         </div>
-        <div className="mt-3">
-          <ChoixPhotoFournee
-            dejaChoisies={photos.map((p) => p.url)}
-            places={REVIEW_PHOTOS_MAX - photos.length}
-            onChoisir={(url) =>
-              setPhotos((prev) => (prev.length >= REVIEW_PHOTOS_MAX || prev.some((p) => p.url === url) ? prev : [...prev, { url, ai_retouched: false }]))
-            }
-          />
-        </div>
+        </SourceFourneesProvider>
       </div>
       {error && <p className="text-error text-sm">{error}</p>}
       <div>
@@ -342,6 +351,7 @@ export function BatchReview({
       <Card onDismiss={onDismiss}>
         <ReviewForm
           batchId={batchId}
+          recipeId={recipeId}
           initialRating={0}
           initialComment=""
           initialPhotos={[]}
@@ -394,6 +404,7 @@ export function BatchReview({
       </div>
       <ReviewForm
         batchId={batchId}
+        recipeId={recipeId}
         initialRating={myReview.rating || 0}
         initialComment={myReview.content}
         initialPhotos={myReview.photo_urls}

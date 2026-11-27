@@ -36,6 +36,7 @@ import type { VisibleHelpBlock } from '@/lib/help';
 import { BatchNotes } from '@/components/recipe/BatchNotes';
 import { BatchReview } from '@/components/batch/BatchReview';
 import { PhotosEtape, PhotosFourneeBloc, PhotosFourneeProvider, usePrendrePhotoEtape } from '@/components/batch/PhotosFournee';
+import { photosEtapesPermises } from '@/lib/batch-photos';
 import type { PhotosFourneeInitiales } from '@/lib/batch-photos';
 import type { MyRecipeReview } from '@/lib/reviews-data';
 import { BatchStepIngredients } from '@/components/recipe/BatchIngredientsEditor';
@@ -633,7 +634,12 @@ export function BatchView({
       recipeId={batch.recipe_id}
       auteur={!!baseRecipe?.authorId && baseRecipe.authorId === batch.user_id}
     >
-      <PhotosFourneeProvider batchId={batch.id} userId={batch.user_id ?? ''} initiales={photosFournee}>
+      <PhotosFourneeProvider
+        batchId={batch.id}
+        userId={batch.user_id ?? ''}
+        initiales={photosFournee}
+        photosEtapes={photosEtapesPermises(baseRecipe?.authorId, batch.user_id)}
+      >
       {ecranFin && (
         <EcranFinFournee
           batchId={batch.id}

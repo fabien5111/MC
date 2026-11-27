@@ -121,7 +121,7 @@ export function EcranFinFournee({
   const btn = 'px-4 py-2.5 rounded-pill font-label-md text-label-md disabled:opacity-50';
   return createPortal(
     <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Fin de la fournée">
-      <div className="flex max-h-[100dvh] w-full max-w-2xl flex-col bg-white shadow-xl sm:max-h-[92vh] sm:rounded-2xl">
+      <div className="flex max-h-[100dvh] w-full max-w-4xl flex-col bg-white shadow-xl sm:max-h-[92vh] sm:rounded-2xl">
         <div className="flex items-center justify-between gap-3 border-b border-outline-variant px-5 py-4">
           <div className="min-w-0">
             <p className="font-label-md text-[11px] uppercase tracking-widest text-on-surface-variant">{essaiProjet ? 'Fin de l’essai' : 'Fin de la fournée'}</p>

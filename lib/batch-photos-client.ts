@@ -55,7 +55,7 @@ export async function ajouterPhotoFournee(p: {
     })
     .select(COLONNES)
     .single();
-  if (error || !data) throw new Error(error?.message?.includes('batch_photos_max') ? 'Huit photos au plus par fournée.' : 'La photo n’a pas pu être enregistrée.');
+  if (error || !data) throw new Error(error?.message?.includes('batch_photos_max') ? 'Huit photos au plus par étape, et huit pour la fournée.' : 'La photo n’a pas pu être enregistrée.');
   return data as BatchPhoto;
 }
 
@@ -121,9 +121,17 @@ export type PhotoDeFournee = {
  * correspondantes viennent en premier. Lecture seule, best-effort : tables
  * absentes → liste vide.
  */
-export async function photosDesFournees(recipeId: string, stepId: number | null, titreEtape: string): Promise<PhotoDeFournee[]> {
+export async function photosDesFournees(
+  recipeId: string,
+  stepId: number | null,
+  titreEtape: string,
+  // Une seule fournée (formulaire d'avis, JEP-422) ; sans lui, toutes celles de la recette.
+  batchId?: number,
+): Promise<PhotoDeFournee[]> {
   const db = createClient() as unknown as { from: (t: string) => any };
-  const { data: fournees } = await db.from('batches').select('id, planned_date').eq('recipe_id', recipeId);
+  let requete = db.from('batches').select('id, planned_date').eq('recipe_id', recipeId);
+  if (batchId != null) requete = requete.eq('id', batchId);
+  const { data: fournees } = await requete;
   const lots = (fournees ?? []) as { id: number; planned_date: string | null }[];
   if (!lots.length) return [];
   const dates = new Map(lots.map((f) => [f.id, f.planned_date]));
