@@ -54,6 +54,7 @@ import {
   TagsEditor,
   type DifficultyOption,
   type RefOption,
+  type TempsPreparation,
 } from '@/components/projets/v2/RecipeDetailEditors';
 import {
   COMPONENT_SOURCE_LABELS,
@@ -100,6 +101,7 @@ import { libelleEcartProduit } from '@/lib/batch-lecons';
 import type { DonneesRemarques } from '@/lib/batch-lecons-data';
 import type { Remarque } from '@/lib/batch-lecons';
 import type { ProjectComponent, ProjectFull, ProjectTrial } from '@/lib/projects-data';
+import ChoixFourneesValidation from '@/components/projets/ChoixFourneesValidation';
 import type { ConversionRef, IngredientRefOption, UnitRef } from '@/lib/ingredient-conversions';
 import type { RecipeFull, RecipeStepView } from '@/lib/recipes';
 import { autoGrow, useAutoGrowOnResize } from '@/lib/auto-grow';
@@ -128,7 +130,10 @@ const BLOCS: Record<BlockKey, { titre: string; apercu: string; court: string; ic
   etapes: { titre: 'Étapes', apercu: 'Le déroulé de chaque préparation, avec ses ingrédients et l’ajustement de ses quantités.', court: 'Étapes', icon: 'format_list_numbered' },
   ingredients: { titre: 'Liste complète des ingrédients', apercu: 'Tous les ingrédients du dessert, totalisés.', court: 'Ingrédients', icon: 'egg_alt' },
   organisation: { titre: 'Ustensiles, difficulté et temps', apercu: 'Le matériel, le niveau et le planning.', court: 'Ustensiles et temps', icon: 'blender' },
-  conseils: { titre: 'Conseils et source', apercu: 'Astuces, conseils de service, provenance.', court: 'Conseils', icon: 'lightbulb' },
+  // Mêmes titres que la fiche recette (JEP-429) : le projet se lit comme la
+  // recette qu'il deviendra.
+  conseils: { titre: 'Conseils et astuces de la recette', apercu: 'Astuces de réalisation, provenance.', court: 'Conseils de la recette', icon: 'lightbulb' },
+  degustation: { titre: 'Conseils de dégustation et de conservation', apercu: 'Température de service, accompagnement, conservation.', court: 'Dégustation et conservation', icon: 'restaurant' },
   validation: { titre: 'Essais et validation', apercu: 'Les fournées d’essai, puis le passage en recette.', court: 'Essais et validation', icon: 'science' },
 };
 // Format juste après l'intention (JEP-403) : les quantités de chaque
@@ -142,6 +147,7 @@ const ORDRE_BLOCS: BlockKey[] = [
   'ingredients',
   'organisation',
   'conseils',
+  'degustation',
   'validation',
 ];
 
@@ -594,6 +600,8 @@ export function ProjectV2({
   }
 
   // ── Validation (§8) ───────────────────────────────────────────────────
+  // Fenêtre « Quelles fournées envoyer dans la recette ? » (JEP-430).
+  const [choixFournees, setChoixFournees] = useState<ProjectTrial[] | null>(null);
   const blockers = projectValidationBlockers({ measure_type: project.measure_type, components: project.components });
   async function valider() {
     if (blockers.length) {
@@ -609,6 +617,17 @@ export function ProjectV2({
     // Ce qui est saisi mais pas encore écrit est enregistré d'abord : la
     // validation lit la base, pas les champs de la page.
     if (anyDirty && !(await saveAll())) return;
+    // Fournées d'essai : la fenêtre demande lesquelles envoyer dans la recette
+    // (JEP-430) et tient lieu de confirmation.
+    const essais = trials.filter((t) => t.essai);
+    if (essais.length) {
+      setChoixFournees(essais);
+      return;
+    }
+    await validerAvec([], true);
+  }
+
+  async function validerAvec(fourneesRetenues: number[], demanderConfirmation: boolean) {
     const ok = await mutate(
       async () => {
         try {
@@ -616,6 +635,7 @@ export function ProjectV2({
             createClient(),
             project.id,
             ordered.map((c) => ({ name: c.name, role: c.role })),
+            fourneesRetenues,
           );
         } catch (e) {
           return { error: { message: (e as Error).message } };
@@ -623,8 +643,9 @@ export function ProjectV2({
         return { error: null };
       },
       {
-        confirm:
-          'Valider le projet ? Il devient une recette de votre carnet (non publiée), sans perdre ses fournées d’essai. Vous pourrez le repasser en brouillon tant qu’il n’est pas publié.',
+        confirm: demanderConfirmation
+          ? 'Valider le projet ? Il devient une recette de votre carnet (non publiée) et reste visible dans « Projets » avec l’étiquette « Projet validé ». Vous pourrez le repasser en brouillon tant qu’il n’est pas publié.'
+          : undefined,
         errorLabel: 'Validation du projet',
         refresh: false,
       },
@@ -655,12 +676,27 @@ export function ProjectV2({
     etapeParOrdre.set(s.order_index ?? 0, { titre: s.title || `Étape ${i + 1}`, ancre: stepAnchorId(i) });
   });
   const days = planningDays(steps);
+  // Temps de chaque étape, par préparation puis assemblage (JEP-427).
+  const tempsEtapes: TempsPreparation[] = [
+    ...ordered.map((c) => ({ nom: c.name, etapes: steps.filter((st) => componentOf(st) === c.id) })),
+    { nom: 'Assemblage', etapes: assemblage },
+  ].map((p) => ({
+    nom: p.nom,
+    etapes: p.etapes.map((st) => ({
+      id: st.id,
+      titre: st.title || `Étape ${steps.indexOf(st) + 1}`,
+      prep: st.prep_time || 0,
+      cook: st.cook_time || 0,
+      wait: st.wait_time || 0,
+      onAller: () => allerA(`etape-${st.id}`),
+    })),
+  }));
 
   // Retour sur l'étape modifiée (JEP-403). « Modifier » réécrit toutes les
   // étapes de la préparation (supprimées puis réinsérées : nouveaux id) : on
   // retient donc la préparation et le RANG de l'étape cliquée, puis, une fois
   // le rendu serveur revenu (les id ont changé), on défile jusqu'à elle.
-  const retourEtape = useRef<{ componentId: number; rang: number; attente: string | null } | null>(null);
+  const retourEtape = useRef<{ componentId: number; rang: number; attente: string | null; ligne?: string } | null>(null);
   const signatureEtapes = steps.map((st) => st.id).join(',');
   useEffect(() => {
     const r = retourEtape.current;
@@ -805,8 +841,10 @@ export function ProjectV2({
   // Ouvre « Modifier cette préparation » depuis une étape (crayon d'étape, de
   // sous-étape, bandeau collant) : le rang retenu sert à ouvrir l'éditeur sur
   // cette étape, puis à revenir sur elle après l'enregistrement (JEP-403).
-  function modifierPreparation(c: ProjectComponent, rang: number) {
-    retourEtape.current = { componentId: c.id, rang: Math.max(rang, 0), attente: null };
+  // `ligne` (JEP-424) : la ligne cliquée (`sous-<k>`, `description`, `ing-0`,
+  // `conseil`), sur laquelle l'éditeur pose le curseur.
+  function modifierPreparation(c: ProjectComponent, rang: number, ligne?: string) {
+    retourEtape.current = { componentId: c.id, rang: Math.max(rang, 0), attente: null, ligne };
     void ouvrirComposant(c, true);
   }
 
@@ -917,7 +955,7 @@ export function ProjectV2({
     const g = groupByOrder.get(s.order_index ?? -1);
     if (!g || !g.ingredients.length) return undefined;
     return (
-      <div className="flex flex-wrap items-center gap-3 border-b border-outline-variant/60 pb-4">
+      <div className="flex flex-wrap items-center gap-3 border-b border-outline-variant/60 pb-3">
         <label htmlFor={`ajust-${s.id}`} className="font-label-md text-label-md text-outline uppercase">
           Ajustement des quantités de cette étape
         </label>
@@ -1009,14 +1047,18 @@ export function ProjectV2({
         decalage="scroll-mt-40"
         crayon={
           comp
-            ? (zone) => (
+            ? (zone, index) => (
                 <button
                   type="button"
                   onClick={(e) => {
                     // Dans un <summary> (conseils, ingrédients) : ne pas replier le volet.
                     e.preventDefault();
                     e.stopPropagation();
-                    modifierPreparation(comp, steps.filter((st) => componentOf(st) === comp.id).findIndex((st) => st.id === s.id));
+                    // Ligne visée dans l'éditeur (JEP-424) : la sous-étape cliquée,
+                    // la description, le premier ingrédient ou les conseils.
+                    const ligne =
+                      zone === 'sous-etape' ? (index != null ? `sous-${index}` : 'description') : zone === 'conseil' ? 'conseil' : 'ing-0';
+                    modifierPreparation(comp, steps.filter((st) => componentOf(st) === comp.id).findIndex((st) => st.id === s.id), ligne);
                   }}
                   disabled={busy}
                   title={
@@ -1112,7 +1154,7 @@ export function ProjectV2({
   // Blocs verrouillés tant qu'aucune préparation n'a sa recette : le lien mène à
   // la première préparation « À résoudre » du bloc « Structure », à défaut au
   // bloc lui-même. Aucun lien si « Structure » est lui-même verrouillé.
-  const BLOCS_APRES_RECETTE: ReadonlySet<BlockKey> = new Set(['etapes', 'ingredients', 'organisation', 'conseils']);
+  const BLOCS_APRES_RECETTE: ReadonlySet<BlockKey> = new Set(['etapes', 'ingredients', 'organisation', 'conseils', 'degustation']);
   const lienVersRecette = (key: BlockKey) => {
     if (!BLOCS_APRES_RECETTE.has(key) || !states.structure.unlocked) return undefined;
     const cible = project.components.find((c) => !c.resolved);
@@ -1726,6 +1768,7 @@ export function ProjectV2({
                 mutate={mutate}
                 busy={busy}
                 sections={sectionRegistry}
+                tempsEtapes={tempsEtapes}
               />
               {days.length > 1 && (
                 <PlanningTimeline
@@ -1740,7 +1783,9 @@ export function ProjectV2({
           ),
         )}
 
-        {bloc('conseils', recipe ? <ConseilsEditor recipe={recipe} mutate={mutate} busy={busy} sections={sectionRegistry} ajouts={ajoutsConseils} /> : sansRecette)}
+        {bloc('conseils', recipe ? <ConseilsEditor partie="conseils" recipe={recipe} mutate={mutate} busy={busy} sections={sectionRegistry} ajouts={ajoutsConseils} /> : sansRecette)}
+
+        {bloc('degustation', recipe ? <ConseilsEditor partie="degustation" recipe={recipe} mutate={mutate} busy={busy} sections={sectionRegistry} ajouts={ajoutsConseils} /> : sansRecette)}
 
         {/* Second exemplaire du « Reste à faire », juste avant la validation :
             mêmes `todo`, même écriture, donc synchronisé avec celui du haut.
@@ -1789,6 +1834,17 @@ export function ProjectV2({
         )}
       </div>
 
+      {choixFournees && (
+        <ChoixFourneesValidation
+          essais={choixFournees}
+          onCancel={() => setChoixFournees(null)}
+          onConfirm={(retenues) => {
+            setChoixFournees(null);
+            void validerAvec(retenues, false);
+          }}
+        />
+      )}
+
       {resolving && (
         // Une portée par préparation ouverte (`key`) : la case « ne plus
         // afficher ce message » ne survit pas au passage à une autre.
@@ -1816,6 +1872,7 @@ export function ProjectV2({
           initialSource={resolvingInit?.source}
           etapesRelues={verifDe(resolving.id, 'etapes')?.etat === 'fait'}
           rangInitial={retourEtape.current?.componentId === resolving.id ? retourEtape.current.rang : undefined}
+          ligneInitiale={retourEtape.current?.componentId === resolving.id ? retourEtape.current.ligne : undefined}
           onClose={() => {
             retourEtape.current = null;
             fermerResolution();

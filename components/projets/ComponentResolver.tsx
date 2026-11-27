@@ -130,6 +130,7 @@ export function ComponentResolver({
   onReset,
   etapesRelues = false,
   rangInitial,
+  ligneInitiale,
 }: {
   projectId: string;
   projectTitle: string;
@@ -190,6 +191,10 @@ export function ComponentResolver({
   // Rang de l'étape d'où l'on vient (crayon d'une sous-étape, bandeau collant,
   // JEP-403) : l'éditeur s'ouvre défilé jusqu'à sa carte. 0 / absent : en haut.
   rangInitial?: number;
+  // Ligne d'où l'on vient (JEP-424) : `sous-<k>`, `description`, `ing-<j>`,
+  // `conseil` — repère `data-cible` de StepEditorCard. L'éditeur s'ouvre sur
+  // elle, curseur en fin de texte. Absente ou introuvable : la carte seule.
+  ligneInitiale?: string;
 }) {
   useAutoGrowOnResize();
   const dialog = useDialog();
@@ -323,17 +328,35 @@ export function ComponentResolver({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terme, portees, tagsChoisis]);
 
-  // Ouverture sur l'étape cliquée : une seule fois, la carte étant déjà montée.
+  // Ouverture sur l'étape cliquée — et sur la ligne cliquée (JEP-424) : une
+  // seule fois, la carte étant déjà montée.
   const rangInitialFait = useRef(false);
   useEffect(() => {
-    if (mode !== 'edit' || !rangInitial || rangInitial < 1 || rangInitialFait.current) return;
+    if (mode !== 'edit' || rangInitialFait.current) return;
+    if (!ligneInitiale && (!rangInitial || rangInitial < 1)) return;
     const t = setTimeout(() => {
-      const carte = document.getElementById(`projet-etape-${rangInitial}`);
-      if (carte) carte.scrollIntoView({ block: 'start' });
       rangInitialFait.current = true;
+      const carte = document.getElementById(`projet-etape-${rangInitial ?? 0}`);
+      if (!carte) return;
+      const champ = ligneInitiale
+        ? carte.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-cible="${ligneInitiale}"]`)
+        : null;
+      if (!champ) {
+        carte.scrollIntoView({ block: 'start' });
+        return;
+      }
+      for (let d = champ.closest('details'); d; d = d.parentElement?.closest('details') ?? null) d.open = true;
+      champ.scrollIntoView({ block: 'center' });
+      champ.focus({ preventScroll: true });
+      const fin = champ.value.length;
+      try {
+        champ.setSelectionRange(fin, fin);
+      } catch {
+        // Champ qui n'accepte pas de sélection : le focus suffit.
+      }
     }, 60);
     return () => clearTimeout(t);
-  }, [mode, rangInitial]);
+  }, [mode, rangInitial, ligneInitiale]);
 
   // Retour de l'aperçu à la liste (bouton « Annuler » ET croix de l'en-tête) :
   // recherche et cases cochées sont conservées.

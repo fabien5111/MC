@@ -43,8 +43,10 @@ export function RecipeStep({
   // Action facultative à droite du titre (picto « modifier » du mode projet) ;
   // absente, l'étape se rend comme sur la fiche recette.
   action?: ReactNode;
-  // Réglage facultatif posé sous le titre (mode projet : « Ajustement des
-  // quantités de cette étape »). Absent, l'étape se rend comme sur la fiche.
+  // Réglage facultatif posé en tête du bloc « Ingrédients de l'étape », au-dessus
+  // des quantités qu'il gouverne (mode projet : « Ajustement des quantités de
+  // cette étape », JEP-432 — il était sous le titre, parmi les gestes). Absent,
+  // l'étape se rend comme sur la fiche.
   ajustement?: ReactNode;
   // Note facultative sous le titre (mode projet : « points à vérifier »,
   // JEP-403). Absente, l'étape se rend comme sur la fiche.
@@ -62,7 +64,7 @@ export function RecipeStep({
   // Crayon « modifier » posé sur la ligne qu'on est en train de lire (mode
   // projet, JEP-403) : sous-étape ou description, conseils, ingrédients. Absent,
   // l'étape se rend comme sur la fiche recette.
-  crayon?: (zone: 'sous-etape' | 'conseil' | 'ingredients') => ReactNode;
+  crayon?: (zone: 'sous-etape' | 'conseil' | 'ingredients', index?: number) => ReactNode;
   // Décalage de défilement de l'ancre (le mode projet porte un bandeau collant
   // sous l'en-tête du site).
   decalage?: string;
@@ -115,7 +117,6 @@ export function RecipeStep({
       </div>
       {/* JEP-19 : précisions de l'auteur, seulement si l'étape peut se faire à
           l'avance (une note laissée sur une étape décochée reste masquée). */}
-      {ajustement}
       {note}
       {retoursEtape}
       {s.can_prepare_ahead && s.advance_note && (
@@ -137,6 +138,7 @@ export function RecipeStep({
             <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
           </summary>
           <div className="p-4 bg-white">
+            {ajustement && <div className="mb-3">{ajustement}</div>}
             <ul className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 sm:gap-x-10 print:gap-x-10">
               {ings.map((it) => (
                 <li key={it.id} className="py-2 border-b border-outline-variant/30" style={{ display: 'grid', gridTemplateColumns: 'subgrid', gridColumn: '1/-1' }}>
@@ -167,7 +169,7 @@ export function RecipeStep({
           {s.sous_etapes.map((t, k) => (
             <li key={k} className="flex flex-col">
               <div className="flex items-start gap-3">
-                {crayon?.('sous-etape')}
+                {crayon?.('sous-etape', k)}
                 <span className="text-primary shrink-0">–</span>
                 <span className="min-w-0 flex-1">{t}</span>
               </div>

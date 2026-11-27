@@ -5,6 +5,7 @@ import type { Database } from '@/lib/database.types';
 import { CARD_SELECT, withAllergenNames, type RecipeCard, type RecipeCardWithAllergenNames } from '@/lib/recipes';
 import { BATCH_FULL_SELECT, TERMINEES_PAGE_SIZE, type BatchFull } from '@/lib/recipe-plan';
 import { estListeARacheter } from '@/lib/a-racheter';
+import { estFourneeEssai } from '@/lib/projects';
 
 export type Unit = Database['public']['Tables']['units']['Row'] & { round_from?: number | null };
 
@@ -309,14 +310,19 @@ export async function idsRefaisables(ids: number[]): Promise<Set<number>> {
 
 export async function getRecipeCompletedBatches(userId: string, recipeId: string): Promise<CompletedBatchRow[]> {
   const supabase = await createClient();
+  // `*` : lit `essai_projet` sans la nommer (colonne posée par `psql`). Les
+  // fournées d'essai d'un projet ne figurent pas sur la fiche (JEP-430) — elles
+  // restent sur la page du projet, sauf celles envoyées dans la recette.
   const { data, error } = await supabase
     .from('batches')
-    .select('id, planned_date, date_fin, factor, user_note')
+    .select('*')
     .eq('user_id', userId)
     .eq('recipe_id', recipeId)
     .eq('status', 'terminee');
   if (error) console.error('getRecipeCompletedBatches:', error.message);
-  const rows = (data as unknown as CompletedBatchRow[]) ?? [];
+  const rows = ((data ?? []) as unknown as (CompletedBatchRow & object)[])
+    .filter((b) => !estFourneeEssai(b, false))
+    .map((b) => ({ id: b.id, planned_date: b.planned_date, date_fin: b.date_fin, factor: b.factor, user_note: b.user_note }) as CompletedBatchRow);
   const ref = await idsRefaisables(rows.map((r) => r.id));
   for (const r of rows) r.refaisable = ref.has(r.id);
   return rows.sort((a, b) => (b.date_fin ?? b.planned_date ?? '').localeCompare(a.date_fin ?? a.planned_date ?? ''));

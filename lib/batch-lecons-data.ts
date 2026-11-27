@@ -5,6 +5,7 @@
 // `remarques_gardees`) ne laisse lire que ses propres données.
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
+import { estFourneeEssai } from '@/lib/projects';
 import {
   ecartQuantite,
   libelleEcartProduit,
@@ -63,7 +64,7 @@ export const FOURNEES_LUES_MAX = 10;
 //     référence, les autres `anciennes`.
 async function lireFournees(
   supabase: Supa,
-  opts: { userId: string; recipeId: string | null; excludeId?: number | null; sourcePlanId?: number | null },
+  opts: { userId: string; recipeId: string | null; excludeId?: number | null; sourcePlanId?: number | null; essais?: boolean },
 ): Promise<{ reference: FourneeReference | null; anciennes: FourneeReference[]; refaite: boolean }> {
   if (opts.sourcePlanId != null) {
     const { data, error } = await supabase.from('batches').select(REFERENCE_SELECT).eq('id', opts.sourcePlanId).maybeSingle();
@@ -90,34 +91,42 @@ async function lireFournees(
   if (!opts.recipeId) return { reference: null, anciennes: [], refaite: false };
   let q = supabase.from('batches').select(REFERENCE_SELECT).eq('user_id', opts.userId).eq('recipe_id', opts.recipeId).eq('status', 'terminee');
   if (opts.excludeId != null) q = q.neq('id', opts.excludeId);
+  // Lu au-delà du plafond : les fournées d'essai écartées (JEP-430) ne doivent
+  // pas en prendre la place.
   const { data, error } = await q
     .order('date_fin', { ascending: false, nullsFirst: false })
     .order('planned_date', { ascending: false, nullsFirst: false })
-    .limit(FOURNEES_LUES_MAX);
+    .limit(opts.essais ? FOURNEES_LUES_MAX : FOURNEES_LUES_MAX * 3);
   if (error) {
     console.error('getRemarques:', error.message);
     return { reference: null, anciennes: [], refaite: false };
   }
-  const rows = ((data as unknown as Brut[] | null) ?? []).map(versReference);
+  const rows = ((data as unknown as Brut[] | null) ?? [])
+    .filter((b) => opts.essais || !estFourneeEssai(b, false))
+    .slice(0, FOURNEES_LUES_MAX)
+    .map(versReference);
   return { reference: rows[0] ?? null, anciennes: rows.slice(1), refaite: false };
 }
 
 // Identifiant de la fournée terminée la plus récente de la recette.
-async function lirePlusRecente(supabase: Supa, userId: string, recipeId: string): Promise<number | null> {
+// Fournées d'essai écartées sauf demande (JEP-430) : `*` pour lire
+// `essai_projet` sans la nommer (colonne posée par `psql`).
+async function lirePlusRecente(supabase: Supa, userId: string, recipeId: string, essais: boolean): Promise<number | null> {
   const { data, error } = await supabase
     .from('batches')
-    .select('id')
+    .select('*')
     .eq('user_id', userId)
     .eq('recipe_id', recipeId)
     .eq('status', 'terminee')
     .order('date_fin', { ascending: false, nullsFirst: false })
     .order('planned_date', { ascending: false, nullsFirst: false })
-    .limit(1);
+    .limit(essais ? 1 : FOURNEES_LUES_MAX * 3);
   if (error) {
     console.error('getRemarques (plus récente):', error.message);
     return null;
   }
-  return (data as { id: number }[] | null)?.[0]?.id ?? null;
+  const lignes = (data as unknown as ({ id: number } & object)[] | null) ?? [];
+  return lignes.find((b) => essais || !estFourneeEssai(b, false))?.id ?? null;
 }
 
 // Choix du membre sur cette recette. `null` : table absente (migration pas
@@ -199,12 +208,16 @@ export async function getRemarques(opts: {
   recipeId: string | null;
   excludeId?: number | null;
   sourcePlanId?: number | null;
+  // Fournées d'essai d'un projet comprises (JEP-430) : page projet et fournées
+  // d'essai. Ailleurs (fiche recette, /creer, fournée ordinaire), une recette
+  // issue d'un projet ne rappelle que les fournées envoyées dans la recette.
+  essais?: boolean;
 }): Promise<DonneesRemarques> {
   const supabase = await createClient();
   const [{ reference, anciennes, refaite }, decisionsBrutes, plusRecenteId] = await Promise.all([
     lireFournees(supabase, opts),
     opts.recipeId ? lireDecisions(supabase, opts.userId, opts.recipeId) : Promise.resolve(null),
-    opts.recipeId ? lirePlusRecente(supabase, opts.userId, opts.recipeId) : Promise.resolve(null),
+    opts.recipeId ? lirePlusRecente(supabase, opts.userId, opts.recipeId, !!opts.essais) : Promise.resolve(null),
   ]);
   let decisions = decisionsBrutes ?? [];
   try {

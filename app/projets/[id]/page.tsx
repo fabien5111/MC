@@ -21,6 +21,8 @@ import { MobileNav } from '@/components/MobileNav';
 import { getVisibleHelpBlocks } from '@/lib/help';
 import { ProjectV2 } from '@/components/projets/v2/ProjectV2';
 import { ProjectReadOnly } from '@/components/projets/ProjectReadOnly';
+import { ProjectTrials } from '@/components/projets/ProjectTrials';
+import Link from 'next/link';
 
 export const metadata: Metadata = { title: 'Projet | Je pâtisse !' };
 // Tout s'enregistre au fil de l'eau et se relit à chaque rendu serveur,
@@ -44,7 +46,11 @@ export default async function ProjetPage({ params }: Params) {
   // d'un autre tombent sur `notFound()`.
   const project = await getProjectFull(id);
   if (!project) notFound();
-  // Projet déjà validé ou dissous : c'est une recette ordinaire.
+  // Projet validé (JEP-430) : c'est une recette ordinaire, mais sa page projet
+  // reste — résumé du projet et fournées d'essai, qui ne sont pas sur la fiche.
+  if (project.stage === 'ready' || project.stage === 'dissolved') {
+    return <ProjetValidePage id={id} project={project} />;
+  }
   if (project.stage !== 'wizard') redirect(`/recette/${id}`);
 
   // Mode projet perdu (rétrogradation) : le projet reste lisible, rien ne
@@ -100,7 +106,7 @@ export default async function ProjetPage({ params }: Params) {
   // Retours de mes fournées d'essai (JEP-381) : un essai est une fournée du
   // projet. Best-effort : un échec ne coûte que ces retours.
   const [remarques, remarquesEssais] = await Promise.all([
-    getRemarques({ userId: user.id, recipeId: id }).catch(() => null),
+    getRemarques({ userId: user.id, recipeId: id, essais: true }).catch(() => null),
     getRemarquesEssais(id),
   ]);
   const ligne = (ids.data ?? null) as { difficulty_id: number | null } | null;
@@ -139,6 +145,50 @@ export default async function ProjetPage({ params }: Params) {
       </StockageEnLigneProvider>
       <Footer />
       <MobileNav centre="actions" />
+    </>
+  );
+}
+
+// Page d'un projet validé (JEP-430) : lecture seule. Les fournées d'essai non
+// envoyées dans la recette n'apparaissent qu'ici ; verdict et retours restent
+// consultables (et le verdict modifiable), relancer un essai passe par la fiche.
+async function ProjetValidePage({ id, project }: { id: string; project: NonNullable<Awaited<ReturnType<typeof getProjectFull>>> }) {
+  const [recipe, trials, remarquesEssais] = await Promise.all([getRecipeFull(id, 'lecture'), getProjectTrials(id, false), getRemarquesEssais(id)]);
+  const essais = trials.filter((t) => t.essai);
+  const envoyees = trials.length - essais.length;
+  return (
+    <>
+      <Header />
+      <main className="mx-auto mb-24 max-w-container-max px-margin-mobile py-12 md:px-margin-desktop">
+        <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">Mode projet</p>
+        <h1 className="mb-3 font-headline-lg text-[26px] font-bold leading-tight text-primary md:text-[34px]">{project.title}</h1>
+        <ProjectReadOnly
+          project={project}
+          bandeau={
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-outline-variant bg-surface-container p-5">
+              <span className="rounded bg-green-700 px-2 py-0.5 font-label-md text-[12px] text-white">Projet validé</span>
+              <p className="min-w-0 flex-1 text-sm text-on-surface-variant">
+                Ce projet est devenu une recette de votre carnet. Ses fournées d’essai restent ici
+                {envoyees > 0 ? ` ; ${envoyees} fournée${envoyees > 1 ? 's ont été envoyées' : ' a été envoyée'} dans la recette.` : '.'}
+              </p>
+              <Link href={`/recette/${id}`} className="font-label-md text-[13px] font-semibold text-primary underline">
+                Voir la recette
+              </Link>
+            </div>
+          }
+          apres={
+            recipe && essais.length > 0 ? (
+              <section>
+                <ProjectTrials recipe={recipe} trials={essais} unresolved={[]} canLaunch={false} retoursEssais={remarquesEssais} />
+              </section>
+            ) : (
+              <p className="text-sm italic text-on-surface-variant">Aucune fournée d’essai à afficher.</p>
+            )
+          }
+        />
+      </main>
+      <Footer />
+      <MobileNav />
     </>
   );
 }

@@ -53,6 +53,34 @@ export function isProjectDraft(r: ProjectMarks | null | undefined): boolean {
   return r?.kind === 'project' && r?.project_stage === 'wizard';
 }
 
+// Projet validé (JEP-430) : devenu une recette ordinaire (`ready`, ou
+// `dissolved` après un passage dans /creer), il reste visible dans la portée
+// « Projets » du carnet avec l'étiquette « Projet validé », et sa page projet
+// (`/projets/[id]`) garde ses fournées d'essai.
+export function isProjectValidated(r: ProjectMarks | null | undefined): boolean {
+  return r?.kind === 'project' && (r?.project_stage === 'ready' || r?.project_stage === 'dissolved');
+}
+
+// Fournée d'essai d'un projet (JEP-430) : `batches.essai_projet`, posée au
+// lancement d'un essai et levée à la validation pour les fournées que le membre
+// envoie dans la recette. Colonne posée par `psql` : absente (migration pas
+// jouée), une fournée d'un projet en cours vaut essai — l'ancienne règle —, et
+// toute autre fournée vaut fournée ordinaire.
+export function estFourneeEssai(
+  batch: { essai_projet?: boolean | null } | object,
+  recetteEnCours: boolean,
+): boolean {
+  if ('essai_projet' in batch) return (batch as { essai_projet?: boolean | null }).essai_projet === true;
+  return recetteEnCours;
+}
+
+// Fournées d'essai pré-cochées dans « Valider le projet » (JEP-430) : celles
+// dont l'essai a été jugé « Validée » — le membre a déjà dit qu'elles
+// représentent la recette. Les autres restent des essais par défaut.
+export function selectionInitialeEssais(essais: { id: number; verdict: string | null }[]): number[] {
+  return essais.filter((e) => e.verdict === 'validated').map((e) => e.id);
+}
+
 // Nom d'une fournée d'ESSAI d'un projet en cours, partout où elle s'affiche
 // (planning par jour, cartes « En cuisine », en-tête de la fournée) : préfixé
 // « [Projet] » pour ne pas la confondre avec une recette ordinaire du même nom.
@@ -891,6 +919,7 @@ export const PROJECT_V2_BLOCKS = [
   'ingredients',
   'organisation',
   'conseils',
+  'degustation',
   'validation',
 ] as const;
 export type ProjectV2Block = (typeof PROJECT_V2_BLOCKS)[number];
@@ -926,6 +955,7 @@ export function projectV2BlockStates(project: {
     ingredients: etat(unResolu, apresRecette),
     organisation: etat(unResolu, apresRecette),
     conseils: etat(unResolu, apresRecette),
+    degustation: etat(unResolu, apresRecette),
     validation: etat(tousResolus, 'Disponible quand toutes les préparations ont leur recette.'),
   };
 }

@@ -12,7 +12,7 @@ import { getUserRecipes, type UserRecipeCard } from '@/lib/recipes';
 import { getFavorites } from '@/lib/profile';
 import { getFollowedRecipes } from '@/lib/follows';
 import { getSharedWithMeRecipes } from '@/lib/shares-data';
-import { isProjectDraft } from '@/lib/projects';
+import { isProjectDraft, isProjectValidated } from '@/lib/projects';
 import type { RecipeCardWithAllergenNames } from '@/lib/recipes';
 import type { CarnetParams } from '@/lib/carnet-params';
 import { matchesSearch } from '@/lib/text-search';
@@ -151,7 +151,9 @@ export async function getCarnetData(userId: string): Promise<CarnetData> {
       otherItems.filter((i) => i.kind === 'other' && i.favorite).length,
     sub: otherItems.filter((i) => i.kind === 'other' && i.subscription).length,
     shared: otherItems.filter((i) => i.kind === 'other' && i.shared).length,
-    proj: projectItems.length,
+    // Projets validés compris (JEP-430) : ils restent visibles dans « Projets »,
+    // étiquetés « Projet validé », tout en étant des recettes de « Mes recettes ».
+    proj: projectItems.length + mineItems.filter((i) => i.kind === 'mine' && isProjectValidated(i.recipe)).length,
   };
   const byStatus = (s: string) => mineItems.filter((i) => i.kind === 'mine' && (i.recipe.status || 'draft') === s).length;
   const statusCounts = {
@@ -217,7 +219,8 @@ export function applyCarnetFilters(items: CarnetItem[], params: CarnetParams): C
     // « Tout » les montre aussi (JEP-403) ; les autres portées, jamais.
     const projet = item.kind === 'mine' && isProjectDraft(item.recipe);
     if (params.scope === 'proj') {
-      if (!projet) return false;
+      // Projets en cours ET projets validés (JEP-430).
+      if (!projet && !(item.kind === 'mine' && isProjectValidated(item.recipe))) return false;
     } else if (projet && params.scope !== 'all') {
       return false;
     }
